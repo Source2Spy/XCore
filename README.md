@@ -1,3 +1,10 @@
-# xCore
+# textfile
 
-Basic low level library
+
+why xcore?
+
+- No exceptions
+- Limit dependencies for types
+- asserts everywhere
+-
+
