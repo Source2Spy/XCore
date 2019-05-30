@@ -12,33 +12,50 @@ namespace xcore::textfile::examples
 
     //------------------------------------------------------------------------------
     static
-    xcore::err TextFileWrite( xcore::string::view<char> FileName, xcore::textfile::file_type FileType )
+    xcore::err TextFileWrite( xcore::string::view<char> FileName, bool isRead, xcore::textfile::file_type FileType )
     {
         xcore::textfile::stream     TextFile;
         xcore::err                  Error;
 
-        if( TextFile.openForWriting( std::string_view{ FileName }, FileType ).isError(Error) )
-            return Error;
+        //
+        // Open File
+        //
+        if( isRead )
+        {
+            if( TextFile.openForReading( std::string_view{ FileName } ).isError(Error) )        return Error;
+        }
+        else
+        {
+            if( TextFile.openForWriting( std::string_view{ FileName }, FileType ).isError(Error) ) return Error;
+        }
 
 
         //
-        // Block of data
+        // First block
         //
-        if( TextFile.WriteRecord( "FistRecord", 12 ).isError( Error ) )
-            return Error;
+        if( isRead )
+        {
+            if( TextFile.WriteRecord( "FistRecord", 12 ).isError( Error ) )
+                return Error;
+        }
+        else
+        {
+            if( TextFile.ReadRecord().isError( Error ) )
+                return Error;
+        }
 
         for( auto i=0; i<TextFile.getRecordCount(); i++ )
         {
+            if( isRead == true && TextFile.ReadLine().isError(Error) ) return Error;
             if( TextFile.Field( "Description",  g_String[i%g_String.size()].getView() ).isError(Error) ) return Error;
             if( TextFile.Field( "Position",     g_Floats32[(i+0)%g_Floats32.size()], 
                                                 g_Floats32[(i+1)%g_Floats32.size()], 
                                                 g_Floats32[(i+2)%g_Floats32.size()] ).isError(Error) ) return Error;
             if( TextFile.Field( "Number",       g_Int32[i%g_String.size()] ).isError(Error) ) return Error;
 
-            if( TextFile.WriteLine().isError(Error))
-                return Error;
+            if( isRead == false && TextFile.WriteLine().isError(Error) ) return Error;
         }
-
+#if 0
         //
         // Big types
         //
@@ -126,6 +143,7 @@ namespace xcore::textfile::examples
             || TextFile.Field( "Two:.V3D", g_Floats32[0], g_Floats32[1], g_Floats32[2] ).isError( Error )
             || TextFile.WriteLine().isError( Error ) )
             return Error;
+#endif
 
         TextFile.close();
         return Error;
@@ -142,11 +160,15 @@ namespace xcore::textfile::examples
         //
         // Test write and read (Text Style)
         //
-        if( TextFileWrite( TextFileName, xcore::textfile::file_type::TEXT ).isError(Error) )
+        if( TextFileWrite( TextFileName, false, xcore::textfile::file_type::TEXT ).isError(Error) )
         {
             xassert(false);
         }
-        //TextFileRead( TextFileName );
+
+        if( TextFileWrite( TextFileName, true, xcore::textfile::file_type::TEXT ).isError(Error) )
+        {
+            xassert(false);
+        }
     
 /*
         //
