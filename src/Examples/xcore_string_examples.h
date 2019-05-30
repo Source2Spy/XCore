@@ -1,4 +1,3 @@
-#include "xcore.h"
 
 namespace xcore::string::examples
 {

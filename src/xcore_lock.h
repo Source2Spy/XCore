@@ -2,10 +2,6 @@
 #define _XCORE_LOCK_H
 #pragma once
 
-#include "xcore_target.h"
-#include <atomic>
-#include "xcore_assert.h"
-
 namespace xcore::lock
 {
     //------------------------------------------------------------------------------------------

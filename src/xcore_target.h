@@ -2,8 +2,6 @@
 #define _XCORE_TARGET_H
 #pragma once
 
-#include<array>
-
 //------------------------------------------------------------------------------
 // Determine the compiler err set it in _XCORE_COMPILER_ ...
 //------------------------------------------------------------------------------

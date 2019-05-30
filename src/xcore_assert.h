@@ -2,9 +2,6 @@
 #define _XCORE_ASSERT_H
 #pragma once
 
-#include "xcore_target.h"
-#include <assert.h>
-
 namespace xcore
 {
     enum assert_level

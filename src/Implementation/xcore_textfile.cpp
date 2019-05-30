@@ -1,16 +1,5 @@
 
 
-#include "xcore_textfile.h"
-#include "xcore_string_inline.h"
-#include "xcore_endian.h"
-#include "xcore_ptr.h"
-
-#include <algorithm>
-#include <iostream>
-#include <iterator>
-#include <vector>
-#include <stdarg.h>  
-
 //-----------------------------------------------------------------------------------------------------
 // convert wstring to UTF-8 string
 //-----------------------------------------------------------------------------------------------------

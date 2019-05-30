@@ -2,8 +2,6 @@
 #define _XCORE_PTR_H
 #pragma once
 
-#include "xcore_span.h"
-
 namespace xcore::ptr
 {
     //------------------------------------------------------------------------------

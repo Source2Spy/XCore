@@ -2,14 +2,6 @@
 #define _XCORE_STRING_H
 #pragma once
 
-#include "xcore_target.h"
-#include "xcore_span.h"
-#include "xcore_types.h"
-#include "xcore_units.h"
-#include <vector>
-#include <variant>
-#include <memory>
-
 namespace xcore::string
 {
     //------------------------------------------------------------------------------

@@ -2,15 +2,6 @@
 #define _XCORE_TEXTFILE_H
 #pragma once
 
-#include "xcore_error.h"
-#include "xcore_event.h"
-#include "xcore_string.h"
-#include <filesystem>
-#include <array>
-#include <string>
-#include <stdlib.h>
-#include <unordered_map>
-
 //-----------------------------------------------------------------------------------------------------
 //     Type    Description
 //     ======  -------------------------------------------------------------------

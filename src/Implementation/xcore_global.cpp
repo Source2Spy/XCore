@@ -1,10 +1,3 @@
-#include "windows.h"
-#undef ERROR
-
-#include "xcore_global.h"
-#include "xcore_log.h"
-#include "xcore_assert.h"
-
 
 //-----------------------------------------------------------------------------------------------
 

@@ -2,10 +2,6 @@
 #define _XCORE_CONTEXT_H
 #pragma once
 
-#include <variant>
-#include <string>
-#include "xcore_global.h"
-
 namespace xcore::context
 {
     struct base;

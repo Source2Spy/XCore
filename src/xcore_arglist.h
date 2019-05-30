@@ -2,12 +2,6 @@
 #define _XCORE_ARGLIST_H
 #pragma once
 
-#include "xcore_target.h"
-#include "xcore_span.h"
-#include "xcore_types.h"
-#include <vector>
-
-
 namespace xcore::arglist
 {
     using out_types = std::variant< std::uint8_t,std::uint16_t,std::uint32_t,std::uint64_t,
@@ -28,7 +22,5 @@ namespace xcore::arglist
         operator std::span<out_types> () noexcept { return std::make_span(m_Params); }
     };
 }
-
-
 
 #endif

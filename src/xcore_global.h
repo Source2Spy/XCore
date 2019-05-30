@@ -2,20 +2,6 @@
 #define _XCORE_GLOBAL_H
 #pragma once
 
-#include "xcore_types.h"
-#include "xcore_lock.h"
-#include <assert.h>
-#include <memory>
-#include <variant>
-#include <array>
-#include <vector>
-
-namespace xcore
-{
-    namespace log       { struct logger; }
-    namespace context   { struct base;   }
-}
-
 //------------------------------------------------------------------------------------------
 // Global state of xcore
 //------------------------------------------------------------------------------------------
@@ -72,8 +58,8 @@ namespace xcore::global
                 xcore::lock::scope Clean(m_LocalCleanup);
                 m_LocalCleanup.getClass().emplace_back(p);
             }
-            static_assert( xcore::types::variant_t2i_v<T,details::local_storage_ptrs> < std::variant_size_v<details::local_storage_ptrs>, "" );
-            return std::get<T>(p->at(xcore::types::variant_t2i_v<T,details::local_storage_ptrs>));
+            static_assert( xcore::types::template variant_t2i_v<T,details::local_storage_ptrs> < std::variant_size_v<details::local_storage_ptrs>, "" );
+            return std::get<T>(p->at(xcore::types::template variant_t2i_v<T,details::local_storage_ptrs>));
         }
 
         using state_ptr_type = std::variant< state*, std::unique_ptr<state> >;

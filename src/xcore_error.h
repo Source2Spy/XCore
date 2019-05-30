@@ -2,12 +2,6 @@
 #define _XCORE_ERROR_H
 #pragma once
 
-#include "xcore_crc.h"
-
-#include <vector>
-#include <array>
-#include "xcore_assert.h"
-
 namespace xcore::error
 {
     //-------------------------------------------------------------------------------------------------------

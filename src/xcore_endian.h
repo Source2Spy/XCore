@@ -2,10 +2,6 @@
 #define _XCORE_ENDIAN_H
 #pragma once
 
-#include "xcore_target.h"
-#include "xcore_types.h"
-#include "xcore_ptr.h"
-
 namespace xcore::endian
 {
     //------------------------------------------------------------------------------

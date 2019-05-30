@@ -2,8 +2,6 @@
 #define _XCORE_FUNCTION_H
 #pragma once
 
-#include <tuple>
-
 namespace xcore::function
 {
     //------------------------------------------------------------------------------

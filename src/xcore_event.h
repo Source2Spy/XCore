@@ -2,9 +2,6 @@
 #define _XCORE_EVENT_H
 #pragma once
 
-#include "xcore_function.h"
-#include "xcore_lock.h"
-
 // Usage Example:
 //      #include <iostream>
 //      class body

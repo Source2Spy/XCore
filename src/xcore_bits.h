@@ -54,7 +54,7 @@ namespace xcore::bits
     T AlignLower( T Address, const int AlignTo ) noexcept
     {
         static_assert( std::is_integral<T>::value, "This function only works with integer values" );
-        using unsigned_t = xcore::types::to_uint_t<T>::type; 
+        using unsigned_t = typename xcore::types::to_uint_t<T>::type; 
         return static_cast<T>( unsigned_t( Address ) & (-AlignTo) );
     }
 
@@ -78,7 +78,7 @@ namespace xcore::bits
     bool isAlign( T Addr, const int AlignTo ) noexcept
     {
         static_assert( std::is_pointer<T>::value || std::is_integral<T>::value,"" );
-        using unsigned_t = xcore::types::to_uint_t<T>::type; 
+        using unsigned_t = typename xcore::types::to_uint_t<T>::type; 
         return ( unsigned_t(Addr) & (static_cast<unsigned_t>(AlignTo)-1) ) == 0;
     }
 
@@ -122,7 +122,7 @@ namespace xcore::bits
 
     //------------------------------------------------------------------------------
     template< class T > constexpr
-    bool x_isPowTwo( const T x ) noexcept
+    bool isPowTwo( const T x ) noexcept
     { 
         static_assert( std::is_integral<T>::value, "" ); 
         return !((x - 1) & x); 
@@ -138,7 +138,7 @@ namespace xcore::bits
     T Log2IntRoundUp( T x ) noexcept
     {
         static_assert( std::is_integral<T>::value, "" ); 
-        return x < 1 ? 0 : x_Log2Int(x) + 1; 
+        return x < 1 ? 0 : Log2Int(x) + 1; 
     }
     static_assert( 0  == Log2IntRoundUp(0), "" );
     static_assert( 1  == Log2IntRoundUp(1), "" );
@@ -221,7 +221,7 @@ namespace xcore::bits
     {
         static_assert( sizeof(T) >= 4 && sizeof(T) <= 8, "" );
         static_assert( std::is_integral<T>::value,"" );
-        return static_cast<T>(details::murmurHash3_by_size<sizeof(T)>::Compute( static_cast< xcore::type::to_uint_t<T> >(h) ));
+        return static_cast<T>(details::murmurHash3_by_size<sizeof(T)>::Compute( static_cast< typename xcore::type::template to_uint_t<T> >(h) ));
     }
 }
 

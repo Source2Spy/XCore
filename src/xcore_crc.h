@@ -2,11 +2,6 @@
 #define _XCORE_CRC_H
 #pragma once
 
-#include "xcore_target.h"
-#include "xcore_types.h"
-#include "xcore_assert.h"
-#include "xcore_units.h"
-
 // Not too sure which is faster to compile with
 #define XCORE_CRC_STATIC_TABLE true
 

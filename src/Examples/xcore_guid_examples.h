@@ -1,5 +1,3 @@
-#include "xcore.h"
-
 
 namespace xcore::guid
 {

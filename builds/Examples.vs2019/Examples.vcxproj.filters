@@ -99,19 +99,13 @@
     <ClInclude Include="..\..\src\Examples\xcore_textfile_examples.h">
       <Filter>Examples</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\src\Examples\xcore_examples.h">
+      <Filter>Examples</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\src\xcore.cpp">
       <Filter>xCore</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\src\Implementation\xcore_global.cpp">
-      <Filter>xCore\Implementation</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\src\Implementation\xcore_log.cpp">
-      <Filter>xCore\Implementation</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\src\Implementation\xcore_textfile.cpp">
-      <Filter>xCore\Implementation</Filter>
     </ClCompile>
     <ClCompile Include="..\..\src\Examples\main.cpp" />
   </ItemGroup>

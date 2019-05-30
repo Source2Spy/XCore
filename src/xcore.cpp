@@ -1,5 +1,16 @@
 #include "xcore.h"
 
+#if _XCORE_COMPILER_VISUAL_STUDIO   
+    #include "windows.h"
+    #undef ERROR
+    #undef max
+#endif
+
+#include <iostream>
+#include <stdarg.h>
+#include <algorithm>
+#include <iterator>
+
 #include "Implementation/xcore_global.cpp"
 #include "Implementation/xcore_log.cpp"
 #include "Implementation/xcore_textfile.cpp"

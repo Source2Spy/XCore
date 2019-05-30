@@ -2,10 +2,6 @@
 #define _XCORE_LOG_H
 #pragma once
 
-#include "xcore_lock.h"
-#include "xcore_target.h"
-#include "xcore_global.h"
-
 namespace xcore::log
 {
     class channel;

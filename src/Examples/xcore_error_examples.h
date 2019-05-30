@@ -1,6 +1,4 @@
 
-#include "xcore.h"
-
 namespace xcore::error::examples
 {
     enum class my_error

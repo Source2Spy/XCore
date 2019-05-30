@@ -2,14 +2,6 @@
 #define _XCORE_GUID_H
 #pragma once
 
-#include "meow_hash.hpp"
-#include "xcore_types.h"
-#include "xcore_crc.h"
-#include "xcore_string.h"
-
-#include <thread>
-
-
 //---------------------------------------------------------------------------------------
 // Useful references:
 //      * Time based GUID:   https://github.com/mariusbancila/stduuid

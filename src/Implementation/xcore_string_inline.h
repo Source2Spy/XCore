@@ -1,5 +1,3 @@
-#include <stdarg.h>  
-
 
 namespace xcore::string
 {

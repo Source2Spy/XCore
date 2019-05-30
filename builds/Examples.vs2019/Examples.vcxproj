@@ -20,6 +20,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\src\Examples\xcore_error_examples.h" />
+    <ClInclude Include="..\..\src\Examples\xcore_examples.h" />
     <ClInclude Include="..\..\src\Examples\xcore_function_examples.h" />
     <ClInclude Include="..\..\src\Examples\xcore_guid_examples.h" />
     <ClInclude Include="..\..\src\Examples\xcore_log_examples.h" />
@@ -51,9 +52,6 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\src\Examples\main.cpp" />
-    <ClCompile Include="..\..\src\Implementation\xcore_global.cpp" />
-    <ClCompile Include="..\..\src\Implementation\xcore_log.cpp" />
-    <ClCompile Include="..\..\src\Implementation\xcore_textfile.cpp" />
     <ClCompile Include="..\..\src\xcore.cpp" />
   </ItemGroup>
   <PropertyGroup Label="Globals">

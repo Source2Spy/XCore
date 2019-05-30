@@ -1,15 +1,4 @@
 
-#include "xcore_target.h"
-#if _XCORE_COMPILER_VISUAL_STUDIO   
-    #include "windows.h"
-    #undef ERROR
-#endif
-
-#include "xcore_log.h"
-#include "xcore_context.h"
-#include <iostream>
-#include <stdarg.h>
-
 //-------------------------------------------------------------------------------------------------------------------
 
 void xcore::log::Output( const char* pMsg, ... ) noexcept

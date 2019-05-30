@@ -2,11 +2,6 @@
 #define _XCORE_TYPES_H
 #pragma once
 
-#include <assert.h>
-#include <tuple>
-#include <variant>
-#include <array>
-
 namespace xcore::types
 {
     //-------------------------------------------------------------------------------------------------------
