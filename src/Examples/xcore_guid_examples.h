@@ -1,5 +1,5 @@
 
-namespace xcore::guid
+namespace xcore::guid::examples
 {
 
     void Test( void )

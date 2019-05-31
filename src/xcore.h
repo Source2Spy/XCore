@@ -52,6 +52,7 @@ namespace xcore
 #include "xcore_guid.h"
 #include "xcore_log.h"
 #include "xcore_textfile.h"
+#include "xcore_rtti.h"
 
 //---------------------------------------------------------------------------
 // Inline functions

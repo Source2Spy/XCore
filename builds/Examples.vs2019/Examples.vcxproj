@@ -24,6 +24,7 @@
     <ClInclude Include="..\..\src\Examples\xcore_function_examples.h" />
     <ClInclude Include="..\..\src\Examples\xcore_guid_examples.h" />
     <ClInclude Include="..\..\src\Examples\xcore_log_examples.h" />
+    <ClInclude Include="..\..\src\Examples\xcore_rtti_examples.h" />
     <ClInclude Include="..\..\src\Examples\xcore_string_examples.h" />
     <ClInclude Include="..\..\src\Examples\xcore_textfile_examples.h" />
     <ClInclude Include="..\..\src\Implementation\meow_hash.hpp" />
@@ -43,6 +44,7 @@
     <ClInclude Include="..\..\src\xcore_lock.h" />
     <ClInclude Include="..\..\src\xcore_log.h" />
     <ClInclude Include="..\..\src\xcore_ptr.h" />
+    <ClInclude Include="..\..\src\xcore_rtti.h" />
     <ClInclude Include="..\..\src\xcore_span.h" />
     <ClInclude Include="..\..\src\xcore_string.h" />
     <ClInclude Include="..\..\src\xcore_target.h" />
