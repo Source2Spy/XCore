@@ -34,19 +34,19 @@ namespace xcore::rtti::examples
     //--------------------------------------------------------------------------------------------------------
     struct child1 : test
     {
-        constexpr static rtti::entry<test> m_RTTI{"child1"};
+        constexpr static rtti::entry<child1,test> m_RTTI{"child1"};
         virtual const rtti::base& getVRTTI( void ) const noexcept override { return m_RTTI; }
     };
 
     struct child2 : child1
     {
-        constexpr static rtti::entry<child1> m_RTTI{"child2"};
+        constexpr static rtti::entry<child2,child1> m_RTTI{"child2"};
         virtual const rtti::base& getVRTTI( void ) const noexcept override { return m_RTTI; }
     };
 
     struct child3 : child2, test2
     {
-        constexpr static rtti::entry<child2,test2> m_RTTI{"child3"};
+        constexpr static rtti::entry<child3,child2,test2> m_RTTI{"child3"};
         virtual const rtti::base& getVRTTI( void ) const noexcept override { return m_RTTI; }
     };
 
@@ -55,59 +55,82 @@ namespace xcore::rtti::examples
     void Test_isKindOf( void )
     {
         {
+            // casting down
             child3 X;
 
-            static_assert( xcore::rtti::isKindof<child3>(X)   );
-            static_assert( xcore::rtti::isKindof<child2>(X)   );
-            static_assert( xcore::rtti::isKindof<child1>(X)   );
+            xassert( xcore::rtti::isKindof<child3>(X)   );
+            xassert( xcore::rtti::isKindof<child2>(X)   );
+            xassert( xcore::rtti::isKindof<child1>(X)   );
 
-            static_assert( xcore::rtti::isKindof<test>(X)     );
-            static_assert( xcore::rtti::isKindof<test2>(X)    );
+            xassert( xcore::rtti::isKindof<test>(X)     );
+            xassert( xcore::rtti::isKindof<test2>(X)    );
 
-            static_assert( !xcore::rtti::isKindof<unknown2>(X) );
-            static_assert( !xcore::rtti::isKindof<unknown>(X)  );
+            xassert( !xcore::rtti::isKindof<unknown2>(X) );
+            xassert( !xcore::rtti::isKindof<unknown>(X)  );
+
+            // casting up
+            test& Y = X;
+            xassert( xcore::rtti::isKindof<child3>(Y)  );
+            xassert( xcore::rtti::isKindof<child2>(Y)   );
+            xassert( xcore::rtti::isKindof<child1>(Y)   );
+
+            xassert( xcore::rtti::isKindof<test>(Y)     );
+            xassert( xcore::rtti::isKindof<test2>(Y)    );
+
+            xassert( !xcore::rtti::isKindof<unknown2>(Y) );
+            xassert( !xcore::rtti::isKindof<unknown>(Y)  );
         }
 
         {
             child2 X;
+            xassert( !xcore::rtti::isKindof<child3>(X)  );
+            xassert( xcore::rtti::isKindof<child2>(X)   );
+            xassert( xcore::rtti::isKindof<child1>(X)   );
 
-            static_assert( !xcore::rtti::isKindof<child3>(X)  );
-            static_assert( xcore::rtti::isKindof<child2>(X)   );
-            static_assert( xcore::rtti::isKindof<child1>(X)   );
+            xassert( xcore::rtti::isKindof<test>(X)     );
+            xassert( !xcore::rtti::isKindof<test2>(X)   );
 
-            static_assert( xcore::rtti::isKindof<test>(X)     );
-            static_assert( !xcore::rtti::isKindof<test2>(X)   );
+            xassert( !xcore::rtti::isKindof<unknown>(X)  );
+            xassert( !xcore::rtti::isKindof<unknown2>(X) );
 
-            static_assert( !xcore::rtti::isKindof<unknown>(X)  );
-            static_assert( !xcore::rtti::isKindof<unknown2>(X) );
+            test& Y = X;
+            xassert( !xcore::rtti::isKindof<child3>(Y)  );
+            xassert( xcore::rtti::isKindof<child2>(Y)   );
+            xassert( xcore::rtti::isKindof<child1>(Y)   );
+
+            xassert( xcore::rtti::isKindof<test>(Y)     );
+            xassert( !xcore::rtti::isKindof<test2>(Y)   );
+
+            xassert( !xcore::rtti::isKindof<unknown>(Y)  );
+            xassert( !xcore::rtti::isKindof<unknown2>(Y) );
         }
 
         {
             child1 X;
 
-            static_assert( !xcore::rtti::isKindof<child3>(X)  );
-            static_assert( !xcore::rtti::isKindof<child2>(X)   );
-            static_assert( xcore::rtti::isKindof<child1>(X)   );
+            xassert( !xcore::rtti::isKindof<child3>(X)  );
+            xassert( !xcore::rtti::isKindof<child2>(X)   );
+            xassert( xcore::rtti::isKindof<child1>(X)   );
 
-            static_assert( xcore::rtti::isKindof<test>(X)     );
-            static_assert( !xcore::rtti::isKindof<test2>(X)   );
+            xassert( xcore::rtti::isKindof<test>(X)     );
+            xassert( !xcore::rtti::isKindof<test2>(X)   );
 
-            static_assert( !xcore::rtti::isKindof<unknown>(X)  );
-            static_assert( !xcore::rtti::isKindof<unknown2>(X) );
+            xassert( !xcore::rtti::isKindof<unknown>(X)  );
+            xassert( !xcore::rtti::isKindof<unknown2>(X) );
         }
 
         {
             test X;
 
-            static_assert( !xcore::rtti::isKindof<child3>(X)  );
-            static_assert( !xcore::rtti::isKindof<child2>(X)   );
-            static_assert( !xcore::rtti::isKindof<child1>(X)   );
+            xassert( !xcore::rtti::isKindof<child3>(X)  );
+            xassert( !xcore::rtti::isKindof<child2>(X)   );
+            xassert( !xcore::rtti::isKindof<child1>(X)   );
 
-            static_assert( xcore::rtti::isKindof<test>(X)     );
-            static_assert( !xcore::rtti::isKindof<test2>(X)   );
+            xassert( xcore::rtti::isKindof<test>(X)     );
+            xassert( !xcore::rtti::isKindof<test2>(X)   );
 
-            static_assert( !xcore::rtti::isKindof<unknown>(X)  );
-            static_assert( !xcore::rtti::isKindof<unknown2>(X) );
+            xassert( !xcore::rtti::isKindof<unknown>(X)  );
+            xassert( !xcore::rtti::isKindof<unknown2>(X) );
         }
     }
 

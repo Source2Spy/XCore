@@ -6,10 +6,8 @@ namespace xcore::rtti
 {
     //--------------------------------------------------------------------------------------------------------
 
-    class base
+    struct base
     {
-    public:
-
         template< std::size_t N >
         constexpr               base                    ( const char (&Name)[N] )               noexcept : m_CRC{ crc::FromString<64>(Name) }, m_pName{Name} {}
                                 base                    ( void )                                noexcept = delete;
@@ -18,43 +16,38 @@ namespace xcore::rtti
 
         template< typename T >
         constexpr     bool      isKindofV               ( void )                        const   noexcept { return m_CRC == T::m_RTTI.m_CRC; }
-
-    protected:
+        virtual       bool      isKindofV               ( crc::units<64> CRC )          const   noexcept { return m_CRC == CRC; }
 
         template< typename T >
         struct kindof
         {
             template <typename T_ARG>
-            constexpr static bool isKindof( void ) noexcept { return T::m_RTTI.m_CRC == T_ARG::m_RTTI.m_CRC; }
+            constexpr static bool isKindof( void )                  noexcept { return T::m_RTTI.m_CRC == T_ARG::m_RTTI.m_CRC; }
+            constexpr static bool isKindof( crc::units<64> CRC )    noexcept { return T::m_RTTI.m_CRC == CRC; }
         };
 
         constexpr const void* RTTIStrongCastCheck( const base& Rtti, const void* )      const   noexcept { return nullptr; }
 
-    protected:
-
         const char* const       m_pName;
         const crc::units<64>    m_CRC;
-        template< typename T_CLASS, typename ...T_ARGS > friend class entry;
     };
 
     //--------------------------------------------------------------------------------------------------------
 
     template< typename T_CLASS, typename ...T_ARGS >
-    class entry final : public base 
+    struct entry : base 
     {
-    public:
-
-        using base::base;
-
         static constexpr int total_parents_v    { sizeof...(T_ARGS) };
         static constexpr int start_index_v      { total_parents_v - 1};
+        static_assert(total_parents_v>=1);
+        static_assert(start_index_v>=0);
 
-        constexpr static    int     getNumberOfParents      ( void )                                  noexcept          { return total_parents_v; }
+        using base::base;
+        constexpr static    int     getNumberOfParents      ( void )                                  noexcept          { return total_parents_v;  }
         template< typename T >
         constexpr           bool    isKindofV               ( void )                            const noexcept          { return m_CRC == T::m_RTTI.m_CRC || kindof< T_CLASS >::template isKindof<T>(); }
+        virtual             bool    isKindofV               ( crc::units<64> CRC )              const noexcept override { return m_CRC == CRC             || kindof< T_CLASS >::isKindof( CRC );        }
         virtual       const void*   RTTIStrongCastHelperV   ( const base& A, const void* P )    const noexcept override { return RTTIStrongCastCheck( A, reinterpret_cast<const T_CLASS*>(P) );}
-
-    protected:
 
         template< int T_I >
         struct arg_t      
@@ -65,6 +58,10 @@ namespace xcore::rtti
             constexpr static bool isKindof( void ) noexcept
             {
                 return type::m_RTTI.m_CRC == T_ARG::m_RTTI.m_CRC || std::remove_reference<decltype(type::m_RTTI)>::type::template kindof<type>::template isKindof<T_ARG>();
+            }
+            constexpr static bool isKindof( crc::units<64> CRC ) noexcept
+            {
+                return type::m_RTTI.m_CRC == CRC || std::remove_reference<decltype(type::m_RTTI)>::type::template kindof<type>::isKindof(CRC);
             }
         };
 
@@ -89,13 +86,22 @@ namespace xcore::rtti
                 if constexpr( arg_t<T_COUNT>::template isKindof<T_ARG>() )  return true;
                 else                                                        return kindof<T,T_COUNT-1>::template isKindof<T_ARG>();
             }           
+            constexpr static bool isKindof( crc::units<64> CRC ) noexcept
+            { 
+                if ( arg_t<T_COUNT>::isKindof(CRC) )  return true;
+                else                                  return kindof<T,T_COUNT-1>::isKindof(CRC);
+            }           
         };
 
         template< typename T >
         struct kindof< T, -1 >
         {
             template< typename T_ARG >
-            constexpr static bool isKindof() noexcept
+            constexpr static bool isKindof( void ) noexcept
+            { 
+                return false ;
+            }
+            constexpr static bool isKindof( crc::units<64> CRC ) noexcept
             { 
                 return false ;
             }
@@ -138,15 +144,11 @@ namespace xcore::rtti
                 return nullptr;
             }
         };
-
-    protected:
-
-        template< typename, typename ... > friend class entry;
     };
 
     //--------------------------------------------------------------------------------------------------------
     template< typename T_TYPE, typename T_ARG > constexpr
-    bool isKindof( const T_ARG& ) noexcept
+    bool isKindof( void ) noexcept
     {
         // Cast down easy
         if constexpr( std::is_base_of_v< T_TYPE, T_ARG > || std::is_same_v<std::decay_t<T_TYPE>,std::decay_t<T_ARG>>)
@@ -154,6 +156,17 @@ namespace xcore::rtti
         else // Cast up
             return T_ARG::m_RTTI.isKindofV<T_TYPE>();
     }
+
+    //--------------------------------------------------------------------------------------------------------
+    template< typename T_TYPE, typename T_CLASS > inline
+    bool isKindof( const T_CLASS& Class ) noexcept
+    {
+        // Cast down easy
+        if constexpr( std::is_base_of_v< T_TYPE, T_CLASS > || std::is_same_v<std::decay_t<T_TYPE>,std::decay_t<T_CLASS>>) return true;
+        // Cast up
+        else return Class.getVRTTI().isKindofV( T_TYPE::m_RTTI.m_CRC );
+    }
+
 }
 
 #endif
