@@ -8,8 +8,7 @@ namespace xcore::rtti
 
     struct base
     {
-        template< std::size_t N >
-        constexpr                   base                    ( const char (&Name)[N] )               noexcept : m_CRC{ crc::FromString<64>(Name) }, m_pName{Name} {}
+        constexpr                   base                    ( std::pair<crc::units<64>,const char*> X )               noexcept : m_CRC{ X.first }, m_pName{X.second} {}
                                     base                    ( void )                                noexcept = delete;
         constexpr   int             getNumberOfParents      ( void )                        const   noexcept { return 0; }
 
@@ -166,7 +165,7 @@ namespace xcore::rtti
         // Cast down easy
         if constexpr( std::is_base_of_v< T_TYPE, T_CLASS > || std::is_same_v<std::decay_t<T_TYPE>,std::decay_t<T_CLASS>>) return true;
         // Cast up
-        else return Class.getVRTTI().isKindofV( T_TYPE::m_RTTI.m_CRC );
+        else return Class.getVRTTI().first.isKindofV( T_TYPE::m_RTTI.m_CRC );
     }
 
     //--------------------------------------------------------------------------------------------------------
@@ -221,10 +220,12 @@ namespace xcore::rtti
         internal_cast( T* A )
         {
             xassert(A);
-            auto Ptr = A->getVRTTI().RTTIStrongCastHelperV( T_DST::m_RTTI, A );
+            auto [RTTI,Ptr] = A->getVRTTI();
+            auto p = RTTI.RTTIStrongCastHelperV( T_DST::m_RTTI, Ptr );
+
             // Seems it did not find the type to cast
-            xassert(Ptr);
-            return reinterpret_cast<T_DST*>(const_cast<void*>(Ptr));
+            xassert(p);
+            return reinterpret_cast<T_DST*>(const_cast<void*>(p));
         }
     }
 
@@ -236,6 +237,22 @@ namespace xcore::rtti
         return *details::internal_cast<std::remove_reference_t<T_CLASS>, T_TYPE >( &Class );
     }
 }
+
+//------------------------------------------------------------------------------
+// Description:
+//      Convert an argument to a string
+//------------------------------------------------------------------------------
+#define __X_STRINGIFY( X ) #X
+#define X_STRINGIFY( X ) __X_STRINGIFY( X )
+#define x_object_type_rtti_class_name( CLASSNAME )  []()->std::pair<crc::units<64>,const char*> { return{ crc::FromString<64>(X_STRINGIFY( CLASSNAME ) "->" __FUNCSIG__ ":" X_STRINGIFY( __LINE__ )), #CLASSNAME}; }()
+
+#define xrtti_start(CLASS)      public: constexpr static rtti::base m_RTTI{ x_object_type_rtti_class_name(CLASS) };                                     \
+                                public: virtual std::pair<const rtti::base&,const void*> getVRTTI( void ) const noexcept { return {m_RTTI,this}; }      \
+                                public: virtual std::pair<const rtti::base&,      void*> getVRTTI( void )       noexcept { return {m_RTTI,this}; }      \
+
+#define xrtti(CLASS, ... )      public: constexpr static rtti::entry<CLASS,__VA_ARGS__> m_RTTI{ x_object_type_rtti_class_name(CLASS) };                 \
+                                public: virtual std::pair<const rtti::base&,const void*> getVRTTI( void ) const noexcept { return {m_RTTI,this}; }      \
+                                public: virtual std::pair<const rtti::base&,      void*> getVRTTI( void )       noexcept { return {m_RTTI,this}; }      \
 
 #endif
 

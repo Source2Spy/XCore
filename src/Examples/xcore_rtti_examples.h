@@ -6,14 +6,12 @@ namespace xcore::rtti::examples
     //--------------------------------------------------------------------------------------------------------
     struct unknown
     {
-        constexpr static rtti::base m_RTTI{"unknown"};
-        virtual const rtti::base& getVRTTI( void ) const noexcept { return m_RTTI; }
+        xrtti_start(unknown)
     };
 
     struct unknown2 : unknown
     {
-        constexpr static rtti::entry<unknown2,unknown> m_RTTI{"unknown2"};
-        virtual const rtti::base& getVRTTI( void ) const noexcept override { return m_RTTI; }
+        xrtti(unknown2,unknown)
     };
 
     //--------------------------------------------------------------------------------------------------------
@@ -21,15 +19,13 @@ namespace xcore::rtti::examples
     struct test
     {
         int m_X;
-        constexpr static rtti::base m_RTTI{"test"};
-        virtual const rtti::base& getVRTTI( void ) const noexcept { return m_RTTI; }
+        xrtti_start(test)
     };
 
     struct test2
     {
         int m_Y;
-        constexpr static rtti::base m_RTTI{"test2"};
-        virtual const rtti::base& getVRTTI( void ) const noexcept { return m_RTTI; }
+        xrtti_start(test2)
     };
 
     //--------------------------------------------------------------------------------------------------------
@@ -37,22 +33,19 @@ namespace xcore::rtti::examples
     struct child1 : test
     {
         int m_A;
-        constexpr static rtti::entry<child1,test> m_RTTI{"child1"};
-        virtual const rtti::base& getVRTTI( void ) const noexcept override { return m_RTTI; }
+        xrtti(child1,test)
     };
 
     struct child2 : child1
     {
         int m_B;
-        constexpr static rtti::entry<child2,child1> m_RTTI{"child2"};
-        virtual const rtti::base& getVRTTI( void ) const noexcept override { return m_RTTI; }
+        xrtti(child2,child1)
     };
 
     struct child3 : child2, test2
     {
         int m_C;
-        constexpr static rtti::entry<child3,child2,test2> m_RTTI{"child3"};
-        virtual const rtti::base& getVRTTI( void ) const noexcept override { return m_RTTI; }
+        xrtti(child3,child2,test2)
     };
 
     //--------------------------------------------------------------------------------------------------------
