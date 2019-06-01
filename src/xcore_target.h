@@ -282,6 +282,22 @@ constexpr xcore::target::compiler   xcore::target::getCompiler      ( void ) noe
 #endif
 
 //------------------------------------------------------------------------------
+// Some messages
+//------------------------------------------------------------------------------
+#define __X_STRINGIFY( X ) #X
+#define X_STRINGIFY( X ) __X_STRINGIFY( X )
+
+#if _XCORE_COMPILER_VISUAL_STUDIO
+    // More information: https://docs.microsoft.com/en-us/cpp/preprocessor/predefined-macros?view=vs-2019 
+    #ifdef _CPPRTTI
+ //       #pragma message( __FILE__ "[" X_STRINGIFY(__LINE__) "]:" "xCore Warning: C++ RTTI is enable, may generate slower code and take more memory than required")
+    #endif
+    #ifdef _CPPUNWIND
+ //       #pragma message( __FILE__ "[" X_STRINGIFY(__LINE__) "]:" "xCore Warning: C++ Exceptions are enable, may generate slower and take more memory than required")
+    #endif
+#endif
+
+//------------------------------------------------------------------------------
 // END
 //------------------------------------------------------------------------------
 #endif

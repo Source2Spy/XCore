@@ -8,16 +8,16 @@ namespace xcore::rtti
 
     struct base
     {
-        constexpr                   base                    ( std::pair<crc::units<64>,const char*> X )               noexcept : m_CRC{ X.first }, m_pName{X.second} {}
-                                    base                    ( void )                                noexcept = delete;
-        constexpr   int             getNumberOfParents      ( void )                        const   noexcept { return 0; }
+        constexpr                   base                    ( crc::units<64> X, const char* pName )         noexcept : m_CRC{ X }, m_pName{pName} {}
+                                    base                    ( void )                                        noexcept = delete;
+        constexpr   int             getNumberOfParents      ( void )                                const   noexcept { return 0; }
 
-        virtual     const void*     RTTIStrongCastHelperV   ( const base&, const void* )    const   noexcept { return nullptr; }
-        constexpr   const void*     RTTIStrongCastCheck     ( const base& , const void* )   const   noexcept { return nullptr; }
+        virtual     const void*     RTTIStrongCastHelperV   ( const base&, const void* )            const   noexcept { return nullptr; }
+        constexpr   const void*     RTTIStrongCastCheck     ( const base& , const void* )           const   noexcept { return nullptr; }
 
         template< typename T >
-        constexpr     bool          isKindofV               ( void )                        const   noexcept { return m_CRC == T::m_RTTI.m_CRC; }
-        virtual       bool          isKindofV               ( crc::units<64> CRC )          const   noexcept { return m_CRC == CRC; }
+        constexpr     bool          isKindofV               ( void )                                const   noexcept { return m_CRC == T::m_RTTI.m_CRC; }
+        virtual       bool          isKindofV               ( crc::units<64> CRC )                  const   noexcept { return m_CRC == CRC; }
 
         template< typename T >
         struct kindof
@@ -242,15 +242,13 @@ namespace xcore::rtti
 // Description:
 //      Convert an argument to a string
 //------------------------------------------------------------------------------
-#define __X_STRINGIFY( X ) #X
-#define X_STRINGIFY( X ) __X_STRINGIFY( X )
-#define x_object_type_rtti_class_name( CLASSNAME )  []()->std::pair<crc::units<64>,const char*> { return{ crc::FromString<64>(X_STRINGIFY( CLASSNAME ) "->" __FUNCSIG__ ":" X_STRINGIFY( __LINE__ )), #CLASSNAME}; }()
+#define x_object_type_rtti_class_name( CLASSNAME )  []() constexpr noexcept ->crc::units<64> { return crc::FromString<64>(X_STRINGIFY( CLASSNAME ) "->" __FUNCSIG__ ":" X_STRINGIFY( __LINE__ )); }()
 
-#define xrtti_start(CLASS)      public: constexpr static rtti::base m_RTTI{ x_object_type_rtti_class_name(CLASS) };                                     \
+#define xrtti_start(CLASS)      public: constexpr static rtti::base m_RTTI{ x_object_type_rtti_class_name(CLASS), #CLASS };                             \
                                 public: virtual std::pair<const rtti::base&,const void*> getVRTTI( void ) const noexcept { return {m_RTTI,this}; }      \
                                 public: virtual std::pair<const rtti::base&,      void*> getVRTTI( void )       noexcept { return {m_RTTI,this}; }      \
 
-#define xrtti(CLASS, ... )      public: constexpr static rtti::entry<CLASS,__VA_ARGS__> m_RTTI{ x_object_type_rtti_class_name(CLASS) };                 \
+#define xrtti(CLASS, ... )      public: constexpr static rtti::entry<CLASS,__VA_ARGS__> m_RTTI{ x_object_type_rtti_class_name(CLASS), #CLASS };         \
                                 public: virtual std::pair<const rtti::base&,const void*> getVRTTI( void ) const noexcept { return {m_RTTI,this}; }      \
                                 public: virtual std::pair<const rtti::base&,      void*> getVRTTI( void )       noexcept { return {m_RTTI,this}; }      \
 
