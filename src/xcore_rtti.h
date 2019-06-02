@@ -65,30 +65,17 @@ namespace xcore::rtti
             template< typename T_ARG >
             constexpr static bool isKindOf( void ) noexcept
             { 
-                if constexpr( T_CLASS::arg_t<T_COUNT>::template isKindOf<T_ARG>() )  return true;
-                else                                                                 return kindof<T_CLASS,T,T_COUNT-1>::template isKindOf<T_ARG>();
+                if constexpr( T_CLASS::arg_t<T_COUNT>::template isKindOf<T_ARG>() ) return true;
+                else if constexpr( T_COUNT == 0 )                                   return false;
+                     else                                                           return kindof<T_CLASS,T,T_COUNT-1>::template isKindOf<T_ARG>();
             }           
             constexpr static bool isKindOf( crc::units<64> CRC ) noexcept
             { 
-                if ( T_CLASS::arg_t<T_COUNT>::isKindOf(CRC) )  return true;
-                else                                           return kindof<T_CLASS,T,T_COUNT-1>::isKindOf(CRC);
+                if ( T_CLASS::arg_t<T_COUNT>::isKindOf(CRC) )   return true;
+                else if constexpr( T_COUNT == 0 )               return false;
+                     else                                       return kindof<T_CLASS,T,T_COUNT-1>::isKindOf(CRC);
             }           
         };
-
-        //--------------------------------------------------------------------------------------------------------
-        template< typename T_CLASS, typename T >
-        struct kindof< T_CLASS, T, -1 >
-        {
-            template< typename T_ARG >
-            constexpr static bool isKindOf( void ) noexcept
-            { 
-                return false ;
-            }
-            constexpr static bool isKindOf( crc::units<64> CRC ) noexcept
-            { 
-                return false ;
-            }
-        };  
 
         //--------------------------------------------------------------------------------------------------------
         // strong cast
@@ -113,18 +100,8 @@ namespace xcore::rtti
                 if( auto x = ParentRTTI.RTTIStrongCastHelperV(Rtti, Ptr); x ) return x;
 
                 // if we did not find it lets try our next parent
-                return strong_cast<T_ENTRY, T_CLASS, T_COUNT - 1>::CastCheck( Rtti, Ptr );
-            }
-        };
-
-        //--------------------------------------------------------------------------------------------------------
-        template< typename T_ENTRY, typename T_CLASS >
-        struct strong_cast< T_ENTRY, T_CLASS, -1 >
-        {
-            constexpr static const void* CastCheck( const base&, const void* ) noexcept
-            {
-                // stop the loop
-                return nullptr;
+                if constexpr( T_COUNT == 0 )    return nullptr;
+                else                            return strong_cast<T_ENTRY, T_CLASS, T_COUNT - 1>::CastCheck( Rtti, Ptr );
             }
         };
     }
