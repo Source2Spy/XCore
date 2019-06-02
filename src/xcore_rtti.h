@@ -268,15 +268,15 @@ namespace xcore::rtti
 // Description:
 //      Convert an argument to a string
 //------------------------------------------------------------------------------
-#define __xrtti_class_name( CLASSNAME )  []() constexpr noexcept ->crc::units<64> { return crc::FromString<64>(X_STRINGIFY( CLASSNAME ) "->" __FUNCSIG__ ":" X_STRINGIFY( __LINE__ )); }()
+#define __xcore_rtti_class_name( CLASSNAME )  []() constexpr noexcept ->crc::units<64> { return crc::FromString<64>(X_STRINGIFY( CLASSNAME ) "->" __FUNCSIG__ ":" X_STRINGIFY( __LINE__ )); }()
 
-#define xrtti_start(CLASS)      public: constexpr static rtti::base m_RTTI{ __xrtti_class_name(CLASS), #CLASS };                                        \
-                                public: virtual std::pair<const rtti::base&,const void*> getVRTTI( void ) const noexcept { return {m_RTTI,this}; }      \
-                                public: virtual std::pair<const rtti::base&,      void*> getVRTTI( void )       noexcept { return {m_RTTI,this}; }      \
+#define xcore_rtti_start(CLASS)     public: constexpr static rtti::base m_RTTI{ __xcore_rtti_class_name(CLASS), #CLASS };                                   \
+                                    public: virtual std::pair<const rtti::base&,const void*> getVRTTI( void ) const noexcept { return {m_RTTI,this}; }      \
+                                    public: virtual std::pair<const rtti::base&,      void*> getVRTTI( void )       noexcept { return {m_RTTI,this}; }      \
 
-#define xrtti(CLASS, ... )      public: constexpr static rtti::entry<CLASS,__VA_ARGS__> m_RTTI{ __xrtti_class_name(CLASS), #CLASS };                    \
-                                public: virtual std::pair<const rtti::base&,const void*> getVRTTI( void ) const noexcept { return {m_RTTI,this}; }      \
-                                public: virtual std::pair<const rtti::base&,      void*> getVRTTI( void )       noexcept { return {m_RTTI,this}; }      \
+#define xcore_rtti(CLASS, ... )     public: constexpr static rtti::entry<CLASS,__VA_ARGS__> m_RTTI{ __xcore_rtti_class_name(CLASS), #CLASS };               \
+                                    public: virtual std::pair<const rtti::base&,const void*> getVRTTI( void ) const noexcept { return {m_RTTI,this}; }      \
+                                    public: virtual std::pair<const rtti::base&,      void*> getVRTTI( void )       noexcept { return {m_RTTI,this}; }      \
 
 #endif
 
