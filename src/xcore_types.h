@@ -94,7 +94,7 @@ namespace xcore::types
     // Makes a object type unique
     //--------------------------------------------------------------------------------------------
     template< typename T, typename T_TAG = int >
-    struct make_unique : T
+    struct make_unique : public T
     {
         constexpr make_unique( void ) = default;
         constexpr make_unique( const T& x ) : T(x){}
