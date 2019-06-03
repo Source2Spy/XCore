@@ -128,80 +128,9 @@ namespace xcore::rtti
                 else                            return strong_cast<T_ENTRY, T_CLASS, T_COUNT - 1>::CastCheck( Rtti, Ptr );
             }
         };
-    }
 
-    //--------------------------------------------------------------------------------------------------------
-    // entry
-    //--------------------------------------------------------------------------------------------------------
-    template< typename T_CLASS, typename ...T_ARGS >
-    struct entry final : base 
-    {
-        static constexpr int total_parents_v    { sizeof...(T_ARGS) };
-        static constexpr int start_index_v      { total_parents_v - 1};
-        static_assert(total_parents_v>=1);
-        static_assert(start_index_v>=0);
-
-        template< int T_I >
-        using arg_t = details::arg_t<T_I,T_ARGS...>;
-
-        template< typename T >
-        using kindof = details::kindof< entry, T, start_index_v >;
-
-        using strong_cast = details::strong_cast< entry, T_CLASS, start_index_v >;
-
-        using base::base;
-        constexpr static    int     getNumberOfParents      ( void )                                            noexcept            { return total_parents_v;  }
-        template< typename T >
-        constexpr           bool    isKindOf                ( void )                                    const   noexcept            { return m_CRC == T::ms_RTTI.m_CRC || kindof< T_CLASS >::template isKindOf<T>(); }
-        constexpr           bool    isKindOf                ( crc_name CRC )                            const   noexcept            { return m_CRC == CRC             || kindof< T_CLASS >::isKindOf( CRC );        }
-        constexpr     const void*   RTTIStrongCastCheck     ( const base& Rtti, const T_CLASS* Ptr )    const   noexcept            { return strong_cast::CastCheck(Rtti, Ptr); }
-        constexpr           void*   RTTIStrongCastCheck     ( const base& Rtti, T_CLASS* Ptr )          const   noexcept            { return strong_cast::CastCheck(Rtti, Ptr); }
-
-/*
-        template< typename T, int T_COUNT = start_index_v >
-        struct get_parent_index
-        {
-            static constexpr int value = std::is_same_v<T, arg_t<T_COUNT>::type > ? T_COUNT : std::is_same_v<T, arg_t<T_COUNT - 1>::type >::value;
-        };
-    
-        template< typename T >
-        struct get_parent_index< T, -1 >
-        {
-            static constexpr int value = -1;
-        };
-*/
-    };
-
-    //--------------------------------------------------------------------------------------------------------
-    // is Kind Of - Determine if a type is castable to another type. Two versions:
-    //      - isKindOf( void ).     This version only deals with types and so it has not idea of type instances.
-    //      - isKindOf( CLASS& ).   This versions deal with variable instances. Has only one virtual call.
-    //--------------------------------------------------------------------------------------------------------
-    template< typename T_TYPE, typename T_ARG > constexpr
-    bool [[nodiscard]] isKindOf( void ) noexcept
-    {
-        // Cast down easy
-        if constexpr( std::is_base_of_v< T_TYPE, T_ARG > || std::is_same_v<std::decay_t<T_TYPE>,std::decay_t<T_ARG>>)
-            return true;
-        else // Cast up
-            return T_ARG::ms_RTTI.isKindOf<T_TYPE>();
-    }
-
-    //--------------------------------------------------------------------------------------------------------
-    template< typename T_TYPE, typename T_CLASS > constexpr
-    bool [[nodiscard]] isKindOf( const T_CLASS& Class ) noexcept
-    {
-        // Cast down easy
-        if constexpr( std::is_base_of_v< T_TYPE, T_CLASS > || std::is_same_v<std::decay_t<T_TYPE>,std::decay_t<T_CLASS>>) return true;
-        // Cast up
-        else return Class.isKindOfV( T_TYPE::ms_RTTI.m_CRC );
-    }
-
-    //--------------------------------------------------------------------------------------------------------
-    // Safe Cast - Cast a type instance to another type in a safe manner.
-    //--------------------------------------------------------------------------------------------------------
-    namespace details
-    {
+        //--------------------------------------------------------------------------------------------------------
+        // Safe Cast - Cast a type instance to another type in a safe manner.
         //--------------------------------------------------------------------------------------------------------
         template< typename T, typename T_DST > inline
         typename std::enable_if
@@ -255,6 +184,61 @@ namespace xcore::rtti
         }
     }
 
+    //--------------------------------------------------------------------------------------------------------
+    // entry
+    //--------------------------------------------------------------------------------------------------------
+    template< typename T_CLASS, typename ...T_ARGS >
+    struct entry final : base 
+    {
+        static constexpr int total_parents_v    { sizeof...(T_ARGS) };
+        static constexpr int start_index_v      { total_parents_v - 1};
+        static_assert(total_parents_v>=1);
+        static_assert(start_index_v>=0);
+
+        template< int T_I >
+        using arg_t = details::arg_t<T_I,T_ARGS...>;
+
+        template< typename T >
+        using kindof = details::kindof< entry, T, start_index_v >;
+
+        using strong_cast = details::strong_cast< entry, T_CLASS, start_index_v >;
+
+        using base::base;
+        constexpr static    int     getNumberOfParents      ( void )                                            noexcept            { return total_parents_v;  }
+        template< typename T >
+        constexpr           bool    isKindOf                ( void )                                    const   noexcept            { return m_CRC == T::ms_RTTI.m_CRC || kindof< T_CLASS >::template isKindOf<T>(); }
+        constexpr           bool    isKindOf                ( crc_name CRC )                            const   noexcept            { return m_CRC == CRC             || kindof< T_CLASS >::isKindOf( CRC );        }
+        constexpr     const void*   RTTIStrongCastCheck     ( const base& Rtti, const T_CLASS* Ptr )    const   noexcept            { return strong_cast::CastCheck(Rtti, Ptr); }
+        constexpr           void*   RTTIStrongCastCheck     ( const base& Rtti, T_CLASS* Ptr )          const   noexcept            { return strong_cast::CastCheck(Rtti, Ptr); }
+    };
+
+    //--------------------------------------------------------------------------------------------------------
+    // is Kind Of - Determine if a type is castable to another type. Two versions:
+    //      - isKindOf( void ).     This version only deals with types and so it has not idea of type instances.
+    //      - isKindOf( CLASS& ).   This versions deal with variable instances. Has only one virtual call.
+    //--------------------------------------------------------------------------------------------------------
+    template< typename T_TYPE, typename T_ARG > constexpr
+    bool [[nodiscard]] isKindOf( void ) noexcept
+    {
+        // Cast down easy
+        if constexpr( std::is_base_of_v< T_TYPE, T_ARG > || std::is_same_v<std::decay_t<T_TYPE>,std::decay_t<T_ARG>>)
+            return true;
+        else // Cast up
+            return T_ARG::ms_RTTI.isKindOf<T_TYPE>();
+    }
+
+    //--------------------------------------------------------------------------------------------------------
+    template< typename T_TYPE, typename T_CLASS > constexpr
+    bool [[nodiscard]] isKindOf( const T_CLASS& Class ) noexcept
+    {
+        // Cast down easy
+        if constexpr( std::is_base_of_v< T_TYPE, T_CLASS > || std::is_same_v<std::decay_t<T_TYPE>,std::decay_t<T_CLASS>>) return true;
+        // Cast up
+        else return Class.isKindOfV( T_TYPE::ms_RTTI.m_CRC );
+    }
+
+    //--------------------------------------------------------------------------------------------------------
+    // Safe Cast - Cast a type instance to another type in a safe manner.
     //--------------------------------------------------------------------------------------------------------
     template< typename T_TYPE, typename T_CLASS > inline
     T_TYPE& [[nodiscard]] SafeCast( T_CLASS& Class ) noexcept
