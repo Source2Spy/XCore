@@ -14,7 +14,9 @@ namespace xcore::rtti
         constexpr   int             getNumberOfParents      ( void )                                const   noexcept { return 0; }
 
         virtual     const void*     RTTIStrongCastHelperV   ( const base&, const void* )            const   noexcept { return nullptr; }
-        constexpr   const void*     RTTIStrongCastCheck     ( const base& , const void* )           const   noexcept { return nullptr; }
+        virtual           void*     RTTIStrongCastHelperV   ( const base&, void* )                  const   noexcept { return nullptr; }
+        constexpr   const void*     RTTIStrongCastCheck     ( const base&, const void* )            const   noexcept { return nullptr; }
+        constexpr         void*     RTTIStrongCastCheck     ( const base&, void* )                  const   noexcept { return nullptr; }
 
         template< typename T >
         constexpr   bool            isKindOf                ( void )                                const   noexcept { return m_CRC == T::m_RTTI.m_CRC; }
@@ -103,6 +105,25 @@ namespace xcore::rtti
                 if constexpr( T_COUNT == 0 )    return nullptr;
                 else                            return strong_cast<T_ENTRY, T_CLASS, T_COUNT - 1>::CastCheck( Rtti, Ptr );
             }
+
+            constexpr static void* CastCheck( const base& Rtti, T_CLASS* Ptr ) noexcept
+            {
+                static constexpr auto& ParentRTTI = parent::m_RTTI;
+
+                // check if it is the parent, and if so cast it properly and return the final pointer
+                if constexpr ( std::is_base_of_v< parent, T_CLASS > )
+                {
+                    if( ParentRTTI.m_CRC == Rtti.m_CRC )
+                        return static_cast<parent*>(Ptr);
+                }
+
+                // if it is not the parent ask the parent to check all its children
+                if( auto x = ParentRTTI.RTTIStrongCastHelperV(Rtti, Ptr); x ) return x;
+
+                // if we did not find it lets try our next parent
+                if constexpr( T_COUNT == 0 )    return nullptr;
+                else                            return strong_cast<T_ENTRY, T_CLASS, T_COUNT - 1>::CastCheck( Rtti, Ptr );
+            }
         };
     }
 
@@ -132,7 +153,9 @@ namespace xcore::rtti
         constexpr           bool    isKindOf                ( crc::units<64> CRC )                      const   noexcept            { return m_CRC == CRC             || kindof< T_CLASS >::isKindOf( CRC );        }
 
         virtual       const void*   RTTIStrongCastHelperV   ( const base& A, const void* P )            const   noexcept override   { return RTTIStrongCastCheck( A, reinterpret_cast<const T_CLASS*>(P) );}
+        virtual             void*   RTTIStrongCastHelperV   ( const base& A, void* P )                  const   noexcept override   { return RTTIStrongCastCheck( A, reinterpret_cast<T_CLASS*>(P) );}
         constexpr     const void*   RTTIStrongCastCheck     ( const base& Rtti, const T_CLASS* Ptr )    const   noexcept            { return strong_cast::CastCheck(Rtti, Ptr); }
+        constexpr           void*   RTTIStrongCastCheck     ( const base& Rtti, T_CLASS* Ptr )          const   noexcept            { return strong_cast::CastCheck(Rtti, Ptr); }
 
 /*
         template< typename T, int T_COUNT = start_index_v >
@@ -226,10 +249,7 @@ namespace xcore::rtti
         internal_cast( T* A )
         {
             xassert(A);
-            auto [RTTI,Ptr] = A->getVRTTI();
-            auto p = RTTI.RTTIStrongCastHelperV( T_DST::m_RTTI, Ptr );
-
-            // Seems it did not find the type to cast
+            auto p = A->StrongCastV( T_DST::m_RTTI );
             xassert(p);
             return reinterpret_cast<T_DST*>(const_cast<void*>(p));
         }
@@ -248,17 +268,19 @@ namespace xcore::rtti
 // Description:
 //      Convert an argument to a string
 //------------------------------------------------------------------------------
-#define __xcore_rtti_class_name( CLASSNAME )  []() constexpr noexcept ->crc::units<64> { return crc::FromString<64>(X_STRINGIFY( CLASSNAME ) "->" __FUNCSIG__ ":" X_STRINGIFY( __LINE__ )); }()
+#define xcore_rtti_start(CLASS)      \
+                                    public: constexpr static rtti::base                     m_RTTI      { []{ return crc::FromString<64>(X_STRINGIFY( CLASSNAME ) "->" __FUNCSIG__ ":" X_STRINGIFY( __LINE__ )); }(), #CLASS };                                                                                                                                 \
+                                    public: virtual const void*                             StrongCastV ( const rtti::base& B )     const   noexcept { return m_RTTI.RTTIStrongCastHelperV( B, this ); }                                                    \
+                                    public: virtual void*                                   StrongCastV ( const rtti::base& B )             noexcept { return m_RTTI.RTTIStrongCastHelperV( B, this ); }                                                    \
+                                    public: virtual bool [[nodiscard]]                      isKindOfV   ( crc::units<64> CRC )      const   noexcept { return m_RTTI.m_CRC == CRC;      }                                                                   \
 
-#define xcore_rtti_start(CLASS)     public: constexpr static rtti::base m_RTTI{ __xcore_rtti_class_name(CLASS), #CLASS };                                                               \
-                                    public: virtual std::pair<const rtti::base&,const void*> getVRTTI( void )                   const   noexcept { return {m_RTTI,this};            }   \
-                                    public: virtual std::pair<const rtti::base&,      void*> getVRTTI( void )                           noexcept { return {m_RTTI,this};            }   \
-                                    public: virtual bool [[nodiscard]]                       isKindOfV( crc::units<64> CRC )    const   noexcept { return m_RTTI.m_CRC == CRC;      }   \
+#define xcore_rtti(CLASS, ... )      \
+                                    public: constexpr static rtti::entry<CLASS,__VA_ARGS__> m_RTTI      { []{ return crc::FromString<64>(X_STRINGIFY( CLASSNAME ) "->" __FUNCSIG__ ":" X_STRINGIFY( __LINE__ )); }(), #CLASS };                                                                                                                                 \
+                                    public: virtual const void*                             StrongCastV ( const rtti::base& B )     const   noexcept override { return m_RTTI.RTTIStrongCastHelperV( B, this ); }                                           \
+                                    public: virtual void*                                   StrongCastV ( const rtti::base& B )             noexcept override { return m_RTTI.RTTIStrongCastHelperV( B, this ); }                                           \
+                                    public: virtual bool [[nodiscard]]                      isKindOfV   ( crc::units<64> CRC )      const   noexcept override { return m_RTTI.isKindOf( CRC ); }                                                            \
 
-#define xcore_rtti(CLASS, ... )     public: constexpr static rtti::entry<CLASS,__VA_ARGS__> m_RTTI{ __xcore_rtti_class_name(CLASS), #CLASS };                                                \
-                                    public: virtual std::pair<const rtti::base&,const void*> getVRTTI( void )                   const   noexcept override { return {m_RTTI,this}; }          \
-                                    public: virtual std::pair<const rtti::base&,      void*> getVRTTI( void )                           noexcept override { return {m_RTTI,this}; }          \
-                                    public: virtual bool [[nodiscard]]                       isKindOfV( crc::units<64> CRC )    const   noexcept override { return m_RTTI.isKindOf( CRC ); } \
+
 
 #endif
 
