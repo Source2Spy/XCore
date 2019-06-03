@@ -186,21 +186,21 @@ namespace xcore::textfile
     class stream
     {
     public:
-                            xcore::err          openForReading      ( const std::filesystem::path& FilePath )                                                           noexcept;
-                            xcore::err          openForWriting      ( const std::filesystem::path& FilePath, file_type Type = file_type::TEXT )                         noexcept;
-                            void                close               ( void )                                                                                            noexcept;
-                            void                ReadFromFile        ( std::FILE& File, file_type Type )                                                                 noexcept;
-                            void                WriteToFile         ( std::FILE& File, file_type Type )                                                                 noexcept;
+                            xcore::err                  openForReading      ( const std::filesystem::path& FilePath )                                                   noexcept;
+                            xcore::err                  openForWriting      ( const std::filesystem::path& FilePath, file_type Type = file_type::TEXT )                 noexcept;
+                            void                        close               ( void )                                                                                    noexcept;
+                            void                        ReadFromFile        ( std::FILE& File, file_type Type )                                                         noexcept;
+                            void                        WriteToFile         ( std::FILE& File, file_type Type )                                                         noexcept;
 
-                            xcore::err          ReadRecord          ( void )                                                                                            noexcept;
-                            int                 ReadField           ( const char* FieldName, ... )                                                                      noexcept;
-                            xcore::err          ReadLine            ( void )                                                                                            noexcept;
-                            xcore::err          ReadNextRecord      ( void )                                                                                            noexcept;
-        inline              int                 getRecordCount      ( void )                                                                                            noexcept { return m_Record.m_Count; }
-
-                            std::uint32_t       AddUserType         ( const char* pSystemTypes, const char* pUserType, crc::units<32> CRC32UserType, std::uint8_t UID )  noexcept;
-        static              bool                isValidType         ( int Type )                                                                                        noexcept;
-                            bool                isReading           ( void )    const                                                                                   noexcept;
+                            xcore::err                  ReadRecord          ( void )                                                                                    noexcept;
+                            int                         ReadField           ( const char* FieldName, ... )                                                              noexcept;
+                            xcore::err                  ReadLine            ( void )                                                                                    noexcept;
+                            xcore::err                  ReadNextRecord      ( void )                                                                                    noexcept;
+        inline              int                         getRecordCount      ( void )                                                                                    noexcept { return m_Record.m_Count; }
+        inline              const string::view<char>    getRecordName       ( void )                                                                                    noexcept { return m_Record.m_Name;  }
+                            std::uint32_t               AddUserType         ( const char* pSystemTypes, const char* pUserType, crc::units<32> CRC32UserType, std::uint8_t UID )  noexcept;
+        static              bool                        isValidType         ( int Type )                                                                                noexcept;
+                            bool                        isReading           ( void )    const                                                                           noexcept;
 
                             template< std::size_t N, typename... T_ARGS >
         inline              xcore::err_optional<int> Field          ( const char(&pFieldName)[N], T_ARGS&&... Args )                                                    noexcept
@@ -212,9 +212,9 @@ namespace xcore::textfile
                                 return {0};
                             }
 
-                            xcore::err          WriteRecord         ( const char* pHeaderName, std::size_t Count = ~0 )                                                 noexcept;
-                            xcore::err          WriteComment        ( const string::view<char> Comment )                                                                noexcept;
-                            xcore::err          WriteLine           ( void )                                                                                            noexcept;
+                            xcore::err                  WriteRecord         ( const char* pHeaderName, std::size_t Count = ~0 )                                         noexcept;
+                            xcore::err                  WriteComment        ( const string::view<char> Comment )                                                        noexcept;
+                            xcore::err                  WriteLine           ( void )                                                                                    noexcept;
 
     protected:
 
@@ -228,8 +228,11 @@ namespace xcore::textfile
                             void                        BuildTypeInformation( const char* pFullFieldName )                                                              noexcept;
                             void                        BuildTypeInformation( const char* pFieldName, const char* pArgsTypes )                                          noexcept;
 
+                            xcore::err                  ReadComponent       ( int& Count, int Type )                                                                    noexcept;
 
     protected:
+        
+        xcore::log::channel                                 m_Channel               { "xcore::textfile::stream" };
 
         details::file                                       m_File                  {}; // File pointer
         details::record_info                                m_Record                {}; // This contains information about the current record

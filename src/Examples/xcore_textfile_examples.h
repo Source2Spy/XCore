@@ -42,6 +42,9 @@ namespace xcore::textfile::examples
         {
             if( TextFile.ReadRecord().isError( Error ) )
                 return Error;
+
+            if( TextFile.getRecordName() != "FirstRecord" )
+                return xerr_failure( Error, "Unexpected record" );
         }
 
         for( auto i=0; i<TextFile.getRecordCount(); i++ )
