@@ -1603,7 +1603,7 @@ void xcore::textfile::stream::WriteComponent( int iField, int iType, int c, va_l
             break;
         }
             */
-    case 'E': // Not xstring can be use for writing data use MyVar()
+    case 'E': 
     case 'S': xassert( false ); break;                               
     case 'e':
     case 's':
@@ -2488,42 +2488,40 @@ namespace xcore::textfile
 
 //------------------------------------------------------------------------------
 
-xcore::err xcore::textfile::stream::ReadComponent( int& Count, int Type ) noexcept
+xcore::err xcore::textfile::stream::ReadComponent( int& Offset, int Type ) noexcept
 {
     xcore::err  Error;
-    int         Offset = 0;
+    Offset = 0;
 
-    xcore::error::scope General(Error, [&]()
+    xcore::error::scope General( Error, [&]()
     {
         XLOG_CHANNEL_ERROR( m_Channel, "ReadComponent fail to while reading .%c (%s)", Type, Error.getCode().m_pString );
     });
 
-    switch( Type )
+    auto Handle = [&]( auto T )
     {
-    default:
-        return xerr_failure( Error, "Error reading the file" );
-        break;
+        using t = decltype(T);
 
-    case 'f':
+        // Align the Offset to be happy
+        Offset = m_iCurrentOffet = xcore::bits::Align( m_iCurrentOffet, sizeof(t) );
+        if( m_File.m_States.m_isBinary )
         {
-            // Align the Offset to be happy
-            Offset = m_iCurrentOffet = xcore::bits::Align( m_iCurrentOffet, 4 );
-            if( m_File.m_States.m_isBinary )
-            {
-                if( m_File.Read( reinterpret_cast<float&>(m_Memory[ m_iCurrentOffet ] ) ).isError(Error) )
-                    return Error;
-            }
-            else
-            {
-                int                         iBuffer=0;
-                string::fixed<char,256>     Buffer;
-                int                         c;
+            if( m_File.Read( reinterpret_cast<t&>(m_Memory[ m_iCurrentOffet ] ) ).isError(Error) )
+                return Error;
+        }
+        else
+        {
+            int                         iBuffer=0;
+            string::fixed<char,256>     Buffer;
+            int                         c;
 
-                // Read out all the white space
-                if( m_File.ReadWhiteSpace(c).isError(Error) )
-                    return Error;
+            // Read out all the white space
+            if( m_File.ReadWhiteSpace(c).isError(Error) )
+                return Error;
 
-                // Copy all the characters 
+            // Copy all the characters 
+            if constexpr ( std::is_same_v<t,float> || std::is_same_v<t,double> )
+            {
                 while( isFloat(c) )
                 {
                     Buffer[iBuffer++]=c;
@@ -2532,358 +2530,126 @@ xcore::err xcore::textfile::stream::ReadComponent( int& Count, int Type ) noexce
                 }
 
                 Buffer[iBuffer] = 0;
-
-                *((f32*)&m_Memory[ m_iCurrentOffet ]) = x_atof32( &Buffer[0] );
-
-                // Sanity check
-                x_assert( c == ' ' || c == '\n' || c == 10 );
+                reinterpret_cast<t&>(m_Memory[ m_iCurrentOffet ]) = static_cast<t>(std::atof( &Buffer[0] ));
             }
-            m_iCurrentOffet += 4;
-            break;
-        }
-    case 'F':
-        {
-            // Align the Offset to be happy
-            Offset=m_iCurrentOffet = x_Align( m_iCurrentOffet, 8 );
-
-            if( m_States.m_bBinary )
+            else if constexpr( std::is_integral_v<t> )
             {
-                if( auto Err = m_pFile->Read( *((u64*)&m_Memory[ m_iCurrentOffet ]) ); Err.isError() )
-                {
-                    X_LOG("ERROR: xtextfile::ReadComponent F.(%s)", Err.getStringAndClear() );
-                    return -1;
-                }
-            }
-            else
-            {
-                s32                     iBuffer=0;
-                xarray<char,256>        Buffer;
-
-                // Read out all the white space
-                s32 c = ReadWhiteSpace();
-
-                // Copy all the characters 
-                while( isFloat(c) )
-                {
-                    Buffer[iBuffer++]=c;
-                    c = m_pFile->getC();
-                }
-
-                Buffer[iBuffer]=0;
-
-                *((f64*)&m_Memory[ m_iCurrentOffet ]) = x_atof64( &Buffer[0] );
-
-                // Sanity check
-                x_assert( c == ' ' || c == '\n' || c == 10 );
-            }
-            m_iCurrentOffet += 8;
-            break;
-        }
-    case 'd':
-        {
-            // Align the Offset to be happy
-            Offset=m_iCurrentOffet = x_Align( m_iCurrentOffet, 4 );
-
-            if( m_States.m_bBinary )
-            {
-                if( auto Err = m_pFile->Read( *((u32*)&m_Memory[ m_iCurrentOffet ]) ); Err.isError() )
-                {
-                    X_LOG("ERROR: xtextfile::ReadComponent d.(%s)", Err.getStringAndClear() );
-                    return -1;
-                }
-            }
-            else
-            {
-                s32                     iBuffer=0;
-                xarray<char,256>        Buffer;
-
-                // Read out all the white space
-                s32 c = ReadWhiteSpace();
-
-                // Copy all the characters 
                 while( (c>='0'&&c<='9')||(c=='-')||(c=='+') )
                 {
                     Buffer[iBuffer++]=c;
-                    c = m_pFile->getC();
+                    if( m_File.getC(c).isError( Error ) )
+                        return Error;
                 }
 
-                Buffer[iBuffer]=0;
-
-                *((s32*)&m_Memory[ m_iCurrentOffet ]) = x_atoi32( &Buffer[0] );
-
-                // Sanity check
-                x_assert( c == ' ' || c == '\n' || c == 10 );
+                Buffer[iBuffer] = 0;
+                        if constexpr( std::is_same_v<t,std::int8_t>     ) reinterpret_cast<t&>(m_Memory[ m_iCurrentOffet ]) = static_cast<t>(std::atoi    ( &Buffer[0] ));
+                else    if constexpr( std::is_same_v<t,std::int16_t>    ) reinterpret_cast<t&>(m_Memory[ m_iCurrentOffet ]) = static_cast<t>(std::atoi    ( &Buffer[0] ));
+                else    if constexpr( std::is_same_v<t,std::int32_t>    ) reinterpret_cast<t&>(m_Memory[ m_iCurrentOffet ]) = static_cast<t>(std::atol    ( &Buffer[0] ));
+                else    if constexpr( std::is_same_v<t,std::int64_t>    ) reinterpret_cast<t&>(m_Memory[ m_iCurrentOffet ]) = static_cast<t>(std::atoll   ( &Buffer[0] ));
+                else    if constexpr( std::is_same_v<t,std::uint8_t>    ) reinterpret_cast<t&>(m_Memory[ m_iCurrentOffet ]) = static_cast<t>(std::strtoul ( &Buffer[0], &Buffer[strlen(Buffer)], 10 ));
+                else    if constexpr( std::is_same_v<t,std::uint16_t>   ) reinterpret_cast<t&>(m_Memory[ m_iCurrentOffet ]) = static_cast<t>(std::strtoul ( &Buffer[0], &Buffer[strlen(Buffer)], 10 ));
+                else    if constexpr( std::is_same_v<t,std::uint32_t>   ) reinterpret_cast<t&>(m_Memory[ m_iCurrentOffet ]) = static_cast<t>(std::strtoul ( &Buffer[0], &Buffer[strlen(Buffer)], 10 ));
+                else    if constexpr( std::is_same_v<t,std::uint64_t>   ) reinterpret_cast<t&>(m_Memory[ m_iCurrentOffet ]) = static_cast<t>(std::strtoull( &Buffer[0], &Buffer[strlen(Buffer)], 10 ));
+                else    static_assert( always_false_v<t> );
             }
-            m_iCurrentOffet += 4;
-            break;
+
+            // Sanity check
+            xassert( c == ' ' || c == '\n' || c == 10 );
         }
-    case 'c':
-        {
-            Offset=m_iCurrentOffet;
+        m_iCurrentOffet += 4;
+    };
 
-            // Align the Offset to be happy
-            if( m_States.m_bBinary )
-            {
-                if( auto Err = m_pFile->Read( m_Memory[ m_iCurrentOffet ] ); Err.isError() )
-                {
-                    X_LOG("ERROR: xtextfile::ReadComponent c.(%s)", Err.getStringAndClear() );
-                    return -1;
-                }
+    switch( Type )
+    {
+    default:
+        return xerr_failure( Error, "Error reading the file" );
+        break;
 
-            }
-            else
-            {
-                s32                  iBuffer=0;
-                xarray<char,256>     Buffer;
-
-                // Read out all the white space
-                s32 c = ReadWhiteSpace();
-
-                // Copy all the characters 
-                while( (c>='0'&&c<='9')||(c=='-')||(c=='+') )
-                {
-                    Buffer[iBuffer++]=c;
-                    c = m_pFile->getC();
-                }
-
-                Buffer[iBuffer]=0;
-
-                m_Memory[ m_iCurrentOffet ] = x_atoi32( &Buffer[0] );
-
-                // Sanity check
-                x_assert( c == ' ' || c == '\n' || c == 10 );
-            }
-            m_iCurrentOffet += 1;
-            break;
-        }
-    case 'C':
-        {
-            // Align the Offset to be happy
-            Offset=m_iCurrentOffet = x_Align( m_iCurrentOffet, 2 );
-
-            if( m_States.m_bBinary )
-            {
-                if( auto Err = m_pFile->Read( *((u16*)&m_Memory[ m_iCurrentOffet ]) ); Err.isError() )
-                {
-                    X_LOG("ERROR: xtextfile::ReadComponent d.(%s)", Err.getStringAndClear() );
-                    return -1;
-                }
-
-            }
-            else
-            {
-                s32                     iBuffer=0;
-                xarray<char,256>        Buffer;
-
-                // Read out all the white space
-                s32 c = ReadWhiteSpace();
-
-                // Copy all the characters 
-                while( (c>='0'&&c<='9')||(c=='-')||(c=='+') )
-                {
-                    Buffer[iBuffer++]=c;
-                    c = m_pFile->getC();
-                }
-
-                Buffer[iBuffer]=0;
-
-                *((s16*)&m_Memory[ m_iCurrentOffet ]) = x_atoi32( &Buffer[0] );
-
-                // Sanity check
-                x_assert( c == ' ' || c == '\n' || c == 10 );
-            }
-            m_iCurrentOffet += 2;
-            break;
-        }
-     case 'e':
+    case 'f': Handle( float(0)  ); break;
+    case 'F': Handle( double(0) ); break;
+    case 'c': Handle( std::int8_t(0)   ); break;
+    case 'C': Handle( std::int16_t(0)  ); break;
+    case 'd': Handle( std::int32_t(0)  ); break;
+    case 'D': Handle( std::int64_t(0)  ); break;
+    case 'h': Handle( std::uint8_t(0)  ); break;
+    case 'H': Handle( std::uint16_t(0) ); break;
+    case 'g': Handle( std::uint32_t(0) ); break;
+    case 'G': Handle( std::uint64_t(0) ); break;
+    case 's':
+    case 'e':
          {
              Offset=m_iCurrentOffet;
+             int c;
  
-             if( m_States.m_bBinary )
+             if( m_File.m_States.m_isBinary )
              {
                  // Read all the characters
-                 while( !!(m_Memory[ m_iCurrentOffet++ ] = m_pFile->getC()) );
+                 do 
+                 {
+                     if( m_File.getC( c ).isError(Error) )
+                         return;
+                     m_Memory[ m_iCurrentOffet++ ] = c;
+
+                 } while( c );
              }
              else
              {
                  // Read out all the white space
-                 s32 c = ReadWhiteSpace();
+                 if( m_File.ReadWhiteSpace(c).isError(Error))
+                     return Error;
                  
                  // Read all the characters
-                 do
+                 if( c != '"' )
                  {
-                     m_Memory[ m_iCurrentOffet++ ] = c;
-                     c = m_pFile->getC();
-                 } while( c>='!' && c <='~' );  // Most printable characters are okay for enums
- 
-                 if( c != ' ' && c != '\n' && c != 10 ) x_throw( "Unexpected character in an enumerated value" );
+                     do
+                     {
+                         m_Memory[ m_iCurrentOffet++ ] = c;
+                         if( m_File.getC( c ).isError(Error) )
+                             return;
+                     } while( c >= '!' && c <= '~' );
+                     if( c != ' ' && c != '\n' && c != 10 ) return xerr_failure( Error, "Unexpected character in an enumerated value" );
+                 }
+                 else
+                 {
+                     if( m_File.getC( c ).isError(Error) )
+                         return Error;
+                 
+                     do
+                     {
+                         m_Memory[ m_iCurrentOffet++ ] = c;
+                         if( m_File.getC( c ).isError(Error) )
+                             return;
+                     } while( c != '"' );
+                 }
  
                  // terminate the string correctly
                  m_Memory[ m_iCurrentOffet++ ] = 0;
              }
              break;
          }
-    case 's':                                
-        {
-            Offset=m_iCurrentOffet;
-
-            if( m_States.m_bBinary )
-            {
-                // Read all the characters
-                while( !!(m_Memory[ m_iCurrentOffet++ ] = m_pFile->getC()) );
-            }
-            else
-            {
-                // Handy string for debugging
-                //const char* pString = &m_Memory[ m_iCurrentOffet ];
-                
-                // Read out all the white space
-                s32 c = ReadWhiteSpace();
-                
-                if( c !='"' )
-                {
-                    x_throw( "Unable to find the beginning of a string. expecting [\"] but found [%c] ascii code %d ", c, c );
-                }
-
-                //
-                // Read in the string
-                //
-                s32 curChar = m_pFile->getC();
-                while( curChar != -1 && curChar != '"' )
-                {
-                    m_Memory[ m_iCurrentOffet ] = curChar;
-                    m_iCurrentOffet++;
-                    curChar = m_pFile->getC();
-                }
-
-                if( curChar == -1 )
-                {
-                    if( m_pFile->isEOF() )
-                        x_throw( "Unexpected end of file" );
-                    else
-                        x_throw( "Reading Error while reading a string from the file" );
-                }
-                
-                // terminate the string correctly
-                m_Memory[ m_iCurrentOffet++ ] = 0;
-            }
-            break;
-        }
-    case 'h':
-        {
-            // Align the Offset to be happy
-            Offset=m_iCurrentOffet = x_Align( m_iCurrentOffet, 4 );
-
-            if( m_States.m_bBinary )
-            {
-                if( auto Err = m_pFile->Read( *((u32*)&m_Memory[ m_iCurrentOffet ]) ); Err.isError() )
-                {
-                    X_LOG("ERROR: xtextfile::ReadComponent h.(%s)", Err.getStringAndClear() );
-                    return -1;
-                }
-            }
-            else
-            {
-                // Read out all the white space
-                s32 c = ReadWhiteSpace();
-
-                u32 N=0;
-                // Copy all the characters 
-                while( (c>='0'&&c<='9') || (c>='a'&&c<='f') || (c>='A'&&c<='F') )
-                {
-                    s32 v;
-                    if( c>'9' ) v = (x_tolower(c)-'a')+10;
-                    else        v = (x_tolower(c)-'0');
-                    N <<= 4;
-                    N |= (v&0xF);
-                    c = m_pFile->getC();
-                }
-
-                // We didn't read anything? that is bad
-                *((s32*)&m_Memory[ m_iCurrentOffet ]) = N;
-
-                // Sanity check
-                x_assert( c == ' ' || c == '\n' || c == 10 || c == 13 );
-            }
-
-            m_iCurrentOffet += 4;
-            break;
-        }
-    case 'D':
-    case 'g':
-        {
-            // Align the Offset to be happy
-            Offset=m_iCurrentOffet = x_Align( m_iCurrentOffet, 8 );
-
-            if( m_States.m_bBinary )
-            {
-                if( auto Err = m_pFile->Read( *((u64*)&m_Memory[ m_iCurrentOffet ]) ); Err.isError() )
-                {
-                    X_LOG("ERROR: xtextfile::ReadComponent d.(%s)", Err.getStringAndClear() );
-                    return -1;
-                }
-            }
-            else
-            {
-                // Read out all the white space
-                s32 c = ReadWhiteSpace();
-
-                // Copy all the characters 
-                u32 N=0;
-                while( (c>='0'&&c<='9') || (c>='a'&&c<='f') || (c>='A'&&c<='F') )
-                {
-                    s32 v;
-                    if( c>'9' ) v = (x_tolower(c)-'a')+10;
-                    else        v = (x_tolower(c)-'0');
-                    N <<= 4;
-                    N |= (v&0xF);
-                    c = m_pFile->getC();
-                }
-
-                if( c!=':' ) x_throw( "Unexpected character in a guid" );
-
-                u64 Val1 = N;
-
-                // read second part 
-                c = m_pFile->getC();
-                N=0;
-                while( (c>='0'&&c<='9') || (c>='a'&&c<='f') || (c>='A'&&c<='F') )
-                {
-                    s32 v;
-                    if( c>'9' ) v = (x_tolower(c)-'a')+10;
-                    else        v = (x_tolower(c)-'0');
-                    N <<= 4;
-                    N |= (v&0xF);
-                    c = m_pFile->getC();
-                }
-
-                if( c !=' ' && c!='\n' && c != 10) x_throw( "Unexpected character in a guid" );
-
-                u64 Val2 = N;
-
-                // Combine both numbers and set the final value
-                *((u64*)&m_Memory[ m_iCurrentOffet ]) = (Val1<<32)|Val2;
-            }
-            m_iCurrentOffet += 8;
-            break;
-        }
     case '?':
         {
             Offset = m_iCurrentOffet;
+            int c;
 
-            if( m_States.m_bBinary )
+            if( m_File.m_States.m_isBinary )
             {
-                s32 c = m_pFile->getC();
+                if( m_File.getC( c ).isError(Error) )
+                    return Error;
+
                 if( c == '.' )
                 {
                     // Align the Offset to be happy
-                    Offset=m_iCurrentOffet = x_Align( m_iCurrentOffet+1, 2 )-1;
+                    Offset = m_iCurrentOffet = xcore::bits::Align( m_iCurrentOffet+1, 2 ) - 1;
                     
                     // Leave the period to indicate that is a user type
                     m_Memory[m_iCurrentOffet++] = '.';
                     
                     // Read the imapping for the user type
-                    u16 iMapping;
+                    std::uint16_t iMapping;
+                    if( m_File.Read( iMapping ).isError(Error) )
+                        return Error;
+                    /*
                     if( auto Err = m_pFile->Read( iMapping ); Err.isError() )
                     {
                         X_LOG("ERROR: xtextfile::ReadComponent ?.(%s)", Err.getStringAndClear() );
@@ -2892,16 +2658,22 @@ xcore::err xcore::textfile::stream::ReadComponent( int& Count, int Type ) noexce
                     
                     // Write the final remapped type
                     *((u16*)&m_Memory[ m_iCurrentOffet ]) = m_BinReadUserTypeMap[ iMapping ];
-                    
+                    */
+                   
+                    reinterpret_cast<std::uint16&>(m_Memory[ m_iCurrentOffet ]) = m_UserTypes[iMapping].m_UserType;
                     m_iCurrentOffet += 2;
                 }
                 else if( c == '<' )
                 {
                     // Read all the types
-                    for( ; !!(m_Memory[ m_iCurrentOffet ] = m_pFile->getC()); m_iCurrentOffet++ );
+                    do {
+                        if( m_File.getC( c ).isError(Error) )
+                            return Error;
+                        m_Memory[ m_iCurrentOffet++ ] = c;
+                    } while(c);
 
                     // Make sure that we are doing okay
-                    if( m_Memory[m_iCurrentOffet-1] != '>' ) x_throw ("Expecting a '>' Token but we didn't find it" );
+                    if( m_Memory[m_iCurrentOffet-1] != '>' ) return xerr_failure( Error, "Expecting a '>' Token but we didn't find it" );
 
                     // Terminate the string
                     m_Memory[ m_iCurrentOffet-1 ] = 0;
@@ -2909,13 +2681,14 @@ xcore::err xcore::textfile::stream::ReadComponent( int& Count, int Type ) noexce
                 else
                 {
                     // Expecting '<' or '.' but we didn't find it
-                    x_assert( 0 );
+                    xassert( false );
                 }
             }
             else
             {
                 // Read out all the white space
-                s32 c = ReadWhiteSpace();
+                if( m_File.ReadWhiteSpace(c).isError(Error) )
+                    return Error;
 
                 //
                 // Read in the user type
@@ -2926,19 +2699,18 @@ xcore::err xcore::textfile::stream::ReadComponent( int& Count, int Type ) noexce
                     m_Memory[ m_iCurrentOffet++ ] = c;
                     
                     // Read the name of the type
-                    while( x_isspace( c = m_pFile->getC() ) == false )
+                    do 
                     {
-                        if( c == -1 )
-                        {
-                            x_throw( "Unexpected end of file while reading a user type" );
-                        }
-                        
+                        if( m_File.getC(c).isError(Error) )
+                            return Error;
+                        if( string::isSpace( c ) ) break;
                         m_Memory[ m_iCurrentOffet++ ] = c;
-                    }
+
+                    } while ();
                     
                     // If this happens this means that we didn't read any types so we found '<>'
                     // we must have types!
-                    x_assert( Offset != m_iCurrentOffet );
+                    xassert( Offset != m_iCurrentOffet );
                     
                     // Terminate the string
                     m_Memory[ m_iCurrentOffet++ ] = 0;
@@ -2948,29 +2720,25 @@ xcore::err xcore::textfile::stream::ReadComponent( int& Count, int Type ) noexce
                     //
                     // we should have the right character by now
                     //
-                    if( c != '<' ) x_throw( "Expecting '<' but we didn't find it" );
+                    if( c != '<' ) return xerr_failure( Error, "Expecting '<' but we didn't find it" );
 
                     // Read the types
-                    c = m_pFile->getC();
+                    if( m_File.getC(c).isError(Error) )
+                        return Error;
+
                     while( (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') )
                     {
                         m_Memory[ m_iCurrentOffet++ ] = c;                    
-                        c = m_pFile->getC();
-                        if( c == -1 )
-                        {
-                            if( m_pFile->isEOF() )
-                                x_throw( "Unexpected end of file" );
-                            else
-                                x_throw( "Reading a type but... Error, unable to read a character" );
-                        }
+                        if( m_File.getC(c).isError(Error) )
+                            return Error;
                     }
                         
                     // Make sure that we are doing okay
-                    if( c != '>' ) x_throw ("Expecting a '>' Token but we didn't find it" );
+                    if( c != '>' ) return xerr_failure( Error, "Expecting a '>' Token but we didn't find it" );
                 
                     // If this happens this means that we didn't read any types so we found '<>'
                     // we must have types!
-                    x_assert( Offset != m_iCurrentOffet );
+                    xassert( Offset != m_iCurrentOffet );
 
                     // Terminate the string
                     m_Memory[m_iCurrentOffet++] = 0;
@@ -2982,11 +2750,10 @@ xcore::err xcore::textfile::stream::ReadComponent( int& Count, int Type ) noexce
                     {
                         // Make sure that the user enter a valid type
                         if( isValidType( m_Memory[Offset+i] ) == false )
-                            x_throw( "We have read an invalid type %s", m_Memory[Offset]);
+                            return xerr_failure( Error, "We have read an invalid type" );
                     }
                 }
             }
-
 
             break;
         }
@@ -2998,10 +2765,10 @@ xcore::err xcore::textfile::stream::ReadComponent( int& Count, int Type ) noexce
     //
     // Make sure that there are always plenty of memory left
     //
-    if( (m_Memory.getCount()-m_iCurrentOffet) < 512 ) 
-        m_Memory.appendList( m_Memory.getCount() + 512 );
+    if( (m_Memory.size()-m_iCurrentOffet) < 512 ) 
+        m_Memory.resize( m_Memory.size() + 512 );
 
-    return Offset;
+    return Error;
 }
 
 //------------------------------------------------------------------------------
