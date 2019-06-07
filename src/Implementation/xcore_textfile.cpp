@@ -2488,7 +2488,7 @@ namespace xcore::textfile
 
 //------------------------------------------------------------------------------
 
-xcore::err xcore::textfile::stream::ReadComponent( int& Offset, int Type ) noexcept
+xcore::err xcore::textfile::stream::ReadComponent( std::uint32_t& Offset, int Type ) noexcept
 {
     xcore::err  Error;
     Offset = 0;
@@ -2498,8 +2498,9 @@ xcore::err xcore::textfile::stream::ReadComponent( int& Offset, int Type ) noexc
         XLOG_CHANNEL_ERROR( m_Channel, "ReadComponent fail to while reading .%c (%s)", Type, Error.getCode().m_pString );
     });
 
-    auto Handle = [&]( auto T )
+    auto Handle = [&]( auto T ) -> xcore::err
     {
+        xcore::err  Error;
         using t = decltype(T);
 
         // Align the Offset to be happy
@@ -2546,10 +2547,10 @@ xcore::err xcore::textfile::stream::ReadComponent( int& Offset, int Type ) noexc
                 else    if constexpr( std::is_same_v<t,std::int16_t>    ) reinterpret_cast<t&>(m_Memory[ m_iCurrentOffet ]) = static_cast<t>(std::atoi    ( &Buffer[0] ));
                 else    if constexpr( std::is_same_v<t,std::int32_t>    ) reinterpret_cast<t&>(m_Memory[ m_iCurrentOffet ]) = static_cast<t>(std::atol    ( &Buffer[0] ));
                 else    if constexpr( std::is_same_v<t,std::int64_t>    ) reinterpret_cast<t&>(m_Memory[ m_iCurrentOffet ]) = static_cast<t>(std::atoll   ( &Buffer[0] ));
-                else    if constexpr( std::is_same_v<t,std::uint8_t>    ) reinterpret_cast<t&>(m_Memory[ m_iCurrentOffet ]) = static_cast<t>(std::strtoul ( &Buffer[0], &Buffer[strlen(Buffer)], 10 ));
-                else    if constexpr( std::is_same_v<t,std::uint16_t>   ) reinterpret_cast<t&>(m_Memory[ m_iCurrentOffet ]) = static_cast<t>(std::strtoul ( &Buffer[0], &Buffer[strlen(Buffer)], 10 ));
-                else    if constexpr( std::is_same_v<t,std::uint32_t>   ) reinterpret_cast<t&>(m_Memory[ m_iCurrentOffet ]) = static_cast<t>(std::strtoul ( &Buffer[0], &Buffer[strlen(Buffer)], 10 ));
-                else    if constexpr( std::is_same_v<t,std::uint64_t>   ) reinterpret_cast<t&>(m_Memory[ m_iCurrentOffet ]) = static_cast<t>(std::strtoull( &Buffer[0], &Buffer[strlen(Buffer)], 10 ));
+                else    if constexpr( std::is_same_v<t,std::uint8_t>    ) reinterpret_cast<t&>(m_Memory[ m_iCurrentOffet ]) = static_cast<t>(std::strtoul ( &Buffer[0], nullptr, 10 ));
+                else    if constexpr( std::is_same_v<t,std::uint16_t>   ) reinterpret_cast<t&>(m_Memory[ m_iCurrentOffet ]) = static_cast<t>(std::strtoul ( &Buffer[0], nullptr, 10 ));
+                else    if constexpr( std::is_same_v<t,std::uint32_t>   ) reinterpret_cast<t&>(m_Memory[ m_iCurrentOffet ]) = static_cast<t>(std::strtoul ( &Buffer[0], nullptr, 10 ));
+                else    if constexpr( std::is_same_v<t,std::uint64_t>   ) reinterpret_cast<t&>(m_Memory[ m_iCurrentOffet ]) = static_cast<t>(std::strtoull( &Buffer[0], nullptr, 10 ));
                 else    static_assert( always_false_v<t> );
             }
 
@@ -2557,6 +2558,8 @@ xcore::err xcore::textfile::stream::ReadComponent( int& Offset, int Type ) noexc
             xassert( c == ' ' || c == '\n' || c == 10 );
         }
         m_iCurrentOffet += 4;
+
+        return Error;
     };
 
     switch( Type )
@@ -2565,16 +2568,16 @@ xcore::err xcore::textfile::stream::ReadComponent( int& Offset, int Type ) noexc
         return xerr_failure( Error, "Error reading the file" );
         break;
 
-    case 'f': Handle( float(0)  ); break;
-    case 'F': Handle( double(0) ); break;
-    case 'c': Handle( std::int8_t(0)   ); break;
-    case 'C': Handle( std::int16_t(0)  ); break;
-    case 'd': Handle( std::int32_t(0)  ); break;
-    case 'D': Handle( std::int64_t(0)  ); break;
-    case 'h': Handle( std::uint8_t(0)  ); break;
-    case 'H': Handle( std::uint16_t(0) ); break;
-    case 'g': Handle( std::uint32_t(0) ); break;
-    case 'G': Handle( std::uint64_t(0) ); break;
+    case 'f': if( Handle( float(0)          ).isError(Error)) return Error; break;
+    case 'F': if( Handle( double(0)         ).isError(Error)) return Error; break;
+    case 'c': if( Handle( std::int8_t(0)    ).isError(Error)) return Error; break;
+    case 'C': if( Handle( std::int16_t(0)   ).isError(Error)) return Error; break;
+    case 'd': if( Handle( std::int32_t(0)   ).isError(Error)) return Error; break;
+    case 'D': if( Handle( std::int64_t(0)   ).isError(Error)) return Error; break;
+    case 'h': if( Handle( std::uint8_t(0)   ).isError(Error)) return Error; break;
+    case 'H': if( Handle( std::uint16_t(0)  ).isError(Error)) return Error; break;
+    case 'g': if( Handle( std::uint32_t(0)  ).isError(Error)) return Error; break;
+    case 'G': if( Handle( std::uint64_t(0)  ).isError(Error)) return Error; break;
     case 's':
     case 'e':
          {
@@ -2587,7 +2590,7 @@ xcore::err xcore::textfile::stream::ReadComponent( int& Offset, int Type ) noexc
                  do 
                  {
                      if( m_File.getC( c ).isError(Error) )
-                         return;
+                         return Error;
                      m_Memory[ m_iCurrentOffet++ ] = c;
 
                  } while( c );
@@ -2605,7 +2608,7 @@ xcore::err xcore::textfile::stream::ReadComponent( int& Offset, int Type ) noexc
                      {
                          m_Memory[ m_iCurrentOffet++ ] = c;
                          if( m_File.getC( c ).isError(Error) )
-                             return;
+                             return Error;
                      } while( c >= '!' && c <= '~' );
                      if( c != ' ' && c != '\n' && c != 10 ) return xerr_failure( Error, "Unexpected character in an enumerated value" );
                  }
@@ -2618,7 +2621,7 @@ xcore::err xcore::textfile::stream::ReadComponent( int& Offset, int Type ) noexc
                      {
                          m_Memory[ m_iCurrentOffet++ ] = c;
                          if( m_File.getC( c ).isError(Error) )
-                             return;
+                             return Error;
                      } while( c != '"' );
                  }
  
@@ -2660,7 +2663,7 @@ xcore::err xcore::textfile::stream::ReadComponent( int& Offset, int Type ) noexc
                     *((u16*)&m_Memory[ m_iCurrentOffet ]) = m_BinReadUserTypeMap[ iMapping ];
                     */
                    
-                    reinterpret_cast<std::uint16&>(m_Memory[ m_iCurrentOffet ]) = m_UserTypes[iMapping].m_UserType;
+                    reinterpret_cast<std::uint16_t&>(m_Memory[ m_iCurrentOffet ]) = m_UserTypes[iMapping].m_UID;
                     m_iCurrentOffet += 2;
                 }
                 else if( c == '<' )
@@ -2703,10 +2706,10 @@ xcore::err xcore::textfile::stream::ReadComponent( int& Offset, int Type ) noexc
                     {
                         if( m_File.getC(c).isError(Error) )
                             return Error;
-                        if( string::isSpace( c ) ) break;
+                        if( string::isCharSpace( c ) ) break;
                         m_Memory[ m_iCurrentOffet++ ] = c;
 
-                    } while ();
+                    } while (c);
                     
                     // If this happens this means that we didn't read any types so we found '<>'
                     // we must have types!
@@ -2746,7 +2749,7 @@ xcore::err xcore::textfile::stream::ReadComponent( int& Offset, int Type ) noexc
                     //
                     // Sanity check
                     //
-                    for( s32 i=0; m_Memory[Offset+i]; i++ )
+                    for( int i=0; m_Memory[Offset+i]; i++ )
                     {
                         // Make sure that the user enter a valid type
                         if( isValidType( m_Memory[Offset+i] ) == false )
@@ -2801,12 +2804,12 @@ xcore::err xcore::textfile::stream::ReadLine( void ) noexcept
         {
             // make sure it starts okay
             if( m_File.getC(c).isError(Error) || c != '{' ) 
-                if( Error.isOK())   return xerr_failure( Error, "Error reading file. Expecting '{' but didn't find it" );
-                else                return Error;
+                if( Error )   return Error;
+                else          return xerr_failure( Error, "Error reading file. Expecting '{' but didn't find it" );
 
             if( m_File.getC(c).isError(Error) || c != 0 ) 
-                if( Error.isOK())   return xerr_failure( Error, "Error reading file. Expecting 'end_of_string' but didn't find it" );
-                else                return Error;
+                if( Error )   return Error;
+                else          return xerr_failure( Error, "Error reading file. Expecting 'end_of_string' but didn't find it" );
 
             // Read all the types
             do
@@ -2820,11 +2823,11 @@ xcore::err xcore::textfile::stream::ReadLine( void ) noexcept
                     if( c == 0 ) break;
                     if( c == '.' )
                     {
-                        if( m_File.Read( reinterpret_cast<std.uint16_t&>(Buffer[Size]).isError( Error ) )
+                        if( m_File.Read( reinterpret_cast<std::uint16_t&>(Buffer[Size])).isError( Error ) )
                             return Error;
                         xassert_block_basic()
                         {
-                            auto Index = reinterpret_cast<std.uint16_t&>(Buffer[Size]);
+                            auto Index = reinterpret_cast<std::uint16_t&>(Buffer[Size]);
                             xassert( Index <= m_UserTypes.size() );
                         }
                         
@@ -2910,13 +2913,13 @@ xcore::err xcore::textfile::stream::ReadLine( void ) noexcept
     //
     // Okay now we must read a line worth of data
     //    
-    for( field& Field : m_Field )
+    for( auto& Field : m_Field )
     {
         switch( Field.m_iFieldDecl )
         {
         case -2:
             {
-                Field.m_iMemory[0] = ReadComponent( '?' );
+                Field.m_iMemory[0] = ReadComponent( m_iCurrentOffet, '?' );
                 
                 //
                 // For binary lets move the index of the user type into the right place
@@ -2926,7 +2929,7 @@ xcore::err xcore::textfile::stream::ReadLine( void ) noexcept
                     if( Field.m_iMemory[0] == '.' )
                     {
                         Field.m_iUserType = reinterpret_cast<std::uint16_t&>(Field.m_iMemory[1]);
-                        Field.m_iUserType = m_UserTypes[ Field.m_iUserType ];
+                        Field.m_iUserType = m_UserTypes[ Field.m_iUserType ].m_UID;
                     }
                 }
                 
@@ -2946,14 +2949,14 @@ xcore::err xcore::textfile::stream::ReadLine( void ) noexcept
                     
                     for( int i=0; i<UserType.m_nSystemTypes; i++ )
                     {
-                        Field.m_iMemory[i] = ReadComponent( UserType.m_SystemType[i] );
+                        Field.m_iMemory[i] = ReadComponent( m_iCurrentOffet, UserType.m_SystemType[i] );
                     }
                 }
                 else
                 {
                     for( int i=0; FieldType[ Field.m_TypeOffset + i]; i++ )
                     {
-                        Field.m_iMemory[i] = ReadComponent( FieldType[ Field.m_TypeOffset + i] );
+                        Field.m_iMemory[i] = ReadComponent( m_iCurrentOffet, FieldType[ Field.m_TypeOffset + i] );
                     }
                 }
                 break;
@@ -2968,37 +2971,40 @@ xcore::err xcore::textfile::stream::ReadLine( void ) noexcept
                 //
                 if( pType[0] == '.' )
                 {
-                    s32 Index;
+                    int Index;
                     
                     // Deal with fast mapping for binary reads
-                    if( m_States.m_bBinary )
+                    if( m_File.m_States.m_isBinary )
                     {
-                        Index = *((u16*)&pType[1]);
+                        Index = reinterpret_cast<const std::uint16_t&>(pType[1]);
                         // Not need to remap as it already has been remapped
                     }
                     else
                     {
+                        /*
                         if( m_UserTypes.BinarySearch( user_type( pType ), Index ) == false )
                         {
                             x_throw( "Unable to find user type");
                         }
+                        */
+                        xassert(false);
                     }
                     
-                    const user_type& UserType = m_UserTypes[Index];
+                    const auto& UserType = m_UserTypes[Index];
                     
                     Field.m_nTypes      = UserType.m_nSystemTypes;
                     Field.m_iUserType   = Index;
                     
-                    for( s32 i=0; i<Field.m_nTypes; i++ )
+                    for( std::uint32_t i=0; i<Field.m_nTypes; i++ )
                     {
-                        Field.m_iMemory[i] = ReadComponent( UserType.m_SystemType[i] );
+                        Field.m_iMemory[i] = ReadComponent( m_iCurrentOffet, UserType.m_SystemType[i] );
                     }
                 }
                 else
                 {
                     for( Field.m_nTypes=0; pType[ Field.m_nTypes ]; Field.m_nTypes++ )
                     {
-                        Field.m_iMemory[Field.m_nTypes] = ReadComponent( pType[ Field.m_nTypes ] );
+                        Field.m_iMemory[Field.m_nTypes] = ReadComponent( m_iCurrentOffet, pType[ Field.m_nTypes ] );
                     }
                 }
                 break;

@@ -76,7 +76,7 @@ namespace xcore::log
         std::array<char,xcore::log::details::log_buffer_size_v> __LogChannelTempBuff;               \
         sprintf_s( __LogChannelTempBuff.data(), __LogChannelTempBuff.size(), FMTSTR, __VA_ARGS__ ); \
         auto& __Logger = __Channel.getLogger();                                                     \
-        xcore::lock::scope __Lock( __Logger.m_Lock );                                             \
+        xcore::lock::scope<xcore::lock::spin> __Lock( __Logger.m_Lock );                                             \
         __Logger.m_pOutput( __Channel, xcore::log::msg_type::ERROR, __LogChannelTempBuff.data(), __LINE__, __FILE__ ); \
     }                                                                                               \
 }
