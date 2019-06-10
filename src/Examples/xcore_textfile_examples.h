@@ -12,7 +12,7 @@ namespace xcore::textfile::examples
 
     //------------------------------------------------------------------------------
     static
-    xcore::err TextFileWrite( xcore::string::view<char> FileName, bool isRead, xcore::textfile::file_type FileType )
+    xcore::err Test01( xcore::string::view<char> FileName, bool isRead, xcore::textfile::file_type FileType )
     {
         xcore::textfile::stream     TextFile;
         xcore::err                  Error;
@@ -29,35 +29,25 @@ namespace xcore::textfile::examples
             if( TextFile.openForWriting( std::string_view{ FileName }, FileType ).isError(Error) ) return Error;
         }
 
-
         //
-        // First block
+        // Save/Load record
         //
-        if( isRead )
-        {
-            if( TextFile.WriteRecord( "FistRecord", 12 ).isError( Error ) )
-                return Error;
-        }
-        else
-        {
-            if( TextFile.ReadRecord().isError( Error ) )
-                return Error;
+        if( TextFile.Record( Error, "FirstRecord"
+            ,   [&]( int& C, bool isRead )
+                {
+                    if( isRead )    xassert( C == 12 );
+                    else            C = 12;
+                }
+            ,   [&]( int i )
+                {
+                        TextFile.Field( "Description",  g_String[i%g_String.size()].getView()     ).isError(Error)
+                    ||  TextFile.Field( "Position",     g_Floats32[(i+0)%g_Floats32.size()], 
+                                                        g_Floats32[(i+1)%g_Floats32.size()], 
+                                                        g_Floats32[(i+2)%g_Floats32.size()]       ).isError(Error)
+                    ||  TextFile.Field( "Number",       g_Int32[i%g_String.size()]                ).isError(Error);
+                }
+            )) return Error;
 
-            if( TextFile.getRecordName() != "FirstRecord" )
-                return xerr_failure( Error, "Unexpected record" );
-        }
-
-        for( auto i=0; i<TextFile.getRecordCount(); i++ )
-        {
-            if( isRead == true && TextFile.ReadLine().isError(Error) ) return Error;
-            if( TextFile.Field( "Description",  g_String[i%g_String.size()].getView() ).isError(Error) ) return Error;
-            if( TextFile.Field( "Position",     g_Floats32[(i+0)%g_Floats32.size()], 
-                                                g_Floats32[(i+1)%g_Floats32.size()], 
-                                                g_Floats32[(i+2)%g_Floats32.size()] ).isError(Error) ) return Error;
-            if( TextFile.Field( "Number",       g_Int32[i%g_String.size()] ).isError(Error) ) return Error;
-
-            if( isRead == false && TextFile.WriteLine().isError(Error) ) return Error;
-        }
 #if 0
         //
         // Big types
@@ -163,12 +153,12 @@ namespace xcore::textfile::examples
         //
         // Test write and read (Text Style)
         //
-        if( TextFileWrite( TextFileName, false, xcore::textfile::file_type::TEXT ).isError(Error) )
+        if( Test01( TextFileName, false, xcore::textfile::file_type::TEXT ).isError(Error) )
         {
             xassert(false);
         }
 
-        if( TextFileWrite( TextFileName, true, xcore::textfile::file_type::TEXT ).isError(Error) )
+        if( Test01( TextFileName, true, xcore::textfile::file_type::TEXT ).isError(Error) )
         {
             xassert(false);
         }
@@ -177,7 +167,7 @@ namespace xcore::textfile::examples
         //
         // Test write and read (Binary Style)
         //
-        TextFileWrite( TextFileName,  xtextfile::access_type::MASK_BINARY );
+        Test01( TextFileName,  xtextfile::access_type::MASK_BINARY );
         TextFileRead( TextFileName );
 
         //

@@ -119,7 +119,7 @@ namespace xcore::textfile
         if( m_States.m_isEOF ) return ReadingErrorCheck();
 
     #if defined(_MSC_VER)
-        if ( Size != fread_s( &Buffer, Size, Size, Count, m_pFP ) )
+        if ( Count != fread_s( &Buffer, Size, Size, Count, m_pFP ) )
             return ReadingErrorCheck();
     #else
     #endif
@@ -716,19 +716,16 @@ xcore::err xcore::textfile::stream::ReadRecord( void ) noexcept
         if( m_File.ReadWhiteSpace(c).isError(Failure) ) return Failure;
 
         int                         NameSize = 0;
-        std::array<char,256>        RecordName;
         do
         {
-            RecordName[NameSize++] = c;
+            m_Record.m_Name[NameSize++] = c;
             
             if( m_File.getC(c).isError(Failure) ) return Failure;
 
         } while( std::isspace( c ) == false && c != ':' && c != ']' );
 
-        
         // Terminate the string
-        RecordName[NameSize] = 0;
-        for( std::size_t i=0; m_Record.m_Name[i] = RecordName[i]; ++i ) xassert( i < static_cast<std::size_t>(m_Record.m_Name.size()-1) );
+        m_Record.m_Name[NameSize] = 0;
 
         // Skip spaces
         if( std::isspace( c ) )
@@ -2884,14 +2881,6 @@ xcore::err xcore::textfile::stream::ReadLine( void ) noexcept
                 {
                     Buffer[Size++] = c;                    
                     if( m_File.getC(c).isError(Error) ) return Error;
-                    /*
-                    c = m_pFile->getC();
-                    if( c == -1 )
-                    {
-                        if( m_pFile->isEOF()  ) x_throw( "Found an expected end of file");
-                        else x_throw( "Unexpected error while reading the file");
-                    }
-                    */
                 }
             
                 // Terminate the string

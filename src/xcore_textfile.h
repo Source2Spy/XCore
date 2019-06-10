@@ -4,7 +4,7 @@
 
 //-----------------------------------------------------------------------------------------------------
 //     Type    Description
-//     ======  -------------------------------------------------------------------
+//     ------  ----------------------------------------------------------------------------------------
 //      f      32 bit float
 //      F      64 bit double
 //      d      32 bit integer
@@ -215,6 +215,43 @@ namespace xcore::textfile
                             xcore::err                  WriteRecord         ( const char* pHeaderName, std::size_t Count = ~0 )                                         noexcept;
                             xcore::err                  WriteComment        ( const string::view<char> Comment )                                                        noexcept;
                             xcore::err                  WriteLine           ( void )                                                                                    noexcept;
+
+
+                            template< std::size_t N, typename TT, typename T >
+        inline              bool                        Record              ( xcore::err& Error, const char (&Str)[N], TT&& RecordStar, T&& Callback )                  noexcept
+                            {
+                                if( m_File.m_States.m_isReading )
+                                {
+                                    if( ReadRecord().isError( Error ) ) return true;
+                                    if( getRecordName() != Str )
+                                    { 
+                                        (void)xerr_failure( Error, "Unexpected record" ); 
+                                        return true; 
+                                    }
+                                    int Count = getRecordCount();
+                                    RecordStar(Count, m_File.m_States.m_isReading);
+                                    for( std::remove_const_t<decltype(Count)> i=0; i<Count; i++ )
+                                    {
+                                        if( ReadLine().isError(Error) ) return true;
+                                        Callback(i);
+                                        if( Error ) return true;
+                                    }
+                                }
+                                else 
+                                {
+                                    int Count;
+                                    RecordStar(Count, m_File.m_States.m_isReading);
+                                    if( WriteRecord( Str, Count ).isError( Error ) ) return true;
+
+                                    for( std::remove_const_t<decltype(Count)> i=0; i<Count; i++ )
+                                    {
+                                        Callback(i);
+                                        if( Error ) return true;
+                                        if( WriteLine().isError(Error) ) return true;
+                                    }
+                                }
+                                return false;
+                            }
 
     protected:
 

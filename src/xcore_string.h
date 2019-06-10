@@ -39,6 +39,10 @@ namespace xcore::string
                                     operator       char_t*          ( void )                            noexcept { xassume(parent::empty()==false); return parent::data(); }
         constexpr                   operator       std::string_view ( void )                            noexcept { xassume(parent::empty()==false); return { parent::data(), std::strlen(parent::data()) }; }
         constexpr                   operator const std::string_view ( void )                    const   noexcept { xassume(parent::empty()==false); return { parent::data(), std::strlen(parent::data()) }; }
+        template< typename T >
+        constexpr   bool            operator ==                     ( const T& X )              const   noexcept { for( int i=0; X[i] == (*this)[i]; ++i ) if( X[i]==0 ) return true; return false; }
+        template< typename T >
+        constexpr   bool            operator !=                     ( const T& X )              const   noexcept { return !((*this) == X); }
     };
 
     //------------------------------------------------------------------------------------
@@ -219,6 +223,7 @@ namespace xcore::string
                 // Other wise we must allocate
                 m_Ref.emplace<unique_t>( new char_t[Size], Size );
             }
+            (*this)[0]=0;
             return *this;
         }
 
@@ -226,6 +231,7 @@ namespace xcore::string
         {
             xassert(Size>0);
             m_Ref.emplace<fixed_t>( new char_t[Size] );
+            (*this)[0]=0;
             return *this;
         }
 
@@ -233,6 +239,7 @@ namespace xcore::string
         {
             xassert(Size>0);
             m_Ref.emplace<share_t>( new xcore::string::ref<char>{ units{Size} } );
+            (*this)[0]=0;
             return *this;
         }
 
