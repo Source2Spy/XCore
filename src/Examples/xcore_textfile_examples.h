@@ -32,6 +32,7 @@ namespace xcore::textfile::examples
         //
         // Save/Load record
         //
+        int X = 123;
         if( TextFile.Record( Error, "FirstRecord"
             ,   [&]( int& C, bool isRead )
                 {
@@ -40,10 +41,11 @@ namespace xcore::textfile::examples
                 }
             ,   [&]( int i )
                 {
-                        TextFile.Field( "Description",  g_String[i%g_String.size()].getView()     ).isError(Error)
-                    ||  TextFile.Field( "Position",     g_Floats32[(i+0)%g_Floats32.size()], 
-                                                        g_Floats32[(i+1)%g_Floats32.size()], 
-                                                        g_Floats32[(i+2)%g_Floats32.size()]       ).isError(Error)
+                    auto S = g_String[i%g_String.size()].getView();
+                    0
+                    ||  TextFile.Field( "Description",   S    ).isError(Error)
+                    ||  TextFile.Field( "Float",        X ).isError(Error)
+                    ||  TextFile.Field( "Position",     g_Floats32[(i+0)%g_Floats32.size()], g_Floats32[(i+1)%g_Floats32.size()], g_Floats32[(i+2)%g_Floats32.size()] ).isError(Error)
                     ||  TextFile.Field( "Number",       g_Int32[i%g_String.size()]                ).isError(Error);
                 }
             )) return Error;

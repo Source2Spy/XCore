@@ -388,8 +388,8 @@ xcore::err xcore::textfile::stream::openForReading( const std::filesystem::path&
     m_Memory.clear();
 
     // Growing this guy is really slow so we create a decent count from the start
-    m_Field.reserve( 64 );
-    m_Memory.reserve( 512 );
+    m_Field.resize( 64 );
+    m_Memory.resize( 512 );
 
     return Failure;
 }
@@ -807,9 +807,9 @@ bool xcore::textfile::stream::isReading( void ) const noexcept
 //      Make sure you pass the address for any err that you are reading and make sure
 //      that the sizes matches what the file formats specifies.
 // Example:
-// <CODE> TextFile.ReadFieldC( "Position:fff", &A, &B, &C ); </CODE>
+// <CODE> TextFile.ReadFieldC( iUserRef, "Position", "fff", &A, &B, &C ); </CODE>
 //------------------------------------------------------------------------------
-xcore::err_optional<int> xcore::textfile::stream::ReadFieldC( const char* pFieldName, const char* pArgs, ... ) noexcept
+xcore::err xcore::textfile::stream::ReadFieldC( int& iUserRef, const char* pFieldName, const char* const pArgs, ... ) noexcept
 {
     xcore::err Error;
 
@@ -827,14 +827,14 @@ xcore::err_optional<int> xcore::textfile::stream::ReadFieldC( const char* pField
             auto&   Field = m_Field[i];
             
             // Make sure that is the same length
-            if( pFieldName[ Field.m_TypeOffset - 1 ] != ':' )
+            if( pFieldName[ Field.m_TypeOffset - 1 ] != 0 )
                 continue;
 
             // if it is then double check the string
-            for( j=0; (Field.m_Type[j] == pFieldName[j]) && pFieldName[j]!=':'; j++ );
+            for( j=0; (Field.m_Type[j] == pFieldName[j]) && pFieldName[j]; j++ );
 
             // The string must not be the same
-            if( Field.m_Type[j] != pFieldName[j] )
+            if( Field.m_Type[j] != ':' || pFieldName[j] != 0 )
                 continue;
 
             //
@@ -893,8 +893,7 @@ xcore::err_optional<int> xcore::textfile::stream::ReadFieldC( const char* pField
                 }
                 else
                 {
-                    for(    ; Field.m_Type[j] == pFieldName[j] && pFieldName[j]; ++j );
-                    bFound = (Field.m_Type[j] == pFieldName[j]);
+                    for( int i=0; (bFound = (Field.m_Type[j] == pArgs[i])) && pFieldName[j]; ++j, ++i );
                 }
 
                 // if the types are not the same then the version of the file is not the same
@@ -921,7 +920,7 @@ xcore::err_optional<int> xcore::textfile::stream::ReadFieldC( const char* pField
             textfile::details::user& User = m_User.emplace_back();
             User.m_iFieldType = -1;
             User.m_iFieldData = -1;
-            // X_LOG( "Unable to find the field amount the types. %s", pFieldName );
+            XLOG_CHANNEL_WARNING( m_Channel, "Unable to find the field amount the types. %s", pFieldName );
         }
     }
 
@@ -1010,8 +1009,8 @@ xcore::err_optional<int> xcore::textfile::stream::ReadFieldC( const char* pField
             case 'f':
             case 'd':
                 {
-                        std::uint32_t* p = (va_arg( Args, std::uint32_t* ));     // get the err 
-                        *p = *((std::uint32_t*)&m_Memory[ FieldData.m_iMemory[i] ]);
+                        auto p = va_arg( Args, std::uint32_t* );
+                        *p = reinterpret_cast<const std::uint32_t&>(m_Memory[ FieldData.m_iMemory[i] ]);
                         break;
                 }
             case 'F':
@@ -1094,8 +1093,8 @@ xcore::err_optional<int> xcore::textfile::stream::ReadFieldC( const char* pField
             case 's': 
             case 'e':            
                 {
-                    std::string* p = (va_arg( Args, std::string* ));     // get the err 
-                    p->assign((const char*)&m_Memory[ FieldData.m_iMemory[i] ]);
+                    auto p = va_arg( Args, string::view<char>* );     // get the err 
+                    string::Copy( *p, reinterpret_cast<const char*>(&m_Memory[ FieldData.m_iMemory[i] ]) );
                     break;
                 }
             default:
@@ -1108,7 +1107,8 @@ xcore::err_optional<int> xcore::textfile::stream::ReadFieldC( const char* pField
     // Ready for the next field
     m_iField++;
 
-    return FieldData.m_iUserType;// User.m_iFieldType;
+    iUserRef = FieldData.m_iUserType;// User.m_iFieldType;
+    return Error;
 }
 
 //------------------------------------------------------------------------------
@@ -1601,7 +1601,7 @@ void xcore::textfile::stream::WriteComponent( int iField, int iType, int c, va_l
         }
             */
     case 'E': 
-    case 'S': xassert( false ); break;                               
+    case 'S': xassert( false ); break;
     case 'e':
     case 's':
             {
@@ -2485,10 +2485,9 @@ namespace xcore::textfile
 
 //------------------------------------------------------------------------------
 
-xcore::err xcore::textfile::stream::ReadComponent( std::uint32_t& Offset, int Type ) noexcept
+xcore::err xcore::textfile::stream::ReadComponent( std::uint32_t& iStartOffset, int Type ) noexcept
 {
-    xcore::err  Error;
-    Offset = 0;
+    xcore::err      Error;
 
     xcore::error::scope General( Error, [&]()
     {
@@ -2501,7 +2500,7 @@ xcore::err xcore::textfile::stream::ReadComponent( std::uint32_t& Offset, int Ty
         using t = decltype(T);
 
         // Align the Offset to be happy
-        Offset = m_iCurrentOffet = xcore::bits::Align( m_iCurrentOffet, sizeof(t) );
+        iStartOffset = m_iCurrentOffet = xcore::bits::Align( m_iCurrentOffet, sizeof(t) );
         if( m_File.m_States.m_isBinary )
         {
             if( m_File.Read( reinterpret_cast<t&>(m_Memory[ m_iCurrentOffet ] ) ).isError(Error) )
@@ -2578,7 +2577,7 @@ xcore::err xcore::textfile::stream::ReadComponent( std::uint32_t& Offset, int Ty
     case 's':
     case 'e':
          {
-             Offset=m_iCurrentOffet;
+             iStartOffset = m_iCurrentOffet;
              int c;
  
              if( m_File.m_States.m_isBinary )
@@ -2629,7 +2628,7 @@ xcore::err xcore::textfile::stream::ReadComponent( std::uint32_t& Offset, int Ty
          }
     case '?':
         {
-            Offset = m_iCurrentOffet;
+            iStartOffset = m_iCurrentOffet;
             int c;
 
             if( m_File.m_States.m_isBinary )
@@ -2640,7 +2639,7 @@ xcore::err xcore::textfile::stream::ReadComponent( std::uint32_t& Offset, int Ty
                 if( c == '.' )
                 {
                     // Align the Offset to be happy
-                    Offset = m_iCurrentOffet = xcore::bits::Align( m_iCurrentOffet+1, 2 ) - 1;
+                    iStartOffset = m_iCurrentOffet = xcore::bits::Align( m_iCurrentOffet+1, 2 ) - 1;
                     
                     // Leave the period to indicate that is a user type
                     m_Memory[m_iCurrentOffet++] = '.';
@@ -2710,7 +2709,7 @@ xcore::err xcore::textfile::stream::ReadComponent( std::uint32_t& Offset, int Ty
                     
                     // If this happens this means that we didn't read any types so we found '<>'
                     // we must have types!
-                    xassert( Offset != m_iCurrentOffet );
+                    xassert( iStartOffset != m_iCurrentOffet );
                     
                     // Terminate the string
                     m_Memory[ m_iCurrentOffet++ ] = 0;
@@ -2738,7 +2737,7 @@ xcore::err xcore::textfile::stream::ReadComponent( std::uint32_t& Offset, int Ty
                 
                     // If this happens this means that we didn't read any types so we found '<>'
                     // we must have types!
-                    xassert( Offset != m_iCurrentOffet );
+                    xassert( iStartOffset != m_iCurrentOffet );
 
                     // Terminate the string
                     m_Memory[m_iCurrentOffet++] = 0;
@@ -2746,10 +2745,10 @@ xcore::err xcore::textfile::stream::ReadComponent( std::uint32_t& Offset, int Ty
                     //
                     // Sanity check
                     //
-                    for( int i=0; m_Memory[Offset+i]; i++ )
+                    for( int i=0; m_Memory[iStartOffset+i]; i++ )
                     {
                         // Make sure that the user enter a valid type
-                        if( isValidType( m_Memory[Offset+i] ) == false )
+                        if( isValidType( m_Memory[iStartOffset+i] ) == false )
                             return xerr_failure( Error, "We have read an invalid type" );
                     }
                 }
@@ -2890,10 +2889,8 @@ xcore::err xcore::textfile::stream::ReadLine( void ) noexcept
                 BuildTypeInformation( Buffer );
 
                 // Read any white space
-                if( string::isCharSpace( c ) )
-                {
-                    if( m_File.getC(c).isError(Error) ) return Error;
-                }
+                if( m_File.ReadWhiteSpace(c).isError( Error ) )
+                    return Error;
 
             } while( c != '}' );
         }
@@ -2908,7 +2905,8 @@ xcore::err xcore::textfile::stream::ReadLine( void ) noexcept
         {
         case -2:
             {
-                Field.m_iMemory[0] = ReadComponent( m_iCurrentOffet, '?' );
+                if( ReadComponent( Field.m_iMemory[0], '?' ).isError(Error) )
+                    return Error;
                 
                 //
                 // For binary lets move the index of the user type into the right place
@@ -2938,14 +2936,16 @@ xcore::err xcore::textfile::stream::ReadLine( void ) noexcept
                     
                     for( int i=0; i<UserType.m_nSystemTypes; i++ )
                     {
-                        Field.m_iMemory[i] = ReadComponent( m_iCurrentOffet, UserType.m_SystemType[i] );
+                        if( ReadComponent( Field.m_iMemory[i], UserType.m_SystemType[i] ).isError(Error) )
+                            return Error;
                     }
                 }
                 else
                 {
                     for( int i=0; FieldType[ Field.m_TypeOffset + i]; i++ )
                     {
-                        Field.m_iMemory[i] = ReadComponent( m_iCurrentOffet, FieldType[ Field.m_TypeOffset + i] );
+                        if( ReadComponent( Field.m_iMemory[i], FieldType[ Field.m_TypeOffset + i] ).isError(Error) )
+                            return Error;
                     }
                 }
                 break;
@@ -2986,14 +2986,16 @@ xcore::err xcore::textfile::stream::ReadLine( void ) noexcept
                     
                     for( std::uint32_t i=0; i<Field.m_nTypes; i++ )
                     {
-                        Field.m_iMemory[i] = ReadComponent( m_iCurrentOffet, UserType.m_SystemType[i] );
+                        if( ReadComponent( Field.m_iMemory[i], UserType.m_SystemType[i] ).isError(Error) )
+                            return Error;
                     }
                 }
                 else
                 {
                     for( Field.m_nTypes=0; pType[ Field.m_nTypes ]; Field.m_nTypes++ )
                     {
-                        Field.m_iMemory[Field.m_nTypes] = ReadComponent( m_iCurrentOffet, pType[ Field.m_nTypes ] );
+                        if( ReadComponent( Field.m_iMemory[Field.m_nTypes], pType[ Field.m_nTypes ] ).isError(Error) )
+                            return Error;
                     }
                 }
                 break;

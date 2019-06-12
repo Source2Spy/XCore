@@ -119,18 +119,19 @@ namespace xcore::textfile
         constexpr void BuildTypesRecursive( char* p ) noexcept
         {
             char c {};
+            using t = std::decay_t<T>;
 
-                 if constexpr ( std::is_same_v< T, std::int32_t& >       ) c = 'd';
-            else if constexpr ( std::is_same_v< T, std::int64_t& >       ) c = 'D';
-            else if constexpr ( std::is_same_v< T, std::int8_t& >        ) c = 'c';
-            else if constexpr ( std::is_same_v< T, std::int16_t& >       ) c = 'C';
-            else if constexpr ( std::is_same_v< T, float& >              ) c = 'f';
-            else if constexpr ( std::is_same_v< T, double& >             ) c = 'F';
-            else if constexpr ( std::is_same_v< T, string::view<char> >  ) c = 's';
-            else if constexpr ( std::is_same_v< T, std::uint32_t& >      ) c = 'g';
-            else if constexpr ( std::is_same_v< T, std::uint64_t& >      ) c = 'G';
-            else if constexpr ( std::is_same_v< T, std::uint8_t& >       ) c = 'h';
-            else if constexpr ( std::is_same_v< T, std::uint16_t& >      ) c = 'H';
+                 if constexpr ( std::is_same_v< t, std::int32_t >       ) c = 'd';
+            else if constexpr ( std::is_same_v< t, std::int64_t >       ) c = 'D';
+            else if constexpr ( std::is_same_v< t, std::int8_t >        ) c = 'c';
+            else if constexpr ( std::is_same_v< t, std::int16_t >       ) c = 'C';
+            else if constexpr ( std::is_same_v< t, float >              ) c = 'f';
+            else if constexpr ( std::is_same_v< t, double >             ) c = 'F';
+            else if constexpr ( std::is_same_v< t, string::view<char> > ) c = 's';
+            else if constexpr ( std::is_same_v< t, std::uint32_t >      ) c = 'g';
+            else if constexpr ( std::is_same_v< t, std::uint64_t >      ) c = 'G';
+            else if constexpr ( std::is_same_v< t, std::uint8_t >       ) c = 'h';
+            else if constexpr ( std::is_same_v< t, std::uint16_t >      ) c = 'H';
             else static_assert( xcore::types::always_false_v<T>, "xcore::textfile, Unknown type. Please make sure you enter a supported type" );
 
             *p = c;
@@ -203,11 +204,17 @@ namespace xcore::textfile
                             bool                        isReading           ( void )    const                                                                           noexcept;
 
                             template< std::size_t N, typename... T_ARGS >
-        inline              xcore::err_optional<int> Field          ( const char(&pFieldName)[N], T_ARGS&&... Args )                                                    noexcept
+        inline              xcore::err_optional<int> Field          ( const char(&pFieldName)[N], T_ARGS&&... Args )                                                     noexcept
                             {
                                 static_assert( 0 != (sizeof...(T_ARGS)) );
                                 constexpr static string::fixed<char, sizeof...(T_ARGS)+1> Types{ details::BuildTypes<T_ARGS...>() };
-                                if( isReading() ) return ReadFieldC ( pFieldName, Types.data(), std::forward<T_ARGS>(Args)... );
+                                if( isReading() ) 
+                                {
+                                    int         iUserRef;
+                                    xcore::err  Error;
+                                    if( ReadFieldC( iUserRef, pFieldName, Types.data(), &Args... ).isError(Error) ) return Error;
+                                    return iUserRef;
+                                }
                                 else                     WriteFieldC( pFieldName, Types.data(), std::forward<T_ARGS>(Args)... );
                                 return {0};
                             }
@@ -255,7 +262,7 @@ namespace xcore::textfile
 
     protected:
 
-                            xcore::err_optional<int>    ReadFieldC          ( const char* pFieldName, const char* pArgsTypes, ... )                                     noexcept;
+                            xcore::err                  ReadFieldC          ( int& iUserRef, const char* pFieldName, const char* pArgsTypes, ... )                      noexcept;
                             void                        WriteFieldC         ( const char* pFieldName, const char* pArgsTypes, ... )                                     noexcept;
                             void                        WriteFieldCIndirect ( const char* pFieldName, const char* pArgsTypes, ... )                                     noexcept;
                             void                        WriteFieldC         ( const char* pFieldName, const char* pArgsTypes, va_list& Args1, va_list& Args2, bool bIndirect ) noexcept;
@@ -265,7 +272,7 @@ namespace xcore::textfile
                             void                        BuildTypeInformation( const char* pFullFieldName )                                                              noexcept;
                             void                        BuildTypeInformation( const char* pFieldName, const char* pArgsTypes )                                          noexcept;
 
-                            xcore::err                  ReadComponent       ( std::uint32_t& Count, int Type )                                                                    noexcept;
+                            xcore::err                  ReadComponent       ( std::uint32_t& iStartOffset, int Type )                                                   noexcept;
 
     protected:
         
