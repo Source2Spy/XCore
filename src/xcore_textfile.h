@@ -115,6 +115,25 @@ namespace xcore::textfile
         };
 
         //-----------------------------------------------------------------------------------------------------
+        template< typename T >
+        struct type_filter
+        {
+            using type = T&;
+        };
+
+        template<>
+        struct type_filter<typename string::ref<char>>
+        {
+            using type = string::view<char>;
+        };
+
+        template<std::size_t N>
+        struct type_filter<typename string::view<char,N>>
+        {
+            using type = string::view<char,N>&;
+        };
+
+        //-----------------------------------------------------------------------------------------------------
         template< typename T, typename... T_ARGS >
         constexpr void BuildTypesRecursive( char* p ) noexcept
         {
@@ -128,6 +147,7 @@ namespace xcore::textfile
             else if constexpr ( std::is_same_v< t, float >              ) c = 'f';
             else if constexpr ( std::is_same_v< t, double >             ) c = 'F';
             else if constexpr ( std::is_same_v< t, string::view<char> > ) c = 's';
+            else if constexpr ( std::is_same_v< t, string::ref<char> >  ) c = 's';
             else if constexpr ( std::is_same_v< t, std::uint32_t >      ) c = 'g';
             else if constexpr ( std::is_same_v< t, std::uint64_t >      ) c = 'G';
             else if constexpr ( std::is_same_v< t, std::uint8_t >       ) c = 'h';
@@ -204,7 +224,7 @@ namespace xcore::textfile
                             bool                        isReading           ( void )    const                                                                           noexcept;
 
                             template< std::size_t N, typename... T_ARGS >
-        inline              xcore::err_optional<int> Field          ( const char(&pFieldName)[N], T_ARGS&&... Args )                                                     noexcept
+        inline              xcore::err_optional<int> Field          ( const char(&pFieldName)[N], T_ARGS&... Args )                                                     noexcept
                             {
                                 static_assert( 0 != (sizeof...(T_ARGS)) );
                                 constexpr static string::fixed<char, sizeof...(T_ARGS)+1> Types{ details::BuildTypes<T_ARGS...>() };
@@ -212,10 +232,10 @@ namespace xcore::textfile
                                 {
                                     int         iUserRef;
                                     xcore::err  Error;
-                                    if( ReadFieldC( iUserRef, pFieldName, Types.data(), &Args... ).isError(Error) ) return Error;
+                                    if( ReadFieldC( iUserRef, pFieldName, Types.data(), &static_cast<typename details::type_filter<T_ARGS>::type>(Args)... ).isError(Error) ) return Error;
                                     return iUserRef;
                                 }
-                                else                     WriteFieldC( pFieldName, Types.data(), std::forward<T_ARGS>(Args)... );
+                                else WriteFieldC( pFieldName, Types.data(), static_cast<typename details::type_filter<T_ARGS>::type>(Args)... );
                                 return {0};
                             }
 
@@ -236,23 +256,23 @@ namespace xcore::textfile
                                         return true; 
                                     }
                                     int Count = getRecordCount();
-                                    RecordStar(Count, m_File.m_States.m_isReading);
+                                    RecordStar(Count,Error);
                                     for( std::remove_const_t<decltype(Count)> i=0; i<Count; i++ )
                                     {
                                         if( ReadLine().isError(Error) ) return true;
-                                        Callback(i);
+                                        Callback(i,Error);
                                         if( Error ) return true;
                                     }
                                 }
                                 else 
                                 {
                                     int Count;
-                                    RecordStar(Count, m_File.m_States.m_isReading);
+                                    RecordStar(Count,Error);
                                     if( WriteRecord( Str, Count ).isError( Error ) ) return true;
 
                                     for( std::remove_const_t<decltype(Count)> i=0; i<Count; i++ )
                                     {
-                                        Callback(i);
+                                        Callback(i,Error);
                                         if( Error ) return true;
                                         if( WriteLine().isError(Error) ) return true;
                                     }
