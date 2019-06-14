@@ -263,9 +263,9 @@ namespace xcore::crc
     // Type for CRC
     //-------------------------------------------------------------------------------------------------------
     template< std::size_t T_BITS_V >
-    struct units : xcore::units::type< units<T_BITS_V>, details::to_t<T_BITS_V>, struct crc_tag >
+    struct units : xcore::units::type< units<T_BITS_V>, details::to_t<T_BITS_V> >
     {
-        using parent = xcore::units::type< units<T_BITS_V>, details::to_t<T_BITS_V>, struct crc_tag >;
+        using parent = xcore::units::type< units<T_BITS_V>, details::to_t<T_BITS_V> >;
         using parent::type;
     };
 

@@ -10,10 +10,10 @@ namespace xcore::string
     namespace details
     {
         template< typename T >
-        struct units_imp : xcore::units::type<units_imp<T>, int, T>
+        struct units_imp : xcore::units::type<units_imp<T>, int>
         {
             static_assert( std::is_same_v<T,std::decay_t<T>> );
-            using parent = xcore::units::type<units_imp<T>, int, T>;
+            using parent = xcore::units::type<units_imp<T>, int>;
             using parent::type;
             using parent::operator =;
                                             operator xcore::units::bytes    ( void )        const   noexcept { return units::bytes{ parent::m_Value * sizeof(T) }; }

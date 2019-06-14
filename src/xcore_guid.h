@@ -113,9 +113,9 @@ namespace xcore::guid
     {
         using group  = T_GROUP;
         using parent = guid::unit<T_GROUP::bits_size_v*2,T_GROUP>;
-        struct units : xcore::units::type< units, typename T_GROUP::type, group >
+        struct units : xcore::units::type< units, typename T_GROUP::type >
         {
-            using parent = xcore::units::type< units, typename T_GROUP::type, group >;
+            using parent = xcore::units::type< units, typename T_GROUP::type >;
             using parent::type;
         };
 

@@ -7,7 +7,7 @@ namespace xcore::units
     //------------------------------------------------------------------------------
     // type
     //------------------------------------------------------------------------------
-    template< typename T_PARENT, typename T, typename T_TAGS >
+    template< typename T_PARENT, typename T >
     struct type
     {
         T m_Value;
@@ -35,7 +35,7 @@ namespace xcore::units
         constexpr               auto            operator /  ( const T_PARENT X )    const   noexcept { return T_PARENT{ m_Value / X.m_Value };       }
     };
 
-    struct bytes : type<bytes, int, struct bytes>
+    struct bytes : type<bytes, int>
     {
         using type::type;
         using type::operator =;
@@ -44,7 +44,7 @@ namespace xcore::units
     //------------------------------------------------------------------------------
     // degree
     //------------------------------------------------------------------------------
-    struct degree : type<degree, float, struct degree>
+    struct degree : type<degree, float>
     {
         using type::type;
         using type::operator =;
@@ -55,7 +55,7 @@ namespace xcore::units
     //------------------------------------------------------------------------------
     // radian
     //------------------------------------------------------------------------------
-    struct radian : type<radian, float, struct radian>
+    struct radian : type<radian, float>
     {
         using type::type;
         using type::operator =;
