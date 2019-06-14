@@ -93,6 +93,9 @@ namespace xcore::string
         constexpr                   fixed                                       ( const view<const char_t,T_SIZE_V> Str )   noexcept { xassume(Str.size()<=ms_BufferSize.m_Value); for(int i=0; i<Str.size(); ++i) parent::at(i) = Str[i]; }
         constexpr                   fixed                                       ( const view<char_t> Str )                  noexcept { xassume(Str.size()<=ms_BufferSize.m_Value); for(int i=0; i<Str.size(); ++i) parent::at(i) = Str[i]; }
         constexpr                   fixed                                       ( const view<const char_t> Str )            noexcept { xassume(Str.size()<=ms_BufferSize.m_Value); for(int i=0; i<Str.size(); ++i) parent::at(i) = Str[i]; }
+        constexpr                   fixed                                       ( const char_t (&Str)[T_SIZE_V] )           noexcept { for(int i=0; i<T_SIZE_V; ++i) parent::at(i) = Str[i]; }
+        template< std::size_t N >
+        constexpr                   fixed                                       ( const char_t (&Str)[N] )                  noexcept { static_assert( N <= T_SIZE_V); for(int i=0; i<T_SIZE_V; ++i) parent::at(i) = Str[i]; }
 
         inline                      operator view<char_t,T_SIZE_V>              ( void )                                    noexcept { return { parent::data() }; }
         inline                      operator view<char_t>                       ( void )                                    noexcept { return { parent::data(), size() }; }
@@ -173,6 +176,30 @@ namespace xcore::string
                 else                                                      m_Ref = X;
             }, Str.m_Ref );
         }
+        constexpr       ref     ( const ref& Str ) noexcept
+        {
+            if( Str.empty() ) 
+            {
+                std::get<cache_t>(m_Ref)[0u]=0;
+                return; 
+            }
+
+            if( Str.m_Ref.index() ==  index_fixed_v ) MakeFixed( string::Length(Str).m_Value );
+            string::Copy( *this, Str );
+        }
+
+        constexpr       ref     ( const constant_t Str ) noexcept
+        {
+            m_Ref.emplace<constant_t>(Str);
+        }
+
+        template< std::size_t N >
+        constexpr       ref     ( const string::fixed<char_t,N> Str ) noexcept
+        {
+            MakeFixed(N);
+            string::Copy( *this, Str );
+        }
+
         constexpr       ref     ( units Size ) noexcept
         {
             MakeUnique( Size.m_Value );
@@ -230,7 +257,7 @@ namespace xcore::string
         ref& MakeFixed( int Size ) noexcept
         {
             xassert(Size>0);
-            m_Ref.emplace<fixed_t>( new char_t[Size] );
+            auto& Unique = m_Ref.emplace<fixed_t>( new char_t[Size], Size );
             (*this)[0]=0;
             return *this;
         }

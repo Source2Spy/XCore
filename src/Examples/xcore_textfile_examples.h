@@ -5,10 +5,16 @@ namespace xcore::textfile::examples
     // Test types
     //------------------------------------------------------------------------------
     static std::array                       g_Floats32      = { -50.0f, 2.1233f, 1.312323123f, 543.2343f, 0.0f };
-    static std::array<string::ref<char>,3>  g_String        = { string::constant("String Test").getView(), string::constant("Another test").getView(), string::constant("Yet another").getView() };
+    static std::array<string::ref<char>,3>  g_String        = { string::fixed<char,256>("String Test"), string::fixed<char,256>("Another test"), string::fixed<char,256>("Yet another") };
     static std::array                       g_Int32         = { 12, 21, 44, 1, 0 };
     static std::array                       g_Floats64      = { -32.323212312312323, 2.2312323233, 1.312323123, 54.2343, 0.0 };
     static std::array                       g_Int64         = { 13452LL, 321LL, 1434LL, 19LL, 0LL };
+
+    static const auto                       g_Floats32Back  = g_Floats32;
+    static const auto                       g_StringBack    = g_String  ;
+    static const auto                       g_Int32Back     = g_Int32   ;
+    static const auto                       g_Floats64Back  = g_Floats64;
+    static const auto                       g_Int64Back     = g_Int64   ;
 
     //------------------------------------------------------------------------------
     static
