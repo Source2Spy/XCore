@@ -1,16 +1,7 @@
 
-[ FirstRecord : 12 ]
-{ Description:s   Position:fff                   Number:d }
-//--------------  -----------------------------  --------  
-  "String Test"   -50         2.1233    1.31232     12
-  "Another test"    2.1233    1.31232 543.234       21
-  "Yet another"     1.31232 543.234     0           44
-  "String Test"   543.234     0       -50           12
-  "Another test"    0       -50         2.1233      21
-  "Yet another"   -50         2.1233    1.31232     44
-  "String Test"     2.1233    1.31232 543.234       12
-  "Another test"    1.31232 543.234     0           21
-  "Yet another"   543.234     0       -50           44
-  "String Test"     0       -50         2.1233      12
-  "Another test"  -50         2.1233    1.31232     21
-  "Yet another"     2.1233    1.31232 543.234       44
+[ FirstRecord : 3 ]
+{ Description:s   Position:fff                Number:d }
+//--------------  --------------------------  --------  
+  "String Test"   -50       50        -5         12
+  "Another test"    2.1233  -2.1233    0.1233     21
+  "Yet another"     1.31232 -1.31232 131.232     44

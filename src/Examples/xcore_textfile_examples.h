@@ -4,17 +4,25 @@ namespace xcore::textfile::examples
     //------------------------------------------------------------------------------
     // Test types
     //------------------------------------------------------------------------------
-    static std::array                       g_Floats32      = { -50.0f, 2.1233f, 1.312323123f, 543.2343f, 0.0f };
-    static std::array<string::ref<char>,3>  g_String        = { string::fixed<char,256>("String Test"), string::fixed<char,256>("Another test"), string::fixed<char,256>("Yet another") };
-    static std::array                       g_Int32         = { 12, 21, 44, 1, 0 };
-    static std::array                       g_Floats64      = { -32.323212312312323, 2.2312323233, 1.312323123, 54.2343, 0.0 };
-    static std::array                       g_Int64         = { 13452LL, 321LL, 1434LL, 19LL, 0LL };
+    static std::array                       g_Floats32_A        = { -50.0f,  2.1233f,  1.312323123f,  543.2343f, 0.0f };
+    static std::array                       g_Floats32_B        = {  50.0f, -2.1233f, -1.312323123f, -543.2343f, 0.0f };
+    static std::array                       g_Floats32_C        = {  -5.0f,  0.1233f,  131.2323123f,    3.2343f, 0.0f };
+    static std::array<string::ref<char>,3>  g_String            = { string::fixed<char,256>("String Test"), string::fixed<char,256>("Another test"), string::fixed<char,256>("Yet another") };
+    static std::array                       g_Int32             = { 12, 21, 44, 1, 0 };
+    static std::array                       g_Floats64_A        = { -32.323212312312323,  2.2312323233,  1.312323123,  54.2343, 0.0 };
+    static std::array                       g_Floats64_B        = { -3.323212312312323,   0.2312323233,  0.312323123,   4.2343, 0.0 };
+    static std::array                       g_Floats64_C        = { -2.323212312312323,  -1.2312323233, -0.312323123, -54.2343, 0.0 };
+    static std::array                       g_Int64             = { 13452LL, 321LL, 1434LL, 19LL, 0LL };
 
-    static const auto                       g_Floats32Back  = g_Floats32;
-    static const auto                       g_StringBack    = g_String  ;
-    static const auto                       g_Int32Back     = g_Int32   ;
-    static const auto                       g_Floats64Back  = g_Floats64;
-    static const auto                       g_Int64Back     = g_Int64   ;
+    static const auto                       g_Floats32_ABack    = g_Floats32_A;
+    static const auto                       g_Floats32_BBack    = g_Floats32_B;
+    static const auto                       g_Floats32_CBack    = g_Floats32_C;
+    static const auto                       g_StringBack        = g_String;
+    static const auto                       g_Int32Back         = g_Int32;
+    static const auto                       g_Floats64_ABack    = g_Floats64_A;
+    static const auto                       g_Floats64_BBack    = g_Floats64_B;
+    static const auto                       g_Floats64_CBack    = g_Floats64_C;
+    static const auto                       g_Int64Back         = g_Int64;
 
     //------------------------------------------------------------------------------
     static
@@ -42,20 +50,28 @@ namespace xcore::textfile::examples
         if( TextFile.Record( Error, "FirstRecord"
             ,   [&]( int& C, xcore::err& Error )
                 {
-                    if( isRead )    xassert( C == 12 );
-                    else            C = 12;
+                    if( isRead )    xassert( C == 3 );
+                    else            C = 3;
                 }
             ,   [&]( int i, xcore::err& Error )
                 {
                     0
-                    ||  TextFile.Field( "Description",  g_String[i%g_String.size()]         ).isError(Error)
-                    ||  TextFile.Field( "Position",     g_Floats32[(i+0)%g_Floats32.size()]
-                                                  ,     g_Floats32[(i+1)%g_Floats32.size()]
-                                                  ,     g_Floats32[(i+2)%g_Floats32.size()] ).isError(Error)
-                    ||  TextFile.Field( "Number",       g_Int32[i%g_String.size()]          ).isError(Error);
+                    ||  TextFile.Field( "Description",  g_String[i]     ).isError(Error)
+                    ||  TextFile.Field( "Position",     g_Floats32_A[i]
+                                                  ,     g_Floats32_B[i]
+                                                  ,     g_Floats32_C[i] ).isError(Error)
+                    ||  TextFile.Field( "Number",       g_Int32[i]      ).isError(Error);
                 }
             )) return Error;
 
+        if( isRead ) for( int i=0; i<3; ++i )
+        {
+            xassert( g_StringBack[i]        == g_String[i] );
+            xassert( g_Floats32_ABack[i]    == g_Floats32_A[i] );
+            xassert( g_Floats32_BBack[i]    == g_Floats32_B[i] );
+            xassert( g_Floats32_CBack[i]    == g_Floats32_C[i] );
+            xassert( g_Int32Back[i]         == g_Int32[i] );
+        }
 #if 0
         //
         // Big types

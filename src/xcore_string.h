@@ -423,6 +423,11 @@ namespace xcore::string
             return p;
         }
 
+        constexpr bool operator == ( const ref& Str ) const noexcept
+        {
+            return std::strcmp( *this, Str ) == 0;
+        }
+
         constexpr auto getView( void )          const   noexcept { return static_cast<const view<char>>(*this); }
         constexpr auto getView( void )                  noexcept { return static_cast<view<char>>(*this); }
         constexpr auto getViewFrom( int Start ) const   noexcept { return string::view{ &(*this)[Start], static_cast<int>(size()-Start) }; }
