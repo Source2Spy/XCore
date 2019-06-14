@@ -113,7 +113,11 @@ namespace xcore::guid
     {
         using group  = T_GROUP;
         using parent = guid::unit<T_GROUP::bits_size_v*2,T_GROUP>;
-        using units  = units::type< typename T_GROUP::type, group >;
+        struct units : xcore::units::type< units, typename T_GROUP::type, group >
+        {
+            using parent = xcore::units::type< units, typename T_GROUP::type, group >;
+            using parent::type;
+        };
 
         template< std::size_t N >
         constexpr                               subgroup        ( T_GROUP Group, const char (&Str)[N] )             noexcept : parent{crc::FromString<T_GROUP::bits_size_v>(Str).m_Value, Group.m_Value} {}

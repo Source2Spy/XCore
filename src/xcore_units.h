@@ -7,35 +7,35 @@ namespace xcore::units
     //------------------------------------------------------------------------------
     // type
     //------------------------------------------------------------------------------
-    template< typename T, typename T_TAGS >
+    template< typename T_PARENT, typename T, typename T_TAGS >
     struct type
     {
         T m_Value;
 
-        constexpr                               type        ( void )                    noexcept = default;
-        constexpr explicit                      type        ( T Value )                 noexcept : m_Value{ Value } {}
-        constexpr               bool            operator == ( const type X )    const   noexcept { return m_Value == X.m_Value;              }
-        constexpr               bool            operator >= ( const type X )    const   noexcept { return m_Value >= X.m_Value;              }
-        constexpr               bool            operator <= ( const type X )    const   noexcept { return m_Value <= X.m_Value;              }
-        constexpr               bool            operator >  ( const type X )    const   noexcept { return m_Value >  X.m_Value;              }
-        constexpr               bool            operator <  ( const type X )    const   noexcept { return m_Value <  X.m_Value;              }
-                                type            operator ++ ( int )                     noexcept { auto temp{*this}; m_Value+=1; return temp;}
-                                type&           operator ++ ( void )                    noexcept { m_Value+=1; return *this;                 }
-                                type            operator -- ( int )                     noexcept { auto temp{*this}; m_Value-=1; return temp;}
-                                type&           operator -- ( void )                    noexcept { m_Value-=1; return *this;                 }
-                                type&           operator += ( const type X )            noexcept { m_Value += X.m_Value; return *this;       }
-                                type&           operator -= ( const type X )            noexcept { m_Value -= X.m_Value; return *this;       }
-                                type&           operator *= ( const type X )            noexcept { m_Value *= X.m_Value; return *this;       }
-                                type&           operator /= ( const type X )            noexcept { m_Value /= X.m_Value; return *this;       }
+        constexpr                               type        ( void )                        noexcept = default;
+        constexpr explicit                      type        ( T Value )                     noexcept : m_Value{ Value } {}
+        constexpr               bool            operator == ( const T_PARENT X )    const   noexcept { return m_Value == X.m_Value;              }
+        constexpr               bool            operator >= ( const T_PARENT X )    const   noexcept { return m_Value >= X.m_Value;              }
+        constexpr               bool            operator <= ( const T_PARENT X )    const   noexcept { return m_Value <= X.m_Value;              }
+        constexpr               bool            operator >  ( const T_PARENT X )    const   noexcept { return m_Value >  X.m_Value;              }
+        constexpr               bool            operator <  ( const T_PARENT X )    const   noexcept { return m_Value <  X.m_Value;              }
+                                auto            operator ++ ( int )                         noexcept { T_PARENT temp{*this}; m_Value+=1; return temp;}
+                                auto&           operator ++ ( void )                        noexcept { m_Value+=1; return *static_cast<T_PARENT*>(this); }
+                                auto            operator -- ( int )                         noexcept { T_PARENT temp{*this}; m_Value-=1; return temp;}
+                                auto&           operator -- ( void )                        noexcept { m_Value-=1; return *this;                 }
+                                auto&           operator += ( const T_PARENT X )            noexcept { m_Value += X.m_Value; return *static_cast<T_PARENT*>(this);       }
+                                auto&           operator -= ( const T_PARENT X )            noexcept { m_Value -= X.m_Value; return *static_cast<T_PARENT*>(this);       }
+                                auto&           operator *= ( const T_PARENT X )            noexcept { m_Value *= X.m_Value; return *static_cast<T_PARENT*>(this);       }
+                                auto&           operator /= ( const T_PARENT X )            noexcept { m_Value /= X.m_Value; return *static_cast<T_PARENT*>(this);       }
         template< typename = typename std::enable_if_t< std::is_signed<T>::value, type > >
-        constexpr               type            operator -  ( void  )           const   noexcept { return type{ -m_Value };                  }
-        constexpr               type            operator +  ( const type X )    const   noexcept { return type{ m_Value + X.m_Value };       }
-        constexpr               type            operator -  ( const type X )    const   noexcept { return type{ m_Value - X.m_Value };       }
-        constexpr               type            operator *  ( const type X )    const   noexcept { return type{ m_Value * X.m_Value };       }
-        constexpr               type            operator /  ( const type X )    const   noexcept { return type{ m_Value / X.m_Value };       }
+        constexpr               auto            operator -  ( void  )               const   noexcept { return T_PARENT{ -m_Value };                  }
+        constexpr               auto            operator +  ( const T_PARENT X )    const   noexcept { return T_PARENT{ m_Value + X.m_Value };       }
+        constexpr               auto            operator -  ( const T_PARENT X )    const   noexcept { return T_PARENT{ m_Value - X.m_Value };       }
+        constexpr               auto            operator *  ( const T_PARENT X )    const   noexcept { return T_PARENT{ m_Value * X.m_Value };       }
+        constexpr               auto            operator /  ( const T_PARENT X )    const   noexcept { return T_PARENT{ m_Value / X.m_Value };       }
     };
 
-    struct bytes : type<int, struct bytes>
+    struct bytes : type<bytes, int, struct bytes>
     {
         using type::type;
         using type::operator =;
@@ -44,7 +44,7 @@ namespace xcore::units
     //------------------------------------------------------------------------------
     // degree
     //------------------------------------------------------------------------------
-    struct degree : type<float, struct degree>
+    struct degree : type<degree, float, struct degree>
     {
         using type::type;
         using type::operator =;
@@ -55,7 +55,7 @@ namespace xcore::units
     //------------------------------------------------------------------------------
     // radian
     //------------------------------------------------------------------------------
-    struct radian : type<float, struct radian>
+    struct radian : type<radian, float, struct radian>
     {
         using type::type;
         using type::operator =;
@@ -97,19 +97,5 @@ namespace xcore::units
     //------------------------------------------------------------------------------
     template< char... T_DIGITS > constexpr int operator "" _bin() { return details::conv2bin< T_DIGITS ... >::value; }
 }
-
-//------------------------------------------------------------------------------
-// Add as a potential hash 
-//------------------------------------------------------------------------------
-template<typename T, typename B> 
-struct std::hash<xcore::units::type<T,B>>
-{
-    typedef xcore::units::type<T,B> argument_type;
-    typedef std::size_t result_type;
-    result_type operator()(argument_type const& s) const noexcept
-    {
-        return s.m_Value;
-    }
-};
 
 #endif

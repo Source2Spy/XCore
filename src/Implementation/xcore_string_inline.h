@@ -12,7 +12,7 @@ namespace xcore::string
             xassume( pStr );
             const T_CHAR* pEnd = pStr;
             if( pStr ) while( *pEnd++ ) {}
-            return units<T_CHAR>{ static_cast<int>( pEnd - pStr - 1 ) };
+            return string::units<T_CHAR>{ static_cast<int>( pEnd - pStr - 1 ) };
         }
     }
 
@@ -30,27 +30,27 @@ namespace xcore::string
     namespace details
     {
         template< typename T_C1, typename T_C2 > constexpr xforceinline 
-        auto CopyN( view<T_C1> Dest, const T_C2* const pSrc, int Count ) noexcept
+        auto CopyN( view<T_C1> Dest, const T_C2* const pSrc, units<decltype(pSrc[0])> Count ) noexcept
         {
             xassume( Dest  );
             xassume( pSrc  );
-            xassume( Count >= 0 );
-            xassume( Count < Dest.size() );
+            xassume( Count.m_Value >= 0 );
+            xassume( Dest.size() > Count.m_Value );
 
-            Dest[Count--] = 0;
-            while( Count >= 0 )
+            Dest[Count.m_Value--] = 0;
+            while( Count.m_Value >= 0 )
             {
-                Dest[Count] = pSrc[Count];
-                Count--;
+                Dest[Count.m_Value] = pSrc[Count.m_Value];
+                Count.m_Value--;
             }
     
-            return units<T_C1>{ Count };
+            return units<T_C1>{ Count.m_Value };
         }
     }
 
     //------------------------------------------------------------------------------
     template< typename T1, typename T2 > constexpr xforceinline
-    auto CopyN( T1& Dest, const T2& Src, int Count ) noexcept 
+    auto CopyN( T1& Dest, const T2& Src, units<decltype(Src[0])> Count ) noexcept 
     { 
         // Make sure Destination is ready to get the right data
         if constexpr(is_ref_v<T1>) Dest.ResetToSize( Count );
@@ -61,7 +61,7 @@ namespace xcore::string
 
     //------------------------------------------------------------------------------
     template< typename T1, typename T2 > constexpr xforceinline
-    auto CopyN( T1&& Dest, const T2& Src, int Count ) noexcept
+    auto CopyN( T1&& Dest, const T2& Src, units<decltype(Src[0])> Count ) noexcept
     {
         static_assert( is_view_v<T1> );
         return CopyN(Dest,Src,Count);
@@ -118,7 +118,7 @@ namespace xcore::string
             }
 
             // Copy string
-            return CopyN( Dest, Src, Length(Src).m_Value );
+            return CopyN( Dest, Src, Length(Src) );
         }
         else
         {
@@ -142,9 +142,9 @@ namespace xcore::string
     template< typename T1, typename T2 > constexpr
     auto Append( T1& Dest, const T2& Src ) noexcept
     {
-        const auto LD    = Length(Dest).m_Value;
-        const auto LS    = Length(Src).m_Value;
-        const auto Total = LD + LS + 1;
+        const auto LD    = Length(Dest);
+        const auto LS    = Length(Src);
+        const auto Total = LD + LS;
 
         // Make sure Destination is ready to get the right data
         if constexpr ( is_ref_v<T1> ) 
@@ -154,7 +154,7 @@ namespace xcore::string
         }
     
         // Copy string
-        return CopyN( view<T1::char_t>{ &Dest[LD], Total - LD }, Src, LS );
+        return CopyN( view<T1::char_t>{ &Dest[LD.m_Value], (Total - LD).m_Value }, Src, LS );
     }
 
     //------------------------------------------------------------------------------

@@ -263,7 +263,11 @@ namespace xcore::crc
     // Type for CRC
     //-------------------------------------------------------------------------------------------------------
     template< std::size_t T_BITS_V >
-    using units = units::type< details::to_t<T_BITS_V>, struct crc_tag >;
+    struct units : xcore::units::type< units<T_BITS_V>, details::to_t<T_BITS_V>, struct crc_tag >
+    {
+        using parent = xcore::units::type< units<T_BITS_V>, details::to_t<T_BITS_V>, struct crc_tag >;
+        using parent::type;
+    };
 
     //-------------------------------------------------------------------------------------------------------
     // Default CRC value
@@ -326,5 +330,18 @@ namespace xcore::crc
     }
 }
 
+//------------------------------------------------------------------------------
+// Add as a potential hash 
+//------------------------------------------------------------------------------
+template< std::size_t S > 
+struct std::hash<xcore::crc::units<S>>
+{
+    using argument_type = xcore::crc::units<S>;
+    using result_type   = std::size_t;
+    result_type operator()(argument_type const& s) const noexcept
+    {
+        return s.m_Value;
+    }
+};
 
 #endif

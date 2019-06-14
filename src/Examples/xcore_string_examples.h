@@ -116,8 +116,8 @@ namespace xcore::string::examples
     //---------------------------------------------------------------------------------------
     void PassingToMutableFunction( xcore::string::view<char> V )
     {
-        xcore::string::CopyN( V, xcore::string::constant("This is a test"), 5 );
-        xcore::string::CopyN( V, "This is a test", 5 );
+        xcore::string::CopyN( V, xcore::string::constant("This is a test"), units<char>{5} );
+        xcore::string::CopyN( V, "This is a test", units<char>{5} );
     }
 
     //---------------------------------------------------------------------------------------
@@ -127,7 +127,7 @@ namespace xcore::string::examples
     {
         char  x[32];
         char* p = x;
-        V.MakeUnique( 256 );
+        V.MakeUnique( units<char>{255} );
 
         xcore::string::Copy( V, "Hello Boss" );
      //   xcore::string::Copy( xcore::string::view<char>{ x, 32 }, "asds" );

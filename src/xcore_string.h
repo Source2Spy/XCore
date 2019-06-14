@@ -10,10 +10,10 @@ namespace xcore::string
     namespace details
     {
         template< typename T >
-        struct units_imp : xcore::units::type<int, T>
+        struct units_imp : xcore::units::type<units_imp<T>, int, T>
         {
             static_assert( std::is_same_v<T,std::decay_t<T>> );
-            using parent = xcore::units::type<int, T>;
+            using parent = xcore::units::type<units_imp<T>, int, T>;
             using parent::type;
             using parent::operator =;
                                             operator xcore::units::bytes    ( void )        const   noexcept { return units::bytes{ parent::m_Value * sizeof(T) }; }
@@ -141,9 +141,9 @@ namespace xcore::string
     struct ref 
     { 
         using                           char_t          = T_CHAR;
-        using                           units           = units<char_t>;
-        constexpr static units          cache_size_v    = units{(64 - sizeof(std::size_t))/sizeof(char_t)}; // 64bytes - (the variant type index with alignment)
-        using                           cache_t         = fixed<char_t,cache_size_v.m_Value>; 
+        using                           units           = xcore::string::units<char_t>;
+        constexpr static int            cache_size_v    = (64 - sizeof(std::size_t))/sizeof(char_t); // 64bytes - (the variant type index with alignment)
+        using                           cache_t         = fixed<char_t,cache_size_v>; 
         using                           unique_t        = details::unique<char_t>;
         using                           share_t         = std::shared_ptr<ref<char_t>>;
         using                           constant_t      = constant<char_t>;
@@ -184,7 +184,7 @@ namespace xcore::string
                 return; 
             }
 
-            if( Str.m_Ref.index() ==  index_fixed_v ) MakeFixed( string::Length(Str).m_Value );
+            if( Str.m_Ref.index() ==  index_fixed_v ) MakeFixed( string::Length(Str) );
             string::Copy( *this, Str );
         }
 
@@ -196,13 +196,13 @@ namespace xcore::string
         template< std::size_t N >
         constexpr       ref     ( const string::fixed<char_t,N> Str ) noexcept
         {
-            MakeFixed(N);
+            MakeFixed( units{N-1} );
             string::Copy( *this, Str );
         }
 
-        constexpr       ref     ( units Size ) noexcept
+        constexpr       ref     ( units Characters ) noexcept
         {
-            MakeUnique( Size.m_Value );
+            MakeUnique( Characters );
         }
 
         template< typename T_C > 
@@ -229,9 +229,12 @@ namespace xcore::string
             (*this)[0] = 0;
         }
 
-        ref& MakeUnique( int Size = cache_size_v.m_Value ) noexcept
+        ref& MakeUnique( units Characters = units{ cache_size_v-1 } ) noexcept
         {
-            xassert(Size>0);
+            xassert(Characters.m_Value>0);
+
+            // Size in number of buffer size "a" == Length/Characters == 1, == 'a/0' == Size == 2
+            const int Size = Characters.m_Value + 1;
 
             // If we currently have the right type
             if( index_cache_v == m_Ref.index() || index_unique_v == m_Ref.index() )
@@ -241,7 +244,7 @@ namespace xcore::string
             }
 
             // If we can use the cache choose that first
-            if( Size <= cache_size_v.m_Value )
+            if( Size <= cache_size_v )
             {
                 m_Ref.emplace<cache_t>();
             }
@@ -254,28 +257,41 @@ namespace xcore::string
             return *this;
         }
 
-        ref& MakeFixed( int Size ) noexcept
+        ref& MakeFixed( units Characters ) noexcept
         {
-            xassert(Size>0);
+            xassert(Characters.m_Value>0);
+
+            // Size in number of buffer size "a" == Length/Characters == 1, == 'a/0' == Size == 2
+            const int Size = Characters.m_Value + 1;
+
             auto& Unique = m_Ref.emplace<fixed_t>( new char_t[Size], Size );
             (*this)[0]=0;
             return *this;
         }
 
-        ref& MakeShare( int Size ) noexcept
+        ref& MakeShare( units Characters ) noexcept
         {
-            xassert(Size>0);
+            xassert(Characters.m_Value>0);
+
+            // Size in number of buffer size "a" == Length/Characters == 1, == 'a/0' == Size == 2
+            const int Size = Characters.m_Value + 1;
+
             m_Ref.emplace<share_t>( new xcore::string::ref<char>{ units{Size} } );
             (*this)[0]=0;
             return *this;
         }
 
-        bool ResetToSize( int Size ) noexcept
+        bool ResetToSize( units Characters ) noexcept
         {
+            xassert(Characters.m_Value>0);
+
+            // Size in number of buffer size "a" == Length/Characters == 1, == 'a/0' == Size == 2
+            const int Size = Characters.m_Value + 1;
+
             // If we are a constant string we can decay into a Unique string
             if( m_Ref.index() == index_const_v )
             {
-                MakeUnique(Size);
+                MakeUnique(Characters);
                 return true;
             }
             else if( m_Ref.index() == index_share_v )
@@ -284,12 +300,12 @@ namespace xcore::string
                 // at that point we need to decay to a unique string.
                 if ( std::get<share_t>(m_Ref).use_count() != 1 ) 
                 {
-                    MakeUnique( Size );
+                    MakeUnique( Characters );
                     return true;
                 }
                 else if( size() < Size )
                 {
-                    MakeShare( Size );
+                    MakeShare( Characters );
                     return true;
                 }
             }
@@ -299,7 +315,7 @@ namespace xcore::string
             }
             else if( size() < Size ) 
             {
-                MakeUnique( Size );
+                MakeUnique( Characters );
                 return true;
             }
 
@@ -457,7 +473,7 @@ namespace xcore::string
     // String manipulations
     //------------------------------------------------------------------------------------
     template< typename T >                  constexpr   auto            Length          ( const T& Obj )                                                            noexcept;
-    template< typename T1, typename T2 >    constexpr   auto            CopyN           ( T1& Dest, const T2& Src,  int Count )                                     noexcept;
+    template< typename T1, typename T2 >    constexpr   auto            CopyN           ( T1& Dest, const T2& Src,  units<decltype(Src[0])> Count )                 noexcept;
     template< typename T1, typename T2 >    constexpr   auto            Copy            ( T1& Dest, const T2& Src )                                                 noexcept;
     template< typename T1, typename T2 >    constexpr   auto            Append          ( T1& Dest, const T2& Src )                                                 noexcept;
                                             inline      units<char>     sprintf         ( view<char> Dest, const char*, ... )                                       noexcept;
