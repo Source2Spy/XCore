@@ -1331,134 +1331,18 @@ void xcore::textfile::stream::WriteComponent( int iField, int iType, int c, va_l
     //
     // Standard function for the interger types
     //
-    auto Intergers = [&]( auto p, const char* pFmt ) noexcept
+    auto Numerics = [&]( auto p, const char* pFmt ) noexcept
     {
         using T = std::decay_t<decltype(p)>;
-        p = bIndirect ? (*va_arg( Args, T* )):static_cast<T>(va_arg( Args, types::byte_size_uint_t< sizeof(T) < 4 ? 4:8 > ));
-
-        if( m_File.m_States.m_isBinary )
+        if constexpr ( std::is_integral_v<T> )
         {
-            if( m_File.m_States.m_isEndianSwap ) p = endian::Convert(p);
-            ptr::MemCopy( { reinterpret_cast<T*>(&m_Memory[m_iCurrentOffet]), sizeof(T) }, std::span<T>{ &p, sizeof(T) } );
-            m_iCurrentOffet += sizeof(T);
-        }
-        else
-        {
-            auto& Field = m_Field[iField];
-
-            // We reserve the first byte so that we can add additional spaces to this floating point number
-            m_Memory[m_iCurrentOffet++] = iField;
-            m_Memory[m_iCurrentOffet++] = iType;
-            reinterpret_cast<std::uint16_t&>(m_Memory[m_iCurrentOffet])   = 1 + p<0 ? 1:0;
-            m_iCurrentOffet+=2;
-            auto iInt = m_iCurrentOffet;
-
-            // Okay lets write the floating point number
-            m_iCurrentOffet += 1 + string::sprintf( { &m_Memory[m_iCurrentOffet], static_cast<int>(m_Memory.size()-m_iCurrentOffet) }, pFmt, p ).m_Value;
-
-            // Set the width for this type
-            reinterpret_cast<std::uint16_t&>(m_Memory[iInt-2])    = m_iCurrentOffet - iInt;
-            Field.m_TypeWidth[iType] = std::max( Field.m_TypeWidth[iType], static_cast<std::uint8_t>(m_iCurrentOffet - iInt) );
-        }
-    };
-
-    switch( c )
-    {
-    case 'f':
-        {
-            auto p = bIndirect?(*va_arg( Args, float* )):(va_arg( Args, double ));     // get the type
-        
-            if( m_File.m_States.m_isBinary )
-            {
-                auto n = static_cast<float>(p);
-                if( m_File.m_States.m_isEndianSwap ) n = xcore::endian::Convert(n);
-                ptr::MemCopy( { reinterpret_cast<float*>(&m_Memory[m_iCurrentOffet]),sizeof(float)}, std::span<float>{&n, sizeof(float)} );
-                m_iCurrentOffet += sizeof(float);
-            }
-            else
-            {
-                auto& Field = m_Field[iField];
-
-                // We reserve the first byte so that we can add additional spaces to this floating point number
-                m_Memory[m_iCurrentOffet++] = iField;
-                m_Memory[m_iCurrentOffet++] = iType;
-                reinterpret_cast<std::uint16_t&>(m_Memory[m_iCurrentOffet])   = 1;
-                m_iCurrentOffet+=2;
-                auto iFloat = m_iCurrentOffet;
-
-                // Okay lets write the floating point number
-                m_iCurrentOffet += 1+string::sprintf( { &m_Memory[m_iCurrentOffet], static_cast<int>(m_Memory.size()-m_iCurrentOffet) }, "%g", p ).m_Value;
-
-                // Lets determine how many character does it have before the decimal point
-                int i;
-                for( i=0; m_Memory[iFloat+i]!='.' && m_Memory[iFloat+i]; i++ );
-
-                reinterpret_cast<std::uint16_t&>(m_Memory[iFloat-2]) = m_iCurrentOffet - iFloat;
-                Field.m_FracWidth[iType] = std::max( Field.m_FracWidth[iType], static_cast<std::uint8_t>(i) );
-
-                int Width   = m_iCurrentOffet - iFloat;
-                    Width  -= i;
-                    Width  += Field.m_FracWidth[iType];
-                Field.m_TypeWidth[iType] = std::max( Field.m_TypeWidth[iType], static_cast<std::uint8_t>(Width)  );
-            }
-            break;
-        }
-    case 'F':
-        {
-            double p = bIndirect ? (*va_arg( Args, double* )) : (va_arg( Args, double ));     // get the type
+            p = bIndirect ? (*va_arg( Args, T* )):static_cast<T>(va_arg( Args, types::byte_size_uint_t< sizeof(T) < 4 ? 4:8 > ));
 
             if( m_File.m_States.m_isBinary )
             {
                 if( m_File.m_States.m_isEndianSwap ) p = endian::Convert(p);
-                ptr::MemCopy( { reinterpret_cast<double*>(&m_Memory[m_iCurrentOffet]), sizeof(double)}, std::span<double>{ &p, sizeof(double)} );
-                m_iCurrentOffet += sizeof(double);
-            }
-            else
-            {
-                auto& Field = m_Field[iField];
-
-                // We reserve the first byte so that we can add additional spaces to this floating point number
-                m_Memory[m_iCurrentOffet++] = iField;
-                m_Memory[m_iCurrentOffet++] = iType;
-                reinterpret_cast<std::uint16_t&>(m_Memory[m_iCurrentOffet])   = 1;
-                m_iCurrentOffet+=2;
-                int iFloat = m_iCurrentOffet;
-
-                // Okay lets write the floating point number
-                m_iCurrentOffet += 1+string::sprintf( { &m_Memory[m_iCurrentOffet], static_cast<int>(m_Memory.size()-m_iCurrentOffet) }, "%Lg", p ).m_Value;
-
-                // Lets determine how many character does it have before the decimal point
-                int i;
-                for( i=0; m_Memory[iFloat+i]!='.' && m_Memory[iFloat+i]; i++ );
-
-                reinterpret_cast<std::uint16_t&>(m_Memory[iFloat-2])   = m_iCurrentOffet - iFloat;
-                Field.m_FracWidth[iType] = std::max( Field.m_FracWidth[iType], static_cast<std::uint8_t>(i) );
-
-                int Width   = m_iCurrentOffet - iFloat;
-                    Width  -= i;
-                    Width  += Field.m_FracWidth[iType];
-                Field.m_TypeWidth[iType] = std::max( Field.m_TypeWidth[iType], static_cast<std::uint8_t>(Width)  );
-            }
-            break;
-        }
-    case 'c': Intergers( std::int8_t(0),   "%d"  ); break;
-    case 'C': Intergers( std::int16_t(0),  "%d"  ); break;
-    case 'd': Intergers( std::int32_t(0),  "%d"  ); break;
-    case 'D': Intergers( std::int64_t(0),  "%ld" ); break;
-    case 'G': Intergers( std::uint64_t(0), "%LX" ); break;
-    case 'g': Intergers( std::uint32_t(0), "%X"  ); break;
-    case 'H': Intergers( std::uint16_t(0), "%X"  ); break;
-    case 'h': Intergers( std::uint8_t(0),  "%X"  ); break;
-
-        /*
-    case 'd':
-        {
-            int p = bIndirect ? *(va_arg( Args, int* )) : (va_arg( Args, int ));       // get the type
-            if( m_File.m_States.m_isBinary )
-            {
-                if( m_File.m_States.m_isEndianSwap ) p = endian::Convert(p);
-                ptr::MemCopy( { reinterpret_cast<int*>(&m_Memory[m_iCurrentOffet]), sizeof(int) }, std::span<int>{ &p, sizeof(int) } );
-                m_iCurrentOffet += sizeof(int);
+                ptr::MemCopy( { reinterpret_cast<T*>(&m_Memory[m_iCurrentOffet]), sizeof(T) }, std::span<T>{ &p, sizeof(T) } );
+                m_iCurrentOffet += sizeof(T);
             }
             else
             {
@@ -1472,23 +1356,23 @@ void xcore::textfile::stream::WriteComponent( int iField, int iType, int c, va_l
                 auto iInt = m_iCurrentOffet;
 
                 // Okay lets write the floating point number
-                m_iCurrentOffet += 1 + string::sprintf( { &m_Memory[m_iCurrentOffet], static_cast<int>(m_Memory.size()-m_iCurrentOffet) }, "%d", p ).m_Value;
+                m_iCurrentOffet += 1 + string::sprintf( { &m_Memory[m_iCurrentOffet], static_cast<int>(m_Memory.size()-m_iCurrentOffet) }, pFmt, p ).m_Value;
 
                 // Set the width for this type
                 reinterpret_cast<std::uint16_t&>(m_Memory[iInt-2])    = m_iCurrentOffet - iInt;
                 Field.m_TypeWidth[iType] = std::max( Field.m_TypeWidth[iType], static_cast<std::uint8_t>(m_iCurrentOffet - iInt) );
             }
-            break;
         }
-    case 'c':
+        else
         {
-            std::uint8_t p = bIndirect?(std::uint8_t)*(va_arg( Args, unsigned int* )) : (std::uint8_t)(va_arg( Args, unsigned int ));       // get the type
-            
+            auto p = bIndirect?(*va_arg( Args, T* )):static_cast<T>(va_arg( Args, double ));     // get the type
+        
             if( m_File.m_States.m_isBinary )
             {
-                if( m_File.m_States.m_isEndianSwap ) p = endian::Convert(p);
-                ptr::MemCopy( { reinterpret_cast<std::uint8_t*>(&m_Memory[m_iCurrentOffet]), sizeof(std::uint8_t) }, std::span<std::uint8_t>{ &p, sizeof(std::uint8_t) } );
-                m_iCurrentOffet += sizeof(std::uint8_t);
+                auto n = static_cast<T>(p);
+                if( m_File.m_States.m_isEndianSwap ) n = xcore::endian::Convert(n);
+                ptr::MemCopy( { reinterpret_cast<T*>(&m_Memory[m_iCurrentOffet]),sizeof(T)}, std::span<T>{&n, sizeof(T)} );
+                m_iCurrentOffet += sizeof(T);
             }
             else
             {
@@ -1499,107 +1383,40 @@ void xcore::textfile::stream::WriteComponent( int iField, int iType, int c, va_l
                 m_Memory[m_iCurrentOffet++] = iType;
                 reinterpret_cast<std::uint16_t&>(m_Memory[m_iCurrentOffet])   = 1;
                 m_iCurrentOffet+=2;
-                auto iInt = m_iCurrentOffet;
+                const auto iFloat = m_iCurrentOffet;
 
                 // Okay lets write the floating point number
-                m_iCurrentOffet += 1+string::sprintf( { &m_Memory[m_iCurrentOffet], static_cast<int>(m_Memory.size()-m_iCurrentOffet) }, "%d", p ).m_Value;
+                m_iCurrentOffet += 1+string::sprintf( { &m_Memory[m_iCurrentOffet], static_cast<int>(m_Memory.size()-m_iCurrentOffet) }, pFmt, p ).m_Value;
 
-                // Set the width for this type
-                reinterpret_cast<std::uint16_t&>(m_Memory[iInt-2])    = m_iCurrentOffet - iInt;
-                Field.m_TypeWidth[iType] = std::max( Field.m_TypeWidth[iType], static_cast<std::uint8_t>(m_iCurrentOffet - iInt) );
+                reinterpret_cast<std::uint16_t&>(m_Memory[iFloat-2]) = m_iCurrentOffet - iFloat;
+
+                // Lets determine how many character does it have before the decimal point
+                int i;
+                for( i=0; m_Memory[iFloat+i]!='.' && m_Memory[iFloat+i]; i++ );
+
+                Field.m_FracWidth[iType] = std::max( Field.m_FracWidth[iType], static_cast<std::uint8_t>(i) );
+
+                const int Width   = m_iCurrentOffet - iFloat
+                                    - i                              // We get the floating point part
+                                    + Field.m_FracWidth[iType];      // We add the worse case integral part
+
+                Field.m_TypeWidth[iType] = std::max( Field.m_TypeWidth[iType], static_cast<std::uint8_t>(Width)  );
             }
-
-            break;
         }
-    case 'C':
-        {
-            std::uint16_t p = bIndirect?(std::uint16_t)*(va_arg( Args, unsigned int* )):(std::uint16_t)(va_arg( Args, unsigned int ));       // get the type
-            if( m_File.m_States.m_isBinary )
-            {
-                if( m_File.m_States.m_isEndianSwap ) p = endian::Convert(p);
-                ptr::MemCopy( { reinterpret_cast<std::uint16_t*>( &m_Memory[m_iCurrentOffet] ), sizeof(std::uint16_t) }, std::span<std::uint16_t>{ &p, sizeof(std::uint16_t) });
-                m_iCurrentOffet += sizeof(std::uint16_t);
-            }
-            else
-            {
-                auto& Field = m_Field[iField];
+    };
 
-                // We reserve the first byte so that we can add additional spaces to this floating point number
-                m_Memory[m_iCurrentOffet++] = iField;
-                m_Memory[m_iCurrentOffet++] = iType;
-                reinterpret_cast<std::uint16_t&>(m_Memory[m_iCurrentOffet])   = 1;
-                m_iCurrentOffet+=2;
-                auto iInt = m_iCurrentOffet;
-
-                // Okay lets write the floating point number
-                m_iCurrentOffet += 1+x_sprintf( { &m_Memory[m_iCurrentOffet], m_Memory.size()-m_iCurrentOffet }, "%d", p );
-
-                // Set the width for this type
-                *(u16*)&m_Memory[iInt-2]   = m_iCurrentOffet - iInt;
-                Field.m_TypeWidth[iType] = x_Max( Field.m_TypeWidth[iType], (u8)(m_iCurrentOffet - iInt) );
-            }
-            break;
-        }
-    case 'h':
-        {
-            u32 p    = bIndirect?*(va_arg( Args, u32* )):(va_arg( Args, u32 ));       // get the type
-            if(m_States.m_bBinary )
-            {
-                if( m_States.m_bEndianSwap ) p = x_EndianSwap(p);
-                x_memcpy( &m_Memory[m_iCurrentOffet], &p, sizeof(u32));
-                m_iCurrentOffet += sizeof(u32);
-            }
-            else
-            {
-                field& Field = m_Field[iField];
-
-                // We reserve the first byte so that we can add additional spaces to this floating point number
-                m_Memory[m_iCurrentOffet++] = iField;
-                m_Memory[m_iCurrentOffet++] = iType;
-                *(u16*)&m_Memory[m_iCurrentOffet] = 1;
-                m_iCurrentOffet+=2;
-                s32 iInt = m_iCurrentOffet;
-
-                // Okay lets write the floating point number
-                m_iCurrentOffet += 1+x_sprintf( { &m_Memory[m_iCurrentOffet], m_Memory.getCount()-m_iCurrentOffet }, "%X", p );
-
-                // Set the width for this type
-                *(u16*)&m_Memory[iInt-2]   = m_iCurrentOffet - iInt;
-                Field.m_TypeWidth[iType] = x_Max( Field.m_TypeWidth[iType], (u8)(m_iCurrentOffet - iInt) );
-            }
-            break;
-        }
-    case 'D':
-    case 'g':
-        {
-            u64 p    = bIndirect?*(va_arg( Args, u64* )):(va_arg( Args, u64 ));       // get the type
-            if(m_States.m_bBinary )
-            {
-                if( m_States.m_bEndianSwap ) p = x_EndianSwap(p);
-                x_memcpy( &m_Memory[m_iCurrentOffet], &p, sizeof(u64));
-                m_iCurrentOffet += sizeof(u64);
-            }
-            else
-            {
-                field& Field = m_Field[iField];
-
-                // We reserve the first byte so that we can add additional spaces to this floating point number
-                m_Memory[m_iCurrentOffet++] = iField;
-                m_Memory[m_iCurrentOffet++] = iType;
-                *(u16*)&m_Memory[m_iCurrentOffet] = 1;
-                m_iCurrentOffet+=2;
-                s32 iInt = m_iCurrentOffet;
-
-                // Okay lets write the floating point number
-                m_iCurrentOffet += 1+x_sprintf( { &m_Memory[m_iCurrentOffet], m_Memory.getCount()-m_iCurrentOffet }, "%X:%X", (u32)(p>>32), (u32)p );
-
-                // Set the width for this type
-                *(u16*)&m_Memory[iInt-2]   = m_iCurrentOffet - iInt;
-                Field.m_TypeWidth[iType] = x_Max( Field.m_TypeWidth[iType], (u8)(m_iCurrentOffet - iInt) );
-            }
-            break;
-        }
-            */
+    switch( c )
+    {
+    case 'f': Numerics( float(0),          "%g"  ); break;
+    case 'F': Numerics( double(0),         "%Lg" ); break;
+    case 'c': Numerics( std::int8_t(0),    "%d"  ); break;
+    case 'C': Numerics( std::int16_t(0),   "%d"  ); break;
+    case 'd': Numerics( std::int32_t(0),   "%d"  ); break;
+    case 'D': Numerics( std::int64_t(0),   "%ld" ); break;
+    case 'G': Numerics( std::uint64_t(0),  "%LX" ); break;
+    case 'g': Numerics( std::uint32_t(0),  "%X"  ); break;
+    case 'H': Numerics( std::uint16_t(0),  "%X"  ); break;
+    case 'h': Numerics( std::uint8_t(0),   "%X"  ); break;
     case 'E': 
     case 'S': xassert( false ); break;
     case 'e':
@@ -2025,7 +1842,7 @@ xcore::err xcore::textfile::stream::WriteLine( void ) noexcept
         //
         // Now lets center all sub columns into the main one 
         //
-        auto ExtraSpace = Field.m_Width - TypeWitdh;
+        const auto ExtraSpace = Field.m_Width - TypeWitdh;
 
         Field.m_TypesPostWidth  = ExtraSpace / 2;
         Field.m_TypesPreWidth   = Field.m_Width - ( Field.m_TypesPostWidth + TypeWitdh );

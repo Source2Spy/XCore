@@ -223,6 +223,19 @@ namespace xcore::textfile
         static              bool                        isValidType         ( int Type )                                                                                noexcept;
                             bool                        isReading           ( void )    const                                                                           noexcept;
 
+        inline              xcore::err                  Open                ( bool isRead, std::string_view View, xcore::textfile::file_type FileType )                 noexcept
+                            {
+                                xcore::err Error;
+                                if( isRead )
+                                {
+                                    if( openForReading( View ).isError(Error) )        return Error;
+                                }
+                                else
+                                {
+                                    if( openForWriting( View, FileType ).isError(Error) ) return Error;
+                                }
+                                return Error;
+                            }
                             template< std::size_t N, typename... T_ARGS >
         inline              xcore::err_optional<int> Field          ( const char(&pFieldName)[N], T_ARGS&... Args )                                                     noexcept
                             {
