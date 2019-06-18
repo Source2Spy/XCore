@@ -18,15 +18,15 @@ namespace xcore::textfile::examples
         auto                                            Floats32_A              = Floats32_ABack;
         auto                                            Floats32_B              = Floats32_BBack;
         auto                                            Floats32_C              = Floats32_CBack;
-        std::array<string::ref<char>,3>                 String                  = { StringBack[0], StringBack[1], StringBack[2] };
+        std::array<string::ref<char>,3>                 String                  = { StringBack[0].getView(), StringBack[1].getView(), StringBack[2].getView() };
         auto                                            Int32                   = Int32Back     ;
         auto                                            Floats64_A              = Floats64_ABack;
         auto                                            Floats64_B              = Floats64_BBack;
         auto                                            Floats64_C              = Floats64_CBack;
         auto                                            Int64                   = Int64Back     ;
 
-        xcore::textfile::stream             TextFile;
-        xcore::err                          Error;
+        xcore::textfile::stream                         TextFile;
+        xcore::err                                      Error;
 
         //
         // Open File

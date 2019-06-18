@@ -39,10 +39,7 @@ namespace xcore::string
                                     operator       char_t*          ( void )                            noexcept { xassume(parent::empty()==false); return parent::data(); }
         constexpr                   operator       std::string_view ( void )                            noexcept { xassume(parent::empty()==false); return { parent::data(), std::strlen(parent::data()) }; }
         constexpr                   operator const std::string_view ( void )                    const   noexcept { xassume(parent::empty()==false); return { parent::data(), std::strlen(parent::data()) }; }
-        template< typename T >
-        constexpr   bool            operator ==                     ( const T& X )              const   noexcept { for( int i=0; X[i] == (*this)[i]; ++i ) if( X[i]==0 ) return true; return false; }
-        template< typename T >
-        constexpr   bool            operator !=                     ( const T& X )              const   noexcept { return !((*this) == X); }
+        constexpr   bool            empty                           ( void )                    const   noexcept { return parent::data() == nullptr || parent::data()[0] == 0; }
     };
 
     //------------------------------------------------------------------------------------
@@ -73,6 +70,7 @@ namespace xcore::string
         constexpr   auto            get                                 ( void )                    const   noexcept { return m_pValue; }
         constexpr   auto            getView                             ( void )                    const   noexcept { return static_cast<view<const char_t>>(*this); }
         constexpr   auto            getViewFrom                         ( int Start )               const   noexcept { return view<const char_t>{ &(*this)[Start], m_Size.m_Value - Start }; }
+        constexpr   bool            empty                               ( void )                    const   noexcept { return m_pValue == nullptr || m_pValue[0] == 0; }
     };
 
     //------------------------------------------------------------------------------------
@@ -109,6 +107,7 @@ namespace xcore::string
         constexpr           auto    getView                                     ( void )                            const   noexcept { return static_cast<const view<char>>(*this); }
         inline              auto    getViewFrom                                 ( int Start )                               noexcept { return string::view{ &(*this)[Start], static_cast<int>(size()-Start) }; }
         constexpr           auto    getViewFrom                                 ( int Start )                       const   noexcept { return string::view{ &(*this)[Start], static_cast<int>(size()-Start) }; }
+        constexpr           bool    empty                                       ( void )                            const   noexcept { return parent::data()[0] == 0; }
     };
 
     //------------------------------------------------------------------------------------
@@ -423,11 +422,6 @@ namespace xcore::string
             return p;
         }
 
-        constexpr bool operator == ( const ref& Str ) const noexcept
-        {
-            return std::strcmp( *this, Str ) == 0;
-        }
-
         constexpr auto getView( void )          const   noexcept { return static_cast<const view<char>>(*this); }
         constexpr auto getView( void )                  noexcept { return static_cast<view<char>>(*this); }
         constexpr auto getViewFrom( int Start ) const   noexcept { return string::view{ &(*this)[Start], static_cast<int>(size()-Start) }; }
@@ -441,6 +435,78 @@ namespace xcore::string
     // Confirm we are getting the size that we expect
     static_assert( sizeof(ref<char>)  == 64 );
     static_assert( sizeof(ref<short>) == 64 );
+
+    //------------------------------------------------------------------------------
+    // Simple == functions
+    //------------------------------------------------------------------------------
+    template< typename T, int N2 >          constexpr bool operator == ( const ref<T>& Str1,        const view<T,N2> Str2 )     noexcept { return std::strcmp( Str1, Str2 ) == 0; }
+    template< typename T, int N >           constexpr bool operator == ( const ref<T>& Str1,        const fixed<T,N>& Str2 )    noexcept { return std::strcmp( Str1, Str2 ) == 0; }
+    template< typename T >                  constexpr bool operator == ( const ref<T>& Str1,        const constant<T>& Str2 )   noexcept { return std::strcmp( Str1, Str2 ) == 0; }
+    template< typename T >                  constexpr bool operator == ( const ref<T>& Str1,        const ref<T>& Str2 )        noexcept { return std::strcmp( Str1, Str2 ) == 0; }
+    template< typename T >                  constexpr bool operator == ( const ref<T>& Str1,        const T* Str2 )             noexcept { return std::strcmp( Str1, Str2 ) == 0; }
+    template< typename T >                  constexpr bool operator == ( const ref<T>& Str1,        nullptr_t )                 noexcept { return Str1.empty(); }
+
+    template< typename T, int N1, int N2 >  constexpr bool operator == ( const view<T,N1> Str1,     const view<T,N2> Str2 )     noexcept { return std::strcmp( Str1, Str2 ) == 0; }
+    template< typename T, int N1, int N2 >  constexpr bool operator == ( const view<T,N1> Str1,     const fixed<T,N2>& Str2 )   noexcept { return std::strcmp( Str1, Str2 ) == 0; }
+    template< typename T, int N1 >          constexpr bool operator == ( const view<T,N1> Str1,     const constant<T>& Str2 )   noexcept { return std::strcmp( Str1, Str2 ) == 0; }
+    template< typename T, int N1 >          constexpr bool operator == ( const view<T,N1> Str1,     const ref<T>& Str2 )        noexcept { return std::strcmp( Str1, Str2 ) == 0; }
+    template< typename T, int N1 >          constexpr bool operator == ( const view<T,N1> Str1,     const T* Str2 )             noexcept { return std::strcmp( Str1, Str2 ) == 0; }
+    template< typename T, int N1 >          constexpr bool operator == ( const view<T,N1> Str1,     nullptr_t )                 noexcept { return Str1.empty(); }
+
+    template< typename T, int N2 >          constexpr bool operator == ( const constant<T>& Str1,   const view<T,N2> Str2 )     noexcept { return std::strcmp( Str1, Str2 ) == 0; }
+    template< typename T, int N >           constexpr bool operator == ( const constant<T>& Str1,   const fixed<T,N>& Str2 )    noexcept { return std::strcmp( Str1, Str2 ) == 0; }
+    template< typename T >                  constexpr bool operator == ( const constant<T>& Str1,   const constant<T>& Str2 )   noexcept { return std::strcmp( Str1, Str2 ) == 0; }
+    template< typename T >                  constexpr bool operator == ( const constant<T>& Str1,   const ref<T>& Str2 )        noexcept { return std::strcmp( Str1, Str2 ) == 0; }
+    template< typename T >                  constexpr bool operator == ( const constant<T>& Str1,   const T* Str2 )             noexcept { return std::strcmp( Str1, Str2 ) == 0; }
+    template< typename T >                  constexpr bool operator == ( const constant<T>& Str1,   nullptr_t )                 noexcept { return Str1.empty(); }
+
+    template< typename T, int N1, int N2 >  constexpr bool operator == ( const fixed<T,N1>& Str1,   const view<T,N2> Str2 )     noexcept { return std::strcmp( Str1, Str2 ) == 0; }
+    template< typename T, int N1, int N2 >  constexpr bool operator == ( const fixed<T,N1>& Str1,   const fixed<T,N2>& Str2 )   noexcept { return std::strcmp( Str1, Str2 ) == 0; }
+    template< typename T, int N1 >          constexpr bool operator == ( const fixed<T,N1>& Str1,   const constant<T>& Str2 )   noexcept { return std::strcmp( Str1, Str2 ) == 0; }
+    template< typename T, int N1 >          constexpr bool operator == ( const fixed<T,N1>& Str1,   const ref<T>& Str2 )        noexcept { return std::strcmp( Str1, Str2 ) == 0; }
+    template< typename T, int N1 >          constexpr bool operator == ( const fixed<T,N1>& Str1,   const T* Str2 )             noexcept { return std::strcmp( Str1, Str2 ) == 0; }
+    template< typename T, int N1 >          constexpr bool operator == ( const fixed<T,N1>& Str1,   nullptr_t )                 noexcept { return Str1.empty(); }
+
+    template< typename T, int N2 >          constexpr bool operator == ( const T* Str1,             const view<T,N2> Str2 )     noexcept { return std::strcmp( Str1, Str2 ) == 0; }
+    template< typename T, int N >           constexpr bool operator == ( const T* Str1,             const fixed<T,N>& Str2 )    noexcept { return std::strcmp( Str1, Str2 ) == 0; }
+    template< typename T >                  constexpr bool operator == ( const T* Str1,             const constant<T>& Str2 )   noexcept { return std::strcmp( Str1, Str2 ) == 0; }
+    template< typename T >                  constexpr bool operator == ( const T* Str1,             const ref<T>& Str2 )        noexcept { return std::strcmp( Str1, Str2 ) == 0; }
+
+    //------------------------------------------------------------------------------
+    // Simple != functions
+    //------------------------------------------------------------------------------
+    template< typename T, int N2 >          constexpr bool operator != ( const ref<T>& Str1,        const view<T,N2> Str2 )     noexcept { return std::strcmp( Str1, Str2 ) != 0; }
+    template< typename T, int N >           constexpr bool operator != ( const ref<T>& Str1,        const fixed<T,N>& Str2 )    noexcept { return std::strcmp( Str1, Str2 ) != 0; }
+    template< typename T >                  constexpr bool operator != ( const ref<T>& Str1,        const constant<T>& Str2 )   noexcept { return std::strcmp( Str1, Str2 ) != 0; }
+    template< typename T >                  constexpr bool operator != ( const ref<T>& Str1,        const ref<T>& Str2 )        noexcept { return std::strcmp( Str1, Str2 ) != 0; }
+    template< typename T >                  constexpr bool operator != ( const ref<T>& Str1,        const T* Str2 )             noexcept { return std::strcmp( Str1, Str2 ) != 0; }
+    template< typename T >                  constexpr bool operator != ( const ref<T>& Str1,        nullptr_t )                 noexcept { return !Str1.empty(); }
+                                                                                                                                                                            
+    template< typename T, int N1, int N2 >  constexpr bool operator != ( const view<T,N1> Str1,     const view<T,N2> Str2 )     noexcept { return std::strcmp( Str1, Str2 ) != 0; }
+    template< typename T, int N1, int N2 >  constexpr bool operator != ( const view<T,N1> Str1,     const fixed<T,N2>& Str2 )   noexcept { return std::strcmp( Str1, Str2 ) != 0; }
+    template< typename T, int N1 >          constexpr bool operator != ( const view<T,N1> Str1,     const constant<T>& Str2 )   noexcept { return std::strcmp( Str1, Str2 ) != 0; }
+    template< typename T, int N1 >          constexpr bool operator != ( const view<T,N1> Str1,     const ref<T>& Str2 )        noexcept { return std::strcmp( Str1, Str2 ) != 0; }
+    template< typename T, int N1 >          constexpr bool operator != ( const view<T,N1> Str1,     const T* Str2 )             noexcept { return std::strcmp( Str1, Str2 ) != 0; }
+    template< typename T, int N1 >          constexpr bool operator != ( const view<T,N1> Str1,     nullptr_t )                 noexcept { return !Str1.empty(); }
+                                                                                                                                                                            
+    template< typename T, int N2 >          constexpr bool operator != ( const constant<T>& Str1,   const view<T,N2> Str2 )     noexcept { return std::strcmp( Str1, Str2 ) != 0; }
+    template< typename T, int N >           constexpr bool operator != ( const constant<T>& Str1,   const fixed<T,N>& Str2 )    noexcept { return std::strcmp( Str1, Str2 ) != 0; }
+    template< typename T >                  constexpr bool operator != ( const constant<T>& Str1,   const constant<T>& Str2 )   noexcept { return std::strcmp( Str1, Str2 ) != 0; }
+    template< typename T >                  constexpr bool operator != ( const constant<T>& Str1,   const ref<T>& Str2 )        noexcept { return std::strcmp( Str1, Str2 ) != 0; }
+    template< typename T >                  constexpr bool operator != ( const constant<T>& Str1,   const T* Str2 )             noexcept { return std::strcmp( Str1, Str2 ) != 0; }
+    template< typename T >                  constexpr bool operator != ( const constant<T>& Str1,   nullptr_t )                 noexcept { return !Str1.empty(); }
+                                                                                                                                                                            
+    template< typename T, int N1, int N2 >  constexpr bool operator != ( const fixed<T,N1>& Str1,   const view<T,N2> Str2 )     noexcept { return std::strcmp( Str1, Str2 ) != 0; }
+    template< typename T, int N1, int N2 >  constexpr bool operator != ( const fixed<T,N1>& Str1,   const fixed<T,N2>& Str2 )   noexcept { return std::strcmp( Str1, Str2 ) != 0; }
+    template< typename T, int N1 >          constexpr bool operator != ( const fixed<T,N1>& Str1,   const constant<T>& Str2 )   noexcept { return std::strcmp( Str1, Str2 ) != 0; }
+    template< typename T, int N1 >          constexpr bool operator != ( const fixed<T,N1>& Str1,   const ref<T>& Str2 )        noexcept { return std::strcmp( Str1, Str2 ) != 0; }
+    template< typename T, int N1 >          constexpr bool operator != ( const fixed<T,N1>& Str1,   const T* Str2 )             noexcept { return std::strcmp( Str1, Str2 ) != 0; }
+    template< typename T, int N1 >          constexpr bool operator != ( const fixed<T,N1>& Str1,   nullptr_t )                 noexcept { return !Str1.empty(); }
+                                                                                                                                                                            
+    template< typename T, int N2 >          constexpr bool operator != ( const T* Str1,             const view<T,N2> Str2 )     noexcept { return std::strcmp( Str1, Str2 ) != 0; }
+    template< typename T, int N >           constexpr bool operator != ( const T* Str1,             const fixed<T,N>& Str2 )    noexcept { return std::strcmp( Str1, Str2 ) != 0; }
+    template< typename T >                  constexpr bool operator != ( const T* Str1,             const constant<T>& Str2 )   noexcept { return std::strcmp( Str1, Str2 ) != 0; }
+    template< typename T >                  constexpr bool operator != ( const T* Str1,             const ref<T>& Str2 )        noexcept { return std::strcmp( Str1, Str2 ) != 0; }
 
     //------------------------------------------------------------------------------
     // is_obj_v - Helper to determine if it is a string object or a built in string

@@ -133,24 +133,6 @@ namespace xcore::textfile
             using type = string::view<char,N>&;
         };
 
-        template< typename T >
-        struct type_filter2
-        {
-            using type = T&;
-        };
-
-        template<>
-        struct type_filter2<typename const string::ref<char>>
-        {
-            using type = const string::view<char>;
-        };
-
-        template<std::size_t N>
-        struct type_filter2<typename const string::view<char,N>>
-        {
-            using type = const string::view<char,N>&;
-        };
-
         //-----------------------------------------------------------------------------------------------------
         template< typename T, typename... T_ARGS >
         constexpr void BuildTypesRecursive( char* p ) noexcept
@@ -268,10 +250,7 @@ namespace xcore::textfile
                                 }
                                 else 
                                 {
-                                    WriteFieldC( pFieldName, Types.data(), static_cast<typename details::type_filter2<T_ARGS>::type>
-                                    ( 
-                                        reinterpret_cast<const decltype(Args)&>(Args)
-                                    )...);
+                                    WriteFieldC( pFieldName, Types.data(), static_cast<typename details::type_filter<T_ARGS>::type>( Args )... );
                                 }
                                 return {0};
                             }
