@@ -178,9 +178,9 @@ namespace xcore::textfile::examples
             xassert(false);
         }
 
-      //  if( Test01( TextFileName, true, xcore::textfile::file_type::TEXT ).isError(Error) )
+        if( Test01( TextFileName, true, xcore::textfile::file_type::TEXT ).isError(Error) )
         {
-      //      xassert(false);
+            xassert(false);
         }
     
 /*

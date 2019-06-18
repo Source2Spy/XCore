@@ -169,6 +169,7 @@ namespace xcore::string
     //------------------------------------------------------------------------------
     //------------------------------------------------------------------------------
 
+    /*
     inline
     units<char> sprintf ( view<char> Dest, const char* pFmt, ... ) noexcept
     {
@@ -177,6 +178,17 @@ namespace xcore::string
         auto n = vsnprintf ( Dest.data(), Dest.size(), pFmt, Args );
         va_end(Args);
         return units<char>{n};
+    }
+    */
+    namespace details
+    {
+        int vsprintf( xcore::string::view<char> inBuffer, const char* pFormatStr, const xcore::arglist::view inArgList ) noexcept;
+    }
+
+    template< typename... T_ARGS > inline
+    units<char> sprintf ( view<char> Dest, const char* pFmt, T_ARGS... Args ) noexcept
+    {
+        return units<char>{ details::vsprintf( Dest, pFmt, xcore::arglist::out{ std::forward<T_ARGS>(Args)...} ) };
     }
 
     //------------------------------------------------------------------------------

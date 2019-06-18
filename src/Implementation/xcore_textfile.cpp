@@ -1405,6 +1405,9 @@ void xcore::textfile::stream::WriteComponent( int iField, int iType, int c, va_l
         }
     };
 
+    //
+    // Write data
+    //
     switch( c )
     {
     case 'f': Numerics( float(0),          "%g"  ); break;

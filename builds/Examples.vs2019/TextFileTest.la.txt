@@ -1,0 +1,7 @@
+
+[ FirstRecord : 3 ]
+{ Description:s   Position:fff                Number:d }
+//--------------  --------------------------  --------  
+  "String Test"   -50       50        -5         12
+  "Another test"    2.1233  -2.1233    0.1233     21
+  "Yet another"     1.31232 -1.31232 131.232     44
