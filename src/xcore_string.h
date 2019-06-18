@@ -60,7 +60,6 @@ namespace xcore::string
         constexpr                   constant                            ( const char_t(&Str)[N] )           noexcept : m_pValue{Str}, m_Size{N} {}
         constexpr                   constant                            ( const constant& )                 noexcept = default;
         constexpr                   constant                            ( void )                            noexcept = default;
-        constexpr   bool            operator ==                         ( std::nullptr_t )          const   noexcept { return m_pValue == nullptr; }
         constexpr   const char_t&   operator[]                          ( units I )                 const   noexcept { xassume( m_pValue ); xassume( I < m_Size ); return m_pValue[I.m_Value]; }
                     char_t&         operator[]                          ( units I )                         noexcept { xassume( m_pValue ); xassume( I < m_Size ); return m_pValue[I.m_Value]; }
                                     operator const view<const char_t>   ( void )                    const   noexcept { xassume( m_pValue ); return { m_pValue, m_Size.m_Value }; }
@@ -127,9 +126,6 @@ namespace xcore::string
             constexpr int size( void ) const noexcept { return m_Size.m_Value; }
             constexpr unique( unique&& U ) noexcept : parent{ std::move(U) }, m_Size{U.m_Size}{}
             constexpr unique( T_CHAR* p, int Size ) noexcept : parent{ p }, m_Size{Size}{}
-
-          //  constexpr                   operator const char_t*      ( void )                    const   noexcept { xassume(parent::empty()==false); return parent::data(); }
-          //                              operator       char_t*      ( void )                            noexcept { xassume(parent::empty()==false); return parent::data(); }
         };
     }
 
