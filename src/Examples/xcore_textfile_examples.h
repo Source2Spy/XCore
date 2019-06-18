@@ -5,25 +5,25 @@ namespace xcore::textfile::examples
     inline
     xcore::err Test01( xcore::string::view<char> FileName, bool isRead, xcore::textfile::file_type FileType ) noexcept
     {
-        std::array                          Floats32_A        = { -50.0f,  2.1233f,  1.312323123f };
-        std::array                          Floats32_B        = {  50.0f, -2.1233f, -1.312323123f };
-        std::array                          Floats32_C        = {  -5.0f,  0.1233f,  131.2323123f };
-        std::array<string::ref<char>,3>     String            = { string::fixed<char,256>("String Test"), string::fixed<char,256>("Another test"), string::fixed<char,256>("Yet another") };
-        std::array                          Int32             = { 12, 21, 44 };
-        std::array                          Floats64_A        = { -32.323212312312323,  2.2312323233,  1.312323123 };
-        std::array                          Floats64_B        = { -3.323212312312323,   0.2312323233,  0.312323123 };
-        std::array                          Floats64_C        = { -2.323212312312323,  -1.2312323233, -0.312323123 };
-        std::array                          Int64             = { 13452LL, 321LL, 1434LL };
+        constexpr std::array                            Floats32_ABack          = { -50.0f,  2.1233f,  1.312323123f };
+        constexpr std::array                            Floats32_BBack          = {  50.0f, -2.1233f, -1.312323123f };
+        constexpr std::array                            Floats32_CBack          = {  -5.0f,  0.1233f,  131.2323123f };
+        constexpr std::array<string::constant<char>,3>  StringBack              = { "String Test", "Another test", "Yet another" };
+        constexpr std::array                            Int32Back               = { 12, 21, 44 };
+        constexpr std::array                            Floats64_ABack          = { -32.323212312312323,  2.2312323233,  1.312323123 };
+        constexpr std::array                            Floats64_BBack          = { -3.323212312312323,   0.2312323233,  0.312323123 };
+        constexpr std::array                            Floats64_CBack          = { -2.323212312312323,  -1.2312323233, -0.312323123 };
+        constexpr std::array                            Int64Back               = { 13452LL, 321LL, 1434LL };
 
-        const auto                          Floats32_ABack    = Floats32_A;
-        const auto                          Floats32_BBack    = Floats32_B;
-        const auto                          Floats32_CBack    = Floats32_C;
-        const auto                          StringBack        = String;
-        const auto                          Int32Back         = Int32;
-        const auto                          Floats64_ABack    = Floats64_A;
-        const auto                          Floats64_BBack    = Floats64_B;
-        const auto                          Floats64_CBack    = Floats64_C;
-        const auto                          Int64Back         = Int64;
+        auto                                            Floats32_A              = Floats32_ABack;
+        auto                                            Floats32_B              = Floats32_BBack;
+        auto                                            Floats32_C              = Floats32_CBack;
+        std::array<string::ref<char>,3>                 String                  = { StringBack[0], StringBack[1], StringBack[2] };
+        auto                                            Int32                   = Int32Back     ;
+        auto                                            Floats64_A              = Floats64_ABack;
+        auto                                            Floats64_B              = Floats64_BBack;
+        auto                                            Floats64_C              = Floats64_CBack;
+        auto                                            Int64                   = Int64Back     ;
 
         xcore::textfile::stream             TextFile;
         xcore::err                          Error;
@@ -58,11 +58,22 @@ namespace xcore::textfile::examples
         //
         if( isRead ) for( int i=0; i<3; ++i )
         {
-            xassert( StringBack[i]        == String[i] );
-            xassert( Floats32_ABack[i]    == Floats32_A[i] );
-            xassert( Floats32_BBack[i]    == Floats32_B[i] );
-            xassert( Floats32_CBack[i]    == Floats32_C[i] );
-            xassert( Int32Back[i]         == Int32[i] );
+            auto Convert = []( auto V, const char* Fmt ) -> string::view<char>
+            {
+                static string::fixed<char, 256> Buffer;
+                string::sprintf( Buffer, Fmt, V );
+                return Buffer;
+            };
+
+            float a = static_cast<float>(std::atof(Convert(Floats32_ABack[i],"%g")));
+            float b = static_cast<float>(std::atof(Convert(Floats32_BBack[i],"%g")));
+            float c = static_cast<float>(std::atof(Convert(Floats32_CBack[i],"%g")));
+
+            xassert( StringBack[i]  == String[i] );
+            xassert( a              == Floats32_A[i] );
+            xassert( b              == Floats32_B[i] );
+            xassert( c              == Floats32_C[i] );
+            xassert( Int32Back[i]   == Int32[i] );
         }
 
         return Error;
