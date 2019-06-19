@@ -311,7 +311,8 @@ bool xcore::textfile::stream::isValidType( int Type ) noexcept
         case 'd': case 'D':
         case 'c': case 'C':
         case 's': case 'e':
-        case 'g': case 'h':
+        case 'g': case 'G':
+        case 'h': case 'H':
         return true;
     }
 
@@ -1718,9 +1719,8 @@ void xcore::textfile::stream::BuildTypeInformation( const char* pFieldName ) noe
 
 xcore::err xcore::textfile::stream::WriteLine( void ) noexcept
 {
-    int j;
-
-    xcore::err Error;
+    int         j;
+    xcore::err  Error;
 
     xassert( m_File.m_States.m_isReading == false );
 
@@ -2349,11 +2349,23 @@ xcore::err xcore::textfile::stream::ReadComponent( std::uint32_t& iStartOffset, 
             }
             else if constexpr( std::is_integral_v<t> )
             {
-                while( (c>='0'&&c<='9')||(c=='-')||(c=='+') )
+                if( std::is_unsigned_v<t> )
                 {
-                    Buffer[iBuffer++]=c;
-                    if( m_File.getC(c).isError( Error ) )
-                        return Error;
+                    while( (c>='0'&&c<='9')||(c=='-')||(c=='+')||(c>='A'&&c<='F') )
+                    {
+                        Buffer[iBuffer++]=c;
+                        if( m_File.getC(c).isError( Error ) )
+                            return Error;
+                    }
+                }
+                else
+                {
+                    while( (c>='0'&&c<='9')||(c=='-')||(c=='+') )
+                    {
+                        Buffer[iBuffer++]=c;
+                        if( m_File.getC(c).isError( Error ) )
+                            return Error;
+                    }
                 }
 
                 Buffer[iBuffer] = 0;
@@ -2361,17 +2373,17 @@ xcore::err xcore::textfile::stream::ReadComponent( std::uint32_t& iStartOffset, 
                 else    if constexpr( std::is_same_v<t,std::int16_t>    ) reinterpret_cast<t&>(m_Memory[ m_iCurrentOffet ]) = static_cast<t>(std::atoi    ( &Buffer[0] ));
                 else    if constexpr( std::is_same_v<t,std::int32_t>    ) reinterpret_cast<t&>(m_Memory[ m_iCurrentOffet ]) = static_cast<t>(std::atol    ( &Buffer[0] ));
                 else    if constexpr( std::is_same_v<t,std::int64_t>    ) reinterpret_cast<t&>(m_Memory[ m_iCurrentOffet ]) = static_cast<t>(std::atoll   ( &Buffer[0] ));
-                else    if constexpr( std::is_same_v<t,std::uint8_t>    ) reinterpret_cast<t&>(m_Memory[ m_iCurrentOffet ]) = static_cast<t>(std::strtoul ( &Buffer[0], nullptr, 10 ));
-                else    if constexpr( std::is_same_v<t,std::uint16_t>   ) reinterpret_cast<t&>(m_Memory[ m_iCurrentOffet ]) = static_cast<t>(std::strtoul ( &Buffer[0], nullptr, 10 ));
-                else    if constexpr( std::is_same_v<t,std::uint32_t>   ) reinterpret_cast<t&>(m_Memory[ m_iCurrentOffet ]) = static_cast<t>(std::strtoul ( &Buffer[0], nullptr, 10 ));
-                else    if constexpr( std::is_same_v<t,std::uint64_t>   ) reinterpret_cast<t&>(m_Memory[ m_iCurrentOffet ]) = static_cast<t>(std::strtoull( &Buffer[0], nullptr, 10 ));
+                else    if constexpr( std::is_same_v<t,std::uint8_t>    ) reinterpret_cast<t&>(m_Memory[ m_iCurrentOffet ]) = static_cast<t>(std::strtoul ( &Buffer[0], nullptr, 16 ));
+                else    if constexpr( std::is_same_v<t,std::uint16_t>   ) reinterpret_cast<t&>(m_Memory[ m_iCurrentOffet ]) = static_cast<t>(std::strtoul ( &Buffer[0], nullptr, 16 ));
+                else    if constexpr( std::is_same_v<t,std::uint32_t>   ) reinterpret_cast<t&>(m_Memory[ m_iCurrentOffet ]) = static_cast<t>(std::strtoul ( &Buffer[0], nullptr, 16 ));
+                else    if constexpr( std::is_same_v<t,std::uint64_t>   ) reinterpret_cast<t&>(m_Memory[ m_iCurrentOffet ]) = static_cast<t>(std::strtoull( &Buffer[0], nullptr, 16 ));
                 else    static_assert( always_false_v<t> );
             }
 
             // Sanity check
             xassert( c == ' ' || c == '\n' || c == 10 );
         }
-        m_iCurrentOffet += 4;
+        m_iCurrentOffet += sizeof(t);
 
         return Error;
     };

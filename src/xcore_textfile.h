@@ -248,6 +248,7 @@ namespace xcore::textfile
                                 {
                                     int         iUserRef;
                                     xcore::err  Error;
+                                    static_assert( (std::is_const_v<T_ARGS> || ... ) == false );
                                     if( ReadFieldC( iUserRef, pFieldName, Types.data(), &static_cast<typename details::type_filter<T_ARGS>::type>(Args)... ).isError(Error) ) return Error;
                                     return iUserRef;
                                 }
@@ -273,7 +274,7 @@ namespace xcore::textfile
                                         (void)xerr_failure( Error, "Unexpected record" ); 
                                         return true; 
                                     }
-                                    int Count = getRecordCount();
+                                    std::size_t Count = getRecordCount();
                                     RecordStar(Count,Error);
                                     for( std::remove_const_t<decltype(Count)> i=0; i<Count; i++ )
                                     {
@@ -290,7 +291,7 @@ namespace xcore::textfile
                                 }
                                 else 
                                 {
-                                    int Count;
+                                    std::size_t Count;
                                     RecordStar(Count,Error);
                                     if( WriteRecord( Str, Count ).isError( Error ) ) return true;
 
