@@ -391,6 +391,11 @@ xcore::err xcore::textfile::stream::openForReading( const std::filesystem::path&
     m_Field.resize( 64 );
     m_Memory.resize( 512 );
 
+    //
+    // Read the first record
+    //
+    if( ReadRecord().isError( Failure ) ) return Failure;
+
     return Failure;
 }
 
@@ -792,13 +797,6 @@ xcore::err xcore::textfile::stream::ReadRecord( void ) noexcept
     m_Field.clear();
 
     return {};
-}
-
-//------------------------------------------------------------------------------
-
-bool xcore::textfile::stream::isReading( void ) const noexcept
-{
-    return m_File.m_States.m_isReading;
 }
 
 //------------------------------------------------------------------------------

@@ -3,6 +3,9 @@
 #pragma once
 
 //-----------------------------------------------------------------------------------------------------
+//
+// Please remember that text file are lossy files due to the floats don't survive text-to-binary conversion
+//
 //     Type    Description
 //     ------  ----------------------------------------------------------------------------------------
 //      f      32 bit float
@@ -221,8 +224,8 @@ namespace xcore::textfile
         inline              const string::view<char>    getRecordName       ( void )                                                                                    noexcept { return m_Record.m_Name;  }
                             std::uint32_t               AddUserType         ( const char* pSystemTypes, const char* pUserType, crc::units<32> CRC32UserType, std::uint8_t UID )  noexcept;
         static              bool                        isValidType         ( int Type )                                                                                noexcept;
-                            bool                        isReading           ( void )    const                                                                           noexcept;
-
+        constexpr           bool                        isReading           ( void )    const                                                                           noexcept { return m_File.m_States.m_isReading; }
+        constexpr           bool                        isEOF               ( void )    const                                                                           noexcept { return m_File.m_States.m_isEOF; }
         inline              xcore::err                  Open                ( bool isRead, std::string_view View, xcore::textfile::file_type FileType )                 noexcept
                             {
                                 xcore::err Error;
@@ -265,7 +268,6 @@ namespace xcore::textfile
                             {
                                 if( m_File.m_States.m_isReading )
                                 {
-                                    if( ReadRecord().isError( Error ) ) return true;
                                     if( getRecordName() != Str )
                                     { 
                                         (void)xerr_failure( Error, "Unexpected record" ); 
@@ -278,6 +280,12 @@ namespace xcore::textfile
                                         if( ReadLine().isError(Error) ) return true;
                                         Callback(i,Error);
                                         if( Error ) return true;
+                                    }
+                                    // Read the next record
+                                    if( ReadRecord().isError( Error ) ) 
+                                    {
+                                        if( Error.getCode().getState<error_state>() == error_state::UNEXPECTED_EOF ) Error.clear();
+                                        else return true;
                                     }
                                 }
                                 else 

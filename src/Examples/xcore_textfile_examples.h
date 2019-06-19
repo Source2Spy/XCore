@@ -76,6 +76,12 @@ namespace xcore::textfile::examples
             xassert( Int32Back[i]   == Int32[i] );
         }
 
+        //
+        // When we are reading and we are done dealing with records we can finish like this
+        //
+        if( isRead && TextFile.isEOF() )
+            return {};
+
         return Error;
     }
 
