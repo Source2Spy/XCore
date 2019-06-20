@@ -2063,6 +2063,12 @@ xcore::err xcore::textfile::stream::WriteLine( void ) noexcept
                     
         case 'd':       // Right aligment
         case 'D':
+        case 'C':
+        case 'c':
+        case 'h':
+        case 'H':
+        case 'G':
+        case 'g':
             {
                 // Now lets padd the fractional part
                 if( Len < Field.m_TypeWidth[iType] )
