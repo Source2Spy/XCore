@@ -5,7 +5,7 @@ namespace xcore::textfile::examples
     // Test different types
     //------------------------------------------------------------------------------
     inline
-    xcore::err Test01( xcore::string::view<char> FileName, bool isRead, xcore::textfile::file_type FileType ) noexcept
+    xcore::err Test01( xcore::string::view<char> FileName, bool isRead, xcore::textfile::file_type FileType, xcore::textfile::flags Flags = {} ) noexcept
     {
         constexpr std::array<string::constant<char>,3>  StringBack              = { "String Test",              "Another test",         "Yet another"           };
 
@@ -43,7 +43,7 @@ namespace xcore::textfile::examples
         //
         // Open File
         //
-        if( TextFile.Open( isRead, std::string_view{ FileName }, FileType ).isError(Error) ) return Error;
+        if( TextFile.Open( isRead, std::string_view{ FileName }, FileType, Flags ).isError(Error) ) return Error;
 
         //
         // Save/Load record
@@ -84,12 +84,24 @@ namespace xcore::textfile::examples
                 return Buffer;
             };
 
-            double a = std::atof(Convert(Floats64Back[i],"%Lg"));
-            float  b = static_cast<float>(std::atof(Convert(Floats32Back[i],"%g")));
+            //
+            // If we tell the file system to write floats as floats then we will leak precision
+            // so we need to take that into account when checking.
+            //
+            if( Flags.m_isWriteFloats )
+            {
+                double a = std::atof(Convert(Floats64Back[i],"%Lg"));
+                float  b = static_cast<float>(std::atof(Convert(Floats32Back[i],"%g")));
+                xassert( a == Floats64[i] );
+                xassert( b == Floats32[i] );
+            }
+            else
+            {
+                xassert( Floats64Back[i]    == Floats64[i] );
+                xassert( Floats32Back[i]    == Floats32[i] );
+            }
 
             xassert( StringBack[i]  == String[i] );
-            xassert( a              == Floats64[i] );
-            xassert( b              == Floats32[i] );
             xassert( Int64Back[i]   == Int64[i] );
             xassert( Int32Back[i]   == Int32[i] );
             xassert( Int16Back[i]   == Int16[i] );
@@ -214,8 +226,11 @@ namespace xcore::textfile::examples
         //
         // Test write and read (Text Style)
         //
-        if(    Test01( TextFileName, false, xcore::textfile::file_type::TEXT ).isError(Error) 
-            || Test01( TextFileName, true,  xcore::textfile::file_type::TEXT ).isError(Error) )
+        if( 0
+            || Test01( TextFileName, false, xcore::textfile::file_type::TEXT ).isError(Error) 
+            || Test01( TextFileName, true,  xcore::textfile::file_type::TEXT ).isError(Error)
+            || Test01( TextFileName, false, xcore::textfile::file_type::TEXT, {xcore::textfile::flags::WRITE_FLOATS} ).isError(Error)
+            || Test01( TextFileName, true,  xcore::textfile::file_type::TEXT, {xcore::textfile::flags::WRITE_FLOATS} ).isError(Error) )
         {
             xassert(false);
         }
