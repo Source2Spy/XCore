@@ -1,27 +1,27 @@
 
 namespace xcore::textfile::examples
 {
+    constexpr static std::array<string::constant<char>,3>  StringBack              = { "String Test",              "Another test",         "Yet another"           };
+
+    constexpr static std::array                            Floats32Back            = { -50.0f,                     2.1233f,                1.312323123f            };
+    constexpr static std::array                            Floats64Back            = { -32.323212312312323,        2.2312323233,           1.312323123             };
+
+    constexpr static std::array                            Int64Back               = { std::int64_t{13452},        std::int64_t{-321},     std::int64_t{1434}      };
+    constexpr static std::array                            Int32Back               = { std::int32_t{0},            std::int32_t{21231},    std::int32_t{4344}      };
+    constexpr static std::array                            Int16Back               = { std::int16_t{-2312},        std::int16_t{211},      std::int16_t{344}       };
+    constexpr static std::array                            Int8Back                = { std::int8_t {16},           std::int8_t {21},       std::int8_t {-44}       };
+
+    constexpr static std::array                            UInt64Back              = { std::uint64_t{13452323212}, std::uint64_t{321},     std::uint64_t{1434}     };
+    constexpr static std::array                            UInt32Back              = { std::uint32_t{33313452},    std::uint32_t{222321},  std::uint32_t{111434}   };
+    constexpr static std::array                            UInt16Back              = { std::uint16_t{31352},       std::uint16_t{2221},    std::uint16_t{11434}    };
+    constexpr static std::array                            UInt8Back               = { std::uint8_t {33},          std::uint8_t {22},      std::uint8_t {44}       };
+
     //------------------------------------------------------------------------------
     // Test different types
     //------------------------------------------------------------------------------
     inline
     xcore::err Test01( xcore::string::view<char> FileName, bool isRead, xcore::textfile::file_type FileType, xcore::textfile::flags Flags = {} ) noexcept
     {
-        constexpr std::array<string::constant<char>,3>  StringBack              = { "String Test",              "Another test",         "Yet another"           };
-
-        constexpr std::array                            Floats32Back            = { -50.0f,                     2.1233f,                1.312323123f            };
-        constexpr std::array                            Floats64Back            = { -32.323212312312323,        2.2312323233,           1.312323123             };
-
-        constexpr std::array                            Int64Back               = { std::int64_t{13452},        std::int64_t{-321},     std::int64_t{1434}      };
-        constexpr std::array                            Int32Back               = { std::int32_t{0},            std::int32_t{21231},    std::int32_t{4344}      };
-        constexpr std::array                            Int16Back               = { std::int16_t{-2312},        std::int16_t{211},      std::int16_t{344}       };
-        constexpr std::array                            Int8Back                = { std::int8_t {16},           std::int8_t {21},       std::int8_t {-44}       };
-
-        constexpr std::array                            UInt64Back              = { std::uint64_t{13452323212}, std::uint64_t{321},     std::uint64_t{1434}     };
-        constexpr std::array                            UInt32Back              = { std::uint32_t{33313452},    std::uint32_t{222321},  std::uint32_t{111434}   };
-        constexpr std::array                            UInt16Back              = { std::uint16_t{31352},       std::uint16_t{2221},    std::uint16_t{11434}    };
-        constexpr std::array                            UInt8Back               = { std::uint8_t {33},          std::uint8_t {22},      std::uint8_t {44}       };
-
         std::array<string::ref<char>,3>                 String                  = { StringBack[0].getView(),    StringBack[1].getView(), StringBack[2].getView() };
 
         auto                                            Floats32                = Floats32Back;
@@ -46,7 +46,7 @@ namespace xcore::textfile::examples
         if( TextFile.Open( isRead, std::string_view{ FileName }, FileType, Flags ).isError(Error) ) return Error;
 
         //
-        // Save/Load record
+        // Save/Load a record
         //
         if( TextFile.Record( Error, "TestTypes"
             ,   [&]( std::size_t& C, xcore::err& Error )
@@ -113,11 +113,81 @@ namespace xcore::textfile::examples
         }
 
         //
-        // When we are reading and we are done dealing with records we can finish like this
+        // When we are reading and we are done dealing with records we can check if we are done reading a file like this
         //
         if( isRead && TextFile.isEOF() )
             return {};
 
+        return Error;
+    }
+
+    //------------------------------------------------------------------------------
+    // Description:
+    //      Converts an rvalue to an lvalue 
+    //------------------------------------------------------------------------------
+    template <typename T>
+    constexpr T& lvalue(T&& r) noexcept { return r; }
+
+    //------------------------------------------------------------------------------
+    // Test different types
+    //------------------------------------------------------------------------------
+    inline
+    xcore::err Test02( xcore::string::view<char> FileName, bool isRead, xcore::textfile::file_type FileType, xcore::textfile::flags Flags = {} ) noexcept
+    {
+        std::array<string::ref<char>,3>                 String                  = { StringBack[0].getView(),    StringBack[1].getView(), StringBack[2].getView() };
+
+        auto                                            Floats32                = Floats32Back;
+        auto                                            Floats64                = Floats64Back;
+
+        auto                                            Int64                   = Int64Back;
+        auto                                            Int32                   = Int32Back;
+        auto                                            Int16                   = Int16Back;
+        auto                                            Int8                    = Int8Back ;
+
+        auto                                            UInt64                  = UInt64Back;
+        auto                                            UInt32                  = UInt32Back;
+        auto                                            UInt16                  = UInt16Back;
+        auto                                            UInt8                   = UInt8Back ;
+
+        xcore::textfile::stream                         TextFile;
+        xcore::err                                      Error;
+
+        //
+        // Open File
+        //
+        if( TextFile.Open( isRead, std::string_view{ FileName }, FileType, Flags ).isError(Error) ) return Error;
+
+        //
+        // Save/Load record
+        //
+        if( TextFile.Record( Error, "TestTypes"
+            ,   [&]( std::size_t& C, xcore::err& Error )
+                {
+                    if( isRead ) xassert( C == StringBack.size() );
+                    else         C = StringBack.size();
+                }
+            ,   [&]( std::size_t i, xcore::err& Error )
+                {
+                    string::ref<char> ReadTypes;
+
+                    // For user data
+                    // if( TextFile.Field( UserInfo, "Ints", Int32[i] ).isError(Error) ) return;
+
+                    // Just save some integers to show that we can still safe normal fields at any point
+                    if( TextFile.Field( "Ints", Int32[i] ).isError(Error) ) return;
+
+                    // Here we are going to save different types and give meaning to 'type' from above
+                    // so in a way here we are saving two columns first the "type:<?>" then the "value<type>"
+                    // the (i&1) shows that we can choose whatever types we want
+                    if( i&1 ) if( TextFile.Field( "value:?", Floats64[i], Floats32[i] ).isError( Error ) ) return;
+                    else      if( TextFile.Field( "value:?", Int64[i]                 ).isError( Error ) ) return;
+                }
+            )) return Error;
+
+        //
+        // Close
+        //
+        TextFile.close();
         return Error;
     }
 
@@ -226,11 +296,21 @@ namespace xcore::textfile::examples
         //
         // Test write and read (Text Style)
         //
-        if( 0
+        if( false ) if( 0
             || Test01( TextFileName, false, xcore::textfile::file_type::TEXT ).isError(Error) 
             || Test01( TextFileName, true,  xcore::textfile::file_type::TEXT ).isError(Error)
             || Test01( TextFileName, false, xcore::textfile::file_type::TEXT, {xcore::textfile::flags::WRITE_FLOATS} ).isError(Error)
             || Test01( TextFileName, true,  xcore::textfile::file_type::TEXT, {xcore::textfile::flags::WRITE_FLOATS} ).isError(Error) )
+        {
+            xassert(false);
+        }
+
+        //
+        // Test write and read (Text Style)
+        //
+        if( true ) if( 0
+            || Test02( TextFileName, false, xcore::textfile::file_type::TEXT ).isError(Error) 
+            || Test02( TextFileName, true,  xcore::textfile::file_type::TEXT ).isError(Error) )
         {
             xassert(false);
         }

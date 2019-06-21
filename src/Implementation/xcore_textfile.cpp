@@ -1267,11 +1267,13 @@ void xcore::textfile::stream::WriteFieldC( const char* pFieldName, const char* p
                 // Make sure that the user is fallowing the syntax of the format.
                 // types should be contain like this: "fff"
                 Field.m_DynamicTypeCount = 0;
+                /*
                 for( int i=0; p[i]; i++ )
                 {
                     xassert( isValidType( p[i] ));
                     Field.m_DynamicTypeCount++;
                 }
+                */
             }
 
             // Write type information in the file
@@ -1506,6 +1508,7 @@ void xcore::textfile::stream::WriteComponent( int iField, int iType, int c, va_l
                 // We reserve the first byte so that we can add additional spaces to this floating point number
                 m_Memory[m_iCurrentOffet++] = iField;
                 m_Memory[m_iCurrentOffet++] = iType;
+                /*
                 reinterpret_cast<std::uint16_t&>(m_Memory[m_iCurrentOffet]) = 1;
                 m_iCurrentOffet+=2;
                 int iStr = m_iCurrentOffet;
@@ -1525,6 +1528,7 @@ void xcore::textfile::stream::WriteComponent( int iField, int iType, int c, va_l
                 xassert( (m_iCurrentOffet - iStr) <= 255 );
                 reinterpret_cast<std::uint16_t&>(m_Memory[iStr-2])         = m_iCurrentOffet - iStr;
                 Field.m_TypeWidth[iType] = std::max( Field.m_TypeWidth[iType], static_cast<std::uint8_t>(m_iCurrentOffet - iStr) );
+                */
             }
             break;
         }
