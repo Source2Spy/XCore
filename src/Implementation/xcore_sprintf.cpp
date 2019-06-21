@@ -7,19 +7,25 @@
 namespace xcore::string::details
 {
     // --- FLAGS FOR THE VSPRINTF ---
+    struct flags
+    {
+        std::uint16_t m_Value { 0 };
 
-    // NUMERIC VALUES
-    constexpr   auto    LONGDBL         =   0x01;       // long double; unimplemented
-    constexpr   auto    LONGINT         =   0x02;       // long integer
-    constexpr   auto    QUADINT         =   0x04;       // quad integer
-    constexpr   auto    SHORTINT        =   0x08;       // short integer
-    constexpr   auto    NUMBERMASK      =   0x0F;
+        struct
+        {
+                // NUMERIC VALUES
+            bool        m_LONGDBL:1                 // long double; unimplemented
+                ,       m_LONGINT:1                 // long integer
+                ,       m_QUADINT:1                 // quad integer
+                ,       m_SHORTINT:1                // short integer
 
-    // OTHER FLAGS
-    constexpr   auto    ALT             =   0x10;       // alternate form
-    constexpr   auto    HEXPREFIX       =   0x20;       // add 0x or 0X prefix
-    constexpr   auto    LADJUST         =   0x40;       // left adjustment
-    constexpr   auto    ZEROPAD         =   0x80;       // zero (as opposed to blank) pad
+                // OTHER FLAGS
+                ,       m_ALT:1                     // alternate form
+                ,       m_HEXPREFIX:1               // add 0x or 0X prefix
+                ,       m_LADJUST:1                 // left adjustment
+                ,       m_ZEROPAD:1;                // zero (as opposed to blank) pad
+        };
+    };
 
     // CONSTANTS
     constexpr   auto    SPF_LONG_MAX    =   0x7FFFFFFF;
@@ -86,7 +92,6 @@ namespace xcore::string::details
     //==============================================================================
     // ARGUMENT READER
     //==============================================================================
-
     class arg_reader
     {
     public:
@@ -567,7 +572,6 @@ namespace xcore::string::details
 
         *fmt = 0;
 
-
         return static_cast<int>(fmt - fmtbase);
     }
 
@@ -732,7 +736,7 @@ namespace xcore::string::details
         const char*                 pFormat = pFormatStr;   // format string 
         char                        ch;                     // character from fmt 
         const char*                 cp;                     // handy char pointer (short term usage)
-        std::uint32_t               flags;                  // flags as above
+        flags                       Flags;                  // flags as above
         int                         width;                  // width from format (%8d), or 0
         int                         prec;                   // precision from format (%.3d), or -1
         char                        sign;                   // sign prefix (' ', '+', '-', or \0)
@@ -770,7 +774,7 @@ namespace xcore::string::details
             pFormat++;
 
             // Get ready for formating the info
-            flags = 0;
+            Flags.m_Value = 0;
             dprec = 0;
             width = 0;
             prec = -1;
@@ -791,7 +795,7 @@ namespace xcore::string::details
                     goto rflag;
 
                 case '#':
-                    flags |= ALT;
+                    Flags.m_ALT = true;
                     goto rflag;
 
                 case '*':
@@ -806,7 +810,7 @@ namespace xcore::string::details
 
                     /////////>>>>>>>>>>>>>>>>>> FALLTHROUGH <<<<<<<<<<<<<<//////////
                 case '-':
-                    flags |= LADJUST;
+                    Flags.m_LADJUST = true;
                     goto rflag;
 
                 case '+':
@@ -837,7 +841,7 @@ namespace xcore::string::details
                      // ``Note that 0 is taken as a flag, not as the
                      // beginning of a field width.''
                      // -- ANSI X3J11
-                    flags |= ZEROPAD;
+                    Flags.m_ZEROPAD = true;
                     goto rflag;
 
                 case '1': case '2': case '3': case '4':
@@ -854,19 +858,19 @@ namespace xcore::string::details
                     goto reswitch;
                 }
                 case 'L':
-                    flags |= LONGDBL;
+                    Flags.m_LONGDBL = true;
 
                     /////////>>>>>>>>>>>>>>>>>> FALLTHROUGH <<<<<<<<<<<<<<//////////
                 case 'q':
-                    flags |= QUADINT;
+                    Flags.m_QUADINT = true;
                     goto rflag;
 
                 case 'h':
-                    flags |= SHORTINT;
+                    Flags.m_SHORTINT = true;
                     goto rflag;
 
                 case 'l':
-                    flags |= LONGINT;
+                    Flags.m_LONGINT = true;
                     goto rflag;
 
                 case 'c':
@@ -877,15 +881,15 @@ namespace xcore::string::details
                     break;
 
                 case 'D':
-                    flags |= LONGINT;
+                    Flags.m_LONGINT = true;
                     /////////>>>>>>>>>>>>>>>>>> FALLTHROUGH <<<<<<<<<<<<<<//////////
 
                 case 'd':
                 case 'i':
 
                     // Give a break to the user and assume it is a quadint
-                    flags |= QUADINT;
-                    if (flags & QUADINT)
+                    Flags.m_QUADINT = true;
+                    if( Flags.m_QUADINT )
                     {
                         auto Temp = static_cast<std::int64_t>( ArgList.getGenericInt() ); //ArgList.get<s64>(); //x_va_arg( Args, s64 );
 
@@ -932,7 +936,7 @@ namespace xcore::string::details
 
                     if (prec == -1) prec = DEFPREC;
 
-                    if (flags & LONGDBL) 
+                    if( Flags.m_LONGDBL ) 
                     {
                         // add additional precision when we say long double
                         prec += 4;
@@ -943,13 +947,13 @@ namespace xcore::string::details
                         _double = ArgList.getGenericF64(); //(f64)x_va_arg(Args, f64);
                     }
 
-                    if (flags & LADJUST) width = -width;
+                    if( Flags.m_LADJUST ) width = -width;
 
                     // right-adjusting zero padding
                     size = static_cast<int>(details::dtoa( buf, _double, ch, width, prec ));
 
                     // check whether we have to pad or not
-                    if (flags & ZEROPAD)
+                    if( Flags.m_ZEROPAD )
                     {
                         for( int i=0; buf[i] == ' '; i++ )
                         {
@@ -959,26 +963,26 @@ namespace xcore::string::details
 
                     Buffer.WriteToBuffer( buf.data(), size );
 
-                    if (flags & LADJUST) Buffer.PadBuffer( -width - size, ' ' );
+                    if( Flags.m_LADJUST ) Buffer.PadBuffer( -width - size, ' ' );
 
                     continue;
                 }
                         ///////////////////// FLOATING_POINT //////////////////////
                 case 'n':
 
-                    if (flags & QUADINT) 
+                    if( Flags.m_QUADINT ) 
                     {
                         auto* pPtr = ArgList.get<std::int64_t*>(); //*x_va_arg(Args, s64 *) = ret;
                         xassert(pPtr);
                         *pPtr = Buffer.getCursor();
                     }   
-                    else if (flags & LONGINT) 
+                    else if( Flags.m_LONGINT ) 
                     {
                         auto* pPtr = ArgList.get<std::int32_t*>(); // *x_va_arg(Args, s32 *) = ret;
                         xassert(pPtr);
                         *pPtr = Buffer.getCursor();
                     }   
-                    else if (flags & SHORTINT) 
+                    else if( Flags.m_SHORTINT ) 
                     {
                         auto* pPtr = ArgList.get<std::int16_t*>(); //*x_va_arg(Args, s16 *) = (s16)ret;
                         xassert(pPtr);
@@ -1001,8 +1005,8 @@ namespace xcore::string::details
 
                 case 'o':
                     // Give a break to the user and allow quadints
-                    flags |= QUADINT;
-                    if (flags & QUADINT) uqval = ArgList.getGenericInt(); //ArgList.get<u64>(); //(u64)x_va_arg(Args, s64); 
+                    Flags.m_QUADINT;
+                    if (Flags.m_QUADINT) uqval = ArgList.getGenericInt(); //ArgList.get<u64>(); //(u64)x_va_arg(Args, s64); 
                     else                 ulval = ArgList.get<std::uint32_t>(); //x_va_arg(Args, u32); //GetUnSignARG( (xva_list*)&Args, flags );
 
                     base = 8;
@@ -1018,7 +1022,7 @@ namespace xcore::string::details
                     uqval = reinterpret_cast<std::uint64_t>(ArgList.get<void*>());//(u64)x_va_arg(Args, void *);
                     base  = 16;
                     xdigs = "0123456789abcdef";
-                    flags |= QUADINT;           // | HEXPREFIX; Not prefixes
+                    Flags.m_QUADINT = true;           // | HEXPREFIX; Not prefixes
                     ch    = 'x';
                     if (prec < 0) prec = 8;     // make sure that the precision is at 8
 
@@ -1026,7 +1030,7 @@ namespace xcore::string::details
                     ulval = reinterpret_cast<std::uint32_t>(ArgList.get<void*>());//(u32)x_va_arg(Args, void *);
                     base  = 16;
                     xdigs = "0123456789abcdef";
-                    flags = (flags & ~QUADINT); // | HEXPREFIX; Not prefixes
+                    Flags = (Flags & ~QUADINT); // | HEXPREFIX; Not prefixes
                     ch    = 'x';
                     if (prec < 0) prec = 8;     // make sure that the precision is at 8
     #endif
@@ -1058,13 +1062,13 @@ namespace xcore::string::details
                     break;
 
                 case 'U':
-                    flags |= LONGINT;
+                    Flags.m_LONGINT = true;
                     /////////>>>>>>>>>>>>>>>>>> FALLTHROUGH <<<<<<<<<<<<<<//////////
 
                 case 'u':
                     // Give a break to the user and allow quadints
-                    flags |= QUADINT;
-                    if (flags & QUADINT) uqval = ArgList.getGenericInt(); //ArgList.get<u64>(); //(u64)x_va_arg(Args, u64); 
+                    Flags.m_QUADINT = true;
+                    if (Flags.m_QUADINT) uqval = ArgList.getGenericInt(); //ArgList.get<u64>(); //(u64)x_va_arg(Args, u64); 
                     else                 ulval = ArgList.get<std::uint32_t>(); //x_va_arg(Args, u32); //GetUnSignARG( (xva_list*)&Args, flags );
 
                     base = 10;
@@ -1074,15 +1078,15 @@ namespace xcore::string::details
                 case 'x': xdigs = "0123456789abcdef"; hex:
 
                     // Give a break to the user and allow quadints
-                    flags |= QUADINT;
-                    if (flags & QUADINT) uqval = ArgList.getGenericInt(); //ArgList.get<u64>(); //(u64)x_va_arg(Args, u64); 
+                    Flags.m_QUADINT = true;
+                    if (Flags.m_QUADINT) uqval = ArgList.getGenericInt(); //ArgList.get<u64>(); //(u64)x_va_arg(Args, u64); 
                     else                 ulval = ArgList.get<std::uint32_t>(); //x_va_arg(Args, u32); //GetUnSignARG( (xva_list*)&Args, flags );
 
                     base = 16;
 
                     // leading 0x/X only if non-zero
-                    if (flags & ALT && (flags & QUADINT ? uqval != 0 : ulval != 0))
-                        flags |= HEXPREFIX;
+                    if (Flags.m_ALT && (Flags.m_QUADINT ? uqval != 0 : ulval != 0))
+                        Flags.m_HEXPREFIX = true;
 
                 
         nosign:     // unsigned conversions
@@ -1093,23 +1097,23 @@ namespace xcore::string::details
                     //  -- ANSI X3J11
         number:     
                     dprec = prec;
-                    if( dprec >= 0 ) flags &= ~ZEROPAD;
+                    if( dprec >= 0 ) Flags.m_ZEROPAD = false;
                 
                     // ``The result of converting a zero value with an
                     // explicit precision of zero is no characters.''
                     // -- ANSI X3J11
-                    if (flags & QUADINT)
+                    if( Flags.m_QUADINT )
                     {
                         if (uqval != 0 || prec != 0)
                         {
-                            cp = UtoA<std::uint64_t>(uqval, buf, base, !!(flags & ALT), xdigs );
+                            cp = UtoA<std::uint64_t>(uqval, buf, base, Flags.m_ALT, xdigs );
                         }
                     }
                     else
                     {
                         if (ulval != 0 || prec != 0)
                         {
-                            cp = UtoA<std::uint32_t>(ulval, buf, base, !!(flags & ALT), xdigs );
+                            cp = UtoA<std::uint32_t>(ulval, buf, base, Flags.m_ALT, xdigs );
                         }
                     }
 
@@ -1145,19 +1149,19 @@ namespace xcore::string::details
                 [&]{
                     int realsz = dprec > size ? dprec : size;
                     if (sign)                   realsz++;
-                    else if (flags & HEXPREFIX) realsz += 2;
+                    else if (Flags.m_HEXPREFIX) realsz += 2;
                     return realsz; 
                 }();
 
                 // right-adjusting blank padding
-                if ((flags & (LADJUST|ZEROPAD)) == 0) Buffer.PadBuffer( width - realsz, ' ');
+                if( Flags.m_LADJUST || Flags.m_ZEROPAD ) Buffer.PadBuffer( width - realsz, ' ');
 
                 // prefix
                 if( sign )
                 {
                     Buffer.WriteToBuffer( &sign, 1);
                 }
-                else if( flags & HEXPREFIX )
+                else if( Flags.m_HEXPREFIX )
                 {
                     std::array<char,2> ox;                     // space for 0x hex-prefix
                     ox[0] = '0';
@@ -1166,7 +1170,7 @@ namespace xcore::string::details
                 }
 
                 // right-adjusting zero padding
-                if ((flags & (LADJUST|ZEROPAD)) == ZEROPAD)
+                if( Flags.m_LADJUST == false && Flags.m_ZEROPAD )
                     Buffer.PadBuffer( width - realsz, '0');
 
                 // leading zeroes from decimal precision
@@ -1176,7 +1180,7 @@ namespace xcore::string::details
                 Buffer.WriteToBuffer( cp, size);
 
                 // left-adjusting padding (always blank)
-                if (flags & LADJUST) Buffer.PadBuffer( width - realsz, ' ');
+                if( Flags.m_LADJUST ) Buffer.PadBuffer( width - realsz, ' ');
         }
 
     done:
