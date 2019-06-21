@@ -402,7 +402,7 @@ xcore::err xcore::textfile::stream::openForReading( const std::filesystem::path&
 
 //-----------------------------------------------------------------------------------------------------
 
-xcore::err xcore::textfile::stream::openForWriting( const std::filesystem::path& FilePath, file_type FileType ) noexcept
+xcore::err xcore::textfile::stream::openForWriting( const std::filesystem::path& FilePath, file_type FileType, flags Flags ) noexcept
 {
     //
     // Okay make sure that we say that we are not reading the file
@@ -427,6 +427,12 @@ xcore::err xcore::textfile::stream::openForWriting( const std::filesystem::path&
         if( m_File.Write( Signature ).isError( Failure ) )
             return Failure;
     }
+
+    //
+    // Handle flags
+    //
+    m_File.m_States.m_isEndianSwap = Flags.m_isWriteEndianSwap;
+    m_File.m_States.m_isSaveFloats = Flags.m_isWriteFloats;
 
     //
     // Initialize some of the Write variables
@@ -1335,7 +1341,13 @@ void xcore::textfile::stream::WriteComponent( int iField, int iType, int c, va_l
         using T = std::decay_t<decltype(p)>;
         if constexpr ( std::is_integral_v<T> )
         {
-            p = bIndirect ? (*va_arg( Args, T* )):static_cast<T>(va_arg( Args, types::byte_size_uint_t< sizeof(T) < 4 ? 4:8 > ));
+            if( p && bIndirect == false )
+            {
+                // Special case when saving a floating point number as hex
+                float x = static_cast<float>(va_arg( Args, double ));
+                p       = reinterpret_cast<T&>(x);
+            }
+            else p = bIndirect ? (*va_arg( Args, T* )):static_cast<T>(va_arg( Args, types::byte_size_uint_t< sizeof(T) < 4 ? 4:8 > ));
 
             if( m_File.m_States.m_isBinary )
             {
@@ -1409,16 +1421,20 @@ void xcore::textfile::stream::WriteComponent( int iField, int iType, int c, va_l
     //
     switch( c )
     {
-    case 'f': Numerics( float(0),          "%g"  ); break;
-    case 'F': Numerics( double(0),         "%Lg" ); break;
+    case 'F': if( m_File.m_States.m_isSaveFloats )  Numerics( double(0),         "%Lg" );
+              else                                  Numerics( std::uint64_t(0),  "#%LX" );
+              break;
+    case 'f': if( m_File.m_States.m_isSaveFloats ) Numerics( float(0),          "%g"  );
+              else                                 Numerics( std::uint32_t(1),  "#%X" );
+              break; 
     case 'c': Numerics( std::int8_t(0),    "%d"  ); break;
     case 'C': Numerics( std::int16_t(0),   "%d"  ); break;
     case 'd': Numerics( std::int32_t(0),   "%d"  ); break;
     case 'D': Numerics( std::int64_t(0),   "%ld" ); break;
-    case 'G': Numerics( std::uint64_t(0),  "%LX" ); break;
-    case 'g': Numerics( std::uint32_t(0),  "%X"  ); break;
-    case 'H': Numerics( std::uint16_t(0),  "%X"  ); break;
-    case 'h': Numerics( std::uint8_t(0),   "%X"  ); break;
+    case 'G': Numerics( std::uint64_t(0),  "#%LX" ); break;
+    case 'g': Numerics( std::uint32_t(0),  "#%X"  ); break;
+    case 'H': Numerics( std::uint16_t(0),  "#%X"  ); break;
+    case 'h': Numerics( std::uint8_t(0),   "#%X"  ); break;
     case 'E': 
     case 'S': xassert( false ); break;
     case 'e':
@@ -2035,7 +2051,8 @@ xcore::err xcore::textfile::stream::WriteLine( void ) noexcept
         switch( Type )
         {                    
         case 'f':       // Floating point alignment
-        case 'F':                    
+        case 'F':
+            if( m_File.m_States.m_isSaveFloats )
             {
                 // lets find again where the '.' is
                 for( j=0; m_Memory[j+i]!='.' && m_Memory[j+i]; j++ );
@@ -2058,11 +2075,17 @@ xcore::err xcore::textfile::stream::WriteLine( void ) noexcept
                     if( m_File.WriteChar( ' ', Field.m_TypeWidth[iType] - j ).isError(Error) )
                         return Error;
                 }
+                break;
             }
-            break;
-                    
+            // Fall throw                
         case 'd':       // Right aligment
         case 'D':
+        case 'C':
+        case 'c':
+        case 'h':
+        case 'H':
+        case 'G':
+        case 'g':
             {
                 // Now lets padd the fractional part
                 if( Len < Field.m_TypeWidth[iType] )
@@ -2334,31 +2357,41 @@ xcore::err xcore::textfile::stream::ReadComponent( std::uint32_t& iStartOffset, 
             if( m_File.ReadWhiteSpace(c).isError(Error) )
                 return Error;
 
-            // Copy all the characters 
-            if constexpr ( std::is_same_v<t,float> || std::is_same_v<t,double> )
+            if( c == '#' )
             {
-                while( isFloat(c) )
+                if( m_File.getC(c).isError( Error ) ) return Error;
+                while( (c>='0'&&c<='9')||(c>='A'&&c<='F') )
                 {
                     Buffer[iBuffer++]=c;
                     if( m_File.getC(c).isError( Error ) )
                         return Error;
                 }
-
                 Buffer[iBuffer] = 0;
-                reinterpret_cast<t&>(m_Memory[ m_iCurrentOffet ]) = static_cast<t>(std::atof( &Buffer[0] ));
-            }
-            else if constexpr( std::is_integral_v<t> )
-            {
-                if( std::is_unsigned_v<t> )
+                        if constexpr ( sizeof(t) == 1   ) reinterpret_cast<std::uint8_t& >(m_Memory[ m_iCurrentOffet ]) = static_cast<std::uint8_t >(std::strtoul ( &Buffer[0], nullptr, 16 ));
+                else    if constexpr ( sizeof(t) == 2   ) reinterpret_cast<std::uint16_t&>(m_Memory[ m_iCurrentOffet ]) = static_cast<std::uint16_t>(std::strtoul ( &Buffer[0], nullptr, 16 ));
+                else    if constexpr ( sizeof(t) == 4   ) reinterpret_cast<std::uint32_t&>(m_Memory[ m_iCurrentOffet ]) = static_cast<std::uint32_t>(std::strtoul ( &Buffer[0], nullptr, 16 ));
+                else    if constexpr ( sizeof(t) == 8   ) reinterpret_cast<std::uint64_t&>(m_Memory[ m_iCurrentOffet ]) = static_cast<std::uint64_t>(std::strtoull( &Buffer[0], nullptr, 16 ));
+                else
                 {
-                    while( (c>='0'&&c<='9')||(c=='-')||(c=='+')||(c>='A'&&c<='F') )
+                    xassume(false);
+                }
+            }
+            else
+            {
+                // Copy all the characters 
+                if constexpr ( std::is_same_v<t,float> || std::is_same_v<t,double> )
+                {
+                    while( isFloat(c) )
                     {
                         Buffer[iBuffer++]=c;
                         if( m_File.getC(c).isError( Error ) )
                             return Error;
                     }
+
+                    Buffer[iBuffer] = 0;
+                    reinterpret_cast<t&>(m_Memory[ m_iCurrentOffet ]) = static_cast<t>(std::atof( &Buffer[0] ));
                 }
-                else
+                else if constexpr( std::is_integral_v<t> )
                 {
                     while( (c>='0'&&c<='9')||(c=='-')||(c=='+') )
                     {
@@ -2366,18 +2399,17 @@ xcore::err xcore::textfile::stream::ReadComponent( std::uint32_t& iStartOffset, 
                         if( m_File.getC(c).isError( Error ) )
                             return Error;
                     }
-                }
 
-                Buffer[iBuffer] = 0;
-                        if constexpr( std::is_same_v<t,std::int8_t>     ) reinterpret_cast<t&>(m_Memory[ m_iCurrentOffet ]) = static_cast<t>(std::atoi    ( &Buffer[0] ));
-                else    if constexpr( std::is_same_v<t,std::int16_t>    ) reinterpret_cast<t&>(m_Memory[ m_iCurrentOffet ]) = static_cast<t>(std::atoi    ( &Buffer[0] ));
-                else    if constexpr( std::is_same_v<t,std::int32_t>    ) reinterpret_cast<t&>(m_Memory[ m_iCurrentOffet ]) = static_cast<t>(std::atol    ( &Buffer[0] ));
-                else    if constexpr( std::is_same_v<t,std::int64_t>    ) reinterpret_cast<t&>(m_Memory[ m_iCurrentOffet ]) = static_cast<t>(std::atoll   ( &Buffer[0] ));
-                else    if constexpr( std::is_same_v<t,std::uint8_t>    ) reinterpret_cast<t&>(m_Memory[ m_iCurrentOffet ]) = static_cast<t>(std::strtoul ( &Buffer[0], nullptr, 16 ));
-                else    if constexpr( std::is_same_v<t,std::uint16_t>   ) reinterpret_cast<t&>(m_Memory[ m_iCurrentOffet ]) = static_cast<t>(std::strtoul ( &Buffer[0], nullptr, 16 ));
-                else    if constexpr( std::is_same_v<t,std::uint32_t>   ) reinterpret_cast<t&>(m_Memory[ m_iCurrentOffet ]) = static_cast<t>(std::strtoul ( &Buffer[0], nullptr, 16 ));
-                else    if constexpr( std::is_same_v<t,std::uint64_t>   ) reinterpret_cast<t&>(m_Memory[ m_iCurrentOffet ]) = static_cast<t>(std::strtoull( &Buffer[0], nullptr, 16 ));
-                else    static_assert( always_false_v<t> );
+                    Buffer[iBuffer] = 0;
+                            if constexpr( std::is_same_v<t,std::int8_t>     ) reinterpret_cast<t&>(m_Memory[ m_iCurrentOffet ]) = static_cast<t>(std::atoi    ( &Buffer[0] ));
+                    else    if constexpr( std::is_same_v<t,std::int16_t>    ) reinterpret_cast<t&>(m_Memory[ m_iCurrentOffet ]) = static_cast<t>(std::atoi    ( &Buffer[0] ));
+                    else    if constexpr( std::is_same_v<t,std::int32_t>    ) reinterpret_cast<t&>(m_Memory[ m_iCurrentOffet ]) = static_cast<t>(std::atol    ( &Buffer[0] ));
+                    else    if constexpr( std::is_same_v<t,std::int64_t>    ) reinterpret_cast<t&>(m_Memory[ m_iCurrentOffet ]) = static_cast<t>(std::atoll   ( &Buffer[0] ));
+                    else
+                    {
+                        xassume(false);
+                    }
+                }
             }
 
             // Sanity check

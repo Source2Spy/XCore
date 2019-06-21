@@ -35,11 +35,12 @@ namespace xcore::textfile
             std::uint32_t       m_Value{ 0 };
             struct
             {
-                  bool            m_isView        : 1     // means we don't own the pointer
-                                , m_isEOF         : 1     // We have reach end of file so no io operations make sense after this
-                                , m_isBinary      : 1     // Tells if we are dealing with a binary file or text file
-                                , m_isEndianSwap  : 1     // Tells if when reading we should swap endians
-                                , m_isReading     : 1;    // Tells the system whether we are reading or writing
+                  bool            m_isView        : 1       // means we don't own the pointer
+                                , m_isEOF         : 1       // We have reach end of file so no io operations make sense after this
+                                , m_isBinary      : 1       // Tells if we are dealing with a binary file or text file
+                                , m_isEndianSwap  : 1       // Tells if when reading we should swap endians
+                                , m_isReading     : 1       // Tells the system whether we are reading or writing
+                                , m_isSaveFloats  : 1;      // Save floats as hex
             };
         };
 
@@ -204,29 +205,44 @@ namespace xcore::textfile
         , BINARY
     };
 
+    union flags
+    {
+        std::uint32_t   m_Value{0};
+
+        constexpr static std::uint32_t WRITE_FLOATS       = (1<<0);
+        constexpr static std::uint32_t WRITE_SWAP_ENDIAN  = (1<<1);
+
+        struct 
+        {
+            bool        m_isWriteFloats:1               // Writes floating point numbers as floating point rather than hex
+            ,           m_isWriteEndianSwap:1;          // Swaps endian before writing (Only useful when writing binary)
+        };
+    };
+
     //-----------------------------------------------------------------------------------------------------
     // public interface
     //-----------------------------------------------------------------------------------------------------
     class stream
     {
     public:
-                            xcore::err                  openForReading      ( const std::filesystem::path& FilePath )                                                   noexcept;
-                            xcore::err                  openForWriting      ( const std::filesystem::path& FilePath, file_type Type = file_type::TEXT )                 noexcept;
-                            void                        close               ( void )                                                                                    noexcept;
-                            void                        ReadFromFile        ( std::FILE& File, file_type Type )                                                         noexcept;
-                            void                        WriteToFile         ( std::FILE& File, file_type Type )                                                         noexcept;
+                            xcore::err                  openForReading      ( const std::filesystem::path& FilePath )                                                       noexcept;
+                            xcore::err                  openForWriting      ( const std::filesystem::path& FilePath, file_type Type = file_type::TEXT, flags Flags = {} )   noexcept;
+                            void                        close               ( void )                                                                                        noexcept;
+                            void                        ReadFromFile        ( std::FILE& File, file_type Type )                                                             noexcept;
+                            void                        WriteToFile         ( std::FILE& File, file_type Type )                                                             noexcept;
 
-                            xcore::err                  ReadRecord          ( void )                                                                                    noexcept;
-                            int                         ReadField           ( const char* FieldName, ... )                                                              noexcept;
-                            xcore::err                  ReadLine            ( void )                                                                                    noexcept;
-                            xcore::err                  ReadNextRecord      ( void )                                                                                    noexcept;
-        inline              int                         getRecordCount      ( void )                                                                                    noexcept { return m_Record.m_Count; }
-        inline              const string::view<char>    getRecordName       ( void )                                                                                    noexcept { return m_Record.m_Name;  }
+                            xcore::err                  ReadRecord          ( void )                                                                                        noexcept;
+                            int                         ReadField           ( const char* FieldName, ... )                                                                  noexcept;
+                            xcore::err                  ReadLine            ( void )                                                                                        noexcept;
+                            xcore::err                  ReadNextRecord      ( void )                                                                                        noexcept;
+        inline              int                         getRecordCount      ( void )                                                                                        noexcept { return m_Record.m_Count; }
+        inline              const string::view<char>    getRecordName       ( void )                                                                                        noexcept { return m_Record.m_Name;  }
                             std::uint32_t               AddUserType         ( const char* pSystemTypes, const char* pUserType, crc::units<32> CRC32UserType, std::uint8_t UID )  noexcept;
-        static              bool                        isValidType         ( int Type )                                                                                noexcept;
-        constexpr           bool                        isReading           ( void )    const                                                                           noexcept { return m_File.m_States.m_isReading; }
-        constexpr           bool                        isEOF               ( void )    const                                                                           noexcept { return m_File.m_States.m_isEOF; }
-        inline              xcore::err                  Open                ( bool isRead, std::string_view View, xcore::textfile::file_type FileType )                 noexcept
+        static              bool                        isValidType         ( int Type )                                                                                    noexcept;
+        constexpr           bool                        isReading           ( void )    const                                                                               noexcept { return m_File.m_States.m_isReading; }
+        constexpr           bool                        isEOF               ( void )    const                                                                               noexcept { return m_File.m_States.m_isEOF; }
+        constexpr           bool                        isWriteFloats       ( void )    const                                                                               noexcept { return m_File.m_States.m_isSaveFloats; }
+        inline              xcore::err                  Open                ( bool isRead, std::string_view View, xcore::textfile::file_type FileType, flags Flags = {} )   noexcept
                             {
                                 xcore::err Error;
                                 if( isRead )
@@ -235,7 +251,7 @@ namespace xcore::textfile
                                 }
                                 else
                                 {
-                                    if( openForWriting( View, FileType ).isError(Error) ) return Error;
+                                    if( openForWriting( View, FileType, Flags ).isError(Error) ) return Error;
                                 }
                                 return Error;
                             }
