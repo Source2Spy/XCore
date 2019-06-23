@@ -102,6 +102,25 @@ namespace xcore::types
         using T::operator =;
     };
 
+    //--------------------------------------------------------------------------------------------
+    // Makes a object type unique
+    //--------------------------------------------------------------------------------------------
+    namespace details
+    {
+        template< std::size_t T_MAX_SIZE, template< typename T, std::size_t T_SIZE > class T_PARENT >
+        struct container_static_to_dynamic
+        {
+            template< typename T >
+            struct type : T_PARENT<T,T_MAX_SIZE>
+            {
+                using parent = T_PARENT<T,T_MAX_SIZE>;
+                using parent::parent;
+            };
+        };
+    }
+    template< typename T, template< typename T, std::size_t T_SIZE > class T_PARENT, std::size_t T_MAX_SIZE >
+    using container_static_to_dynamic = typename details::container_static_to_dynamic<T_MAX_SIZE,T_PARENT>::template type<T>;
+
 }
 
 #endif

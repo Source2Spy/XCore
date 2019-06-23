@@ -31,6 +31,7 @@
     <ClInclude Include="..\..\src\Implementation\xcore_string_inline.h" />
     <ClInclude Include="..\..\src\xcore.h" />
     <ClInclude Include="..\..\src\xcore_arglist.h" />
+    <ClInclude Include="..\..\src\xcore_array.h" />
     <ClInclude Include="..\..\src\xcore_assert.h" />
     <ClInclude Include="..\..\src\xcore_bits.h" />
     <ClInclude Include="..\..\src\xcore_context.h" />
@@ -49,6 +50,7 @@
     <ClInclude Include="..\..\src\xcore_string.h" />
     <ClInclude Include="..\..\src\xcore_target.h" />
     <ClInclude Include="..\..\src\xcore_textfile.h" />
+    <ClInclude Include="..\..\src\xcore_textfile2.h" />
     <ClInclude Include="..\..\src\xcore_types.h" />
     <ClInclude Include="..\..\src\xcore_units.h" />
   </ItemGroup>

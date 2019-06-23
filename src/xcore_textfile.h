@@ -22,7 +22,7 @@
 //      S      undefined (DONT USE)
 //      e      Enum this is a std::string but without spaces
 //-----------------------------------------------------------------------------------------------------
-namespace xcore::textfile
+namespace xcore::textfile::version_1
 {
     //-----------------------------------------------------------------------------------------------------
     // private interface

@@ -23,7 +23,7 @@ std::string wstring_to_utf8( const std::wstring& str )
 // Details
 //-----------------------------------------------------------------------------------------------------
 //-----------------------------------------------------------------------------------------------------
-namespace xcore::textfile
+namespace xcore::textfile::version_1
 {
     //------------------------------------------------------------------------------
     details::file& details::file::setup( std::FILE& File, details::states States ) noexcept
