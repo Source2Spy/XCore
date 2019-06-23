@@ -179,7 +179,7 @@ namespace xcore::textfile::examples
                     // Here we are going to save different types and give meaning to 'type' from above
                     // so in a way here we are saving two columns first the "type:<?>" then the "value<type>"
                     // the (i&1) shows that we can choose whatever types we want
-                    if( i&1 ) if( TextFile.Field( "value:?", Floats64[i], Floats32[i] ).isError( Error ) ) return;
+                    if( i&1 ) if( TextFile.Field( "value:?", Floats64[i], Floats32[i] ).isError( Error ) ) return; else;
                     else      if( TextFile.Field( "value:?", Int64[i]                 ).isError( Error ) ) return;
                 }
             )) return Error;

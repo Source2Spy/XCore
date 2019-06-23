@@ -1205,39 +1205,9 @@ void xcore::textfile::stream::WriteFieldC( const char* pFieldName, const char* p
 
     switch( Field.m_iFieldDecl )
     {
-    case -1:
-        {
-            auto& FieldName = Field.m_Type;
-            
-            // Are we writing user types or atomic types
-            if( FieldName[ Field.m_TypeOffset ] == '.' )
-            {
-                const auto& Entry = m_UserTypes[ Field.m_iUserType ];
-                char        c;
-                
-                // Now we can set the number of types
-                Field.m_nTypes = Entry.m_nSystemTypes;
-                
-                // Dump all the types
-                for( std::uint32_t i=0; (c = Entry.m_SystemType[ i ]); i++ )
-                {
-                    Field.m_iMemory[i] = m_iCurrentOffet + 4;
-                    WriteComponent( m_iField, i, c, Args1, bIndirect );
-                }
-            }
-            else
-            {
-                char c;
-                for( int i=0; (c = FieldName[ Field.m_TypeOffset + i ]); i++ )
-                {
-                    Field.m_iMemory[i] = m_iCurrentOffet + 4;
-                    WriteComponent( m_iField, i, c, Args1, bIndirect );
-                }
-            }
-            break;
-        }
     case -2:
         {
+            /*
             const string::view<char> p = (va_arg( Args2, string::view<char> ));     // get the type
 
             // Are we writing with a user type?
@@ -1267,22 +1237,81 @@ void xcore::textfile::stream::WriteFieldC( const char* pFieldName, const char* p
                 // Make sure that the user is fallowing the syntax of the format.
                 // types should be contain like this: "fff"
                 Field.m_DynamicTypeCount = 0;
-                /*
+                / *
                 for( int i=0; p[i]; i++ )
                 {
                     xassert( isValidType( p[i] ));
                     Field.m_DynamicTypeCount++;
                 }
-                */
+                * /
             }
+
 
             // Write type information in the file
             if( m_File.m_States.m_isBinary ) Field.m_iMemory[0] = m_iCurrentOffet;
             else                             Field.m_iMemory[0] = m_iCurrentOffet + 4;
             
             WriteComponent( m_iField, 0, '?', Args1, bIndirect );
+            */
+
+            // Write type information in the file
+            if( m_File.m_States.m_isBinary ) Field.m_iMemory[0] = m_iCurrentOffet;
+            else                             Field.m_iMemory[0] = (m_iCurrentOffet += 4);
+
+            const auto indexStr = m_iCurrentOffet;
+            Field.m_DynamicTypeCount = 0;
+            m_Memory[ m_iCurrentOffet++ ] = ':';
+            for( int i=0; pArgsTypes[i]; i++ )
+            {
+                xassert( isValidType( pArgsTypes[i] ));
+                Field.m_DynamicTypeCount++;
+                m_Memory[ m_iCurrentOffet++ ] = pArgsTypes[i];
+            }
+            m_Memory[ m_iCurrentOffet++ ] = 0;
+            Field.m_TypeWidth[0] = std::max( Field.m_TypeWidth[0], static_cast<std::uint8_t>(m_iCurrentOffet - indexStr) );
+
+            {
+                //char c;
+                for( int i=0; char c = pArgsTypes[i]; i++ )
+                {
+                    Field.m_iMemory[1+i] = m_iCurrentOffet + 4;
+                    WriteComponent( m_iField, 1+i, c, Args1, bIndirect );
+                }
+            }
+
 
             // Done here
+            break;
+        }
+    case -1:
+        {
+            auto& FieldName = Field.m_Type;
+            
+            // Are we writing user types or atomic types
+            if( FieldName[ Field.m_TypeOffset ] == '.' )
+            {
+                const auto& Entry = m_UserTypes[ Field.m_iUserType ];
+                char        c;
+                
+                // Now we can set the number of types
+                Field.m_nTypes = Entry.m_nSystemTypes;
+                
+                // Dump all the types
+                for( std::uint32_t i=0; (c = Entry.m_SystemType[ i ]); i++ )
+                {
+                    Field.m_iMemory[i] = m_iCurrentOffet + 4;
+                    WriteComponent( m_iField, i, c, Args1, bIndirect );
+                }
+            }
+            else
+            {
+                char c;
+                for( int i=0; (c = FieldName[ Field.m_TypeOffset + i ]); i++ )
+                {
+                    Field.m_iMemory[i] = m_iCurrentOffet + 4;
+                    WriteComponent( m_iField, i, c, Args1, bIndirect );
+                }
+            }
             break;
         }
     default:
@@ -1343,13 +1372,20 @@ void xcore::textfile::stream::WriteComponent( int iField, int iType, int c, va_l
         using T = std::decay_t<decltype(p)>;
         if constexpr ( std::is_integral_v<T> )
         {
-            if( p && bIndirect == false )
+            if constexpr ( std::is_signed_v<T> )
             {
-                // Special case when saving a floating point number as hex
-                float x = static_cast<float>(va_arg( Args, double ));
-                p       = reinterpret_cast<T&>(x);
+                p = bIndirect ? (*va_arg( Args, T* )):static_cast<T>(va_arg( Args, types::byte_size_int_t< sizeof(T) < 4 ? 4:8 > ));
             }
-            else p = bIndirect ? (*va_arg( Args, T* )):static_cast<T>(va_arg( Args, types::byte_size_uint_t< sizeof(T) < 4 ? 4:8 > ));
+            else
+            {
+                if( p && bIndirect == false )
+                {
+                    // Special case when saving a floating point number as hex
+                    float x = static_cast<float>(va_arg( Args, double ));
+                    p       = reinterpret_cast<T&>(x);
+                }
+                else p = bIndirect ? (*va_arg( Args, T* )):static_cast<T>(va_arg( Args, types::byte_size_uint_t< sizeof(T) < 4 ? 4:8 > ));
+            }
 
             if( m_File.m_States.m_isBinary )
             {
@@ -1473,9 +1509,10 @@ void xcore::textfile::stream::WriteComponent( int iField, int iType, int c, va_l
     case '?':
         {
             // strings are always indirect
-            string::view<char> p = va_arg( Args, string::view<char> );       // get the type   
+            //string::view<char> p = va_arg( Args, string::view<char> );       // get the type   
             if( m_File.m_States.m_isBinary )
             {
+                /*
                 // Determine if it is a user type if so make sure we follow the right syntax
                 if( p[0] == '.' )
                 {
@@ -1500,14 +1537,25 @@ void xcore::textfile::stream::WriteComponent( int iField, int iType, int c, va_l
                     m_Memory[m_iCurrentOffet++]='>';
                     m_Memory[m_iCurrentOffet++]=0;
                 }
+                */
             }
             else
             {
-                auto& Field = m_Field[iField];
-
-                // We reserve the first byte so that we can add additional spaces to this floating point number
                 m_Memory[m_iCurrentOffet++] = iField;
                 m_Memory[m_iCurrentOffet++] = iType;
+
+                reinterpret_cast<std::uint16_t&>(m_Memory[m_iCurrentOffet])   = 1;
+                m_iCurrentOffet+=2;
+                int indexStr = m_iCurrentOffet;
+
+                auto&  Field = m_Field[iField];
+                const char* p = &Field.m_Type[ Field.m_TypeOffset];
+                m_iCurrentOffet += 1+string::sprintf( string::view<char>{ &m_Memory[m_iCurrentOffet], static_cast<int>(m_Memory.size()-m_iCurrentOffet) }, ":%s", p ).m_Value;
+
+                reinterpret_cast<std::uint16_t&>(m_Memory[indexStr-2])         = m_iCurrentOffet - indexStr;
+                Field.m_TypeWidth[iType] = std::max( Field.m_TypeWidth[iType], static_cast<std::uint8_t>(m_iCurrentOffet - indexStr) );
+
+                //////////// 6/22/2019 old from <asd>
                 /*
                 reinterpret_cast<std::uint16_t&>(m_Memory[m_iCurrentOffet]) = 1;
                 m_iCurrentOffet+=2;
@@ -1602,12 +1650,26 @@ void xcore::textfile::stream::BuildTypeInformation( const char* pFieldName ) noe
     //
 
     // is user is indicating that he want to deal with a complex type
-    if( pFieldName[i] == '<' )
+    if( pFieldName[i] == '?' )
     {
         // So lets advance to the next character
         i++;
-        xassert( pFieldName[i] );
+//        xassert( pFieldName[i] == ':' );
 
+        Field.m_Type[i] = 0;
+        Field.m_TypeOffset = i+1;
+
+        // Try to find how many times we are talking about
+        i++;
+        for( Field.m_nTypes=0; pFieldName[i]; i++, Field.m_nTypes++ )
+        {
+            xassert( isValidType( pFieldName[i] ) );
+        }
+
+        Field.m_nTypes++;
+        Field.m_iFieldDecl = -2;
+
+        /*
         // Now is the user declaring or using a complex type?
         if( pFieldName[i] == '?' )
         {
@@ -1681,6 +1743,7 @@ void xcore::textfile::stream::BuildTypeInformation( const char* pFieldName ) noe
             //
             Field.m_iFieldDecl = j;
         }
+        */
     }
     else if( pFieldName[i] == '.')
     {
