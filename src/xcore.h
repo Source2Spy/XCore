@@ -18,7 +18,15 @@
 #include <stdlib.h>
 #include <unordered_map>
 #include <stdarg.h>  
-//#include <type_traits>
+
+//---------------------------------------------------------------------------
+// 3RDParty
+//---------------------------------------------------------------------------
+
+// Src from: https://github.com/tcbrindle/span
+#define TCB_SPAN_NAMESPACE_NAME std
+#include "Implementation/3rdparty/span.hpp"
+
 
 //---------------------------------------------------------------------------
 // Predefinitions
@@ -36,6 +44,7 @@ namespace xcore
 #include "xcore_span.h"
 #include "xcore_assert.h"
 #include "xcore_array.h"
+#include "xcore_vector.h"
 #include "xcore_units.h"
 #include "xcore_lock.h"
 #include "xcore_global.h"

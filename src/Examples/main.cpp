@@ -26,7 +26,7 @@ namespace details
 
         constexpr void deallocate(value_type* p, std::size_t) noexcept { assert(p == reinterpret_cast<value_type*>(m_Buffer)); }
 
-        xcore::array::raw_entry<T> m_Buffer[T_MAX_SIZE];
+        xcore::raw::entry<T> m_Buffer[T_MAX_SIZE];
     };
 }
 
@@ -52,6 +52,9 @@ int main(void)
         x.push_back( 5 );
 
     assert( x[0] == 5 );
+
+    xcore::array<char,5> XX;
+    XX.CopyFromTo( XX );
 
     return 0;
 }

@@ -120,7 +120,6 @@ namespace xcore::types
     }
     template< typename T, template< typename T, std::size_t T_SIZE > class T_PARENT, std::size_t T_MAX_SIZE >
     using container_static_to_dynamic = typename details::container_static_to_dynamic<T_MAX_SIZE,T_PARENT>::template type<T>;
-
 }
 
 #endif

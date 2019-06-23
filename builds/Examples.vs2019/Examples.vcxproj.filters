@@ -10,6 +10,9 @@
     <Filter Include="Examples">
       <UniqueIdentifier>{0586c922-d08e-4be9-a192-056e12268505}</UniqueIdentifier>
     </Filter>
+    <Filter Include="xCore\Implementation\3rdparty">
+      <UniqueIdentifier>{6887ac3f-d42b-40a8-b257-210d22f08628}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\src\xcore_arglist.h">
@@ -113,6 +116,15 @@
     </ClInclude>
     <ClInclude Include="..\..\src\xcore_array.h">
       <Filter>xCore</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\Implementation\xcore_linear_buffers_hardness.h">
+      <Filter>xCore\Implementation</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\xcore_vector.h">
+      <Filter>xCore</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\Implementation\3rdparty\span.hpp">
+      <Filter>xCore\Implementation\3rdparty</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
