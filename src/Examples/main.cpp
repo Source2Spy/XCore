@@ -5,6 +5,8 @@
 #include <new>
 
 
+//------------------------------------------------------------------------------------
+
 namespace details
 {
     template< class T, std::size_t T_MAX_SIZE >
@@ -26,9 +28,11 @@ namespace details
 
         constexpr void deallocate(value_type* p, std::size_t) noexcept { assert(p == reinterpret_cast<value_type*>(m_Buffer)); }
 
-        xcore::raw::entry<T> m_Buffer[T_MAX_SIZE];
+        xcore::containers::raw::entry<T> m_Buffer[T_MAX_SIZE];
     };
 }
+
+//------------------------------------------------------------------------------------
 
 template< typename T, std::size_t T_MAX_SIZE >
 struct fix_vector : std::vector< T, xcore::types::container_static_to_dynamic<T,details::fixsize_allocator, T_MAX_SIZE > >
@@ -54,7 +58,7 @@ int main(void)
     assert( x[0] == 5 );
 
     xcore::array<char,25> XX;
-    XX.CopyFromTo( XX.ViewFrom( 10 ). , 5 );
+    XX.CopyFromTo( XX.ViewFrom( 10 ), 5 );
 
 
     return 0;
