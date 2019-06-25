@@ -53,8 +53,9 @@ int main(void)
 
     assert( x[0] == 5 );
 
-    xcore::array<char,5> XX;
-    XX.CopyFromTo( XX );
+    xcore::array<char,25> XX;
+    XX.CopyFromTo( XX.ViewFrom( 10 ). , 5 );
+
 
     return 0;
 }

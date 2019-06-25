@@ -22,3 +22,55 @@ auto& CopyFromTo( const xcore::span<value_type>     View,
     }
     return *this;
 }
+
+//------------------------------------------------------------------------------
+public: template< typename T > inline
+auto ViewFromTo( T iStart, T iEnd )
+{
+    xassert( iStart >= 0 );
+    xassert( iEnd   <= size() );
+    xassert( iStart <= iEnd );
+    return xcore::span{ &(*this)[ iStart ], iEnd - iStart };
+}
+
+//------------------------------------------------------------------------------
+public: template< typename T > inline
+auto ViewFromCount( T iStart, T Count )
+{
+    xassert( iStart >= 0 );
+    xassert( iStart + Count <= size() );
+    xassert( Count > 0 );
+    return xcore::span{ &(*this)[ iStart ], Count };
+}
+
+//------------------------------------------------------------------------------
+public: template< typename T > inline     
+auto ViewFrom( T iStart )
+{
+    xassert( iStart >= 0 );
+    xassert( iStart <= size() );
+    return xcore::span{ &(*this)[ iStart ], std::ptrdiff_t(size() - static_cast<std::size_t>(iStart)) };
+}
+
+//------------------------------------------------------------------------------
+public: template< typename T > inline
+auto ViewTo( T iEnd )
+{
+    xassert( iEnd <= size() );
+    return xcore::span{ data(), iEnd };
+}
+
+//------------------------------------------------------------------------------
+public: constexpr 
+bool Belongs( const void* pPtr )    const   noexcept
+{ 
+    return pPtr >= static_cast<const void*>(data()) && 
+           pPtr <  static_cast<const void*>(data() + size() ); 
+}
+
+//------------------------------------------------------------------------------
+public: constexpr   
+auto getByteSize ( void ) const noexcept
+{ 
+    return sizeof(value_type) * size(); 
+}
