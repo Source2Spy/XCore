@@ -72,9 +72,9 @@ namespace xcore::error
         //-------------------------------------------------------------------------------------------------------
         // The default error states
         //-------------------------------------------------------------------------------------------------------
-        enum class states
+        enum class states : std::uint32_t
         {
-              GUID = xcore::crc::FromString<32>("err::default::states").m_Value // GUID for this err err this is better been generated with a constexpr string to CRC32 or something like that
+              GUID = 0xbadbadcd                                                 // GUID for this err err this is better been generated with a constexpr string to CRC32 or something like that
             , OK   = 0                                                          // Default OK required by the system
             , FAILURE                                                           // Default FAILURE required by the system
         };

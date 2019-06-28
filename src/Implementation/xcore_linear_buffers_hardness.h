@@ -1,6 +1,5 @@
 
 
-
 //------------------------------------------------------------------------------
 public: template< typename T = size_type >  constexpr
 auto getIndexByEntry ( const value_type& Entry ) const noexcept

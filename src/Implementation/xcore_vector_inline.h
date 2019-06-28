@@ -1,0 +1,164 @@
+
+namespace xcore::containers::vector
+{
+    //------------------------------------------------------------------------------
+    template< typename T, typename T_ALLOCATOR > inline
+    void type<T, T_ALLOCATOR>::clear ( void ) noexcept
+    {
+        struct d { T x; ~d(){} };
+        for( size_type i = 0; i < m_Count; i++ )
+        {
+            reinterpret_cast<d&>(m_Allocator[ i ]).~d();
+        }
+   
+        m_Count = 0;
+    }
+
+    //------------------------------------------------------------------------------
+    template< typename T, typename T_ALLOCATOR > inline
+    void type<T, T_ALLOCATOR>::reserve ( size_type NewCap ) noexcept
+    {
+        GrowBy( NewCap - m_Count );
+    }
+
+    //------------------------------------------------------------------------------
+    template< typename T, typename T_ALLOCATOR > inline
+    xcore::err type<T, T_ALLOCATOR>::GrowBy( size_type NewItems ) noexcept
+    {
+        xcore::err Error;
+        if( NewItems == 0 )
+            return Error;
+
+        //
+        // Allocate the new count
+        //
+        const auto CurCount = m_Allocator.size();
+        if( CurCount == 0 )
+           return m_Allocator.New( NewItems );
+
+        const auto NewCapacity = m_Count + NewItems;
+        return m_Allocator.Resize( NewCapacity );
+    }
+
+    //------------------------------------------------------------------------------
+    template< typename T, typename T_ALLOCATOR > inline
+    void type<T, T_ALLOCATOR>::insert( const size_type Index, const size_type Count ) noexcept
+    {
+        xassert( Index >= 0 );
+        xassert( Index <= m_Count );
+    
+        //
+        // Make sure that we have space
+        //
+        xassert( (m_Count + Count) < std::numeric_limits<size_type>::max() );
+
+        const size_type NewCount = m_Count + Count;
+        if( NewCount >= m_Allocator.size() )
+            GrowBy( std::max( NewCount/2, Count + DEFAULT_GROWTH ) );
+
+        //
+        // Okay lets move all the elements
+        //
+        const auto ItemsToMove       = m_Count - Index; 
+        const auto NewPosOldItems    = Index   + Count; 
+        if( ItemsToMove > 0 ) m_Allocator.CopyFromTo( xcore::span( &m_Allocator[Index], ItemsToMove ), NewPosOldItems );
+    
+        //
+        // Lets construct
+        //
+        for( size_type i = Index; i<NewPosOldItems; ++i )
+            new( &m_Allocator[i] ) value_type{};
+    
+        //
+        // Finally set the new count
+        //
+        m_Count = NewCount;
+    }
+
+    //------------------------------------------------------------------------------
+    template< typename T, typename T_ALLOCATOR > inline
+    void type<T, T_ALLOCATOR>::insert( const size_type Index, const view View ) noexcept
+    {
+        xassert( Index >= 0 );
+        xassert( Index <= m_Count );
+    
+        //
+        // Make sure that we have space
+        //
+        xassert( static_cast<std::uint64_t>(m_Count + View.size()) < std::numeric_limits<size_type>::max() );
+
+        const auto NewCount = m_Count + View.size();
+        if( NewCount >= m_Allocator.size() )
+            GrowBy( std::max( NewCount/2, View.size() + DEFAULT_GROWTH ) );
+        
+        //
+        // Okay lets move all the elements
+        //
+        const auto ItemsToMove       = m_Count - Index; 
+        const auto NewPosOldItems    = Index   + View.size();
+        if( ItemsToMove > 0 ) m_Allocator.CopyToFrom( view( &m_Allocator[NewPosOldItems], ItemsToMove ), Index );
+    
+        //
+        // Lets copy construct all the new items
+        //
+        size_type i=0;
+        for( const auto& Entry : View )
+            new( &m_Allocator[Index+i] ) value_type{ Entry }, i++;
+    
+        //
+        // Finally set the new count
+        //
+        m_Count = NewCount;
+    }
+
+    //---------------------------------------------------------------------------------------
+    template< typename T, typename T_ALLOCATOR >
+    template<typename ...T_ARG> inline
+    void type<T, T_ALLOCATOR>::appendList( const size_type Count, T_ARG&&...Args ) noexcept
+    {
+        //
+        // Make sure that we have memory
+        //
+        if( Count > (m_Allocator.size() - m_Count) )
+            if( auto Error = GrowBy( std::max( (m_Allocator.size() + Count)/2, Count + DEFAULT_GROWTH ) ); Error )
+            {
+                // This should fail here
+            }
+
+        //
+        // Construct all of them
+        //
+        const auto FinalCount = m_Count + Count; 
+        for( auto i=m_Count; i<FinalCount; i++ )
+            new( &m_Allocator[i] ) value_type{ std::forward<T_ARG>(Args)... };
+    
+        // Set the new count and return
+        m_Count = FinalCount;
+    }
+
+    //---------------------------------------------------------------------------------------
+    template< typename T, typename T_ALLOCATOR > inline
+    void type<T, T_ALLOCATOR>::appendList( const view View ) noexcept
+    {
+        const auto Index = size();
+    
+        //
+        // Make sure that we have memory
+        //
+        if( View.size() > (size() - m_Count) )
+            if( auto Error = GrowBy( std::max( (size()+View.size())/2, View.size() + DEFAULT_GROWTH )); Error )
+            {
+                // This should fail here
+            }
+
+        //
+        // Construct all of them
+        //
+        size_type i=0;
+        for( const auto& Entry : View )
+            new( &m_Allocator[Index+i] ) value_type{ Entry }, i++;
+
+        // Set the new count and return
+        m_Count += View.size();
+    }
+}

@@ -14,6 +14,7 @@ namespace xcore::containers
         template< typename T >
         struct entry
         {
+            using type_value = T;
             alignas( std::alignment_of_v<T> ) char m_Data[sizeof(T)];
         };
 

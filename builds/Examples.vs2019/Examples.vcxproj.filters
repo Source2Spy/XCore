@@ -126,6 +126,15 @@
     <ClInclude Include="..\..\src\Implementation\3rdparty\span.hpp">
       <Filter>xCore\Implementation\3rdparty</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\src\Implementation\xcore_vector_inline.h">
+      <Filter>xCore\Implementation</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\Examples\xcore_vector_examples.h">
+      <Filter>Examples</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\xcore_unique_span.h">
+      <Filter>xCore</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\src\xcore.cpp">

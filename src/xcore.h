@@ -41,9 +41,11 @@ namespace xcore
 // xCore headers
 //---------------------------------------------------------------------------
 #include "xcore_target.h"
-#include "xcore_span.h"
 #include "xcore_assert.h"
+#include "xcore_error.h"
+#include "xcore_span.h"
 #include "xcore_array.h"
+#include "xcore_unique_span.h"
 #include "xcore_vector.h"
 #include "xcore_units.h"
 #include "xcore_lock.h"
@@ -54,7 +56,6 @@ namespace xcore
 #include "xcore_crc.h"
 #include "xcore_ptr.h"
 #include "xcore_endian.h"
-#include "xcore_error.h"
 #include "xcore_function.h"
 #include "xcore_event.h"
 #include "xcore_string.h"
@@ -71,6 +72,7 @@ namespace xcore::textfile { namespace version_1{} namespace version_2{} using na
 // Inline functions
 //---------------------------------------------------------------------------
 #include "Implementation/xcore_string_inline.h"
+#include "Implementation/xcore_vector_inline.h"
 
 
 #endif

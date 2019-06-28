@@ -27,10 +27,12 @@
     <ClInclude Include="..\..\src\Examples\xcore_rtti_examples.h" />
     <ClInclude Include="..\..\src\Examples\xcore_string_examples.h" />
     <ClInclude Include="..\..\src\Examples\xcore_textfile_examples.h" />
+    <ClInclude Include="..\..\src\Examples\xcore_vector_examples.h" />
     <ClInclude Include="..\..\src\Implementation\3rdparty\span.hpp" />
     <ClInclude Include="..\..\src\Implementation\meow_hash.hpp" />
     <ClInclude Include="..\..\src\Implementation\xcore_linear_buffers_hardness.h" />
     <ClInclude Include="..\..\src\Implementation\xcore_string_inline.h" />
+    <ClInclude Include="..\..\src\Implementation\xcore_vector_inline.h" />
     <ClInclude Include="..\..\src\xcore.h" />
     <ClInclude Include="..\..\src\xcore_arglist.h" />
     <ClInclude Include="..\..\src\xcore_array.h" />
@@ -54,6 +56,7 @@
     <ClInclude Include="..\..\src\xcore_textfile.h" />
     <ClInclude Include="..\..\src\xcore_textfile2.h" />
     <ClInclude Include="..\..\src\xcore_types.h" />
+    <ClInclude Include="..\..\src\xcore_unique_span.h" />
     <ClInclude Include="..\..\src\xcore_units.h" />
     <ClInclude Include="..\..\src\xcore_vector.h" />
   </ItemGroup>
