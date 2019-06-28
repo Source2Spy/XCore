@@ -5,12 +5,7 @@ namespace xcore::containers::vector
     template< typename T, typename T_ALLOCATOR > inline
     void type<T, T_ALLOCATOR>::clear ( void ) noexcept
     {
-        struct d { T x; ~d(){} };
-        for( size_type i = 0; i < m_Count; i++ )
-        {
-            reinterpret_cast<d&>(m_Allocator[ i ]).~d();
-        }
-   
+        std::destroy( &m_Allocator[0], &m_Allocator.data()[m_Count] );
         m_Count = 0;
     }
 
@@ -161,4 +156,70 @@ namespace xcore::containers::vector
         // Set the new count and return
         m_Count += View.size();
     }
+
+    //---------------------------------------------------------------------------------------
+    template< typename T, typename T_ALLOCATOR > inline
+    void type<T, T_ALLOCATOR>::eraseCollapse( const size_type Index, const size_type Count ) noexcept
+    {
+        if( m_Count <= 0)
+            return;
+    
+        xassert( Index >= 0 );
+        xassert( (Index+Count) <= m_Count );
+    
+        //
+        // Lets free all these guys
+        //
+        std::destroy( &m_Allocator[Index], m_Allocator.data()[Index+Count] );
+    
+        //
+        // Okay if there is any full node lets move him down
+        //
+        const size_type LastMovedIndex = (Index+Count);
+        const size_type ItemsToMove    = m_Count - LastMovedIndex;
+
+        xassert( ItemsToMove <= m_Count );
+        if( ItemsToMove > 0 ) m_Allocator.CopyFromTo( ViewFromCount( LastMovedIndex, ItemsToMove ), Index );
+    
+        //
+        // update the count
+        //
+        m_Count -= Count;
+    }
+
+    //------------------------------------------------------------------------------
+    template< typename T, typename T_ALLOCATOR > inline
+    void type<T, T_ALLOCATOR>::eraseSwap( const size_type Index, const size_type Count ) noexcept
+    {
+        if( m_Count <= 0)
+            return;
+    
+        xassert( Index >= 0 );
+        xassert( (Index+Count) <= m_Count );
+
+        //
+        // Lets free all these guys
+        //
+        std::destroy( &m_Allocator[Index], m_Allocator.data()[Index+Count] );
+    
+        //
+        // Copy all the nodes from the end to where we are
+        //
+        if( (Index + Count) < m_Count )
+        {
+            const auto iSwap = m_Count - 1;
+            for( size_type i = 0; i<Count; i++ )
+            {
+                m_Allocator[ Index + i ] = m_Allocator[ iSwap - i ];
+            }
+        }
+    
+        //
+        // update the count
+        //
+        m_Count -= Count;
+    }
+
+
 }
+

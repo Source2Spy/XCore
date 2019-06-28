@@ -46,8 +46,8 @@ namespace xcore::containers::vector
         inline      void                                        insert                      ( const size_type Index, const view View )          noexcept;
 
         inline      void                                        CopyFromTo                  ( const view View, size_type DestinationOffset = size_type{0} )  noexcept;
-        inline      void                                        eraseWCollapse              ( const size_type Index, const size_type Count=1 )  noexcept;
-        inline      void                                        eraseWSwap                  ( const size_type Index, const size_type Count=1 )  noexcept;
+        inline      void                                        eraseCollapse               ( const size_type Index, const size_type Count=1 )  noexcept;
+        inline      void                                        eraseSwap                   ( const size_type Index, const size_type Count=1 )  noexcept;
     
         template<typename ...T_ARG>
         inline      value_type&                                 append                      ( T_ARG&&...Args )                                  noexcept { auto Index = m_Count; appendList(1, std::forward<T_ARG>(Args)... ); return data()[Index]; }
