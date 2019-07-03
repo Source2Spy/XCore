@@ -48,7 +48,7 @@ namespace xcore::allocator
         }
 
         //--------------------------------------------------------------------------------------------
-        xcore::err Resize( size_type Count ) noexcept 
+        xcore::err resize( size_type Count ) noexcept 
         {
             xassert( Count >= 0 );
             err     Error;

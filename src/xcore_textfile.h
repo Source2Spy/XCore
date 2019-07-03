@@ -242,7 +242,7 @@ namespace xcore::textfile::version_1
         constexpr           bool                        isReading           ( void )    const                                                                               noexcept { return m_File.m_States.m_isReading; }
         constexpr           bool                        isEOF               ( void )    const                                                                               noexcept { return m_File.m_States.m_isEOF; }
         constexpr           bool                        isWriteFloats       ( void )    const                                                                               noexcept { return m_File.m_States.m_isSaveFloats; }
-        inline              xcore::err                  Open                ( bool isRead, std::string_view View, xcore::textfile::file_type FileType, flags Flags = {} )   noexcept
+        inline              xcore::err                  Open                ( bool isRead, std::string_view View, file_type FileType, flags Flags = {} )                    noexcept
                             {
                                 xcore::err Error;
                                 if( isRead )

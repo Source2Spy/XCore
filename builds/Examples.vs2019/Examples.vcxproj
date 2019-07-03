@@ -32,6 +32,7 @@
     <ClInclude Include="..\..\src\Implementation\meow_hash.hpp" />
     <ClInclude Include="..\..\src\Implementation\xcore_linear_buffers_hardness.h" />
     <ClInclude Include="..\..\src\Implementation\xcore_string_inline.h" />
+    <ClInclude Include="..\..\src\Implementation\xcore_textfile2_inline.h" />
     <ClInclude Include="..\..\src\Implementation\xcore_vector_inline.h" />
     <ClInclude Include="..\..\src\xcore.h" />
     <ClInclude Include="..\..\src\xcore_arglist.h" />

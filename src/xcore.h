@@ -63,7 +63,7 @@ namespace xcore
 #include "Implementation/meow_hash.hpp"
 #include "xcore_guid.h"
 #include "xcore_log.h"
-namespace xcore::textfile { namespace version_1{} namespace version_2{} using namespace version_1; }
+namespace xcore::textfile { namespace version_1{} namespace version_2{} using namespace version_2; }
 #include "xcore_textfile.h"
 #include "xcore_textfile2.h"
 #include "xcore_rtti.h"
@@ -73,6 +73,6 @@ namespace xcore::textfile { namespace version_1{} namespace version_2{} using na
 //---------------------------------------------------------------------------
 #include "Implementation/xcore_string_inline.h"
 #include "Implementation/xcore_vector_inline.h"
-
+#include "Implementation/xcore_textfile2_inline.h"
 
 #endif

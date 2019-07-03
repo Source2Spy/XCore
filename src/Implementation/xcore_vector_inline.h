@@ -32,7 +32,7 @@ namespace xcore::containers::vector
            return m_Allocator.New( NewItems );
 
         const auto NewCapacity = m_Count + NewItems;
-        return m_Allocator.Resize( NewCapacity );
+        return m_Allocator.resize( NewCapacity );
     }
 
     //------------------------------------------------------------------------------

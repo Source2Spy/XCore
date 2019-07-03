@@ -135,6 +135,9 @@
     <ClInclude Include="..\..\src\xcore_unique_span.h">
       <Filter>xCore</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\src\Implementation\xcore_textfile2_inline.h">
+      <Filter>xCore\Implementation</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\src\xcore.cpp">
