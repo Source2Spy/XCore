@@ -2,6 +2,25 @@
 #define _XCORE_TEXTFILE2_H
 #pragma once
 
+//-----------------------------------------------------------------------------------------------------
+// Please remember that text file are lossy files due to the floats don't survive text-to-binary conversion
+//
+//     Type    Description
+//     ------  ----------------------------------------------------------------------------------------
+//      f      32 bit float
+//      F      64 bit double
+//      d      32 bit integer
+//      g      32 bit unsigned integer
+//      D      64 bit integer
+//      G      64 bit unsigned integer
+//      c       8 bit integer
+//      h       8 bit unsigned integer
+//      C      16 bit integer
+//      H      16 bit unsigned integer
+//      s      this is a std::string
+//      S      undefined (DONT USE)
+//      e      Enum this is a std::string but without spaces
+//-----------------------------------------------------------------------------------------------------
 namespace xcore::textfile::version_2
 {
     //-----------------------------------------------------------------------------------------------------
@@ -71,6 +90,7 @@ namespace xcore::textfile::version_2
         struct column
         {
             string::fixed<char,128>             m_Name;                 // Type name
+            int                                 m_NameLength;           // string Length for Name
             int                                 m_nTypes;               // -1 is '?' otherwise is fixed set
             crc::units<32>                      m_UserType;             // if 0 then is not valid
             xcore::unique_span<dynamic_field>   m_DynamicFields;        // if this column has dynamic fields here is where the info is
@@ -164,6 +184,15 @@ namespace xcore::textfile::version_2
             BuildTypesRecursive<T_ARGS...>( Data.data() );
             return Data;
         }
+        //-----------------------------------------------------------------------------------------------------
+        //-----------------------------------------------------------------------------------------------------
+        namespace type_map
+        {
+            struct system   { int m_Index };
+            struct user     { int m_Index };
+            struct fails    {};;
+            using type = std::variant< system, user, fails };
+        }
     }
 
     //-----------------------------------------------------------------------------------------------------
@@ -245,22 +274,29 @@ namespace xcore::textfile::version_2
                         xcore::err      WriteStr            ( string::view<const char> Buffer )                                         noexcept;
                         xcore::err      WriteFmtStr         ( const char* pFmt, ... )                                                   noexcept;
                         xcore::err      WriteChar           ( char C, int Count = 1 )                                                   noexcept;
+                        xcore::err      WriteFieldC         ( const char* pFieldName, arglist::view Args )                              noexcept;
 
                         xcore::err      HandleDynamicTable  ( int& Count )                                                              noexcept;
 
     protected:
 
+        xcore::log::channel                                 m_Channel               { "xcore::textfile::stream" };
+
         details::file                                       m_File                  {}; // File pointer
         details::record                                     m_Record                {}; // This contains information about the current record
+        int                                                 m_nColumns              {0};
         xcore::vector<details::column>                      m_Columns               {};
         xcore::vector<std::byte>                            m_Memory                {};
         xcore::vector<details::user>                        m_UserTypes             {};
+        xcore::vector<int>                                  m_DataMapping           {};
         std::unordered_map<crc::units<32>, std::uint32_t>   m_UserTypeMap           {}; // First uint32 is the CRC32 of the err name
                                                                                         // Second uint32 is the index in the UserTypes vector which contains the actual data
         int                                                 m_iLine                 {}; // Which line we are in the current record
         int                                                 m_iField                {}; // Current Field that we are trying to read
         int                                                 m_nTypesLine            {}; // Number of types per line
         int                                                 m_iCurrentOffet         {};
+
+        int                                                 m_iColumn               {};
     };
 }
 #endif

@@ -5,23 +5,17 @@ namespace xcore::textfile::version_2
     //------------------------------------------------------------------------------------------------
 
     template< std::size_t N, typename... T_ARGS > inline
-    xcore::err stream::Field( const char(&pFieldName)[N], T_ARGS&... Args ) noexcept
+    xcore::err stream::Field( int& iUserRef, const char(&pFieldName)[N], T_ARGS&... Args ) noexcept
     {
-        static_assert( 0 != (sizeof...(T_ARGS)) );
-        constexpr static string::fixed<char, sizeof...(T_ARGS)+1> Types{ details::BuildTypes<T_ARGS...>() };
-        if( isReading() ) 
+        static_assert( (std::is_const_v<T_ARGS> || ... ) == false );
+        if( isReading() )
         {
-            int         iUserRef;
-            xcore::err  Error;
-            static_assert( (std::is_const_v<T_ARGS> || ... ) == false );
-            if( ReadFieldC( iUserRef, pFieldName, Types.data(), &static_cast<typename details::type_filter<T_ARGS>::type>(Args)... ).isError(Error) ) return Error;
-            return iUserRef;
+            arglist::out Out{ &static_cast<typename details::type_filter<T_ARGS>::type>(Args)... };
+            return ReadFieldC( iUserRef, pFieldName, Out ).isError(Error) ) return Error;
         }
-        else 
-        {
-            WriteFieldC( pFieldName, Types.data(), static_cast<typename details::type_filter<T_ARGS>::type>( Args )... );
-        }
-        return {0};
+
+        arglist::out Out{ static_cast<typename details::type_filter<T_ARGS>::type>( Args )... };
+        return WriteFieldC( pFieldName, Out );
     }
 
     //------------------------------------------------------------------------------------------------

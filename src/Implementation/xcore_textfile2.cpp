@@ -771,314 +771,428 @@ namespace xcore::textfile::version_2
 
         return Index;
     }
+
     //------------------------------------------------------------------------------
-    // Description:
-    //      Read a field element from the file. A field may contain one or more types. 
-    //      Make sure you pass the address for any err that you are reading and make sure
-    //      that the sizes matches what the file formats specifies.
-    // Example:
-    // <CODE> TextFile.ReadFieldC( iUserRef, "Position", "fff", &A, &B, &C ); </CODE>
+    static 
+    bool isCompatibleTypes( char X, out_types Y ) noexcept 
+    {
+        std::visit([&]( auto Value )
+        {
+            using t = std::decay_t<decltype(Value)>;
+                    if constexpr ( std::is_same_v<t,std::uint8_t>       ) return X == 'h';
+            else    if constexpr ( std::is_same_v<t,std::uint16_t>      ) return X == 'H';
+            else    if constexpr ( std::is_same_v<t,std::uint32_t>      ) return X == 'g';
+            else    if constexpr ( std::is_same_v<t,std::uint64_t>      ) return X == 'G';
+            else    if constexpr ( std::is_same_v<t,std::int8_t>        ) return X == 'c';
+            else    if constexpr ( std::is_same_v<t,std::int16_t>       ) return X == 'C';
+            else    if constexpr ( std::is_same_v<t,std::int32_t>       ) return X == 'd';
+            else    if constexpr ( std::is_same_v<t,std::int64_t>       ) return X == 'D';
+            else    if constexpr ( std::is_same_v<t,float>              ) return X == 'f';
+            else    if constexpr ( std::is_same_v<t,double>             ) return X == 'F';
+            else    if constexpr ( std::is_same_v<t,string::view<char>> ) return X == 's';
+            else    return false;
+        }, Y );
+    }
+
     //------------------------------------------------------------------------------
     xcore::err stream::ReadFieldC( int& iUserRef, const char* pFieldName, arglist::view Args ) noexcept
     {
-        xcore::err Error;
-
         xassert( m_iLine > 0 );
+
+        xcore::err Error;
+        error::scope( Error, [&]
+        {
+            // If we have any error lets make sure we always move to the next column
+             m_iColumn++;
+        });
 
         //
         // Create a mapping from user order to file order of fields
         //
         if( m_iLine == 1 )
         {
-            int i;
-            for( i=0; i<static_cast<int>(m_Field.size()); i++ )
+            m_DataMapping.append() = -1;
+            xassert( m_iColumn == (m_DataMapping.size()-1) );
+
+            // Find the coloumn name
+            for( int i=0; i<m_nColumns; ++i )
             {
-                int     j;
-                auto&   Field = m_Field[i];
-            
-                // Make sure that is the same length
-                if( pFieldName[ Field.m_TypeOffset - 1 ] != 0 )
+                auto& Column = m_Columns[i];
+
+                if( pFieldName[ Column.m_NameLength - 1 ] != 0 )
                     continue;
 
-                // if it is then double check the string
-                for( j=0; (Field.m_Type[j] == pFieldName[j]) && pFieldName[j]; j++ );
-
-                // The string must not be the same
-                if( Field.m_Type[j] != ':' || pFieldName[j] != 0 )
-                    continue;
-
-                //
-                // Lets check whether is a special err
-                //
-                auto&   FieldD    = m_Field[i];
-                auto&   User      = m_User.emplace_back();
-
-                if( FieldD.m_iFieldDecl >= 0 )
+                // Make sure that we have a match
                 {
-                    auto&         FieldT = m_Field[ FieldD.m_iFieldDecl ];
-                    bool          bFound;
-                
-                    if( m_File.m_States.m_isBinary && m_Memory[ FieldT.m_iMemory[0] ] == '.' )
-                    {
-                        const char* pType  = m_UserTypes[ FieldT.m_iUserType ].m_UserType.data();
-                        int         t      = 0;
+                    int j;
+                    for( j=0; (Column.m_Name[j] == pFieldName[j]) && pFieldName[j]; j++ );
 
-                        for( ++j; pType[t] == pFieldName[j] && pFieldName[j]; ++j, ++t );
-                        bFound = (pType[t] == pFieldName[j]);
-                    }
-                    else
-                    {
-                        const char* pType  = &m_Memory[ FieldT.m_iMemory[0] ];
-                        int         t      = 0;
-                    
-                        for( ++j; pType[t] == pFieldName[j] && pFieldName[j]; ++j, ++t );
-                        bFound = (pType[t] == pFieldName[j]);
-                    }
+                    // The string must not be the same
+                    if( j != Column.m_NameLength )
+                        continue;
 
-                    if( false == bFound )
-                    {
-                        User.m_iFieldType = -1;
-                        User.m_iFieldData = -1;
-                        //X_LOG( "Warning trying to read a dynamic err which is different from the file %s", pFieldName );
-                    }
-                    else
-                    {
-                        User.m_iFieldType = FieldD.m_iFieldDecl;
-                        User.m_iFieldData = i;
-                    }
+                    m_DataMapping[m_DataMapping.size()-1] = j;
+                    break;
                 }
-                else
-                {
-                    // Okay lefts finish comparing
-                    bool bFound;
-                    j++;
-
-                    if( m_File.m_States.m_isBinary && Field.m_Type[j] == '.' )
-                    {
-                        const char* p = m_UserTypes[ Field.m_iUserType ].m_UserType.data();
-                        int         t;
-
-                        for( t=0; p[t] == pFieldName[j] && pFieldName[j]; ++j, ++t );
-                        bFound = (p[t] == pFieldName[j]);
-                    }
-                    else
-                    {
-                        for( int i=0; (bFound = (Field.m_Type[j] == pArgs[i])) && pFieldName[j]; ++j, ++i );
-                    }
-
-                    // if the types are not the same then the version of the file is not the same
-                    if( bFound == false )
-                    {
-                        User.m_iFieldType = -1;
-                        User.m_iFieldData = -1;
-                        //X_LOG( "Warning trying to read a err which is different from the file %s", pFieldName );
-                    }
-                    else
-                    {
-                        User.m_iFieldType = i;
-                        User.m_iFieldData = i;
-                    }
-                }
-
-                // Found what we were looking for
-                break;
             }
 
-            // Did we found the err
-            if( i == m_Field.size() )
+            // If we have a mapping then lets see if we can determine the types
+            if( m_DataMapping[m_iColumn] != - 1 )
             {
-                textfile::details::user& User = m_User.emplace_back();
-                User.m_iFieldType = -1;
-                User.m_iFieldData = -1;
+                auto& Column = m_Columns[m_DataMapping[m_iColumn]];
+                if( Column.m_nTypes >= Args.size() )
+                {
+                    if( m_FieldInfo.size() == Args.size() )
+                    {
+                        for( int i=0; i<m_FieldInfo.size(); i++ )
+                        {
+                            if( isCompatibleTypes( m_FieldInfo[i].m_AtomicType, Args[i] ) == false )
+                            {
+                                m_DataMapping[m_DataMapping.size()-1] = -1;
+                                XLOG_CHANNEL_WARNING( m_Channel, "Found the coloumn but the types did not match. %s", pFieldName );
+                                break;
+                            }
+                        }
+                    }
+                    else
+                    {
+                        // We don't have the same count
+                        m_DataMapping[m_DataMapping.size()-1] = -1;
+                        XLOG_CHANNEL_WARNING( m_Channel, "Found the coloumn but the type count did not match. %s", pFieldName );
+                    }
+                }
+            }
+            else
+            {
                 XLOG_CHANNEL_WARNING( m_Channel, "Unable to find the field amount the types. %s", pFieldName );
             }
         }
 
-        //
-        // Okay we should be able to give the user the data now
-        //
-        textfile::details::user& User = m_User[m_iField];
-
-        // This slot from the user is disable
-        if( User.m_iFieldData == -1 )
+        // Make sure we have the type in question
+        if( -1 == m_DataMapping[m_iColumn] )
         {
-            m_iField++;
-    //        UsrIndex = -1;
-            return xerr_code( Error, error_state::READ_TYPES_DONTMATCH, "Types don't match unable to give the data to the file reader" );
-        }
-
-        const char*     pRef      = nullptr;    // This is where the string containing the types is
-        auto&           FieldData = m_Field[ User.m_iFieldData ];
-
-        // collect where the err id coming from
-        if( User.m_iFieldType != User.m_iFieldData )
-        {
-            auto& Field = m_Field[ User.m_iFieldType ];
-            pRef        = &m_Memory[ Field.m_iMemory[0] ];
-            xassert( Field.m_nTypes == 1 );
-        }
-        else
-        {
-            auto& Field = m_Field[ User.m_iFieldType ];
-            pRef        = &Field.m_Type[ Field.m_TypeOffset ];
+            return xerr_code( Error, error_state::READ_TYPES_DONTMATCH, "Fail to find the correct type" );
         }
 
         //
-        // Is this a user err?
+        // Get ready to read to column
         //
-        if( pRef[0] == '.' )
+        auto& Column = m_Columns[m_DataMapping[m_iColumn]];
+
+        //
+        // if the type is '?' then check the types every call
+        //
+        if( Column.m_nTypes == -1 )
         {
-            int Index;
-            if( m_File.m_States.m_isBinary )
+            if( m_FieldInfo.size() == Args.size() )
             {
-                Index = m_Field[ User.m_iFieldType ].m_iUserType;
-
-                // Set the atomic types
-                const textfile::details::user_type& UserType = m_UserTypes[Index];
-                pRef = UserType.m_SystemType.data();
+                for( int i=0; i<m_FieldInfo.size(); i++ )
+                {
+                    if( isCompatibleTypes( m_FieldInfo[i].m_AtomicType, Args[i] ) == false )
+                    {
+                        XLOG_CHANNEL_WARNING( m_Channel, "Found the coloumn but the types did not match. %s", pFieldName );
+                        return xerr_code( Error, error_state::READ_TYPES_DONTMATCH, "Fail to find the correct type" );
+                    }
+                }
             }
             else
             {
-                if( auto It = m_UserTypeMap.find( xcore::crc::FromString<32>(pRef) ); It == m_UserTypeMap.end() )
+                // We don't have the same count
+                XLOG_CHANNEL_WARNING( m_Channel, "Found the coloumn but the type count did not match. %s", pFieldName );
+                return xerr_code( Error, error_state::READ_TYPES_DONTMATCH, "Fail to find the correct type" );
+            }
+        }
+
+        //
+        // Read each type
+        //
+        for( int i=0; i<Args.size(); i++ )
+        {
+            const auto& E    = Args[i];
+            const auto iData = Column.m_FieldInfo[i].m_iData;
+
+            std::visit( [&]( auto p )
+            {
+                using t = std::decay_t<decltype(p)>;
+
+                if constexpr ( std::is_same_v<t,std::uint8_t> || std::is_same_v<t,std::int8_t> )
                 {
-                    return xerr_code( Error, error_state::READ_TYPES_DONTMATCH, "Unable to find user type" );
+                    reinterpret_cast<const std::uint8_t&>(*p) = reinterpret_cast<const std::uint8_t&>( m_Memory[ iData ]);
+                }
+                else if constexpr( std::is_same_v<t,std::uint16_t> || std::is_same_v<t,std::int16_t> )
+                {
+                    reinterpret_cast<const std::uint16_t&>(*p) = reinterpret_cast<const std::uint16_t&>( m_Memory[ iData ]);
+                }
+                else if constexpr ( std::is_same_v<t,std::uint32_t> || std::is_same_v<t,std::int32_t> || std::is_same_v<t,float> )
+                {
+                    reinterpret_cast<const std::uint32_t&>(*p) = reinterpret_cast<const std::uint32_t&>( m_Memory[ iData ]);
+                }
+                else if constexpr ( std::is_same_v<t,std::uint64_t> || std::is_same_v<t,std::int64_t> || std::is_same_v<t,double> )
+                {
+                    reinterpret_cast<const std::uint64_t&>(*p) = reinterpret_cast<const std::uint64_t&>( m_Memory[ iData ]);
+                }
+                else if constexpr ( std::is_same_v<t,string::view<char>> )
+                {
+                    string::Copy( *pValue, m_Memory[ iData ] );
                 }
                 else
                 {
-                    // Set the atomic types
-                    const textfile::details::user_type& UserType = m_UserTypes[(*It).second];
-                    pRef = UserType.m_SystemType.data();
+                    xassume( false );
                 }
-
-                /*
-                if( false == m_UserTypes.BinarySearch( user_type( pRef ), Index) )
-                {
-                    x_throw( "Unable to find user err [%s]", pRef );
-                }
-                */
-            }
-        
-        
+            }, E );
         }
 
         //
-        // Okay collect data now
+        // The user reference
         //
-        va_list    Args;
-        va_start( Args, pArgs );
+        iUserRef = static_cast<int>(Column.m_UserType.m_Value);
 
-        for( int i=0; pRef[i] ; i++ )
+        //
+        // Ready to read the next column
+        //
+        m_iColumn++;
+
+        return Error;
+    }
+
+    //------------------------------------------------------------------------------
+
+    xcore::err xcore::textfile::stream::ReadLine( void ) noexcept
+    {
+        int                     c;
+        int                     Size=0;
+        string::fixed<char,256> Buffer;
+        xcore::err              Error;
+
+        // Make sure that the user doesn't read more lines than the record has
+        xassert( m_iLine <= m_Record.m_Count );
+
+        //
+        // If it is the first line we must read the type information before hand
+        //
+        if( m_iLine == 0 )
         {
-            if( pRef[i] != pArgs[i] ) 
-                return xerr_code( Error, error_state::MISMATCH_TYPES, "The parameters pass to the read function does not match the parameters given in the file" );
+            // Reset the user field offsets
+            m_User.clear();
 
-            m_nTypesLine++;
-            switch( pRef[i] )
+            // Solve types
+            if( m_File.m_States.m_isBinary )
             {
-                case 'g':
-                case 'f':
-                case 'd':
+                // make sure it starts okay
+                if( m_File.getC(c).isError(Error) || c != '{' ) 
+                    if( Error )   return Error;
+                    else          return xerr_failure( Error, "Error reading file. Expecting '{' but didn't find it" );
+
+                if( m_File.getC(c).isError(Error) || c != 0 ) 
+                    if( Error )   return Error;
+                    else          return xerr_failure( Error, "Error reading file. Expecting 'end_of_string' but didn't find it" );
+
+                // Read all the types
+                do
+                {
+                    // Read type information
+                    Size = 0;
+                    if( m_File.getC(c).isError(Error) ) return Error;
+                    while( c != -1 )
                     {
-                            auto p = va_arg( Args, std::uint32_t* );
-                            *p = reinterpret_cast<const std::uint32_t&>(m_Memory[ FieldData.m_iMemory[i] ]);
-                            break;
-                    }
-                case 'F':
-                case 'D':
-                case 'G': 
-                    {
-                            std::uint64_t* p = (va_arg( Args, std::uint64_t* ));     // get the err 
-                            *p = *((std::uint64_t*)&m_Memory[ FieldData.m_iMemory[i] ]);
-                            break;
-                    }
-                case 'h': 
-                case 'c': 
-                    {
-                            std::uint8_t* p = (va_arg( Args, std::uint8_t* ));     // get the err 
-                            *p = *((std::uint8_t*)&m_Memory[ FieldData.m_iMemory[i] ]);
-                            break;
-                    }
-                case 'H':
-                case 'C':
-                    {
-                            std::uint16_t* p = (va_arg( Args, std::uint16_t* ));     // get the err 
-                            *p = *((std::uint16_t*)&m_Memory[ FieldData.m_iMemory[i] ]);
-                            break;
-                    }
-                case '<':
-                    {
-                        std::string* p = (va_arg( Args, std::string* ));     // get the err
-                        if( m_Memory[ FieldData.m_iMemory[0] ] == '.' )
+                        Buffer[Size++] = c;
+                        if( c == 0 ) break;
+                        if( c == '.' )
                         {
-                            if( m_File.m_States.m_isBinary )
+                            if( m_File.Read( reinterpret_cast<std::uint16_t&>(Buffer[Size])).isError( Error ) )
+                                return Error;
+                            xassert_block_basic()
                             {
-                                xassert( m_File.m_States.m_isReading );
-                                const std::uint16_t Index = *reinterpret_cast<std::uint16_t*>( &m_Memory[ FieldData.m_iMemory[0] + 1 ] );
-                                FieldData.m_iUserType = m_BinReadUserTypeMap[ Index ];
-                                p->assign( m_UserTypes[ FieldData.m_iUserType ].m_UserType.data() );
+                                auto Index = reinterpret_cast<std::uint16_t&>(Buffer[Size]);
+                                xassert( Index <= m_UserTypes.size() );
                             }
-                            else
-                            {
-                                //int Index;
-                                auto pData = reinterpret_cast<const char*>(&m_Memory[ FieldData.m_iMemory[0] ]); 
-                                p->assign(pData);
+                        
+                            Size += 2;
+                            break;
+                        }
+                        if( m_File.getC(c).isError(Error) ) return Error;
+                    }
 
-                                auto It = m_UserTypeMap.find( xcore::crc::FromString<32>(pData) );
-                                if( It == m_UserTypeMap.end() )
-                                {
-                                    return xerr_code( Error, error_state::MISMATCH_TYPES, "The user define type that is been read does not match any of the user data types defined" );
-                                }
+                    /*
+                    if( c == -1 )
+                    {
+                        if( m_pFile->isEOF()  ) x_throw( "Found an expected end of file");
+                        else x_throw( "Found an error while reading the types");
+                    }
+                    */
 
-                                /*
-                                if( false == m_UserTypes.BinarySearch(user_type(*p), Index) )
-                                {
-                                    bool bFound = false;
-                                    // OK lets do a linear search just in case
-                                    for( auto& Entry : m_UserTypes )
-                                    {
-                                        if( Entry.m_UserType == *p )
-                                        {
-                                            bFound = true;
-                                            Index  = m_UserTypes.getIndexByEntry<int>(Entry);
-                                            break;
-                                        }
-                                    }
+                    if( Buffer[0] != '}' )
+                    {
+                        // Okay build the type information
+                        BuildTypeInformation( Buffer );
+                    }
 
-                                    if( bFound == false )
-                                        x_throw( "Unable to find the user err [%s]",p);
-                                }
-                                */
-                                FieldData.m_iUserType = It->second; // Index;
-                            }
+                } while( Buffer[0] != '}' );
+            }
+            else
+            {
+                // Read out all the white space
+                if( m_File.ReadWhiteSpace(c).isError( Error ) )
+                    return Error;
+
+                //
+                // we should have the right character by now
+                //
+                if( c != '{' ) return xerr_failure( Error, "Unable to find the types" );
+
+                // Get the next token
+                if( m_File.ReadWhiteSpace(c).isError( Error ) )
+                    return Error;
+
+                do
+                {
+                    // Read a word
+                    Size=0;
+                    while( (c >= 'a' && c <= 'z') || 
+                           (c >= 'A' && c <= 'Z') || 
+                           (c=='_') ||
+                           (c==':') || 
+                           (c=='>') || 
+                           (c=='<') ||
+                           (c=='?') ||
+                           (c >= '0' && c <= '9' ) ||
+                           (c=='.') )
+                    {
+                        Buffer[Size++] = c;                    
+                        if( m_File.getC(c).isError(Error) ) return Error;
+                    }
+            
+                    // Terminate the string
+                    Buffer[Size++] = 0;
+
+                    // Okay build the type information
+                    BuildTypeInformation( Buffer );
+
+                    // Read any white space
+                    if( m_File.ReadWhiteSpace(c).isError( Error ) )
+                        return Error;
+
+                } while( c != '}' );
+            }
+        }
+
+        //
+        // Okay now we must read a line worth of data
+        //    
+        for( auto& Field : m_Field )
+        {
+            switch( Field.m_iFieldDecl )
+            {
+            case -2:
+                {
+                    if( ReadComponent( Field.m_iMemory[0], '?' ).isError(Error) )
+                        return Error;
+                
+                    //
+                    // For binary lets move the index of the user type into the right place
+                    //
+                    if( m_File.m_States.m_isBinary )
+                    {
+                        if( Field.m_iMemory[0] == '.' )
+                        {
+                            Field.m_iUserType = reinterpret_cast<std::uint16_t&>(Field.m_iMemory[1]);
+                            Field.m_iUserType = m_UserTypes[ Field.m_iUserType ].m_UID;
+                        }
+                    }
+                
+                    // Done here
+                    break;
+                }
+            case -1:
+                {
+                    auto& FieldType = Field.m_Type;
+
+                    //
+                    // First deal with user types
+                    //
+                    if( FieldType[ Field.m_TypeOffset ] == '.' )
+                    {
+                        const auto& UserType = m_UserTypes[ Field.m_iUserType ];
+                    
+                        for( int i=0; i<UserType.m_nSystemTypes; i++ )
+                        {
+                            if( ReadComponent( Field.m_iMemory[i], UserType.m_SystemType[i] ).isError(Error) )
+                                return Error;
+                        }
+                    }
+                    else
+                    {
+                        for( int i=0; FieldType[ Field.m_TypeOffset + i]; i++ )
+                        {
+                            if( ReadComponent( Field.m_iMemory[i], FieldType[ Field.m_TypeOffset + i] ).isError(Error) )
+                                return Error;
+                        }
+                    }
+                    break;
+                }
+            default:
+                {
+                    auto&         FieldDecl = m_Field[Field.m_iFieldDecl];
+                    const char*   pType     = &m_Memory[ FieldDecl.m_iMemory[0] ];
+                
+                    //
+                    // Read based on user type
+                    //
+                    if( pType[0] == '.' )
+                    {
+                        int Index;
+                    
+                        // Deal with fast mapping for binary reads
+                        if( m_File.m_States.m_isBinary )
+                        {
+                            Index = reinterpret_cast<const std::uint16_t&>(pType[1]);
+                            // Not need to remap as it already has been remapped
                         }
                         else
                         {
-                            p->assign( reinterpret_cast<const char*>(&m_Memory[ FieldData.m_iMemory[0] ]) );
+                            /*
+                            if( m_UserTypes.BinarySearch( user_type( pType ), Index ) == false )
+                            {
+                                x_throw( "Unable to find user type");
+                            }
+                            */
+                            xassert(false);
                         }
                     
-                        // Skip the '?' and the '>' symbols
-                        i+=2;
-                        break;
+                        const auto& UserType = m_UserTypes[Index];
+                    
+                        Field.m_nTypes      = UserType.m_nSystemTypes;
+                        Field.m_iUserType   = Index;
+                    
+                        for( std::uint32_t i=0; i<Field.m_nTypes; i++ )
+                        {
+                            if( ReadComponent( Field.m_iMemory[i], UserType.m_SystemType[i] ).isError(Error) )
+                                return Error;
+                        }
                     }
-                case 's': 
-                case 'e':            
+                    else
                     {
-                        auto p = va_arg( Args, string::view<char>* );     // get the err 
-                        string::Copy( *p, reinterpret_cast<const char*>(&m_Memory[ FieldData.m_iMemory[i] ]) );
-                        break;
+                        for( Field.m_nTypes=0; pType[ Field.m_nTypes ]; Field.m_nTypes++ )
+                        {
+                            if( ReadComponent( Field.m_iMemory[Field.m_nTypes], pType[ Field.m_nTypes ] ).isError(Error) )
+                                return Error;
+                        }
                     }
-                default:
-                    // Wrong TYPE
-                    xassert( false );
                     break;
+                }
             }
         }
 
-        // Ready for the next field
-        m_iField++;
+        //
+        // Increment the line count
+        // and reset the field count
+        // reset the memory count
+        //
+        m_iLine++;
+        m_iField        = 0;
+        m_iCurrentOffet = 0;
+        m_nTypesLine    = 0;
 
-        iUserRef = FieldData.m_iUserType;// User.m_iFieldType;
         return Error;
     }
 }
-
