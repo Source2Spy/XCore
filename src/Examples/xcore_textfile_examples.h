@@ -58,6 +58,8 @@ namespace xcore::textfile::examples
                 {
                     0
                     ||  TextFile.Field( "String",   String[i]       ).isError(Error)
+
+                    ||  TextFile.Field( "String",   String[i]       ).isError(Error)
                     ||  TextFile.Field( "Floats",   Floats64[i]
                                                 ,   Floats32[i]     ).isError(Error)
                     ||  TextFile.Field( "Ints"  ,   Int64[i]
@@ -68,7 +70,7 @@ namespace xcore::textfile::examples
                                                 ,   UInt32[i] 
                                                 ,   UInt16[i] 
                                                 ,   UInt8[i]        ).isError(Error)
-                    ||0;
+                    ;
                 }
             )) return Error;
             
@@ -170,7 +172,7 @@ namespace xcore::textfile::examples
                 {
                     string::ref<char> ReadTypes;
 
-                    // For user data
+                    // For user_types data
                     // if( TextFile.Field( UserInfo, "Ints", Int32[i] ).isError(Error) ) return;
 
                     // Just save some integers to show that we can still safe normal fields at any point
@@ -241,7 +243,7 @@ namespace xcore::textfile::examples
             return Error;
 
         //
-        // Lets test user types
+        // Lets test user_types types
         //
         TextFile.AddUserType( "fff", ".V3",   crc::FromString<32>(".V3"),   0 );
         TextFile.AddUserType( "fff", ".V3D",  crc::FromString<32>(".V3D"),  1 );

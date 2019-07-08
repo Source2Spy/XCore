@@ -85,7 +85,7 @@ namespace xcore::containers
             using reverse_iterator          = typename parent::reverse_iterator;
             using const_reverse_iterator    = typename parent::const_reverse_iterator;
 
-            using parent::array;
+            //using parent::array;
             using parent::operator =;
             using parent::operator [];
             using parent::data;

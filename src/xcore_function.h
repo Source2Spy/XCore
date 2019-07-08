@@ -143,7 +143,7 @@ namespace xcore::function
         template< typename T_LAMBDA >
         constexpr buffer( const T_LAMBDA& Lambda ) noexcept : m_Invoker( &functor<T_LAMBDA>::Invoke )
         {
-            // Make sure that the lambda given by the user matches the expected signature
+            // Make sure that the lambda given by the user_types matches the expected signature
             using fa = traits< typename std::remove_reference<T_LAMBDA>::err >;
             using fb = traits< xcore::function::make_t< false, T_RET, T_ARG ... > >;
             static_assert( xcore::function::traits_compare<fa,fb>::value, "" );

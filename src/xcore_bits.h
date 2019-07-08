@@ -22,7 +22,7 @@ namespace xcore::bits
     //      which is a multiple of "a".  For example, x_Align(57,16) is 64.
     // Arguments:
     //     Addr       - This is the address/number/offset to align
-    //     AlignTo    - This is a power of 2 number that the user wants it to be align to
+    //     AlignTo    - This is a power of 2 number that the user_types wants it to be align to
     //------------------------------------------------------------------------------
     template< typename T > constexpr
     T Align( T Address, const int AlignTo ) noexcept
@@ -47,7 +47,7 @@ namespace xcore::bits
     //      which is a multiple of "a".  For example, x_AlignLower(57,16) is 48.
     // Arguments:
     //     Addr       - This is the address/number/offset to align
-    //     AlignTo    - This is a power of 2 number that the user wants it to be align to
+    //     AlignTo    - This is a power of 2 number that the user_types wants it to be align to
     //------------------------------------------------------------------------------
 
     template< typename T > constexpr
@@ -69,10 +69,10 @@ namespace xcore::bits
     //------------------------------------------------------------------------------
     // Description:
     //     This macro result in a TRUE/FALSE which indicates whether a number/address/offset
-    //     is align to a certain power of two provided by the user.
+    //     is align to a certain power of two provided by the user_types.
     // Arguments:
     //     Addr       - This is the address/number/offset to align
-    //     AlignTo    - This is a power of 2 number that the user wants it to be align to
+    //     AlignTo    - This is a power of 2 number that the user_types wants it to be align to
     //------------------------------------------------------------------------------
     template< typename T > constexpr 
     bool isAlign( T Addr, const int AlignTo ) noexcept

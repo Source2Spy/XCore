@@ -309,7 +309,7 @@ namespace xcore::textfile::version_2
     {
         switch( Type )
         {
-            // Lets verify that the user enter a valid atomic err
+            // Lets verify that the user_types enter a valid atomic err
             case 'f': case 'F':
             case 'd': case 'D':
             case 'c': case 'C':
@@ -320,7 +320,7 @@ namespace xcore::textfile::version_2
         }
 
         // Sorry but I don't know what kind of syntax / err information 
-        // the user is trying to provide.
+        // the user_types is trying to provide.
         // Make sure that there are not extra character after the err ex:
         // "Pepe:fff " <- this is bad. "Pepe:fff" <- this is good.
         return false;
@@ -350,7 +350,7 @@ namespace xcore::textfile::version_2
 
         //
         // Okay make sure that we say that we are not reading the file
-        // this will force the user to stick with the writing functions
+        // this will force the user_types to stick with the writing functions
         //
         xcore::error::scope CleanUp( Failure, [&]{ close(); });
 
@@ -407,7 +407,7 @@ namespace xcore::textfile::version_2
     {
         //
         // Okay make sure that we say that we are not reading the file
-        // this will force the user to stick with the writing functions
+        // this will force the user_types to stick with the writing functions
         //
         xcore::err      Failure;
         xcore::error::scope  CleanUp( Failure, [&]{ close(); });
@@ -495,7 +495,7 @@ namespace xcore::textfile::version_2
             } while( c != '[' && c != '<' );
         
             //
-            // Lets deal with user types
+            // Lets deal with user_types types
             //
             while( c == '<' )
             {
@@ -513,7 +513,7 @@ namespace xcore::textfile::version_2
 
                 SystemType[i] = 0;
 
-                // Read the user err
+                // Read the user_types err
                 i=0;
                 do 
                 {
@@ -527,7 +527,7 @@ namespace xcore::textfile::version_2
                 //
                 // Add the err
                 //
-                AddUserType( SystemType.data(), UserType.data(), xcore::crc::FromString<32>(UserType.data()), 0xff );
+                AddUserType( SystemType.data(), xcore::crc::FromString<32>(UserType.data()), UserType.data() );
 
                 // Read the next character
                 if( m_File.getC(c).isError(Failure) ) return Failure;
@@ -575,9 +575,9 @@ namespace xcore::textfile::version_2
             if( m_File.ReadWhiteSpace( c ).isError(Failure) ) return Failure;
 
             //
-            // Deal with user types
-            // We read the err in case the user has not register it already.
-            // But the user should have register something....
+            // Deal with user_types types
+            // We read the err in case the user_types has not register it already.
+            // But the user_types should have register something....
             //
             while( c == '<' )
             {
@@ -622,7 +622,7 @@ namespace xcore::textfile::version_2
                 //
                 // Add the User err
                 //
-                AddUserType( UserSystemType.data(), UserTypeName.data(), xcore::crc::FromString<32>(UserTypeName.data()), 0xff );
+                AddUserType( UserSystemType.data(), xcore::crc::FromString<32>(UserTypeName.data()), UserTypeName.data() );
 
                 //
                 // Skip spaces
@@ -709,7 +709,7 @@ namespace xcore::textfile::version_2
         //
         m_iLine         = 0;
         m_iField        = 0;
-        m_iCurrentOffet = 0;
+        m_iMemOffet = 0;
         m_nTypesLine    = 0;
 
         return {};
@@ -717,10 +717,9 @@ namespace xcore::textfile::version_2
 
     //------------------------------------------------------------------------------
 
-    std::uint32_t stream::AddUserType( const char* pSystemTypes, const char* pUserType, crc::units<32> CRC32UserType, std::uint8_t UID ) noexcept
+    std::uint32_t stream::AddUserType( const char* pUserType, crc::units<32> CRC32UserType, const char* pSystemTypes ) noexcept
     {
         // Must have this in order to follow standard
-        xassert( pUserType[0] == '.' );
         xassert( CRC32UserType == xcore::crc::FromString<32>(pUserType) );
 
         if( const auto It = m_UserTypeMap.find(CRC32UserType); It != m_UserTypeMap.end() )
@@ -729,19 +728,13 @@ namespace xcore::textfile::version_2
             
             // Make sure that this registered err is fully duplicated
             xassert( std::strcmp( pSystemTypes, m_UserTypes[Index].m_SystemType.data() ) == 0 );
-            
-            // If the user is calling to initialize the UID
-            if( UID != 0xff && m_UserTypes[Index].m_UID == 0xff )
-            {
-                m_UserTypes[Index].m_UID = UID;
-            }
         
             // we already have it so we don't need to added again
             return Index;
         }
 
         //
-        // Sanity check the user types
+        // Sanity check the user_types types
         //
     #ifdef _DEBUG
         for( int i=0; pUserType[i]; i++ )
@@ -759,12 +752,10 @@ namespace xcore::textfile::version_2
         // Fill the entry
         //
         auto& Entry = m_UserTypes.append();
-        for( std::size_t i=0; Entry.m_UserType[i]   = pUserType[i];    ++i ) xassert( i < static_cast<std::size_t>(Entry.m_UserType.size()-1) );
-        for( std::size_t i=0; Entry.m_SystemType[i] = pSystemTypes[i]; ++i ) xassert( i < static_cast<std::size_t>(Entry.m_SystemType.size()-1) );
+        string::Copy( Entry.m_UserType,   pUserType );
+        string::Copy( Entry.m_SystemType, pSystemTypes );
         Entry.m_CRC32        = CRC32UserType;
-        Entry.m_bSaved       = false;
         Entry.m_nSystemTypes = static_cast<std::uint8_t>(std::strlen( Entry.m_SystemType.data() ));
-        Entry.m_UID          = UID;
     
         std::uint32_t Index  = static_cast<std::uint32_t>(m_UserTypes.size()-1);
         m_UserTypeMap.insert( {CRC32UserType, Index} );
@@ -773,10 +764,44 @@ namespace xcore::textfile::version_2
     }
 
     //------------------------------------------------------------------------------
-    static 
-    bool isCompatibleTypes( char X, out_types Y ) noexcept 
+
+    xcore::err stream::WriteRecord( const char* pHeaderName, std::size_t Count ) noexcept
     {
-        std::visit([&]( auto Value )
+        xcore::err Error;
+
+        xassert( pHeaderName );
+        xassert( m_File.m_States.m_isReading == false );
+
+        //
+        // Fill the record info
+        //
+        string::Copy( m_Record.m_Name, pHeaderName );
+        m_Record.m_bWriteCount  = Count != ~0;
+        m_Record.m_Count        = m_Record.m_bWriteCount?static_cast<int>(Count):1;
+
+        //
+        // Reset the line count
+        //
+        m_iLine         = 0;
+        m_iColumn       = 0;
+        m_iMemOffet     = 0;
+
+        //
+        // Kill all the lists
+        //
+        for( auto& C : m_Columns )
+        {
+            C.clear();
+        }
+
+        return Error;
+    }
+
+    //------------------------------------------------------------------------------
+    static 
+    bool isCompatibleTypes( char X, arglist::out_types Y ) noexcept 
+    {
+        return std::visit([&]( auto Value )
         {
             using t = std::decay_t<decltype(Value)>;
                     if constexpr ( std::is_same_v<t,std::uint8_t>       ) return X == 'h';
@@ -795,7 +820,782 @@ namespace xcore::textfile::version_2
     }
 
     //------------------------------------------------------------------------------
-    xcore::err stream::ReadFieldC( int& iUserRef, const char* pFieldName, arglist::view Args ) noexcept
+
+    xcore::err stream::WriteFieldC( crc::units<32>& UserType, const char* pFieldName, arglist::view Args ) noexcept
+    {
+        //
+        // When we are at the first line we must double check the syntax of the user_types
+        //
+        if( m_iLine == 0 )
+        {
+            // Make sure we have enough columns to store our data
+            if( m_Columns.size() <= m_nColumns ) m_Columns.append();
+
+            auto& Column = m_Columns[m_nColumns];
+            
+            xassert( Args.size() > 0 );
+            Column.m_nTypes   = static_cast<int>(Args.size());
+            Column.m_UserType = UserType;
+
+            // Copy name
+            for( Column.m_NameLength=0; (Column.m_Name[Column.m_NameLength] = pFieldName[Column.m_NameLength]); Column.m_NameLength++ )
+            {
+                // Handle dynamic types
+                if( pFieldName[Column.m_NameLength] == ':' && pFieldName[Column.m_NameLength+1] == '?' )
+                {
+                    Column.m_nTypes                     = -1;
+                    Column.m_UserType.m_Value           = 0;
+                    Column.m_Name[Column.m_NameLength]  = 0;
+                    break;
+                }
+
+                // Make sure the field name falls inside these constraints 
+                xassert( (pFieldName[Column.m_NameLength] >= 'a' && pFieldName[Column.m_NameLength] <= 'z')
+                     ||  (pFieldName[Column.m_NameLength] >= 'A' && pFieldName[Column.m_NameLength] <= 'Z')
+                     ||  (pFieldName[Column.m_NameLength] >= '0' && pFieldName[Column.m_NameLength] <= '9')
+                     ||  (pFieldName[Column.m_NameLength] == '_' ) 
+                );
+            }
+        }
+
+        //
+        // Get the column we are processing
+        //
+        auto& Column = m_Columns[m_nColumns];
+
+        //
+        // Validate the user_types type if any
+        //
+        xassert_block_basic()
+        {
+            if( UserType.m_Value && ( Column.m_nTypes == -1 || m_iLine==0 ) )
+            {
+                auto pUserType = getUserType( UserType );
+                    
+                // Make sure the user_types register this user_types type
+                xassert(pUserType);
+                xassert(pUserType->m_nSystemTypes == Args.size() );
+                for( auto& A  : Args )
+                {
+                    xassert(isCompatibleTypes( pUserType->m_SystemType[Args.getIndexByEntry(A)], A ));
+                }
+            }
+        }
+
+        //
+        // Create all the fields for this column
+        //
+        if( Column.m_nTypes == -1 || m_iLine == 0 )
+        {
+            //
+            // If is a dynamic type we must add the infos
+            //
+            if( Column.m_nTypes == -1 )
+            {
+                auto& DynamicFields = Column.m_DynamicFields.append();
+                DynamicFields.m_nTypes   = static_cast<int>(Args.size());
+                DynamicFields.m_UserType = UserType;
+                DynamicFields.m_iField   = static_cast<int>(Column.m_FieldInfo.size());
+            }
+
+            //
+            // Write each of the fields types
+            //
+            {
+                auto& FieldInfo = (Column.m_nTypes == -1) ? Column.m_DynamicFields.last() : Column; 
+                for( auto& A : Args )
+                {
+                    FieldInfo.m_SystemTypes[Args.getIndexByEntry(A)] = std::visit( [&]( auto Value ) constexpr
+                    {
+                        using t = std::decay_t<decltype(Value)>;
+                                if constexpr ( std::is_same_v<t,std::uint8_t>       ) return 'h';
+                        else    if constexpr ( std::is_same_v<t,std::uint16_t>      ) return 'H';
+                        else    if constexpr ( std::is_same_v<t,std::uint32_t>      ) return 'g';
+                        else    if constexpr ( std::is_same_v<t,std::uint64_t>      ) return 'G';
+                        else    if constexpr ( std::is_same_v<t,std::int8_t>        ) return 'c';
+                        else    if constexpr ( std::is_same_v<t,std::int16_t>       ) return 'C';
+                        else    if constexpr ( std::is_same_v<t,std::int32_t>       ) return 'd';
+                        else    if constexpr ( std::is_same_v<t,std::int64_t>       ) return 'D';
+                        else    if constexpr ( std::is_same_v<t,float>              ) return 'f';
+                        else    if constexpr ( std::is_same_v<t,double>             ) return 'F';
+                        else    if constexpr ( std::is_same_v<t,string::view<char>> ) return 's';
+                        else    { xassume(false); return char{0}; }
+                    }, A );
+                }
+            }
+        }
+
+        //
+        // Lambda Used to write the fields
+        //
+        auto Numerics = [&]( details::field_info& FieldInfo, auto p, const char* pFmt ) noexcept
+        {
+            using T = std::decay_t<decltype(p)>;
+
+            if( m_File.m_States.m_isBinary )
+            {
+                FieldInfo.m_iData = bits::Align( m_iMemOffet, std::alignment_of_v<T> );
+                m_iMemOffet = FieldInfo.m_iData + sizeof(T);
+
+                        if constexpr ( sizeof(T) ==  1 ) 
+                        {
+                            auto& x = reinterpret_cast<std::uint8_t& >(m_Memory[FieldInfo.m_iData]);
+                            x = reinterpret_cast<std::uint8_t&>(p);
+                        }
+                else    if constexpr ( sizeof(T) == 2 ) 
+                        {
+                            auto& x = reinterpret_cast<std::uint16_t& >(m_Memory[FieldInfo.m_iData]);
+                            x = reinterpret_cast<std::uint16_t&>(p);
+                            if( m_File.m_States.m_isEndianSwap ) x = endian::Convert(x);
+                        }
+                else    if constexpr ( sizeof(T) == 4 ) 
+                        {
+                            auto& x = reinterpret_cast<std::uint32_t& >(m_Memory[FieldInfo.m_iData]);
+                            x = reinterpret_cast<std::uint32_t&>(p);
+                            if( m_File.m_States.m_isEndianSwap ) x = endian::Convert(x);
+                        }
+                else    if constexpr ( sizeof(T) == 8 ) 
+                        {
+                            auto& x = reinterpret_cast<std::uint64_t& >(m_Memory[FieldInfo.m_iData]);
+                            x = reinterpret_cast<std::uint64_t&>(p);
+                            if( m_File.m_States.m_isEndianSwap ) x = endian::Convert(x);
+                        }
+            }
+            else
+            {
+                FieldInfo.m_iData = m_iMemOffet;
+                m_iMemOffet += 1 + string::sprintf( m_Memory.ViewFrom(m_iMemOffet), pFmt, p ).m_Value;
+                FieldInfo.m_Width = m_iMemOffet - FieldInfo.m_iData;
+
+                if constexpr ( std::is_integral_v<T> )
+                {
+                    FieldInfo.m_IntWidth = FieldInfo.m_Width;
+                }
+                else
+                {
+                    for( FieldInfo.m_IntWidth = 0; m_Memory[FieldInfo.m_iData + FieldInfo.m_IntWidth] != '.' && m_Memory[FieldInfo.m_iData+FieldInfo.m_IntWidth]; FieldInfo.m_IntWidth++ );
+                }
+            }
+        };
+
+        //
+        // Write to a buffer the data
+        //
+        for( auto& A : Args )
+        {
+            auto& Field = Column.m_FieldInfo.append(); 
+
+            std::visit( [&]( auto p ) constexpr
+            {
+                using t = std::decay_t<decltype(p)>;
+                        if constexpr ( std::is_same_v<t,std::uint8_t*>      ) Numerics( Field, *p, "#%X" );
+                else    if constexpr ( std::is_same_v<t,std::uint16_t*>     ) Numerics( Field, *p, "#%X" );
+                else    if constexpr ( std::is_same_v<t,std::uint32_t*>     ) Numerics( Field, *p, "#%X" );
+                else    if constexpr ( std::is_same_v<t,std::uint64_t*>     ) Numerics( Field, *p, "#%LX" );
+                else    if constexpr ( std::is_same_v<t,std::int8_t*>       ) Numerics( Field, *p, "%d" );
+                else    if constexpr ( std::is_same_v<t,std::int16_t*>      ) Numerics( Field, *p, "%d" );
+                else    if constexpr ( std::is_same_v<t,std::int32_t*>      ) Numerics( Field, *p, "%d" );
+                else    if constexpr ( std::is_same_v<t,std::int64_t*>      ) Numerics( Field, *p, "%ld" );
+                else    if constexpr ( std::is_same_v<t,float*>             ) 
+                        { 
+                            if( m_File.m_States.m_isSaveFloats )    Numerics( Field, static_cast<double>(*p), "%Lg" );
+                            else                                    Numerics( Field, *reinterpret_cast<std::uint32_t*>(p),  "#%X" ); 
+                        }
+                else    if constexpr ( std::is_same_v<t,double*>            ) 
+                        { 
+                            if( m_File.m_States.m_isSaveFloats )    Numerics( Field, *p, "%Lg" );
+                            else                                    Numerics( Field, reinterpret_cast<std::uint64_t&>(*p),  "#%LX" ); 
+                        }
+                else    if constexpr ( std::is_same_v<t,string::view<char>> ) 
+                        {
+                        }
+                else    
+                { 
+                    xassume(false); 
+                }
+            }, A );
+        }
+
+        return {};
+    }
+
+    //------------------------------------------------------------------------------
+
+    xcore::err stream::WriteUserTypes( void ) noexcept
+    {
+        xcore::err Error;
+
+        if( m_File.m_States.m_isBinary )
+        {
+            for( auto& UserType : m_UserTypes )
+            {
+                if( UserType.m_bAlreadySaved )
+                    continue;
+            
+                UserType.m_bAlreadySaved = true;
+            
+                // First write the standard symbol for the user_types types
+                if( m_File.WriteChar( '<' ).isError(Error) )
+                    return Error;
+
+                if( m_File.WriteStr( { UserType.m_UserType.data(), string::Length(UserType.m_UserType).m_Value+1 } ).isError(Error) )
+                    return Error;
+
+                // Now dump the data for the user_types type
+                if( m_File.WriteStr( { UserType.m_SystemType.data(), UserType.m_nSystemTypes+1 } ).isError(Error) )
+                    return Error;
+            }
+        }
+        else
+        {
+            //
+            // Dump all the new types if we have some
+            //
+            bool bNewTypes = false;
+            for( auto& UserType : m_UserTypes )
+            {
+                if( UserType.m_bAlreadySaved )
+                    continue;
+
+                if( bNewTypes == false ) 
+                {
+                    if( m_File.WriteStr( string::constant{"\n// New Types\n< "} ).isError(Error) ) return Error;
+                    bNewTypes = true;
+                }
+
+                UserType.m_bAlreadySaved = true;
+                string::fixed<char,256> temp;
+
+                string::sprintf( temp, "%s:%s ", UserType.m_SystemType.data(), UserType.m_UserType.data() );
+                if( m_File.WriteStr( temp ).isError(Error) ) return Error;
+            }
+
+            if( bNewTypes ) if( m_File.WriteStr( string::constant(">") ).isError(Error) ) return Error;
+        }
+
+        return Error;
+    }
+
+    //------------------------------------------------------------------------------
+
+    xcore::err stream::WriteLine( void ) noexcept
+    {
+        int         j;
+        xcore::err  Error;
+
+        xassert( m_File.m_States.m_isReading == false );
+
+        // Make sure that the user_types don't try to write more lines than expected
+        xassert( m_iLine < m_Record.m_Count );
+
+        //
+        // Lets handle the binary case first
+        //
+        /*
+        if( m_File.m_States.m_isBinary )
+        {
+            if( m_iLine == 0 )
+            {
+                //
+                // Write any pending user_types types
+                //
+                if( WriteUserTypes().isError(Error))
+                    return Error;
+            
+                //
+                // Write record header
+                //
+                if( m_File.WriteChar( '[' ).isError(Error) )
+                    return Error;
+
+                if( m_File.WriteStr( { m_Record.m_Name.data(), string::Length( m_Record.m_Name ).m_Value+1 } ).isError( Error ) )
+                    return Error;
+
+                if( m_File.Write( m_Record.m_Count ).isError( Error ) )
+                    return Error;
+
+                if( m_File.WriteChar( ']' ).isError( Error ) )
+                    return Error;
+            
+                //
+                // Print types
+                //
+                if( m_File.WriteChar( '{' ).isError( Error ) )
+                    return Error;
+            
+                for( const auto& Field : m_Field )
+                for( int i=0; i<m_nColumns; ++i )
+                {
+                    if( Field.m_Type[ Field.m_TypeOffset ] == '.' )
+                    {
+                        if( m_File.WriteStr( { Field.m_Type.data(), static_cast<int>(Field.m_TypeOffset + 1) } ).isError( Error ) )
+                            return Error;
+
+                        if( m_File.Write( Field.m_iUserType ).isError( Error ) )
+                            return Error;
+                    }
+                    else
+                    {
+                        if( m_File.WriteStr( { Field.m_Type, string::Length( Field.m_Type ).m_Value+1 } ).isError( Error ) )
+                            return Error;
+                    }
+                }
+            
+                if( m_File.WriteChar( '}' ).isError( Error ) )
+                    return Error;
+            }
+
+            //
+            // Dump line info
+            //
+            if( m_File.WriteStr( { m_Memory.data(), static_cast<int>(m_iMemOffet) } ).isError( Error ) )
+                return Error;
+
+            //
+            // Increment the line count
+            // and reset the field count
+            // reset the memory count
+            //
+            m_iLine++;
+            m_iField        = 0;
+            m_iMemOffet = 0;
+            m_nTypesLine    = 0;
+
+            return Error;
+        }
+        */
+
+        //
+        // Increment the line count
+        // and reset the field count
+        // reset the memory count
+        //
+        m_iLine++;
+
+        //
+        // Handle writing text format
+        //
+        static constexpr int MaxLines = 64;
+
+        //
+        // We will wait writing the line if we can so we can format
+        //
+        if( (m_iLine < m_Record.m_Count && (m_iLine%MaxLines) != 0) )
+        {
+            return Error;
+        }
+
+        //
+        // Make sure we have enough format columns
+        //
+        if( m_ColumnFormat.size() < m_Columns.size() ) m_ColumnFormat.appendList( m_Columns.size() - m_ColumnFormat.size() );
+
+        //
+        // Compute the width for each of the types
+        //
+        for( int i = 0; i<m_nColumns; ++i )
+        {
+            auto& Colomn        = m_Columns[i];
+            auto& ColomnFormat  = m_ColumnFormat[i];
+
+            if( Colomn.m_nTypes == -1 )
+            {
+
+
+            }
+            else
+            {
+                //
+                // Computes the max width of a column as well as the max width for each field inside the column
+                //
+                for( int n=0; n<Colomn.m_nTypes; ++n )
+                {
+                    auto& Field = Colomn.m_FieldInfo[n];
+                    auto& Fmt   = ColomnFormat.m_Format[n];
+
+                    // Find the max width for this field
+                    if( Field.m_Width > Fmt.m_MaxWidth ) Fmt.m_MaxWidth = Field.m_Width;
+
+                    ColomnFormat.m_Width += Fmt.m_MaxWidth + 1;
+                }
+            }
+
+        }
+
+
+        //
+        // Compute the width for each of the types
+        //
+        for( auto& Field : m_Field )
+        {           
+            int     TypeWitdh   = 0;
+
+            // Count the total space used for this type
+            for( int j=0; Field.m_TypeWidth[j]; j++ )
+                TypeWitdh += Field.m_TypeWidth[j];
+
+            // We dont count the last type to add spaces
+            TypeWitdh -= 1;
+
+            // okay compute the width of the type
+            Field.m_Width = std::max( Field.m_Width, static_cast<std::uint32_t>(TypeWitdh) );
+
+            //
+            // Now lets center all sub columns into the main one 
+            //
+            const auto ExtraSpace = Field.m_Width - TypeWitdh;
+
+            Field.m_TypesPostWidth  = ExtraSpace / 2;
+            Field.m_TypesPreWidth   = Field.m_Width - ( Field.m_TypesPostWidth + TypeWitdh );
+
+            xassert( Field.m_TypesPreWidth  >= 0 );
+            xassert( Field.m_TypesPostWidth >= 0 );
+        }
+
+        //
+        // Write the record header
+        //
+        if( m_iLine <= MaxLines )
+        {
+            //
+            // Write any pending user_types types
+            //
+            if( WriteUserTypes().isError( Error ) )
+                return Error;
+        
+            //
+            // Write header
+            //
+            if( m_Record.m_bWriteCount )
+            {
+                if( m_File.WriteFmtStr( "\n[ %s : %d ]\n", m_Record.m_Name.data(), m_Record.m_Count ).isError( Error ) )
+                    return Error;
+            }
+            else
+            {
+                if( m_File.WriteFmtStr( "\n[ %s ]\n", m_Record.m_Name.data() ).isError(Error) )
+                    return Error;
+            }
+
+            //
+            // Write the types
+            //
+            if( m_File.WriteChar( '{' ).isError(Error) )
+                return Error;
+
+            for( auto& Field : m_Field ) 
+            {               
+                if( m_File.WriteFmtStr( " %s ", Field.m_Type.data() ).isError(Error) )
+                    return Error;
+
+                const auto Count = string::Length( Field.m_Type ).m_Value;
+                if( static_cast<std::uint32_t>(Count) < Field.m_Width )
+                {
+                    if( m_File.WriteChar( ' ', Field.m_Width-Count ).isError(Error) )
+                        return Error;
+                }
+            }
+
+            if( m_File.WriteFmtStr( string::constant("}\n") ).isError(Error) )
+                return Error;
+
+            //
+            // Write the under line
+            //
+            if( m_File.WriteFmtStr( string::constant("//") ).isError(Error) )
+                return Error;
+
+            for( auto& Field : m_Field )
+            { 
+                if( m_File.WriteChar( '-', Field.m_Width ).isError(Error) )
+                    return Error;
+
+                // Get ready for the next type
+                if( m_File.WriteChar( ' ', 2 ).isError(Error) )
+                    return Error;
+            }
+
+            if( m_File.WriteChar( '\n' ).isError(Error) )
+                return Error;
+        }
+
+        //
+        // Write the commented version of the types
+        //
+        if( (m_iLine%MaxLines) == 0 && (m_iLine>MaxLines) )
+        {
+            //
+            // Write the under line
+            //
+            if( m_File.WriteFmtStr( string::constant("//") ).isError(Error) )
+                return Error;
+
+            for( auto& Field : m_Field )
+            { 
+                if( m_File.WriteChar( '-', Field.m_Width ).isError(Error) )
+                    return Error;
+
+                // Get ready for the next type
+                if( m_File.WriteStr( string::constant("  ") ).isError(Error) )
+                    return Error;
+            }
+
+            if( m_File.WriteChar( '\n' ).isError(Error) )
+                return Error;
+
+            //
+            // Write the types
+            //
+            if( m_File.WriteStr( string::constant("//") ).isError(Error) )
+                return Error;
+
+            for( auto& Field : m_Field )
+            {   
+                if( m_File.WriteStr( Field.m_Type ).isError(Error) ) 
+                    return Error;
+
+                const auto Count = string::Length(Field.m_Type).m_Value;
+                if( static_cast<std::uint32_t>(Count) < Field.m_Width )
+                {
+                    if( m_File.WriteChar( ' ', Field.m_Width - Count ).isError(Error) )
+                        return Error;
+                }
+
+                // Get ready for the next type
+                if( m_File.WriteStr( string::constant("  ") ).isError(Error) )
+                    return Error;
+            }
+
+            if( m_File.WriteChar( '\n' ).isError(Error) )
+                return Error;
+
+            //
+            // Write the under line
+            //
+            if( m_File.WriteStr( string::constant("//") ).isError(Error) )
+                return Error;
+
+            for( auto& Field : m_Field )
+            { 
+                if( m_File.WriteChar( '-', Field.m_Width ).isError(Error) )
+                    return Error;
+
+                // Get ready for the next type
+                if( m_File.WriteStr( string::constant("  ") ).isError(Error) )
+                    return Error;
+            }
+            if( m_File.WriteChar( '\n' ).isError(Error) )
+                return Error;
+        }
+
+        //
+        // Dump lines
+        //
+
+        // Write each member
+        for( std::uint32_t i=0; i<m_iMemOffet; i++ )
+        {
+            int     iField = m_Memory[i++];
+            int     iType  = m_Memory[i++];
+            int     Len    = reinterpret_cast<std::uint16_t&>(m_Memory[i]);
+        
+            i+=2;
+        
+            auto&  Field  = m_Field[ iField ];
+            auto   Type   = Field.m_Type[ Field.m_TypeOffset + iType ];
+
+            // Force the type if it is a dynamic type
+            if( Field.m_iFieldDecl >= 0 )
+            {
+                Type   = '<';
+            }
+        
+            //
+            // Add any spaces that we may need to center our columns
+            //
+            if( iType == 0 )
+            {
+                // account for the comment
+                if( iField == 0 )
+                {
+                    if( m_File.WriteChar( ' ', 2 ).isError(Error) )
+                        return Error;
+                }
+
+                if( Field.m_TypesPreWidth > 0 ) 
+                {
+                    if( m_File.WriteChar( ' ', Field.m_TypesPreWidth ).isError(Error) )
+                        return Error;
+                }
+            }
+
+            //
+            // Okay handle the printing here
+            //
+            switch( Type )
+            {                    
+            case 'f':       // Floating point alignment
+            case 'F':
+                if( m_File.m_States.m_isSaveFloats )
+                {
+                    // lets find again where the '.' is
+                    for( j=0; m_Memory[j+i]!='.' && m_Memory[j+i]; j++ );
+
+                    // Pad int spaces
+                    if( Field.m_FracWidth[iType] > j ) 
+                    {
+                        if( m_File.WriteChar( ' ', Field.m_FracWidth[iType] - j ).isError(Error) )
+                            return Error;
+                    }
+
+                    // Now we should be able to write the number
+                    if( m_File.WriteFmtStr( "%s", &m_Memory[i] ).isError(Error) )
+                        return Error;
+
+                    // Now lets padd the fractional part
+                    j = Len + Field.m_FracWidth[iType] - j;
+                    if( j < Field.m_TypeWidth[iType] )
+                    {
+                        if( m_File.WriteChar( ' ', Field.m_TypeWidth[iType] - j ).isError(Error) )
+                            return Error;
+                    }
+                    break;
+                }
+                // Fall throw                
+            case 'd':       // Right aligment
+            case 'D':
+            case 'C':
+            case 'c':
+            case 'h':
+            case 'H':
+            case 'G':
+            case 'g':
+                {
+                    // Now lets padd the fractional part
+                    if( Len < Field.m_TypeWidth[iType] )
+                    {
+                        if( m_File.WriteChar( ' ', Field.m_TypeWidth[iType] - Len ).isError(Error) )
+                            return Error;
+                    }
+
+                    // Now we should be able to write the number
+                    if( m_File.WriteFmtStr( "%s", &m_Memory[i] ).isError(Error) )
+                        return Error;
+                }
+                break;
+            case '<':
+                {
+                    if( Field.m_iFieldDecl == -2 )
+                    {
+                        //This is a declaration, retrieve information
+                        xassert(Field.m_iFieldDecl == -2);
+                    
+                        //Look for '>'
+                        int iRightBracket = 0;
+                        if( m_Memory[i] == '<' )
+                        {
+                            const char* p = &m_Memory[i];
+                        
+                            while( p[iRightBracket] != '>')
+                            {
+                                iRightBracket++;
+                            }
+                        
+                            iRightBracket--;
+                        }
+                        else if( m_Memory[i] == '.' )
+                        {
+                            const char* p = &m_Memory[i];
+                        
+                            auto I = m_UserTypeMap.find( xcore::crc::FromString<32>(p) );
+                            if( I == m_UserTypeMap.end() )
+                                return xerr_failure( Error, "Failed to find the user type" );
+
+                            //xassert_verify( m_UserTypes.BinarySearch( user_type(p), Index ) );
+                        
+                            auto Index = I->second;
+                            const auto& Type = m_UserTypes[ Index ];
+                            iRightBracket = Type.m_nSystemTypes;
+                        }
+                        else
+                        {
+                            xassert( false );
+                        }
+
+                        //For now, I just added this barrier because i don't think there will be a value which contains more than 32 elements. If there is, let me know
+                        xassert(iRightBracket<32);
+
+                        // This is just temporary as it will be overwritten again and again
+                        Field.m_DynamicTypeCount = iRightBracket;
+                    }
+                    else
+                    {
+                        // This is a temporary variable to store how many types we have
+                        Field.m_nTypes = m_Field[ Field.m_iFieldDecl ].m_DynamicTypeCount;
+                    }
+                }
+                
+                    //>>>>>>>>>>>> FALL THOUGHT <<<<<<<<<<<<<<<
+                
+            default:        // Left aligment
+                {
+                    // Now we should be able to write the number
+                    if( m_File.WriteFmtStr( "%s", &m_Memory[i] ).isError(Error) )
+                        return Error;
+
+                    if( Len < Field.m_TypeWidth[iType] )
+                    {
+                        if( m_File.WriteChar( ' ', Field.m_TypeWidth[iType] - Len ).isError(Error) )
+                            return Error;
+                    }
+                }
+                break;
+            }
+
+            // Set the next i
+            i += Len -1;
+            xassert( m_Memory[i] == 0 );
+
+            if( iType == Field.m_nTypes-1 )
+            {
+                if (iField == m_Field.size()-1 ) 
+                {
+                    if( m_File.WriteChar( '\n' ).isError(Error) )
+                        return Error;
+                }
+                else
+                {
+                    // add any spaces needed to end the column properly
+                    if( Field.m_TypesPostWidth > 0 ) 
+                    {
+                        if( m_File.WriteChar( ' ', Field.m_TypesPostWidth ).isError(Error) ) 
+                            return Error;
+                    }
+
+                    // ready for the next type
+                    if( m_File.WriteStr( string::constant("  ") ).isError(Error))
+                        return Error;
+                }
+            }
+            else
+            {
+                // separate any sub fields
+                if( m_File.WriteStr( string::constant(" ") ).isError(Error)) 
+                    return Error;
+            }
+        }
+
+        //
+        // Make sure to reset the current offset since we are done with the memory
+        //
+        m_iMemOffet = 0;
+
+        return Error;
+    }
+
+
+    //------------------------------------------------------------------------------
+    xcore::err stream::ReadFieldC( crc::units<32>& iUserRef, const char* pFieldName, arglist::view Args ) noexcept
     {
         xassert( m_iLine > 0 );
 
@@ -807,14 +1607,14 @@ namespace xcore::textfile::version_2
         });
 
         //
-        // Create a mapping from user order to file order of fields
+        // Create a mapping from user_types order to file order of fields
         //
         if( m_iLine == 1 )
         {
             m_DataMapping.append() = -1;
             xassert( m_iColumn == (m_DataMapping.size()-1) );
 
-            // Find the coloumn name
+            // Find the column name
             for( int i=0; i<m_nColumns; ++i )
             {
                 auto& Column = m_Columns[i];
@@ -837,16 +1637,17 @@ namespace xcore::textfile::version_2
             }
 
             // If we have a mapping then lets see if we can determine the types
+            /*
             if( m_DataMapping[m_iColumn] != - 1 )
             {
                 auto& Column = m_Columns[m_DataMapping[m_iColumn]];
                 if( Column.m_nTypes >= Args.size() )
                 {
-                    if( m_FieldInfo.size() == Args.size() )
+                    if( Column.m_FieldInfo.size() == Args.size() )
                     {
-                        for( int i=0; i<m_FieldInfo.size(); i++ )
+                        for( int i=0; i<Column.m_FieldInfo.size(); i++ )
                         {
-                            if( isCompatibleTypes( m_FieldInfo[i].m_AtomicType, Args[i] ) == false )
+                            if( isCompatibleTypes( Column.m_SystemTypes[i], Args[i] ) == false )
                             {
                                 m_DataMapping[m_DataMapping.size()-1] = -1;
                                 XLOG_CHANNEL_WARNING( m_Channel, "Found the coloumn but the types did not match. %s", pFieldName );
@@ -866,6 +1667,7 @@ namespace xcore::textfile::version_2
             {
                 XLOG_CHANNEL_WARNING( m_Channel, "Unable to find the field amount the types. %s", pFieldName );
             }
+            */
         }
 
         // Make sure we have the type in question
@@ -882,13 +1684,14 @@ namespace xcore::textfile::version_2
         //
         // if the type is '?' then check the types every call
         //
+        /*
         if( Column.m_nTypes == -1 )
         {
-            if( m_FieldInfo.size() == Args.size() )
+            if( Column.m_FieldInfo.size() == Args.size() )
             {
-                for( int i=0; i<m_FieldInfo.size(); i++ )
+                for( int i=0; i<Column.m_FieldInfo.size(); i++ )
                 {
-                    if( isCompatibleTypes( m_FieldInfo[i].m_AtomicType, Args[i] ) == false )
+                    if( isCompatibleTypes( Column.m_FieldInfo[i].m_AtomicType, Args[i] ) == false )
                     {
                         XLOG_CHANNEL_WARNING( m_Channel, "Found the coloumn but the types did not match. %s", pFieldName );
                         return xerr_code( Error, error_state::READ_TYPES_DONTMATCH, "Fail to find the correct type" );
@@ -902,6 +1705,7 @@ namespace xcore::textfile::version_2
                 return xerr_code( Error, error_state::READ_TYPES_DONTMATCH, "Fail to find the correct type" );
             }
         }
+        */
 
         //
         // Read each type
@@ -915,25 +1719,25 @@ namespace xcore::textfile::version_2
             {
                 using t = std::decay_t<decltype(p)>;
 
-                if constexpr ( std::is_same_v<t,std::uint8_t> || std::is_same_v<t,std::int8_t> )
+                if constexpr ( std::is_same_v<t,std::uint8_t*> || std::is_same_v<t,std::int8_t*> )
                 {
-                    reinterpret_cast<const std::uint8_t&>(*p) = reinterpret_cast<const std::uint8_t&>( m_Memory[ iData ]);
+                    reinterpret_cast<std::uint8_t&>(*p) = reinterpret_cast<const std::uint8_t&>( m_Memory[ iData ]);
                 }
-                else if constexpr( std::is_same_v<t,std::uint16_t> || std::is_same_v<t,std::int16_t> )
+                else if constexpr( std::is_same_v<t,std::uint16_t*> || std::is_same_v<t,std::int16_t*> )
                 {
-                    reinterpret_cast<const std::uint16_t&>(*p) = reinterpret_cast<const std::uint16_t&>( m_Memory[ iData ]);
+                    reinterpret_cast<std::uint16_t&>(*p) = reinterpret_cast<const std::uint16_t&>( m_Memory[ iData ]);
                 }
-                else if constexpr ( std::is_same_v<t,std::uint32_t> || std::is_same_v<t,std::int32_t> || std::is_same_v<t,float> )
+                else if constexpr ( std::is_same_v<t,std::uint32_t*> || std::is_same_v<t,std::int32_t*> || std::is_same_v<t,float*> )
                 {
-                    reinterpret_cast<const std::uint32_t&>(*p) = reinterpret_cast<const std::uint32_t&>( m_Memory[ iData ]);
+                    reinterpret_cast<std::uint32_t&>(*p) = reinterpret_cast<const std::uint32_t&>( m_Memory[ iData ]);
                 }
-                else if constexpr ( std::is_same_v<t,std::uint64_t> || std::is_same_v<t,std::int64_t> || std::is_same_v<t,double> )
+                else if constexpr ( std::is_same_v<t,std::uint64_t*> || std::is_same_v<t,std::int64_t*> || std::is_same_v<t,double*> )
                 {
-                    reinterpret_cast<const std::uint64_t&>(*p) = reinterpret_cast<const std::uint64_t&>( m_Memory[ iData ]);
+                    reinterpret_cast<std::uint64_t&>(*p) = reinterpret_cast<const std::uint64_t&>( m_Memory[ iData ]);
                 }
-                else if constexpr ( std::is_same_v<t,string::view<char>> )
+                else if constexpr ( std::is_same_v<t,string::view<char>*> )
                 {
-                    string::Copy( *pValue, m_Memory[ iData ] );
+                    string::Copy( *p, m_Memory[ iData ] );
                 }
                 else
                 {
@@ -943,9 +1747,9 @@ namespace xcore::textfile::version_2
         }
 
         //
-        // The user reference
+        // The user_types reference
         //
-        iUserRef = static_cast<int>(Column.m_UserType.m_Value);
+     //   iUserRef = static_cast<int>(Column.m_UserType.m_Value);
 
         //
         // Ready to read the next column
@@ -956,15 +1760,15 @@ namespace xcore::textfile::version_2
     }
 
     //------------------------------------------------------------------------------
-
     xcore::err xcore::textfile::stream::ReadLine( void ) noexcept
     {
+#if 0
         int                     c;
         int                     Size=0;
         string::fixed<char,256> Buffer;
         xcore::err              Error;
 
-        // Make sure that the user doesn't read more lines than the record has
+        // Make sure that the user_types doesn't read more lines than the record has
         xassert( m_iLine <= m_Record.m_Count );
 
         //
@@ -972,8 +1776,8 @@ namespace xcore::textfile::version_2
         //
         if( m_iLine == 0 )
         {
-            // Reset the user field offsets
-            m_User.clear();
+            // Reset the user_types field offsets
+            m_DataMapping.clear();
 
             // Solve types
             if( m_File.m_States.m_isBinary )
@@ -1089,7 +1893,7 @@ namespace xcore::textfile::version_2
                         return Error;
                 
                     //
-                    // For binary lets move the index of the user type into the right place
+                    // For binary lets move the index of the user_types type into the right place
                     //
                     if( m_File.m_States.m_isBinary )
                     {
@@ -1108,7 +1912,7 @@ namespace xcore::textfile::version_2
                     auto& FieldType = Field.m_Type;
 
                     //
-                    // First deal with user types
+                    // First deal with user_types types
                     //
                     if( FieldType[ Field.m_TypeOffset ] == '.' )
                     {
@@ -1136,7 +1940,7 @@ namespace xcore::textfile::version_2
                     const char*   pType     = &m_Memory[ FieldDecl.m_iMemory[0] ];
                 
                     //
-                    // Read based on user type
+                    // Read based on user_types type
                     //
                     if( pType[0] == '.' )
                     {
@@ -1153,7 +1957,7 @@ namespace xcore::textfile::version_2
                             /*
                             if( m_UserTypes.BinarySearch( user_type( pType ), Index ) == false )
                             {
-                                x_throw( "Unable to find user type");
+                                x_throw( "Unable to find user_types type");
                             }
                             */
                             xassert(false);
@@ -1190,9 +1994,11 @@ namespace xcore::textfile::version_2
         //
         m_iLine++;
         m_iField        = 0;
-        m_iCurrentOffet = 0;
+        m_iMemOffet = 0;
         m_nTypesLine    = 0;
 
         return Error;
+#endif
+        return {};
     }
 }

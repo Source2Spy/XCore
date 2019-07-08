@@ -5,19 +5,27 @@ namespace xcore::textfile::version_2
     //------------------------------------------------------------------------------------------------
 
     template< std::size_t N, typename... T_ARGS > inline
-    xcore::err stream::Field( int& iUserRef, const char(&pFieldName)[N], T_ARGS&... Args ) noexcept
+    xcore::err stream::Field( crc::units<32>& UserType, const char(&pFieldName)[N], T_ARGS&... Args ) noexcept
     {
         static_assert( (std::is_const_v<T_ARGS> || ... ) == false );
         if( isReading() )
         {
             arglist::out Out{ &static_cast<typename details::type_filter<T_ARGS>::type>(Args)... };
-            return ReadFieldC( iUserRef, pFieldName, Out ).isError(Error) ) return Error;
+            return ReadFieldC( UserType, pFieldName, Out );
         }
 
         arglist::out Out{ static_cast<typename details::type_filter<T_ARGS>::type>( Args )... };
-        return WriteFieldC( pFieldName, Out );
+        return WriteFieldC( UserType, pFieldName, Out );
     }
 
+    //------------------------------------------------------------------------------------------------
+
+    template< std::size_t N, typename... T_ARGS > inline
+    xcore::err stream::Field( const char(&pFieldName)[N], T_ARGS&... Args ) noexcept
+    {
+        crc::units<32> UserType = crc::units<32>{0};
+        return Field( UserType, pFieldName, Args... );
+    }
     //------------------------------------------------------------------------------------------------
 
     template< std::size_t N, typename TT, typename T > inline

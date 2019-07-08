@@ -73,3 +73,35 @@ auto getByteSize ( void ) const noexcept
 { 
     return sizeof(value_type) * size(); 
 }
+
+//------------------------------------------------------------------------------
+public: constexpr   
+auto& last ( void ) const noexcept
+{ 
+    xassert(size()>=1);
+    return *(data() + (size()-1)); 
+}
+
+//------------------------------------------------------------------------------
+public: inline
+auto& last ( void ) noexcept
+{ 
+    xassert(size()>=1);
+    return *(data() + (size()-1)); 
+}
+
+//------------------------------------------------------------------------------
+public: constexpr   
+auto& first ( void ) const noexcept
+{ 
+    xassert(size()>=1);
+    return *data(); 
+}
+
+//------------------------------------------------------------------------------
+public: inline
+auto& first ( void ) noexcept
+{ 
+    xassert(size()>=1);
+    return *data(); 
+}

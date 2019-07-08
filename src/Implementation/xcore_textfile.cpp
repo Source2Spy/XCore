@@ -302,7 +302,7 @@ namespace xcore::textfile::version_1
 //------------------------------------------------------------------------------
 //------------------------------------------------------------------------------
 
-bool xcore::textfile::stream::isValidType( int Type ) noexcept
+bool xcore::textfile::stream::isValidType( int Type ) const noexcept
 {
     switch( Type )
     {
@@ -795,7 +795,7 @@ xcore::err xcore::textfile::stream::ReadRecord( void ) noexcept
     //
     m_iLine         = 0;
     m_iField        = 0;
-    m_iCurrentOffet = 0;
+    m_iMemOffet = 0;
     m_nTypesLine    = 0;
 
     //
@@ -1137,7 +1137,7 @@ xcore::err xcore::textfile::stream::WriteRecord( const char* pHeaderName, std::s
     //
     m_iLine         = 0;
     m_iField        = 0;
-    m_iCurrentOffet = 0;
+    m_iMemOffet = 0;
     m_nTypesLine    = 0;
 
     //
@@ -1248,33 +1248,33 @@ void xcore::textfile::stream::WriteFieldC( const char* pFieldName, const char* p
 
 
             // Write type information in the file
-            if( m_File.m_States.m_isBinary ) Field.m_iMemory[0] = m_iCurrentOffet;
-            else                             Field.m_iMemory[0] = m_iCurrentOffet + 4;
+            if( m_File.m_States.m_isBinary ) Field.m_iMemory[0] = m_iMemOffet;
+            else                             Field.m_iMemory[0] = m_iMemOffet + 4;
             
             WriteComponent( m_iField, 0, '?', Args1, bIndirect );
             */
 
             // Write type information in the file
-            if( m_File.m_States.m_isBinary ) Field.m_iMemory[0] = m_iCurrentOffet;
-            else                             Field.m_iMemory[0] = (m_iCurrentOffet += 4);
+            if( m_File.m_States.m_isBinary ) Field.m_iMemory[0] = m_iMemOffet;
+            else                             Field.m_iMemory[0] = (m_iMemOffet += 4);
 
-            const auto indexStr = m_iCurrentOffet;
+            const auto indexStr = m_iMemOffet;
             Field.m_DynamicTypeCount = 0;
-            m_Memory[ m_iCurrentOffet++ ] = ':';
+            m_Memory[ m_iMemOffet++ ] = ':';
             for( int i=0; pArgsTypes[i]; i++ )
             {
                 xassert( isValidType( pArgsTypes[i] ));
                 Field.m_DynamicTypeCount++;
-                m_Memory[ m_iCurrentOffet++ ] = pArgsTypes[i];
+                m_Memory[ m_iMemOffet++ ] = pArgsTypes[i];
             }
-            m_Memory[ m_iCurrentOffet++ ] = 0;
-            Field.m_TypeWidth[0] = std::max( Field.m_TypeWidth[0], static_cast<std::uint8_t>(m_iCurrentOffet - indexStr) );
+            m_Memory[ m_iMemOffet++ ] = 0;
+            Field.m_TypeWidth[0] = std::max( Field.m_TypeWidth[0], static_cast<std::uint8_t>(m_iMemOffet - indexStr) );
 
             {
                 //char c;
                 for( int i=0; char c = pArgsTypes[i]; i++ )
                 {
-                    Field.m_iMemory[1+i] = m_iCurrentOffet + 4;
+                    Field.m_iMemory[1+i] = m_iMemOffet + 4;
                     WriteComponent( m_iField, 1+i, c, Args1, bIndirect );
                 }
             }
@@ -1299,7 +1299,7 @@ void xcore::textfile::stream::WriteFieldC( const char* pFieldName, const char* p
                 // Dump all the types
                 for( std::uint32_t i=0; (c = Entry.m_SystemType[ i ]); i++ )
                 {
-                    Field.m_iMemory[i] = m_iCurrentOffet + 4;
+                    Field.m_iMemory[i] = m_iMemOffet + 4;
                     WriteComponent( m_iField, i, c, Args1, bIndirect );
                 }
             }
@@ -1308,7 +1308,7 @@ void xcore::textfile::stream::WriteFieldC( const char* pFieldName, const char* p
                 char c;
                 for( int i=0; (c = FieldName[ Field.m_TypeOffset + i ]); i++ )
                 {
-                    Field.m_iMemory[i] = m_iCurrentOffet + 4;
+                    Field.m_iMemory[i] = m_iMemOffet + 4;
                     WriteComponent( m_iField, i, c, Args1, bIndirect );
                 }
             }
@@ -1327,7 +1327,7 @@ void xcore::textfile::stream::WriteFieldC( const char* pFieldName, const char* p
                 
                 for( ; (c = Entry.m_SystemType[ nTypes ]); nTypes++ )
                 {
-                    Field.m_iMemory[nTypes] = m_iCurrentOffet + 4;
+                    Field.m_iMemory[nTypes] = m_iMemOffet + 4;
                     WriteComponent( m_iField, nTypes, c, Args1, bIndirect );
                 }
                 
@@ -1342,7 +1342,7 @@ void xcore::textfile::stream::WriteFieldC( const char* pFieldName, const char* p
                 {
                     nTypes++;
 
-                    Field.m_iMemory[i-1] = m_iCurrentOffet + 4;
+                    Field.m_iMemory[i-1] = m_iMemOffet + 4;
                     WriteComponent( m_iField, i-1, p[ i ], Args1, bIndirect );
                 }
                 
@@ -1390,26 +1390,26 @@ void xcore::textfile::stream::WriteComponent( int iField, int iType, int c, va_l
             if( m_File.m_States.m_isBinary )
             {
                 if( m_File.m_States.m_isEndianSwap ) p = endian::Convert(p);
-                ptr::MemCopy( { reinterpret_cast<T*>(&m_Memory[m_iCurrentOffet]), sizeof(T) }, std::span<T>{ &p, sizeof(T) } );
-                m_iCurrentOffet += sizeof(T);
+                ptr::MemCopy( { reinterpret_cast<T*>(&m_Memory[m_iMemOffet]), sizeof(T) }, std::span<T>{ &p, sizeof(T) } );
+                m_iMemOffet += sizeof(T);
             }
             else
             {
                 auto& Field = m_Field[iField];
 
                 // We reserve the first byte so that we can add additional spaces to this floating point number
-                m_Memory[m_iCurrentOffet++] = iField;
-                m_Memory[m_iCurrentOffet++] = iType;
-                reinterpret_cast<std::uint16_t&>(m_Memory[m_iCurrentOffet])   = 1 + p<0 ? 1:0;
-                m_iCurrentOffet+=2;
-                auto iInt = m_iCurrentOffet;
+                m_Memory[m_iMemOffet++] = iField;
+                m_Memory[m_iMemOffet++] = iType;
+                reinterpret_cast<std::uint16_t&>(m_Memory[m_iMemOffet])   = 1 + p<0 ? 1:0;
+                m_iMemOffet+=2;
+                auto iInt = m_iMemOffet;
 
                 // Okay lets write the floating point number
-                m_iCurrentOffet += 1 + string::sprintf( { &m_Memory[m_iCurrentOffet], static_cast<int>(m_Memory.size()-m_iCurrentOffet) }, pFmt, p ).m_Value;
+                m_iMemOffet += 1 + string::sprintf( { &m_Memory[m_iMemOffet], static_cast<int>(m_Memory.size()-m_iMemOffet) }, pFmt, p ).m_Value;
 
                 // Set the width for this type
-                reinterpret_cast<std::uint16_t&>(m_Memory[iInt-2])    = m_iCurrentOffet - iInt;
-                Field.m_TypeWidth[iType] = std::max( Field.m_TypeWidth[iType], static_cast<std::uint8_t>(m_iCurrentOffet - iInt) );
+                reinterpret_cast<std::uint16_t&>(m_Memory[iInt-2])    = m_iMemOffet - iInt;
+                Field.m_TypeWidth[iType] = std::max( Field.m_TypeWidth[iType], static_cast<std::uint8_t>(m_iMemOffet - iInt) );
             }
         }
         else
@@ -1420,24 +1420,24 @@ void xcore::textfile::stream::WriteComponent( int iField, int iType, int c, va_l
             {
                 auto n = static_cast<T>(p);
                 if( m_File.m_States.m_isEndianSwap ) n = xcore::endian::Convert(n);
-                ptr::MemCopy( { reinterpret_cast<T*>(&m_Memory[m_iCurrentOffet]),sizeof(T)}, std::span<T>{&n, sizeof(T)} );
-                m_iCurrentOffet += sizeof(T);
+                ptr::MemCopy( { reinterpret_cast<T*>(&m_Memory[m_iMemOffet]),sizeof(T)}, std::span<T>{&n, sizeof(T)} );
+                m_iMemOffet += sizeof(T);
             }
             else
             {
                 auto& Field = m_Field[iField];
 
                 // We reserve the first byte so that we can add additional spaces to this floating point number
-                m_Memory[m_iCurrentOffet++] = iField;
-                m_Memory[m_iCurrentOffet++] = iType;
-                reinterpret_cast<std::uint16_t&>(m_Memory[m_iCurrentOffet])   = 1;
-                m_iCurrentOffet+=2;
-                const auto iFloat = m_iCurrentOffet;
+                m_Memory[m_iMemOffet++] = iField;
+                m_Memory[m_iMemOffet++] = iType;
+                reinterpret_cast<std::uint16_t&>(m_Memory[m_iMemOffet])   = 1;
+                m_iMemOffet+=2;
+                const auto iFloat = m_iMemOffet;
 
                 // Okay lets write the floating point number
-                m_iCurrentOffet += 1+string::sprintf( { &m_Memory[m_iCurrentOffet], static_cast<int>(m_Memory.size()-m_iCurrentOffet) }, pFmt, p ).m_Value;
+                m_iMemOffet += 1+string::sprintf( { &m_Memory[m_iMemOffet], static_cast<int>(m_Memory.size()-m_iMemOffet) }, pFmt, p ).m_Value;
 
-                reinterpret_cast<std::uint16_t&>(m_Memory[iFloat-2]) = m_iCurrentOffet - iFloat;
+                reinterpret_cast<std::uint16_t&>(m_Memory[iFloat-2]) = m_iMemOffet - iFloat;
 
                 // Lets determine how many character does it have before the decimal point
                 int i;
@@ -1445,7 +1445,7 @@ void xcore::textfile::stream::WriteComponent( int iField, int iType, int c, va_l
 
                 Field.m_FracWidth[iType] = std::max( Field.m_FracWidth[iType], static_cast<std::uint8_t>(i) );
 
-                const int Width   = m_iCurrentOffet - iFloat
+                const int Width   = m_iMemOffet - iFloat
                                     - i                              // We get the floating point part
                                     + Field.m_FracWidth[iType];      // We add the worse case integral part
 
@@ -1482,27 +1482,27 @@ void xcore::textfile::stream::WriteComponent( int iField, int iType, int c, va_l
                 auto p = va_arg( Args, const string::view<char> );
                 if( m_File.m_States.m_isBinary )
                 {
-                    for( int m=0; !!(m_Memory[m_iCurrentOffet]=p[m]); m++, m_iCurrentOffet++ );
-                    m_iCurrentOffet++;
+                    for( int m=0; !!(m_Memory[m_iMemOffet]=p[m]); m++, m_iMemOffet++ );
+                    m_iMemOffet++;
                 }
                 else
                 {
                     auto& Field = m_Field[iField];
 
                     // We reserve the first byte so that we can add additional spaces to this floating point number
-                    m_Memory[m_iCurrentOffet++] = iField;
-                    m_Memory[m_iCurrentOffet++] = iType;
-                    reinterpret_cast<std::uint16_t&>(m_Memory[m_iCurrentOffet])   = 1;
-                    m_iCurrentOffet+=2;
-                    int indexStr = m_iCurrentOffet;
+                    m_Memory[m_iMemOffet++] = iField;
+                    m_Memory[m_iMemOffet++] = iType;
+                    reinterpret_cast<std::uint16_t&>(m_Memory[m_iMemOffet])   = 1;
+                    m_iMemOffet+=2;
+                    int indexStr = m_iMemOffet;
 
                     if(c == 'e')
-                        m_iCurrentOffet += 1+string::sprintf( string::view<char>{ &m_Memory[m_iCurrentOffet], static_cast<int>(m_Memory.size()-m_iCurrentOffet) }, "%s", p.data()).m_Value;
+                        m_iMemOffet += 1+string::sprintf( string::view<char>{ &m_Memory[m_iMemOffet], static_cast<int>(m_Memory.size()-m_iMemOffet) }, "%s", p.data()).m_Value;
                     else
-                        m_iCurrentOffet += 1+string::sprintf( string::view<char>{ &m_Memory[m_iCurrentOffet], static_cast<int>(m_Memory.size()-m_iCurrentOffet) }, "\"%s\"", p.data()).m_Value;
+                        m_iMemOffet += 1+string::sprintf( string::view<char>{ &m_Memory[m_iMemOffet], static_cast<int>(m_Memory.size()-m_iMemOffet) }, "\"%s\"", p.data()).m_Value;
 
-                    reinterpret_cast<std::uint16_t&>(m_Memory[indexStr-2])         = m_iCurrentOffet - indexStr;
-                    Field.m_TypeWidth[iType] = std::max( Field.m_TypeWidth[iType], static_cast<std::uint8_t>(m_iCurrentOffet - indexStr) );
+                    reinterpret_cast<std::uint16_t&>(m_Memory[indexStr-2])         = m_iMemOffet - indexStr;
+                    Field.m_TypeWidth[iType] = std::max( Field.m_TypeWidth[iType], static_cast<std::uint8_t>(m_iMemOffet - indexStr) );
                 }
                 break;
             }
@@ -1523,59 +1523,59 @@ void xcore::textfile::stream::WriteComponent( int iField, int iType, int c, va_l
                     std::uint16_t Index = Field.m_iUserType;
                     
                     // Write to the file the fact that we are a user type
-                    m_Memory[m_iCurrentOffet++] = '.';
+                    m_Memory[m_iMemOffet++] = '.';
                     
                     // write the index
                     Index = ( m_File.m_States.m_isEndianSwap ) ? xcore::endian::Convert(Index) : Index;
-                    reinterpret_cast<std::uint16_t&>(m_Memory[m_iCurrentOffet]) = Index;
-                    m_iCurrentOffet += 2;
+                    reinterpret_cast<std::uint16_t&>(m_Memory[m_iMemOffet]) = Index;
+                    m_iMemOffet += 2;
                 }
                 else
                 {
-                    m_Memory[m_iCurrentOffet++]='<';
-                    for( int i=0; !!(m_Memory[m_iCurrentOffet]=p[i]); m_iCurrentOffet++, i++);
-                    m_Memory[m_iCurrentOffet++]='>';
-                    m_Memory[m_iCurrentOffet++]=0;
+                    m_Memory[m_iMemOffet++]='<';
+                    for( int i=0; !!(m_Memory[m_iMemOffet]=p[i]); m_iMemOffet++, i++);
+                    m_Memory[m_iMemOffet++]='>';
+                    m_Memory[m_iMemOffet++]=0;
                 }
                 */
             }
             else
             {
-                m_Memory[m_iCurrentOffet++] = iField;
-                m_Memory[m_iCurrentOffet++] = iType;
+                m_Memory[m_iMemOffet++] = iField;
+                m_Memory[m_iMemOffet++] = iType;
 
-                reinterpret_cast<std::uint16_t&>(m_Memory[m_iCurrentOffet])   = 1;
-                m_iCurrentOffet+=2;
-                int indexStr = m_iCurrentOffet;
+                reinterpret_cast<std::uint16_t&>(m_Memory[m_iMemOffet])   = 1;
+                m_iMemOffet+=2;
+                int indexStr = m_iMemOffet;
 
                 auto&  Field = m_Field[iField];
                 const char* p = &Field.m_Type[ Field.m_TypeOffset];
-                m_iCurrentOffet += 1+string::sprintf( string::view<char>{ &m_Memory[m_iCurrentOffet], static_cast<int>(m_Memory.size()-m_iCurrentOffet) }, ":%s", p ).m_Value;
+                m_iMemOffet += 1+string::sprintf( string::view<char>{ &m_Memory[m_iMemOffet], static_cast<int>(m_Memory.size()-m_iMemOffet) }, ":%s", p ).m_Value;
 
-                reinterpret_cast<std::uint16_t&>(m_Memory[indexStr-2])         = m_iCurrentOffet - indexStr;
-                Field.m_TypeWidth[iType] = std::max( Field.m_TypeWidth[iType], static_cast<std::uint8_t>(m_iCurrentOffet - indexStr) );
+                reinterpret_cast<std::uint16_t&>(m_Memory[indexStr-2])         = m_iMemOffet - indexStr;
+                Field.m_TypeWidth[iType] = std::max( Field.m_TypeWidth[iType], static_cast<std::uint8_t>(m_iMemOffet - indexStr) );
 
                 //////////// 6/22/2019 old from <asd>
                 /*
-                reinterpret_cast<std::uint16_t&>(m_Memory[m_iCurrentOffet]) = 1;
-                m_iCurrentOffet+=2;
-                int iStr = m_iCurrentOffet;
+                reinterpret_cast<std::uint16_t&>(m_Memory[m_iMemOffet]) = 1;
+                m_iMemOffet+=2;
+                int iStr = m_iMemOffet;
 
                 // Determine if it is a user type if so make sure we follow the right syntax
                 if( p[0] == '.' )
                 {
-                    m_iCurrentOffet += 1+string::sprintf( string::view<char>{ &m_Memory[m_iCurrentOffet], static_cast<int>(m_Memory.size()-m_iCurrentOffet) }, "%s", p.data() ).m_Value;
+                    m_iMemOffet += 1+string::sprintf( string::view<char>{ &m_Memory[m_iMemOffet], static_cast<int>(m_Memory.size()-m_iMemOffet) }, "%s", p.data() ).m_Value;
                 }
                 else
                 {
-                    m_iCurrentOffet += 1+string::sprintf( string::view<char>{ &m_Memory[m_iCurrentOffet], static_cast<int>(m_Memory.size()-m_iCurrentOffet) }, "<%s>", p.data() ).m_Value;
+                    m_iMemOffet += 1+string::sprintf( string::view<char>{ &m_Memory[m_iMemOffet], static_cast<int>(m_Memory.size()-m_iMemOffet) }, "<%s>", p.data() ).m_Value;
                 }
 
                 // Set the width for this type
                 // Set the width for this type (we may need to have 2 bytes here if this assert is a problem)
-                xassert( (m_iCurrentOffet - iStr) <= 255 );
-                reinterpret_cast<std::uint16_t&>(m_Memory[iStr-2])         = m_iCurrentOffet - iStr;
-                Field.m_TypeWidth[iType] = std::max( Field.m_TypeWidth[iType], static_cast<std::uint8_t>(m_iCurrentOffet - iStr) );
+                xassert( (m_iMemOffet - iStr) <= 255 );
+                reinterpret_cast<std::uint16_t&>(m_Memory[iStr-2])         = m_iMemOffet - iStr;
+                Field.m_TypeWidth[iType] = std::max( Field.m_TypeWidth[iType], static_cast<std::uint8_t>(m_iMemOffet - iStr) );
                 */
             }
             break;
@@ -1591,7 +1591,7 @@ void xcore::textfile::stream::WriteComponent( int iField, int iType, int c, va_l
     //
     // Make sure that there are always plenty of memory left
     //
-    if( (m_Memory.size()-m_iCurrentOffet) < 512 ) 
+    if( (m_Memory.size()-m_iMemOffet) < 512 ) 
         m_Memory.resize( m_Memory.size() + 1024*4 );
 }
 
@@ -1868,7 +1868,7 @@ xcore::err xcore::textfile::stream::WriteLine( void ) noexcept
         //
         // Dump line info
         //
-        if( m_File.WriteStr( { m_Memory.data(), static_cast<int>(m_iCurrentOffet) } ).isError( Error ) )
+        if( m_File.WriteStr( { m_Memory.data(), static_cast<int>(m_iMemOffet) } ).isError( Error ) )
             return Error;
 
         //
@@ -1878,7 +1878,7 @@ xcore::err xcore::textfile::stream::WriteLine( void ) noexcept
         //
         m_iLine++;
         m_iField        = 0;
-        m_iCurrentOffet = 0;
+        m_iMemOffet = 0;
         m_nTypesLine    = 0;
 
         return Error;
@@ -2076,7 +2076,7 @@ xcore::err xcore::textfile::stream::WriteLine( void ) noexcept
     //
 
     // Write each member
-    for( std::uint32_t i=0; i<m_iCurrentOffet; i++ )
+    for( std::uint32_t i=0; i<m_iMemOffet; i++ )
     {
         int     iField = m_Memory[i++];
         int     iType  = m_Memory[i++];
@@ -2271,7 +2271,7 @@ xcore::err xcore::textfile::stream::WriteLine( void ) noexcept
     //
     // Make sure to reset the current offset since we are done with the memory
     //
-    m_iCurrentOffet = 0;
+    m_iMemOffet = 0;
 
     return Error;
 }
@@ -2408,10 +2408,10 @@ xcore::err xcore::textfile::stream::ReadComponent( std::uint32_t& iStartOffset, 
         using t = decltype(T);
 
         // Align the Offset to be happy
-        iStartOffset = m_iCurrentOffet = xcore::bits::Align( m_iCurrentOffet, sizeof(t) );
+        iStartOffset = m_iMemOffet = xcore::bits::Align( m_iMemOffet, sizeof(t) );
         if( m_File.m_States.m_isBinary )
         {
-            if( m_File.Read( reinterpret_cast<t&>(m_Memory[ m_iCurrentOffet ] ) ).isError(Error) )
+            if( m_File.Read( reinterpret_cast<t&>(m_Memory[ m_iMemOffet ] ) ).isError(Error) )
                 return Error;
         }
         else
@@ -2434,10 +2434,10 @@ xcore::err xcore::textfile::stream::ReadComponent( std::uint32_t& iStartOffset, 
                         return Error;
                 }
                 Buffer[iBuffer] = 0;
-                        if constexpr ( sizeof(t) == 1   ) reinterpret_cast<std::uint8_t& >(m_Memory[ m_iCurrentOffet ]) = static_cast<std::uint8_t >(std::strtoul ( &Buffer[0], nullptr, 16 ));
-                else    if constexpr ( sizeof(t) == 2   ) reinterpret_cast<std::uint16_t&>(m_Memory[ m_iCurrentOffet ]) = static_cast<std::uint16_t>(std::strtoul ( &Buffer[0], nullptr, 16 ));
-                else    if constexpr ( sizeof(t) == 4   ) reinterpret_cast<std::uint32_t&>(m_Memory[ m_iCurrentOffet ]) = static_cast<std::uint32_t>(std::strtoul ( &Buffer[0], nullptr, 16 ));
-                else    if constexpr ( sizeof(t) == 8   ) reinterpret_cast<std::uint64_t&>(m_Memory[ m_iCurrentOffet ]) = static_cast<std::uint64_t>(std::strtoull( &Buffer[0], nullptr, 16 ));
+                        if constexpr ( sizeof(t) == 1   ) reinterpret_cast<std::uint8_t& >(m_Memory[ m_iMemOffet ]) = static_cast<std::uint8_t >(std::strtoul ( &Buffer[0], nullptr, 16 ));
+                else    if constexpr ( sizeof(t) == 2   ) reinterpret_cast<std::uint16_t&>(m_Memory[ m_iMemOffet ]) = static_cast<std::uint16_t>(std::strtoul ( &Buffer[0], nullptr, 16 ));
+                else    if constexpr ( sizeof(t) == 4   ) reinterpret_cast<std::uint32_t&>(m_Memory[ m_iMemOffet ]) = static_cast<std::uint32_t>(std::strtoul ( &Buffer[0], nullptr, 16 ));
+                else    if constexpr ( sizeof(t) == 8   ) reinterpret_cast<std::uint64_t&>(m_Memory[ m_iMemOffet ]) = static_cast<std::uint64_t>(std::strtoull( &Buffer[0], nullptr, 16 ));
                 else
                 {
                     xassume(false);
@@ -2456,7 +2456,7 @@ xcore::err xcore::textfile::stream::ReadComponent( std::uint32_t& iStartOffset, 
                     }
 
                     Buffer[iBuffer] = 0;
-                    reinterpret_cast<t&>(m_Memory[ m_iCurrentOffet ]) = static_cast<t>(std::atof( &Buffer[0] ));
+                    reinterpret_cast<t&>(m_Memory[ m_iMemOffet ]) = static_cast<t>(std::atof( &Buffer[0] ));
                 }
                 else if constexpr( std::is_integral_v<t> )
                 {
@@ -2468,10 +2468,10 @@ xcore::err xcore::textfile::stream::ReadComponent( std::uint32_t& iStartOffset, 
                     }
 
                     Buffer[iBuffer] = 0;
-                            if constexpr( std::is_same_v<t,std::int8_t>     ) reinterpret_cast<t&>(m_Memory[ m_iCurrentOffet ]) = static_cast<t>(std::atoi    ( &Buffer[0] ));
-                    else    if constexpr( std::is_same_v<t,std::int16_t>    ) reinterpret_cast<t&>(m_Memory[ m_iCurrentOffet ]) = static_cast<t>(std::atoi    ( &Buffer[0] ));
-                    else    if constexpr( std::is_same_v<t,std::int32_t>    ) reinterpret_cast<t&>(m_Memory[ m_iCurrentOffet ]) = static_cast<t>(std::atol    ( &Buffer[0] ));
-                    else    if constexpr( std::is_same_v<t,std::int64_t>    ) reinterpret_cast<t&>(m_Memory[ m_iCurrentOffet ]) = static_cast<t>(std::atoll   ( &Buffer[0] ));
+                            if constexpr( std::is_same_v<t,std::int8_t>     ) reinterpret_cast<t&>(m_Memory[ m_iMemOffet ]) = static_cast<t>(std::atoi    ( &Buffer[0] ));
+                    else    if constexpr( std::is_same_v<t,std::int16_t>    ) reinterpret_cast<t&>(m_Memory[ m_iMemOffet ]) = static_cast<t>(std::atoi    ( &Buffer[0] ));
+                    else    if constexpr( std::is_same_v<t,std::int32_t>    ) reinterpret_cast<t&>(m_Memory[ m_iMemOffet ]) = static_cast<t>(std::atol    ( &Buffer[0] ));
+                    else    if constexpr( std::is_same_v<t,std::int64_t>    ) reinterpret_cast<t&>(m_Memory[ m_iMemOffet ]) = static_cast<t>(std::atoll   ( &Buffer[0] ));
                     else
                     {
                         xassume(false);
@@ -2482,7 +2482,7 @@ xcore::err xcore::textfile::stream::ReadComponent( std::uint32_t& iStartOffset, 
             // Sanity check
             xassert( c == ' ' || c == '\n' || c == 10 );
         }
-        m_iCurrentOffet += sizeof(t);
+        m_iMemOffet += sizeof(t);
 
         return Error;
     };
@@ -2506,7 +2506,7 @@ xcore::err xcore::textfile::stream::ReadComponent( std::uint32_t& iStartOffset, 
     case 's':
     case 'e':
          {
-             iStartOffset = m_iCurrentOffet;
+             iStartOffset = m_iMemOffet;
              int c;
  
              if( m_File.m_States.m_isBinary )
@@ -2516,7 +2516,7 @@ xcore::err xcore::textfile::stream::ReadComponent( std::uint32_t& iStartOffset, 
                  {
                      if( m_File.getC( c ).isError(Error) )
                          return Error;
-                     m_Memory[ m_iCurrentOffet++ ] = c;
+                     m_Memory[ m_iMemOffet++ ] = c;
 
                  } while( c );
              }
@@ -2531,7 +2531,7 @@ xcore::err xcore::textfile::stream::ReadComponent( std::uint32_t& iStartOffset, 
                  {
                      do
                      {
-                         m_Memory[ m_iCurrentOffet++ ] = c;
+                         m_Memory[ m_iMemOffet++ ] = c;
                          if( m_File.getC( c ).isError(Error) )
                              return Error;
                      } while( c >= '!' && c <= '~' );
@@ -2544,20 +2544,20 @@ xcore::err xcore::textfile::stream::ReadComponent( std::uint32_t& iStartOffset, 
                  
                      do
                      {
-                         m_Memory[ m_iCurrentOffet++ ] = c;
+                         m_Memory[ m_iMemOffet++ ] = c;
                          if( m_File.getC( c ).isError(Error) )
                              return Error;
                      } while( c != '"' );
                  }
  
                  // terminate the string correctly
-                 m_Memory[ m_iCurrentOffet++ ] = 0;
+                 m_Memory[ m_iMemOffet++ ] = 0;
              }
              break;
          }
     case '?':
         {
-            iStartOffset = m_iCurrentOffet;
+            iStartOffset = m_iMemOffet;
             int c;
 
             if( m_File.m_States.m_isBinary )
@@ -2568,10 +2568,10 @@ xcore::err xcore::textfile::stream::ReadComponent( std::uint32_t& iStartOffset, 
                 if( c == '.' )
                 {
                     // Align the Offset to be happy
-                    iStartOffset = m_iCurrentOffet = xcore::bits::Align( m_iCurrentOffet+1, 2 ) - 1;
+                    iStartOffset = m_iMemOffet = xcore::bits::Align( m_iMemOffet+1, 2 ) - 1;
                     
                     // Leave the period to indicate that is a user type
-                    m_Memory[m_iCurrentOffet++] = '.';
+                    m_Memory[m_iMemOffet++] = '.';
                     
                     // Read the imapping for the user type
                     std::uint16_t iMapping;
@@ -2585,11 +2585,11 @@ xcore::err xcore::textfile::stream::ReadComponent( std::uint32_t& iStartOffset, 
                     }
                     
                     // Write the final remapped type
-                    *((u16*)&m_Memory[ m_iCurrentOffet ]) = m_BinReadUserTypeMap[ iMapping ];
+                    *((u16*)&m_Memory[ m_iMemOffet ]) = m_BinReadUserTypeMap[ iMapping ];
                     */
                    
-                    reinterpret_cast<std::uint16_t&>(m_Memory[ m_iCurrentOffet ]) = m_UserTypes[iMapping].m_UID;
-                    m_iCurrentOffet += 2;
+                    reinterpret_cast<std::uint16_t&>(m_Memory[ m_iMemOffet ]) = m_UserTypes[iMapping].m_UID;
+                    m_iMemOffet += 2;
                 }
                 else if( c == '<' )
                 {
@@ -2597,14 +2597,14 @@ xcore::err xcore::textfile::stream::ReadComponent( std::uint32_t& iStartOffset, 
                     do {
                         if( m_File.getC( c ).isError(Error) )
                             return Error;
-                        m_Memory[ m_iCurrentOffet++ ] = c;
+                        m_Memory[ m_iMemOffet++ ] = c;
                     } while(c);
 
                     // Make sure that we are doing okay
-                    if( m_Memory[m_iCurrentOffet-1] != '>' ) return xerr_failure( Error, "Expecting a '>' Token but we didn't find it" );
+                    if( m_Memory[m_iMemOffet-1] != '>' ) return xerr_failure( Error, "Expecting a '>' Token but we didn't find it" );
 
                     // Terminate the string
-                    m_Memory[ m_iCurrentOffet-1 ] = 0;
+                    m_Memory[ m_iMemOffet-1 ] = 0;
                 }
                 else
                 {
@@ -2624,7 +2624,7 @@ xcore::err xcore::textfile::stream::ReadComponent( std::uint32_t& iStartOffset, 
                 if( c == '.' )
                 {
                     // Save the period as it is part of the user type name
-                    m_Memory[ m_iCurrentOffet++ ] = c;
+                    m_Memory[ m_iMemOffet++ ] = c;
                     
                     // Read the name of the type
                     do 
@@ -2632,16 +2632,16 @@ xcore::err xcore::textfile::stream::ReadComponent( std::uint32_t& iStartOffset, 
                         if( m_File.getC(c).isError(Error) )
                             return Error;
                         if( string::isCharSpace( c ) ) break;
-                        m_Memory[ m_iCurrentOffet++ ] = c;
+                        m_Memory[ m_iMemOffet++ ] = c;
 
                     } while (c);
                     
                     // If this happens this means that we didn't read any types so we found '<>'
                     // we must have types!
-                    xassert( iStartOffset != m_iCurrentOffet );
+                    xassert( iStartOffset != m_iMemOffet );
                     
                     // Terminate the string
-                    m_Memory[ m_iCurrentOffet++ ] = 0;
+                    m_Memory[ m_iMemOffet++ ] = 0;
                 }
                 else
                 {
@@ -2656,7 +2656,7 @@ xcore::err xcore::textfile::stream::ReadComponent( std::uint32_t& iStartOffset, 
 
                     while( (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') )
                     {
-                        m_Memory[ m_iCurrentOffet++ ] = c;                    
+                        m_Memory[ m_iMemOffet++ ] = c;                    
                         if( m_File.getC(c).isError(Error) )
                             return Error;
                     }
@@ -2666,10 +2666,10 @@ xcore::err xcore::textfile::stream::ReadComponent( std::uint32_t& iStartOffset, 
                 
                     // If this happens this means that we didn't read any types so we found '<>'
                     // we must have types!
-                    xassert( iStartOffset != m_iCurrentOffet );
+                    xassert( iStartOffset != m_iMemOffet );
 
                     // Terminate the string
-                    m_Memory[m_iCurrentOffet++] = 0;
+                    m_Memory[m_iMemOffet++] = 0;
                     
                     //
                     // Sanity check
@@ -2693,7 +2693,7 @@ xcore::err xcore::textfile::stream::ReadComponent( std::uint32_t& iStartOffset, 
     //
     // Make sure that there are always plenty of memory left
     //
-    if( (m_Memory.size()-m_iCurrentOffet) < 512 ) 
+    if( (m_Memory.size()-m_iMemOffet) < 512 ) 
         m_Memory.resize( m_Memory.size() + 512 );
 
     return Error;
@@ -2939,7 +2939,7 @@ xcore::err xcore::textfile::stream::ReadLine( void ) noexcept
     //
     m_iLine++;
     m_iField        = 0;
-    m_iCurrentOffet = 0;
+    m_iMemOffet = 0;
     m_nTypesLine    = 0;
 
     return Error;

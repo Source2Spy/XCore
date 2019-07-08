@@ -49,7 +49,7 @@ namespace xcore::error
         template< typename T = xcore::err::states >
         constexpr T getState( void ) const noexcept
         { 
-            // Can only return the specific error state if the user can provide with the right err
+            // Can only return the specific error state if the user_types can provide with the right err
             // Other wise we will default to given the generic code
             return ( isSameClass<T>() ) ? static_cast<T>(m_RawState) : T::FAILURE;
         }

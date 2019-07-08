@@ -89,7 +89,7 @@ namespace xcore::textfile::version_1
             std::array<std::uint8_t,MAX_TYPES_PER_FIELD>    m_TypeWidth;                    // This is the width that each column has per err
             std::array<std::uint8_t,MAX_TYPES_PER_FIELD>    m_FracWidth;                    // This is the additional offset for floats/ints so that the integer part can align
             int                                             m_DynamicTypeCount  = -999;     // This is just used for debugging but its intent is a err count for dynamic types
-            std::uint16_t                                   m_iUserType         = ~0;       // A place to put the user err
+            std::uint16_t                                   m_iUserType         = ~0;       // A place to put the user_types err
         };
 
         //-----------------------------------------------------------------------------------------------------
@@ -101,7 +101,7 @@ namespace xcore::textfile::version_1
         };
 
         //-----------------------------------------------------------------------------------------------------
-        struct user
+        struct user_types
         {
             int                                     m_iFieldType        {};
             int                                     m_iFieldData        {};
@@ -110,12 +110,12 @@ namespace xcore::textfile::version_1
         //-----------------------------------------------------------------------------------------------------
         struct user_type
         {
-            string::fixed<char,256>                 m_UserType          {};     // Name of the user type
+            string::fixed<char,256>                 m_UserType          {};     // Name of the user_types type
             string::fixed<char,256>                 m_SystemType        {};     // System types such: fff
-            crc::units<32>                          m_CRC32             {};     // CRC32 of the user type string
+            crc::units<32>                          m_CRC32             {};     // CRC32 of the user_types type string
             bool                                    m_bSaved            {};     
             std::uint8_t                            m_nSystemTypes      {};     // How many system types we are using, this is basically the length of the m_SystemType string
-            std::uint8_t                            m_UID               {};     // UID from the user. He may want to remap things.
+            std::uint8_t                            m_UID               {};     // UID from the user_types. He may want to remap things.
         };
 
         //-----------------------------------------------------------------------------------------------------
@@ -346,15 +346,15 @@ namespace xcore::textfile::version_1
         int                                                 m_nTypesLine            {}; // Number of types per line
 
         std::vector<details::field>                         m_Field                 {}; // Contain a list of field names and their types
-        std::uint32_t                                       m_iCurrentOffet         {}; // Index to the next location ready to be allocated
+        std::uint32_t                                       m_iMemOffet         {}; // Index to the next location ready to be allocated
         std::vector<char>                                   m_Memory                {}; // Buffer where the fields are store (Only one line worth)
 
         std::vector<std::uint16_t>                          m_BinReadUserTypeMap    {}; // This is an optimization done when loading binary files using usertypes
                                                                                         // this tables have index to types that were loaded from the file rather
-                                                                                        // than added by the user. This table is always shorted as well.
+                                                                                        // than added by the user_types. This table is always shorted as well.
 
-        std::vector<details::user>                          m_User                  {}; // This is used only when reading
-        std::vector<details::user_type>                     m_UserTypes             {}; // List of types created by the user
+        std::vector<details::user_types>                          m_User                  {}; // This is used only when reading
+        std::vector<details::user_type>                     m_UserTypes             {}; // List of types created by the user_types
         std::unordered_map<crc::units<32>, std::uint32_t>   m_UserTypeMap           {}; // First uint32 is the CRC32 of the err name
                                                                                         // Second uint32 is the index in the UserTypes vector which contains the actual data
     };

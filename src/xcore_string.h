@@ -107,6 +107,7 @@ namespace xcore::string
         inline              auto    getViewFrom                                 ( int Start )                               noexcept { return string::view{ &(*this)[Start], static_cast<int>(size()-Start) }; }
         constexpr           auto    getViewFrom                                 ( int Start )                       const   noexcept { return string::view{ &(*this)[Start], static_cast<int>(size()-Start) }; }
         constexpr           bool    empty                                       ( void )                            const   noexcept { return parent::data()[0] == 0; }
+        inline              void    clear                                       ( void )                                    noexcept { parent::data()[0]=0; }
     };
 
     //------------------------------------------------------------------------------------

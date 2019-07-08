@@ -129,7 +129,7 @@ namespace xcore::guid
     // Description:
     //      Resource Type Guid has a 32bit unique identifies xplugin_guid and another 32bits of subgroup.
     //      xplugin_guid    - Is the plugin guid where the type is base of. 
-    //      subgroup        - This is a unique identifier that the user of the plugin can give in order to
+    //      subgroup        - This is a unique identifier that the user_types of the plugin can give in order to
     //                        identify which sub-type this resource type is talking about.
     // Example:
     //      constexpr static rctype<>   rctype_v( plugin<>( "Texture" ), "Normal Map");

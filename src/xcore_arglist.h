@@ -14,15 +14,15 @@ namespace xcore::arglist
                                      const char*, xcore::string::view<char>, std::string >;
 
     //------------------------------------------------------------------------------
-    using view = std::span<out_types>;
+    using view = xcore::span<out_types>;
 
     //------------------------------------------------------------------------------
     template< typename... T_ARGS >
     struct out 
     {
-        std::array< out_types, sizeof...(T_ARGS) > m_Params;
+        xcore::array< out_types, sizeof...(T_ARGS) > m_Params;
         constexpr out( T_ARGS... Args ) : m_Params { Args... } {}
-        operator view () noexcept { return std::make_span(m_Params); }
+        operator view () noexcept { return m_Params; }
     };
 
     //------------------------------------------------------------------------------

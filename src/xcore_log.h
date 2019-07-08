@@ -68,7 +68,7 @@ namespace xcore::log
 #endif
 
 //----------------------------------------------------------------------------------------------
-// Macros to be user for logging
+// Macros to be user_types for logging
 //----------------------------------------------------------------------------------------------
 #define XLOG_CHANNEL_ERROR( CHANNEL, FMTSTR, ... )                                                  \
 { auto& __Channel = CHANNEL;                                                                        \

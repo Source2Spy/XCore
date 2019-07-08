@@ -313,7 +313,7 @@ namespace xcore::string::details
                     *fw++ = (char)('0' + static_cast<int>(ifpart));
 
                     // This was added to keep prec number of significan digits
-                    // When the user is looking for higher precision we will do this
+                    // When the user_types is looking for higher precision we will do this
                     if( prec > DEFPREC )
                     {
                         if( bAnySignificantInteger == false && ifpart == '0' )  prec++;
@@ -887,7 +887,7 @@ namespace xcore::string::details
                 case 'd':
                 case 'i':
 
-                    // Give a break to the user and assume it is a quadint
+                    // Give a break to the user_types and assume it is a quadint
                     Flags.m_QUADINT = true;
                     if( Flags.m_QUADINT )
                     {
@@ -1004,7 +1004,7 @@ namespace xcore::string::details
                 //    /////////>>>>>>>>>>>>>>>>>> FALLTHROUGH <<<<<<<<<<<<<<//////////
 
                 case 'o':
-                    // Give a break to the user and allow quadints
+                    // Give a break to the user_types and allow quadints
                     Flags.m_QUADINT;
                     if (Flags.m_QUADINT) uqval = ArgList.getGenericInt(); //ArgList.get<u64>(); //(u64)x_va_arg(Args, s64); 
                     else                 ulval = ArgList.get<std::uint32_t>(); //x_va_arg(Args, u32); //GetUnSignARG( (xva_list*)&Args, flags );
@@ -1066,7 +1066,7 @@ namespace xcore::string::details
                     /////////>>>>>>>>>>>>>>>>>> FALLTHROUGH <<<<<<<<<<<<<<//////////
 
                 case 'u':
-                    // Give a break to the user and allow quadints
+                    // Give a break to the user_types and allow quadints
                     Flags.m_QUADINT = true;
                     if (Flags.m_QUADINT) uqval = ArgList.getGenericInt(); //ArgList.get<u64>(); //(u64)x_va_arg(Args, u64); 
                     else                 ulval = ArgList.get<std::uint32_t>(); //x_va_arg(Args, u32); //GetUnSignARG( (xva_list*)&Args, flags );
@@ -1077,7 +1077,7 @@ namespace xcore::string::details
                 case 'X': xdigs = "0123456789ABCDEF"; goto hex;
                 case 'x': xdigs = "0123456789abcdef"; hex:
 
-                    // Give a break to the user and allow quadints
+                    // Give a break to the user_types and allow quadints
                     Flags.m_QUADINT = true;
                     if (Flags.m_QUADINT) uqval = ArgList.getGenericInt(); //ArgList.get<u64>(); //(u64)x_va_arg(Args, u64); 
                     else                 ulval = ArgList.get<std::uint32_t>(); //x_va_arg(Args, u32); //GetUnSignARG( (xva_list*)&Args, flags );

@@ -70,43 +70,54 @@ namespace xcore::textfile::version_2
         };
 
         //-----------------------------------------------------------------------------------------------------
-        struct info_field
+        struct field_info
         {
-            char                                m_AtomicType;           // Atomic type
             int                                 m_IntWidth;             // Integer part 
             int                                 m_Width;                // Width of this field
             int                                 m_iData;                // Index to the data
         };
 
         //-----------------------------------------------------------------------------------------------------
-        struct dynamic_field
+        struct field_type
         {
             int                                 m_nTypes;               // How many types does this dynamic field has
             crc::units<32>                      m_UserType;             // if 0 then is not valid
+            string::fixed<char,16>              m_SystemTypes;          // System types
             int                                 m_iField;               // Index to the m_FieldInfo from the column 
         };
 
         //-----------------------------------------------------------------------------------------------------
-        struct column
+        struct field_format
         {
-            string::fixed<char,128>             m_Name;                 // Type name
-            int                                 m_NameLength;           // string Length for Name
-            int                                 m_nTypes;               // -1 is '?' otherwise is fixed set
-            crc::units<32>                      m_UserType;             // if 0 then is not valid
-            xcore::unique_span<dynamic_field>   m_DynamicFields;        // if this column has dynamic fields here is where the info is
-            xcore::unique_span<info_field>      m_FieldInfo;            // All fields for this column
-            void clear ( void ) noexcept { m_DynamicFields.clear(); m_FieldInfo.clear(); }
+            int     m_MaxWidth;
+            int     m_MaxIntWidth;
         };
 
         //-----------------------------------------------------------------------------------------------------
-        struct user
+        struct column_format
         {
-            string::fixed<char,128>             m_UserType          {};     // Name of the user type
-            string::fixed<char,16>              m_SystemType        {};     // System types such: fff
-            crc::units<32>                      m_CRC32             {};     // CRC32 of the user type string
-            bool                                m_bSaved            {};     
-            std::uint8_t                        m_nSystemTypes      {};     // How many system types we are using, this is basically the length of the m_SystemType string
-            std::uint8_t                        m_UID               {};     // Unique ID from the user
+            int                                 m_Width;
+            xcore::vector<field_format>         m_Format;
+        };
+
+        //-----------------------------------------------------------------------------------------------------
+        struct column : field_type
+        {
+            string::fixed<char,128>             m_Name;                 // Type name
+            int                                 m_NameLength;           // string Length for Name
+            xcore::vector<field_type>           m_DynamicFields;        // if this column has dynamic fields here is where the info is
+            xcore::vector<field_info>           m_FieldInfo;            // All fields for this column
+            void clear ( void ) noexcept { m_DynamicFields.clear(); m_FieldInfo.clear(); m_Name.clear(); m_NameLength = 0; }
+        };
+
+        //-----------------------------------------------------------------------------------------------------
+        struct user_types
+        {
+            string::fixed<char,128>             m_UserType          {};         // Name of the user_types type
+            string::fixed<char,16>              m_SystemType        {};         // System types such: fff
+            crc::units<32>                      m_CRC32             {};         // CRC32 of the user_types type string
+            std::uint8_t                        m_nSystemTypes      {};         // How many system types we are using, this is basically the length of the m_SystemType string
+            bool                                m_bAlreadySaved     {false};    
         };
 
         //-----------------------------------------------------------------------------------------------------
@@ -184,15 +195,6 @@ namespace xcore::textfile::version_2
             BuildTypesRecursive<T_ARGS...>( Data.data() );
             return Data;
         }
-        //-----------------------------------------------------------------------------------------------------
-        //-----------------------------------------------------------------------------------------------------
-        namespace type_map
-        {
-            struct system   { int m_Index };
-            struct user     { int m_Index };
-            struct fails    {};;
-            using type = std::variant< system, user, fails };
-        }
     }
 
     //-----------------------------------------------------------------------------------------------------
@@ -240,11 +242,19 @@ namespace xcore::textfile::version_2
                                        ~stream              ( void )                                                                    noexcept;
         void                            close               ( void )                                                                    noexcept;
                         xcore::err      Open                ( bool isRead, std::string_view View, file_type FileType, flags Flags={} )  noexcept;
+
+                        template< std::size_t N, typename... T_ARGS >
+        inline          xcore::err      Field               ( crc::units<32>& UserType, const char(&pFieldName)[N], T_ARGS&... Args )   noexcept;
+
                         template< std::size_t N, typename... T_ARGS >
         inline          xcore::err      Field               ( const char(&pFieldName)[N], T_ARGS&... Args )                             noexcept;
+
+        inline          const auto*     getUserType         ( crc::units<32> UserType )                                         const   noexcept { if( auto I = m_UserTypeMap.find(UserType); I == m_UserTypeMap.end() ) return (details::user_types*)nullptr; else return &m_UserTypes[I->second]; }
+
                         template< std::size_t N, typename TT, typename T >
         inline          bool            Record              ( xcore::err& Error, const char (&Str)[N]
                                                                 , TT&& RecordStar, T&& Callback )                                       noexcept;
+
         constexpr       bool            isReading           ( void )                                                            const   noexcept { return m_File.m_States.m_isReading; }
         constexpr       bool            isEOF               ( void )                                                            const   noexcept { return m_File.m_States.m_isEOF; }
         constexpr       bool            isWriteFloats       ( void )                                                            const   noexcept { return m_File.m_States.m_isSaveFloats; }
@@ -258,8 +268,7 @@ namespace xcore::textfile::version_2
                         xcore::err      openForWriting      ( const std::filesystem::path& FilePath
                                                                 , file_type FileType, flags Flags )                                     noexcept;
                         bool            isValidType         ( int Type )                                                        const   noexcept;
-                        std::uint32_t   AddUserType         ( const char* pSystemTypes, const char* pUserType
-                                                                , crc::units<32> CRC32UserType, std::uint8_t UID )                      noexcept;
+                        std::uint32_t   AddUserType         ( const char* pUserType, crc::units<32> CRC, const char* pSystemTypes )     noexcept;
                         template< typename T >
                         xcore::err      Read                ( T& Buffer, int Size = sizeof(T), int Count = 1 )                          noexcept;
                         xcore::err      ReadRecord          ( void )                                                                    noexcept;
@@ -267,16 +276,22 @@ namespace xcore::textfile::version_2
                         xcore::err      ReadWhiteSpace      ( int& c )                                                                  noexcept;
                         xcore::err      ReadLine            ( void )                                                                    noexcept;
                         xcore::err      getC                ( int& c )                                                                  noexcept;
-                        xcore::err      ReadFieldC          ( int& iUserRef, const char* pFieldName, arglist::view Args )               noexcept;
+                        xcore::err      ReadFieldC          ( crc::units<32>& UserType, const char* pFieldName, arglist::view Args )    noexcept;
+
                         template< typename T >
                         xcore::err      Write               ( T& Buffer, int Size = sizeof(T), int Count = 1 )                          noexcept;
                         xcore::err      WriteLine           ( void )                                                                    noexcept;
                         xcore::err      WriteStr            ( string::view<const char> Buffer )                                         noexcept;
                         xcore::err      WriteFmtStr         ( const char* pFmt, ... )                                                   noexcept;
                         xcore::err      WriteChar           ( char C, int Count = 1 )                                                   noexcept;
-                        xcore::err      WriteFieldC         ( const char* pFieldName, arglist::view Args )                              noexcept;
+                        xcore::err      WriteFieldC         ( crc::units<32>& UserType, const char* pFieldName, arglist::view Args )    noexcept;
+                        xcore::err      WriteUserTypes      ( void )                                                                    noexcept;
 
                         xcore::err      HandleDynamicTable  ( int& Count )                                                              noexcept;
+
+                        xcore::err      WriteRecord         ( const char* pHeaderName, std::size_t Count )                              noexcept;
+                        xcore::err      WriteComment        ( const string::view<char> Comment )                                        noexcept;
+
 
     protected:
 
@@ -286,16 +301,17 @@ namespace xcore::textfile::version_2
         details::record                                     m_Record                {}; // This contains information about the current record
         int                                                 m_nColumns              {0};
         xcore::vector<details::column>                      m_Columns               {};
-        xcore::vector<std::byte>                            m_Memory                {};
-        xcore::vector<details::user>                        m_UserTypes             {};
+        xcore::vector<details::column_format>               m_ColumnFormat          {};
+        xcore::vector<char>                                 m_Memory                {};
+        xcore::vector<details::user_types>                  m_UserTypes             {};
         xcore::vector<int>                                  m_DataMapping           {};
         std::unordered_map<crc::units<32>, std::uint32_t>   m_UserTypeMap           {}; // First uint32 is the CRC32 of the err name
                                                                                         // Second uint32 is the index in the UserTypes vector which contains the actual data
         int                                                 m_iLine                 {}; // Which line we are in the current record
         int                                                 m_iField                {}; // Current Field that we are trying to read
         int                                                 m_nTypesLine            {}; // Number of types per line
-        int                                                 m_iCurrentOffet         {};
 
+        int                                                 m_iMemOffet             {};
         int                                                 m_iColumn               {};
     };
 }
