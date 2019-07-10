@@ -98,6 +98,7 @@ namespace xcore::textfile::version_2
         {
             int                                 m_Width;
             xcore::vector<field_format>         m_Format;
+            int                                 m_NameWidth;
         };
 
         //-----------------------------------------------------------------------------------------------------
@@ -114,6 +115,7 @@ namespace xcore::textfile::version_2
         struct user_types
         {
             string::fixed<char,128>             m_UserType          {};         // Name of the user_types type
+            int                                 m_TypeLength        {};
             string::fixed<char,16>              m_SystemType        {};         // System types such: fff
             crc::units<32>                      m_CRC32             {};         // CRC32 of the user_types type string
             std::uint8_t                        m_nSystemTypes      {};         // How many system types we are using, this is basically the length of the m_SystemType string
@@ -239,7 +241,7 @@ namespace xcore::textfile::version_2
     public:
 
         constexpr                       stream              ( void )                                                                    noexcept = default;
-                                       ~stream              ( void )                                                                    noexcept;
+                                       ~stream              ( void )                                                                    noexcept {}
         void                            close               ( void )                                                                    noexcept;
                         xcore::err      Open                ( bool isRead, std::string_view View, file_type FileType, flags Flags={} )  noexcept;
 

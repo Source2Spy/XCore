@@ -752,7 +752,7 @@ namespace xcore::textfile::version_2
         // Fill the entry
         //
         auto& Entry = m_UserTypes.append();
-        string::Copy( Entry.m_UserType,   pUserType );
+        for( Entry.m_TypeLength = 0; (Entry.m_UserType[Entry.m_TypeLength] = pUserType[Entry.m_TypeLength]); ++Entry.m_TypeLength );
         string::Copy( Entry.m_SystemType, pSystemTypes );
         Entry.m_CRC32        = CRC32UserType;
         Entry.m_nSystemTypes = static_cast<std::uint8_t>(std::strlen( Entry.m_SystemType.data() ));
@@ -1080,7 +1080,7 @@ namespace xcore::textfile::version_2
 
     xcore::err stream::WriteLine( void ) noexcept
     {
-        int         j;
+//        int         j;
         xcore::err  Error;
 
         xassert( m_File.m_States.m_isReading == false );
@@ -1191,38 +1191,267 @@ namespace xcore::textfile::version_2
         if( m_ColumnFormat.size() < m_Columns.size() ) m_ColumnFormat.appendList( m_Columns.size() - m_ColumnFormat.size() );
 
         //
-        // Compute the width for each of the types
+        // Compute the width for each column also for each of its types
         //
         for( int i = 0; i<m_nColumns; ++i )
         {
-            auto& Colomn        = m_Columns[i];
-            auto& ColomnFormat  = m_ColumnFormat[i];
+            auto& Column        = m_Columns[i];
+            auto& ColumnFormat  = m_ColumnFormat[i];
 
-            if( Colomn.m_nTypes == -1 )
+            if( Column.m_nTypes == -1 )
             {
+                //
+                // Compute the width with all the fields 
+                //
+                for( auto& DField : Column.m_DynamicFields )
+                {
+                    // One one space per type
+                    int Width = DField.m_nTypes;
 
+                    // count all the widths of the types
+                    for( int n=0; n<DField.m_nTypes; n++ )
+                    {
+                        Width += Column.m_FieldInfo[DField.m_iField+n].m_Width;
+                    }
 
+                    // Dyanmic types must include the type inside the column
+                    if( DField.m_UserType.m_Value )
+                    {
+                        auto p = getUserType(DField.m_UserType);
+                        xassert(p);
+                        Width += p->m_TypeLength + 1 + 1;   // includes "; "
+                    }
+                    else
+                    {
+                        Width += Column.m_nTypes + 1 + 1; // includes ": "
+                    }
+
+                    if( ColumnFormat.m_Width < Width ) ColumnFormat.m_Width = Width;
+                }
+
+                //
+                // Handle the column name as well 
+                //
+                ColumnFormat.m_NameWidth = Column.m_NameLength + 1 + 1; // includes ":?"
+                if( ColumnFormat.m_Width < ColumnFormat.m_NameWidth ) ColumnFormat.m_Width = ColumnFormat.m_NameWidth;
             }
             else
             {
                 //
                 // Computes the max width of a column as well as the max width for each field inside the column
                 //
-                for( int n=0; n<Colomn.m_nTypes; ++n )
+                for( int n=0; n<Column.m_nTypes; ++n )
                 {
-                    auto& Field = Colomn.m_FieldInfo[n];
-                    auto& Fmt   = ColomnFormat.m_Format[n];
+                    auto& Field = Column.m_FieldInfo[n];
+                    auto& Fmt   = ColumnFormat.m_Format[n];
 
                     // Find the max width for this field
                     if( Field.m_Width > Fmt.m_MaxWidth ) Fmt.m_MaxWidth = Field.m_Width;
 
-                    ColomnFormat.m_Width += Fmt.m_MaxWidth + 1;
+                    ColumnFormat.m_Width += Fmt.m_MaxWidth + 1;
                 }
-            }
 
+                //
+                // Handle the column name as well 
+                //
+                ColumnFormat.m_NameWidth = Column.m_NameLength + 1; // includes ":"
+                if( Column.m_UserType.m_Value )
+                {
+                    auto p = getUserType( Column.m_UserType );
+                    xassert(p);
+                    ColumnFormat.m_NameWidth += p->m_TypeLength;
+                }
+                else
+                {
+                    ColumnFormat.m_NameWidth += Column.m_nTypes; 
+                }
+                if( ColumnFormat.m_Width < ColumnFormat.m_NameWidth ) ColumnFormat.m_Width = ColumnFormat.m_NameWidth;
+            }
         }
 
+        //
+        // Save the record info
+        //
+        if( m_iLine <= MaxLines )
+        {
+            //
+            // Write any pending user_types types
+            //
+            if( WriteUserTypes().isError( Error ) )
+                return Error;
+        
+            //
+            // Write header
+            //
+            if( m_Record.m_bWriteCount )
+            {
+                if( m_File.WriteFmtStr( "\n[ %s : %d ]\n", m_Record.m_Name.data(), m_Record.m_Count ).isError( Error ) )
+                    return Error;
+            }
+            else
+            {
+                if( m_File.WriteFmtStr( "\n[ %s ]\n", m_Record.m_Name.data() ).isError(Error) )
+                    return Error;
+            }
 
+            //
+            // Write the types
+            //
+            {
+                if( m_File.WriteChar( '{' ).isError(Error) )
+                    return Error;
+
+                for( int i = 0; i<m_nColumns; ++i )
+                {
+                    auto& Column        = m_Columns[i];
+                    auto& ColumnFormat  = m_ColumnFormat[i];
+
+                    if( Column.m_nTypes == -1 )
+                    {
+                        if( m_File.WriteFmtStr( " %s:? ", Column.m_Name.data() ).isError(Error) )
+                            return Error;
+                    }
+                    else
+                    {
+                        if( Column.m_UserType.m_Value )
+                        {
+                            auto p = getUserType(Column.m_UserType);
+                            xassert(p);
+
+                            if( m_File.WriteFmtStr( " %s;%s ", Column.m_Name.data(), p->m_UserType.data() ).isError(Error) )
+                                return Error;
+                        }
+                        else
+                        {
+                            if( m_File.WriteFmtStr( " %s:%s ", Column.m_Name.data(), Column.m_SystemTypes.data() ).isError(Error) )
+                                return Error;
+                        }
+                    }
+
+                    if( ColumnFormat.m_Width > ColumnFormat.m_NameWidth )
+                    {
+                        if( m_File.WriteChar( ' ', ColumnFormat.m_Width-ColumnFormat.m_NameWidth ).isError(Error) )
+                            return Error;
+                    }
+                }
+
+                if( m_File.WriteFmtStr( string::constant("}\n") ).isError(Error) )
+                    return Error;
+            }
+
+            //
+            // Write a nice underline for the columns
+            //
+            {
+                if( m_File.WriteFmtStr( string::constant("//") ).isError(Error) )
+                    return Error;
+
+                for( int i = 0; i<m_nColumns; ++i )
+                {
+                    auto& ColumnFormat  = m_ColumnFormat[i];
+
+                    if( m_File.WriteChar( '-', ColumnFormat.m_Width ).isError(Error) )
+                        return Error;
+
+                    // Get ready for the next type
+                    if( m_File.WriteChar( ' ', 2 ).isError(Error) )
+                        return Error;
+                }
+
+                if( m_File.WriteChar( '\n' ).isError(Error) )
+                    return Error;
+            }
+        }
+
+        //
+        // Print all the data
+        //
+        {
+            int L = MaxLines%m_iLine;
+            for( int l = 0; l<L; ++l )
+            for( int i = 0; i<m_nColumns; ++i )
+            {
+                const auto& Column        = m_Columns[i];
+                const auto& ColumnFormat  = m_ColumnFormat[i];
+
+                if( Column.m_nTypes == -1 )
+                {
+                    const auto& DynamicFields = Column.m_DynamicFields[L];
+                    int         TotalWidth = 0;
+
+                    //
+                    // First write the type
+                    //
+                    if( DynamicFields.m_UserType.m_Value ) 
+                    {
+                        auto p = getUserType( DynamicFields.m_UserType );
+                        xassert(p);
+                        if( m_File.WriteFmtStr( ";%s ", p->m_UserType.data() ).isError(Error) )
+                            return Error;
+
+                        TotalWidth += 2 + p->m_TypeLength;
+                    }
+                    else
+                    {
+                        if( m_File.WriteFmtStr( ":%s ", Column.m_SystemTypes.data() ).isError(Error) )
+                            return Error;
+
+                        TotalWidth += 2 + Column.m_nTypes;
+                    }
+
+                    //
+                    // Then write the values
+                    //
+                    for( int n=0; n<DynamicFields.m_nTypes; ++n )
+                    {
+                        const auto& FieldInfo   = Column.m_FieldInfo[ DynamicFields.m_iField + n ];
+                        const auto  StrLength   = string::Length( &m_Memory[ FieldInfo.m_iData ] ).m_Value;
+                    
+                        if( m_File.WriteStr( string::view{ &m_Memory[ FieldInfo.m_iData ], StrLength } ).isError(Error) )
+                            return Error;
+
+                        // Get ready for the next type
+                        if( m_File.WriteChar( ' ', 2 ).isError(Error) )
+                            return Error;
+
+                        TotalWidth += StrLength + 2;
+                    }
+
+                    // Pad the width to match the columns width
+                    if( ColumnFormat.m_Width < TotalWidth )
+                        if( m_File.WriteChar( ' ', ColumnFormat.m_Width - TotalWidth ).isError(Error) )
+                            return Error;
+                }
+                else
+                {
+                    for( int n=0; n<Column.m_nTypes; ++n )
+                    {
+                        const auto  Index       = l*Column.m_nTypes + n;
+                        const auto& FieldInfo   = Column.m_FieldInfo[ Index ];
+                        const auto& Format      = ColumnFormat.m_Format[ Index ];
+                        const auto  StrLength   = string::Length( &m_Memory[ FieldInfo.m_iData ]).m_Value;
+                    
+                        if( Column.m_SystemTypes[n] == 'f' || Column.m_SystemTypes[n] == 'F' )
+                        {
+                            // Make sure to add spaces to match the floating point part
+                        }
+
+                        if( m_File.WriteStr( string::view{ &m_Memory[ FieldInfo.m_iData ], StrLength } ).isError(Error) )
+                            return Error;
+
+                        // Get ready for the next type
+                        xassert( StrLength <= ColumnFormat.m_Width );
+                        if( m_File.WriteChar( ' ', 2 + ColumnFormat.m_Width - StrLength ).isError(Error) )
+                            return Error;
+                    }
+                }
+            }
+        }
+
+        m_iMemOffet = 0;
+        return Error;
+
+        /*
         //
         // Compute the width for each of the types
         //
@@ -1589,8 +1818,8 @@ namespace xcore::textfile::version_2
         // Make sure to reset the current offset since we are done with the memory
         //
         m_iMemOffet = 0;
-
         return Error;
+        */
     }
 
 
