@@ -46,9 +46,10 @@ auto ViewFromCount( T iStart, T Count )
 public: template< typename T > inline     
 auto ViewFrom( T iStart )
 {
+    const auto s = size();
     xassert( iStart >= 0 );
-    xassert( iStart <= size() );
-    return xcore::span{ &(*this)[ iStart ], std::ptrdiff_t(size() - static_cast<std::size_t>(iStart)) };
+    xassert( iStart <= s );
+    return xcore::span{ &(*this)[ iStart ], std::ptrdiff_t(s - static_cast<std::size_t>(iStart)) };
 }
 
 //------------------------------------------------------------------------------

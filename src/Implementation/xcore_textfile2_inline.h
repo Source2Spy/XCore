@@ -14,7 +14,7 @@ namespace xcore::textfile::version_2
             return ReadFieldC( UserType, pFieldName, Out );
         }
 
-        arglist::out Out{ static_cast<typename details::type_filter<T_ARGS>::type>( Args )... };
+        arglist::out Out{ &static_cast<typename details::type_filter<T_ARGS>::type>( Args )... };
         return WriteFieldC( UserType, pFieldName, Out );
     }
 

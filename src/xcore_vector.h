@@ -35,7 +35,7 @@ namespace xcore::containers::vector
         inline      auto&                                       front                       ( void )                                            noexcept { return *data(); }
         constexpr   auto&                                       back                        ( void )                                    const   noexcept { return data()[m_Count-1]; }
         inline      auto&                                       back                        ( void )                                            noexcept { return data()[m_Count-1]; }
-        constexpr   bool                                        empty                       ( void )                                    const   noexcept { return !!m_Count; }
+        constexpr   bool                                        empty                       ( void )                                    const   noexcept { return m_Count==0; }
         constexpr   size_type                                   capacity                    ( void )                                    const   noexcept { return m_Allocator.size(); }
         inline      void                                        clear                       ( void )                                            noexcept;
         inline      void                                        reserve                     ( size_type NewCap )                                noexcept;

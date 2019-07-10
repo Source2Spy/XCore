@@ -23,9 +23,9 @@ namespace xcore::examples
             xcore::arglist::out Arg( 123, 1.5, "hello" );
             xcore::rtti::examples::Test();
             xcore::guid::examples::Test();
-            xcore::textfile::examples::Test();
+            xcore::containers::vector::examples::Test();
         }
 
-        xcore::containers::vector::examples::Test();
+        xcore::textfile::examples::Test();
     }
 }

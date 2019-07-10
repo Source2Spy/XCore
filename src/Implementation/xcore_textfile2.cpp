@@ -391,7 +391,7 @@ namespace xcore::textfile::version_2
         m_Memory.clear();
 
         // Growing this guy is really slow so we create a decent count from the start
-        if( m_Memory.GrowBy( 512 ).isError(Failure) ) return Failure;
+        m_Memory.appendList( 512 );
 
         //
         // Read the first record
@@ -441,7 +441,7 @@ namespace xcore::textfile::version_2
         m_Memory.clear();
 
         // Growing this guy is really slow so we create a decent count from the start
-        if( m_Memory.capacity() < 2048 ) if( m_Memory.GrowBy( 2048 ).isError(Failure) ) return Failure;
+        if( m_Memory.capacity() < 2048 ) m_Memory.appendList( 2048 );
 
         return Failure;
     }
@@ -831,7 +831,7 @@ namespace xcore::textfile::version_2
             // Make sure we have enough columns to store our data
             if( m_Columns.size() <= m_nColumns ) m_Columns.append();
 
-            auto& Column = m_Columns[m_nColumns];
+            auto& Column = m_Columns[m_nColumns++];
             
             xassert( Args.size() > 0 );
             Column.m_nTypes   = static_cast<int>(Args.size());
@@ -861,7 +861,7 @@ namespace xcore::textfile::version_2
         //
         // Get the column we are processing
         //
-        auto& Column = m_Columns[m_nColumns];
+        auto& Column = m_Columns[m_nColumns-1];
 
         //
         // Validate the user_types type if any
@@ -908,20 +908,23 @@ namespace xcore::textfile::version_2
                     FieldInfo.m_SystemTypes[Args.getIndexByEntry(A)] = std::visit( [&]( auto Value ) constexpr
                     {
                         using t = std::decay_t<decltype(Value)>;
-                                if constexpr ( std::is_same_v<t,std::uint8_t>       ) return 'h';
-                        else    if constexpr ( std::is_same_v<t,std::uint16_t>      ) return 'H';
-                        else    if constexpr ( std::is_same_v<t,std::uint32_t>      ) return 'g';
-                        else    if constexpr ( std::is_same_v<t,std::uint64_t>      ) return 'G';
-                        else    if constexpr ( std::is_same_v<t,std::int8_t>        ) return 'c';
-                        else    if constexpr ( std::is_same_v<t,std::int16_t>       ) return 'C';
-                        else    if constexpr ( std::is_same_v<t,std::int32_t>       ) return 'd';
-                        else    if constexpr ( std::is_same_v<t,std::int64_t>       ) return 'D';
-                        else    if constexpr ( std::is_same_v<t,float>              ) return 'f';
-                        else    if constexpr ( std::is_same_v<t,double>             ) return 'F';
-                        else    if constexpr ( std::is_same_v<t,string::view<char>> ) return 's';
+                                if constexpr ( std::is_same_v<t,std::uint8_t*>       ) return 'h';
+                        else    if constexpr ( std::is_same_v<t,std::uint16_t*>      ) return 'H';
+                        else    if constexpr ( std::is_same_v<t,std::uint32_t*>      ) return 'g';
+                        else    if constexpr ( std::is_same_v<t,std::uint64_t*>      ) return 'G';
+                        else    if constexpr ( std::is_same_v<t,std::int8_t*>        ) return 'c';
+                        else    if constexpr ( std::is_same_v<t,std::int16_t*>       ) return 'C';
+                        else    if constexpr ( std::is_same_v<t,std::int32_t*>       ) return 'd';
+                        else    if constexpr ( std::is_same_v<t,std::int64_t*>       ) return 'D';
+                        else    if constexpr ( std::is_same_v<t,float*>              ) return 'f';
+                        else    if constexpr ( std::is_same_v<t,double*>             ) return 'F';
+                        else    if constexpr ( std::is_same_v<t,string::view<char>*> ) return 's';
                         else    { xassume(false); return char{0}; }
                     }, A );
                 }
+
+                // Terminate types as a proper string
+                FieldInfo.m_SystemTypes[ static_cast<int>(Args.size()) ] = 0;
             }
         }
 
@@ -1186,9 +1189,17 @@ namespace xcore::textfile::version_2
         }
 
         //
-        // Make sure we have enough format columns
+        // Initialize the columns
         //
-        if( m_ColumnFormat.size() < m_Columns.size() ) m_ColumnFormat.appendList( m_Columns.size() - m_ColumnFormat.size() );
+        if( m_iLine < MaxLines )
+        {
+            if( m_ColumnFormat.size() < m_nColumns ) m_ColumnFormat.appendList( m_nColumns - m_ColumnFormat.size() );
+            for( int i=0; i<m_nColumns; ++i )
+            {
+                auto& ColumnFormat  = m_ColumnFormat[i];
+                ColumnFormat.clear();
+            }
+        }
 
         //
         // Compute the width for each column also for each of its types

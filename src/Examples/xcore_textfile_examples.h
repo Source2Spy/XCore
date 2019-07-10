@@ -57,11 +57,13 @@ namespace xcore::textfile::examples
             ,   [&]( std::size_t i, xcore::err& Error )
                 {
                     0
+                        /*
                     ||  TextFile.Field( "String",   String[i]       ).isError(Error)
 
                     ||  TextFile.Field( "String",   String[i]       ).isError(Error)
                     ||  TextFile.Field( "Floats",   Floats64[i]
                                                 ,   Floats32[i]     ).isError(Error)
+                                                */
                     ||  TextFile.Field( "Ints"  ,   Int64[i]
                                                 ,   Int32[i]
                                                 ,   Int16[i]
@@ -298,7 +300,7 @@ namespace xcore::textfile::examples
         //
         // Test write and read (Text Style)
         //
-        if( false ) if( 0
+        if( true ) if( 0
             || Test01( TextFileName, false, xcore::textfile::file_type::TEXT ).isError(Error) 
             || Test01( TextFileName, true,  xcore::textfile::file_type::TEXT ).isError(Error)
             || Test01( TextFileName, false, xcore::textfile::file_type::TEXT, {xcore::textfile::flags::WRITE_FLOATS} ).isError(Error)

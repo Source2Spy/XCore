@@ -5,8 +5,11 @@ namespace xcore::containers::vector
     template< typename T, typename T_ALLOCATOR > inline
     void type<T, T_ALLOCATOR>::clear ( void ) noexcept
     {
-        std::destroy( &m_Allocator[0], &m_Allocator.data()[m_Count] );
-        m_Count = 0;
+        if( empty() == false )
+        {
+            std::destroy( &m_Allocator[0], &m_Allocator.data()[m_Count] );
+            m_Count = 0;
+        }
     }
 
     //------------------------------------------------------------------------------
