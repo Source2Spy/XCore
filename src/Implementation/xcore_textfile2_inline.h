@@ -15,7 +15,7 @@ namespace xcore::textfile::version_2
         }
 
         arglist::out Out{ &static_cast<typename details::type_filter<T_ARGS>::type>( Args )... };
-        return WriteFieldC( UserType, pFieldName, Out );
+        return WriteColumn( UserType, pFieldName, Out );
     }
 
     //------------------------------------------------------------------------------------------------

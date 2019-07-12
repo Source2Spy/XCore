@@ -25,7 +25,7 @@ namespace xcore::containers::vector
 
         constexpr   auto*                                       data                        ( void )                                            noexcept { return reinterpret_cast<T*>      (m_Allocator.data()); }
         constexpr   auto*                                       data                        ( void )                                    const   noexcept { return reinterpret_cast<const T*>(m_Allocator.data()); }
-        constexpr   bool                                        isIndexValid                ( size_type i )                             const   noexcept { return i >= 0 && i <= m_Count; }
+        constexpr   bool                                        isIndexValid                ( size_type i )                             const   noexcept { return i >= 0 && i < m_Count; }
         inline      auto&                                       operator []                 ( size_type i )                                     noexcept { xassert(isIndexValid(i)); return data()[i]; }
         constexpr   auto&                                       operator []                 ( size_type i )                             const   noexcept { xassert(isIndexValid(i)); return data()[i]; }
         inline      auto&                                       at                          ( size_type i )                                     noexcept { xassert(isIndexValid(i)); return data()[i]; }

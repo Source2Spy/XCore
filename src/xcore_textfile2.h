@@ -87,18 +87,10 @@ namespace xcore::textfile::version_2
         };
 
         //-----------------------------------------------------------------------------------------------------
-        struct field_format
+        struct sub_column
         {
-            int     m_MaxWidth;
-            int     m_MaxIntWidth;
-        };
-
-        //-----------------------------------------------------------------------------------------------------
-        struct column_format
-        {
-            int                                 m_Width;
-            xcore::vector<field_format>         m_Format;
-            int                                 m_NameWidth;
+            int                                 m_FormatWidth      {0};
+            int                                 m_FormatIntWidth   {0};
         };
 
         //-----------------------------------------------------------------------------------------------------
@@ -108,6 +100,11 @@ namespace xcore::textfile::version_2
             int                                 m_NameLength;           // string Length for Name
             xcore::vector<field_type>           m_DynamicFields;        // if this column has dynamic fields here is where the info is
             xcore::vector<field_info>           m_FieldInfo;            // All fields for this column
+            xcore::vector<sub_column>           m_SubColumn;            // Each of the types inside of a column is a sub_column.
+
+            int                                 m_FormatNameWidth;      // Text Formatting name width 
+            int                                 m_FormatWidth;          // Width of the column
+
             void clear ( void ) noexcept { m_DynamicFields.clear(); m_FieldInfo.clear(); m_Name.clear(); m_NameLength = 0; }
         };
 
@@ -286,7 +283,7 @@ namespace xcore::textfile::version_2
                         xcore::err      WriteStr            ( string::view<const char> Buffer )                                         noexcept;
                         xcore::err      WriteFmtStr         ( const char* pFmt, ... )                                                   noexcept;
                         xcore::err      WriteChar           ( char C, int Count = 1 )                                                   noexcept;
-                        xcore::err      WriteFieldC         ( crc::units<32>& UserType, const char* pFieldName, arglist::view Args )    noexcept;
+                        xcore::err      WriteColumn         ( crc::units<32>& UserType, const char* pFieldName, arglist::view Args )    noexcept;
                         xcore::err      WriteUserTypes      ( void )                                                                    noexcept;
 
                         xcore::err      HandleDynamicTable  ( int& Count )                                                              noexcept;
@@ -303,7 +300,6 @@ namespace xcore::textfile::version_2
         details::record                                     m_Record                {}; // This contains information about the current record
         int                                                 m_nColumns              {0};
         xcore::vector<details::column>                      m_Columns               {};
-        xcore::vector<details::column_format>               m_ColumnFormat          {};
         xcore::vector<char>                                 m_Memory                {};
         xcore::vector<details::user_types>                  m_UserTypes             {};
         xcore::vector<int>                                  m_DataMapping           {};
@@ -315,6 +311,9 @@ namespace xcore::textfile::version_2
 
         int                                                 m_iMemOffet             {};
         int                                                 m_iColumn               {};
+
+        constexpr static int                                m_nSpacesBetweenFields   { 1 };
+        constexpr static int                                m_nSpacesBetweenColumns  { 2 };
     };
 }
 #endif

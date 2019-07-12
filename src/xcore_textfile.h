@@ -270,7 +270,7 @@ namespace xcore::textfile::version_1
                                 }
                                 else 
                                 {
-                                    WriteFieldC( pFieldName, Types.data(), static_cast<typename details::type_filter<T_ARGS>::type>( Args )... );
+                                    WriteColumn( pFieldName, Types.data(), static_cast<typename details::type_filter<T_ARGS>::type>( Args )... );
                                 }
                                 return {0};
                             }
@@ -324,9 +324,9 @@ namespace xcore::textfile::version_1
     protected:
 
                             xcore::err                  ReadFieldC          ( int& iUserRef, const char* pFieldName, const char* pArgsTypes, ... )                      noexcept;
-                            void                        WriteFieldC         ( const char* pFieldName, const char* pArgsTypes, ... )                                     noexcept;
+                            void                        WriteColumn         ( const char* pFieldName, const char* pArgsTypes, ... )                                     noexcept;
                             void                        WriteFieldCIndirect ( const char* pFieldName, const char* pArgsTypes, ... )                                     noexcept;
-                            void                        WriteFieldC         ( const char* pFieldName, const char* pArgsTypes, va_list& Args1, va_list& Args2, bool bIndirect ) noexcept;
+                            void                        WriteColumn         ( const char* pFieldName, const char* pArgsTypes, va_list& Args1, va_list& Args2, bool bIndirect ) noexcept;
                             void                        WriteComponent      ( int iField, int iType, int c, va_list& Args, bool bIndirect )                             noexcept;
                             xcore::err                  WriteUserTypes      ( void )                                                                                    noexcept;
 

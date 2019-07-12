@@ -821,7 +821,64 @@ namespace xcore::textfile::version_2
 
     //------------------------------------------------------------------------------
 
-    xcore::err stream::WriteFieldC( crc::units<32>& UserType, const char* pFieldName, arglist::view Args ) noexcept
+    xcore::err stream::WriteUserTypes( void ) noexcept
+    {
+        xcore::err Error;
+
+        if( m_File.m_States.m_isBinary )
+        {
+            for( auto& UserType : m_UserTypes )
+            {
+                if( UserType.m_bAlreadySaved )
+                    continue;
+            
+                UserType.m_bAlreadySaved = true;
+            
+                // First write the standard symbol for the user_types types
+                if( m_File.WriteChar( '<' ).isError(Error) )
+                    return Error;
+
+                if( m_File.WriteStr( { UserType.m_UserType.data(), string::Length(UserType.m_UserType).m_Value+1 } ).isError(Error) )
+                    return Error;
+
+                // Now dump the data for the user_types type
+                if( m_File.WriteStr( { UserType.m_SystemType.data(), UserType.m_nSystemTypes+1 } ).isError(Error) )
+                    return Error;
+            }
+        }
+        else
+        {
+            //
+            // Dump all the new types if we have some
+            //
+            bool bNewTypes = false;
+            for( auto& UserType : m_UserTypes )
+            {
+                if( UserType.m_bAlreadySaved )
+                    continue;
+
+                if( bNewTypes == false ) 
+                {
+                    if( m_File.WriteStr( string::constant{"\n// New Types\n< "} ).isError(Error) ) return Error;
+                    bNewTypes = true;
+                }
+
+                UserType.m_bAlreadySaved = true;
+                string::fixed<char,256> temp;
+
+                string::sprintf( temp, "%s:%s ", UserType.m_SystemType.data(), UserType.m_UserType.data() );
+                if( m_File.WriteStr( temp ).isError(Error) ) return Error;
+            }
+
+            if( bNewTypes ) if( m_File.WriteStr( string::constant(">") ).isError(Error) ) return Error;
+        }
+
+        return Error;
+    }
+
+    //------------------------------------------------------------------------------
+
+    xcore::err stream::WriteColumn( crc::units<32>& UserType, const char* pColumnName, arglist::view Args ) noexcept
     {
         //
         // When we are at the first line we must double check the syntax of the user_types
@@ -837,11 +894,11 @@ namespace xcore::textfile::version_2
             Column.m_nTypes   = static_cast<int>(Args.size());
             Column.m_UserType = UserType;
 
-            // Copy name
-            for( Column.m_NameLength=0; (Column.m_Name[Column.m_NameLength] = pFieldName[Column.m_NameLength]); Column.m_NameLength++ )
+            // Copy name of the field
+            for( Column.m_NameLength=0; (Column.m_Name[Column.m_NameLength] = pColumnName[Column.m_NameLength]); Column.m_NameLength++ )
             {
                 // Handle dynamic types
-                if( pFieldName[Column.m_NameLength] == ':' && pFieldName[Column.m_NameLength+1] == '?' )
+                if( pColumnName[Column.m_NameLength] == ':' && pColumnName[Column.m_NameLength+1] == '?' )
                 {
                     Column.m_nTypes                     = -1;
                     Column.m_UserType.m_Value           = 0;
@@ -850,10 +907,10 @@ namespace xcore::textfile::version_2
                 }
 
                 // Make sure the field name falls inside these constraints 
-                xassert( (pFieldName[Column.m_NameLength] >= 'a' && pFieldName[Column.m_NameLength] <= 'z')
-                     ||  (pFieldName[Column.m_NameLength] >= 'A' && pFieldName[Column.m_NameLength] <= 'Z')
-                     ||  (pFieldName[Column.m_NameLength] >= '0' && pFieldName[Column.m_NameLength] <= '9')
-                     ||  (pFieldName[Column.m_NameLength] == '_' ) 
+                xassert( (pColumnName[Column.m_NameLength] >= 'a' && pColumnName[Column.m_NameLength] <= 'z')
+                     ||  (pColumnName[Column.m_NameLength] >= 'A' && pColumnName[Column.m_NameLength] <= 'Z')
+                     ||  (pColumnName[Column.m_NameLength] >= '0' && pColumnName[Column.m_NameLength] <= '9')
+                     ||  (pColumnName[Column.m_NameLength] == '_' ) 
                 );
             }
         }
@@ -861,7 +918,7 @@ namespace xcore::textfile::version_2
         //
         // Get the column we are processing
         //
-        auto& Column = m_Columns[m_nColumns-1];
+        auto& Column = m_Columns[ m_iColumn++ ];
 
         //
         // Validate the user_types type if any
@@ -968,7 +1025,7 @@ namespace xcore::textfile::version_2
             {
                 FieldInfo.m_iData = m_iMemOffet;
                 m_iMemOffet += 1 + string::sprintf( m_Memory.ViewFrom(m_iMemOffet), pFmt, p ).m_Value;
-                FieldInfo.m_Width = m_iMemOffet - FieldInfo.m_iData;
+                FieldInfo.m_Width = m_iMemOffet - FieldInfo.m_iData - 1;
 
                 if constexpr ( std::is_integral_v<T> )
                 {
@@ -1020,63 +1077,6 @@ namespace xcore::textfile::version_2
         }
 
         return {};
-    }
-
-    //------------------------------------------------------------------------------
-
-    xcore::err stream::WriteUserTypes( void ) noexcept
-    {
-        xcore::err Error;
-
-        if( m_File.m_States.m_isBinary )
-        {
-            for( auto& UserType : m_UserTypes )
-            {
-                if( UserType.m_bAlreadySaved )
-                    continue;
-            
-                UserType.m_bAlreadySaved = true;
-            
-                // First write the standard symbol for the user_types types
-                if( m_File.WriteChar( '<' ).isError(Error) )
-                    return Error;
-
-                if( m_File.WriteStr( { UserType.m_UserType.data(), string::Length(UserType.m_UserType).m_Value+1 } ).isError(Error) )
-                    return Error;
-
-                // Now dump the data for the user_types type
-                if( m_File.WriteStr( { UserType.m_SystemType.data(), UserType.m_nSystemTypes+1 } ).isError(Error) )
-                    return Error;
-            }
-        }
-        else
-        {
-            //
-            // Dump all the new types if we have some
-            //
-            bool bNewTypes = false;
-            for( auto& UserType : m_UserTypes )
-            {
-                if( UserType.m_bAlreadySaved )
-                    continue;
-
-                if( bNewTypes == false ) 
-                {
-                    if( m_File.WriteStr( string::constant{"\n// New Types\n< "} ).isError(Error) ) return Error;
-                    bNewTypes = true;
-                }
-
-                UserType.m_bAlreadySaved = true;
-                string::fixed<char,256> temp;
-
-                string::sprintf( temp, "%s:%s ", UserType.m_SystemType.data(), UserType.m_UserType.data() );
-                if( m_File.WriteStr( temp ).isError(Error) ) return Error;
-            }
-
-            if( bNewTypes ) if( m_File.WriteStr( string::constant(">") ).isError(Error) ) return Error;
-        }
-
-        return Error;
     }
 
     //------------------------------------------------------------------------------
@@ -1170,10 +1170,10 @@ namespace xcore::textfile::version_2
 
         //
         // Increment the line count
-        // and reset the field count
-        // reset the memory count
+        // and reset the column index
         //
         m_iLine++;
+        m_iColumn = 0;
 
         //
         // Handle writing text format
@@ -1193,11 +1193,14 @@ namespace xcore::textfile::version_2
         //
         if( m_iLine < MaxLines )
         {
-            if( m_ColumnFormat.size() < m_nColumns ) m_ColumnFormat.appendList( m_nColumns - m_ColumnFormat.size() );
             for( int i=0; i<m_nColumns; ++i )
             {
-                auto& ColumnFormat  = m_ColumnFormat[i];
-                ColumnFormat.clear();
+                auto& Column            = m_Columns[i];
+                if( Column.m_nTypes != -1 )
+                {
+                    Column.m_SubColumn.clear();
+                    Column.m_SubColumn.appendList(Column.m_nTypes);
+                }
             }
         }
 
@@ -1207,7 +1210,6 @@ namespace xcore::textfile::version_2
         for( int i = 0; i<m_nColumns; ++i )
         {
             auto& Column        = m_Columns[i];
-            auto& ColumnFormat  = m_ColumnFormat[i];
 
             if( Column.m_nTypes == -1 )
             {
@@ -1216,13 +1218,13 @@ namespace xcore::textfile::version_2
                 //
                 for( auto& DField : Column.m_DynamicFields )
                 {
-                    // One one space per type
-                    int Width = DField.m_nTypes;
+                    // Add the spaces between each field
+                    int Width = (DField.m_nTypes-1) * m_nSpacesBetweenFields;
 
                     // count all the widths of the types
                     for( int n=0; n<DField.m_nTypes; n++ )
                     {
-                        Width += Column.m_FieldInfo[DField.m_iField+n].m_Width;
+                        Width += Column.m_FieldInfo[DField.m_iField+n].m_Width + m_nSpacesBetweenFields;
                     }
 
                     // Dyanmic types must include the type inside the column
@@ -1237,46 +1239,58 @@ namespace xcore::textfile::version_2
                         Width += Column.m_nTypes + 1 + 1; // includes ": "
                     }
 
-                    if( ColumnFormat.m_Width < Width ) ColumnFormat.m_Width = Width;
+                    if( Column.m_FormatWidth < Width ) Column.m_FormatWidth = Width;
                 }
 
                 //
                 // Handle the column name as well 
                 //
-                ColumnFormat.m_NameWidth = Column.m_NameLength + 1 + 1; // includes ":?"
-                if( ColumnFormat.m_Width < ColumnFormat.m_NameWidth ) ColumnFormat.m_Width = ColumnFormat.m_NameWidth;
+                Column.m_FormatNameWidth = Column.m_NameLength + 1 + 1; // includes ":?"
+                if( Column.m_FormatWidth < Column.m_FormatNameWidth ) Column.m_FormatWidth = Column.m_FormatNameWidth;
             }
             else
             {
                 //
-                // Computes the max width of a column as well as the max width for each field inside the column
+                // Computes the sub-columns sizes
                 //
-                for( int n=0; n<Column.m_nTypes; ++n )
+                for( auto& Field : Column.m_FieldInfo )
                 {
-                    auto& Field = Column.m_FieldInfo[n];
-                    auto& Fmt   = ColumnFormat.m_Format[n];
+                    const int iSubColumn = Column.m_FieldInfo.getIndexByEntry(Field)%Column.m_nTypes;
+                    auto&     SubColumn  = Column.m_SubColumn[iSubColumn];
+                    SubColumn.m_FormatWidth = std::max( SubColumn.m_FormatWidth, Field.m_Width );
+                }
 
-                    // Find the max width for this field
-                    if( Field.m_Width > Fmt.m_MaxWidth ) Fmt.m_MaxWidth = Field.m_Width;
+                //
+                // Compute the columns sizes
+                //
 
-                    ColumnFormat.m_Width += Fmt.m_MaxWidth + 1;
+                // Add all the spaces between fields
+                Column.m_FormatWidth = (Column.m_nTypes - 1) * m_nSpacesBetweenFields;
+
+                xassert( Column.m_nTypes == Column.m_SubColumn.size() );
+                // Add all the sub-columns widths
+                for( auto& Subcolumn : Column.m_SubColumn )
+                {
+                    Column.m_FormatWidth += Subcolumn.m_FormatWidth;
                 }
 
                 //
                 // Handle the column name as well 
                 //
-                ColumnFormat.m_NameWidth = Column.m_NameLength + 1; // includes ":"
+                Column.m_FormatNameWidth = Column.m_NameLength + 1; // includes ":"
                 if( Column.m_UserType.m_Value )
                 {
                     auto p = getUserType( Column.m_UserType );
                     xassert(p);
-                    ColumnFormat.m_NameWidth += p->m_TypeLength;
+                    Column.m_FormatNameWidth += p->m_TypeLength;
                 }
                 else
                 {
-                    ColumnFormat.m_NameWidth += Column.m_nTypes; 
+                    Column.m_FormatNameWidth += Column.m_nTypes; 
                 }
-                if( ColumnFormat.m_Width < ColumnFormat.m_NameWidth ) ColumnFormat.m_Width = ColumnFormat.m_NameWidth;
+
+                // Decide the final width for this column
+                Column.m_FormatWidth = std::max( Column.m_FormatWidth, Column.m_FormatNameWidth );
             }
         }
 
@@ -1309,17 +1323,16 @@ namespace xcore::textfile::version_2
             // Write the types
             //
             {
-                if( m_File.WriteChar( '{' ).isError(Error) )
+                if( m_File.WriteStr( "{ " ).isError(Error) )
                     return Error;
 
                 for( int i = 0; i<m_nColumns; ++i )
                 {
                     auto& Column        = m_Columns[i];
-                    auto& ColumnFormat  = m_ColumnFormat[i];
 
                     if( Column.m_nTypes == -1 )
                     {
-                        if( m_File.WriteFmtStr( " %s:? ", Column.m_Name.data() ).isError(Error) )
+                        if( m_File.WriteFmtStr( "%s:?", Column.m_Name.data() ).isError(Error) )
                             return Error;
                     }
                     else
@@ -1329,24 +1342,31 @@ namespace xcore::textfile::version_2
                             auto p = getUserType(Column.m_UserType);
                             xassert(p);
 
-                            if( m_File.WriteFmtStr( " %s;%s ", Column.m_Name.data(), p->m_UserType.data() ).isError(Error) )
+                            if( m_File.WriteFmtStr( "%s;%s", Column.m_Name.data(), p->m_UserType.data() ).isError(Error) )
                                 return Error;
                         }
                         else
                         {
-                            if( m_File.WriteFmtStr( " %s:%s ", Column.m_Name.data(), Column.m_SystemTypes.data() ).isError(Error) )
+                            if( m_File.WriteFmtStr( "%s:%s", Column.m_Name.data(), Column.m_SystemTypes.data() ).isError(Error) )
                                 return Error;
                         }
                     }
 
-                    if( ColumnFormat.m_Width > ColumnFormat.m_NameWidth )
+                    // Write spaces to reach the end of the column
+                    if( Column.m_FormatWidth > Column.m_FormatNameWidth )
                     {
-                        if( m_File.WriteChar( ' ', ColumnFormat.m_Width-ColumnFormat.m_NameWidth ).isError(Error) )
+                        if( m_File.WriteChar( ' ', Column.m_FormatWidth - Column.m_FormatNameWidth ).isError(Error) )
                             return Error;
+                    }
+
+                    if( (i+1) != m_nColumns )
+                    {
+                        // Write spaces between columns
+                        if( m_File.WriteChar( ' ', m_nSpacesBetweenColumns ).isError(Error) ) return Error;
                     }
                 }
 
-                if( m_File.WriteFmtStr( string::constant("}\n") ).isError(Error) )
+                if( m_File.WriteFmtStr( string::constant(" }\n") ).isError(Error) )
                     return Error;
             }
 
@@ -1354,19 +1374,18 @@ namespace xcore::textfile::version_2
             // Write a nice underline for the columns
             //
             {
-                if( m_File.WriteFmtStr( string::constant("//") ).isError(Error) )
+                if( m_File.WriteStr( string::constant("//") ).isError(Error) )
                     return Error;
 
                 for( int i = 0; i<m_nColumns; ++i )
                 {
-                    auto& ColumnFormat  = m_ColumnFormat[i];
+                    auto& Column  = m_Columns[i];
 
-                    if( m_File.WriteChar( '-', ColumnFormat.m_Width ).isError(Error) )
+                    if( m_File.WriteChar( '-', Column.m_FormatWidth ).isError(Error) )
                         return Error;
 
                     // Get ready for the next type
-                    if( m_File.WriteChar( ' ', 2 ).isError(Error) )
-                        return Error;
+                    if( (i+1) != m_nColumns) if( m_File.WriteChar( ' ', m_nSpacesBetweenColumns ).isError(Error) ) return Error;
                 }
 
                 if( m_File.WriteChar( '\n' ).isError(Error) )
@@ -1378,84 +1397,98 @@ namespace xcore::textfile::version_2
         // Print all the data
         //
         {
-            int L = MaxLines%m_iLine;
+            int L = m_iLine%MaxLines;
             for( int l = 0; l<L; ++l )
-            for( int i = 0; i<m_nColumns; ++i )
             {
-                const auto& Column        = m_Columns[i];
-                const auto& ColumnFormat  = m_ColumnFormat[i];
+                // Prefix with two spaces to align things
+                if( m_File.WriteChar( ' ', 2 ).isError(Error) ) return Error;
 
-                if( Column.m_nTypes == -1 )
+                for( int i = 0; i<m_nColumns; ++i )
                 {
-                    const auto& DynamicFields = Column.m_DynamicFields[L];
-                    int         TotalWidth = 0;
+                    const auto& Column        = m_Columns[i];
 
-                    //
-                    // First write the type
-                    //
-                    if( DynamicFields.m_UserType.m_Value ) 
+                    if( Column.m_nTypes == -1 )
                     {
-                        auto p = getUserType( DynamicFields.m_UserType );
-                        xassert(p);
-                        if( m_File.WriteFmtStr( ";%s ", p->m_UserType.data() ).isError(Error) )
-                            return Error;
+                        const auto& DynamicFields = Column.m_DynamicFields[L];
+                        int         TotalWidth = 0;
 
-                        TotalWidth += 2 + p->m_TypeLength;
+                        //
+                        // First write the type
+                        //
+                        if( DynamicFields.m_UserType.m_Value ) 
+                        {
+                            auto p = getUserType( DynamicFields.m_UserType );
+                            xassert(p);
+                            if( m_File.WriteFmtStr( ";%s ", p->m_UserType.data() ).isError(Error) )
+                                return Error;
+
+                            TotalWidth += 2 + p->m_TypeLength;
+                        }
+                        else
+                        {
+                            if( m_File.WriteFmtStr( ":%s ", Column.m_SystemTypes.data() ).isError(Error) )
+                                return Error;
+
+                            TotalWidth += 2 + Column.m_nTypes;
+                        }
+
+                        //
+                        // Then write the values
+                        //
+                        for( int n=0; n<DynamicFields.m_nTypes; ++n )
+                        {
+                            const auto& FieldInfo   = Column.m_FieldInfo[ DynamicFields.m_iField + n ];
+                            const auto  StrLength   = string::Length( &m_Memory[ FieldInfo.m_iData ] ).m_Value;
+                    
+                            if( m_File.WriteStr( string::view{ &m_Memory[ FieldInfo.m_iData ], StrLength } ).isError(Error) )
+                                return Error;
+
+                            // Get ready for the next type
+                            if( m_File.WriteChar( ' ', 2 ).isError(Error) )
+                                return Error;
+
+                            TotalWidth += StrLength + 2;
+                        }
+
+                        // Pad the width to match the columns width
+                        if( Column.m_FormatWidth < TotalWidth )
+                            if( m_File.WriteChar( ' ', Column.m_FormatWidth - TotalWidth ).isError(Error) )
+                                return Error;
                     }
                     else
                     {
-                        if( m_File.WriteFmtStr( ":%s ", Column.m_SystemTypes.data() ).isError(Error) )
-                            return Error;
-
-                        TotalWidth += 2 + Column.m_nTypes;
-                    }
-
-                    //
-                    // Then write the values
-                    //
-                    for( int n=0; n<DynamicFields.m_nTypes; ++n )
-                    {
-                        const auto& FieldInfo   = Column.m_FieldInfo[ DynamicFields.m_iField + n ];
-                        const auto  StrLength   = string::Length( &m_Memory[ FieldInfo.m_iData ] ).m_Value;
-                    
-                        if( m_File.WriteStr( string::view{ &m_Memory[ FieldInfo.m_iData ], StrLength } ).isError(Error) )
-                            return Error;
-
-                        // Get ready for the next type
-                        if( m_File.WriteChar( ' ', 2 ).isError(Error) )
-                            return Error;
-
-                        TotalWidth += StrLength + 2;
-                    }
-
-                    // Pad the width to match the columns width
-                    if( ColumnFormat.m_Width < TotalWidth )
-                        if( m_File.WriteChar( ' ', ColumnFormat.m_Width - TotalWidth ).isError(Error) )
-                            return Error;
-                }
-                else
-                {
-                    for( int n=0; n<Column.m_nTypes; ++n )
-                    {
-                        const auto  Index       = l*Column.m_nTypes + n;
-                        const auto& FieldInfo   = Column.m_FieldInfo[ Index ];
-                        const auto& Format      = ColumnFormat.m_Format[ Index ];
-                        const auto  StrLength   = string::Length( &m_Memory[ FieldInfo.m_iData ]).m_Value;
-                    
-                        if( Column.m_SystemTypes[n] == 'f' || Column.m_SystemTypes[n] == 'F' )
+                        for( int n=0; n<Column.m_nTypes; ++n )
                         {
-                            // Make sure to add spaces to match the floating point part
+                            const auto  Index       = l*Column.m_nTypes + n;
+                            const auto& FieldInfo   = Column.m_FieldInfo[ Index ];
+                            const auto& SubColumn   = Column.m_SubColumn[n];
+                    
+                            if( Column.m_SystemTypes[n] == 'f' || Column.m_SystemTypes[n] == 'F' )
+                            {
+                                // Make sure to add spaces to match the floating point part
+                            }
+                            else
+                            {
+                                // Get ready for the next type
+                                if( m_File.WriteChar( ' ', SubColumn.m_FormatWidth - FieldInfo.m_Width ).isError(Error) )
+                                    return Error;
+
+                                if( m_File.WriteStr( string::view{ &m_Memory[ FieldInfo.m_iData ], FieldInfo.m_Width } ).isError(Error) )
+                                    return Error;
+                            }
+
+                            // Write spaces to reach the next sub-column
+                            if( (n+1) != Column.m_nTypes ) if( m_File.WriteChar( ' ', m_nSpacesBetweenFields ).isError(Error) ) return Error;
                         }
-
-                        if( m_File.WriteStr( string::view{ &m_Memory[ FieldInfo.m_iData ], StrLength } ).isError(Error) )
-                            return Error;
-
-                        // Get ready for the next type
-                        xassert( StrLength <= ColumnFormat.m_Width );
-                        if( m_File.WriteChar( ' ', 2 + ColumnFormat.m_Width - StrLength ).isError(Error) )
-                            return Error;
                     }
+
+                    // Write spaces to reach the next column
+                    if((i+1) != m_nColumns) if( m_File.WriteChar( ' ', m_nSpacesBetweenColumns ).isError(Error) ) return Error;
                 }
+
+                // End the line
+                if( m_File.WriteStr( string::constant("\n") ).isError(Error) )
+                    return Error;
             }
         }
 
@@ -1835,7 +1868,7 @@ namespace xcore::textfile::version_2
 
 
     //------------------------------------------------------------------------------
-    xcore::err stream::ReadFieldC( crc::units<32>& iUserRef, const char* pFieldName, arglist::view Args ) noexcept
+    xcore::err stream::ReadFieldC( crc::units<32>& iUserRef, const char* pColumnName, arglist::view Args ) noexcept
     {
         xassert( m_iLine > 0 );
 
@@ -1859,13 +1892,13 @@ namespace xcore::textfile::version_2
             {
                 auto& Column = m_Columns[i];
 
-                if( pFieldName[ Column.m_NameLength - 1 ] != 0 )
+                if( pColumnName[ Column.m_NameLength - 1 ] != 0 )
                     continue;
 
                 // Make sure that we have a match
                 {
                     int j;
-                    for( j=0; (Column.m_Name[j] == pFieldName[j]) && pFieldName[j]; j++ );
+                    for( j=0; (Column.m_Name[j] == pColumnName[j]) && pColumnName[j]; j++ );
 
                     // The string must not be the same
                     if( j != Column.m_NameLength )
@@ -1890,7 +1923,7 @@ namespace xcore::textfile::version_2
                             if( isCompatibleTypes( Column.m_SystemTypes[i], Args[i] ) == false )
                             {
                                 m_DataMapping[m_DataMapping.size()-1] = -1;
-                                XLOG_CHANNEL_WARNING( m_Channel, "Found the coloumn but the types did not match. %s", pFieldName );
+                                XLOG_CHANNEL_WARNING( m_Channel, "Found the coloumn but the types did not match. %s", pColumnName );
                                 break;
                             }
                         }
@@ -1899,13 +1932,13 @@ namespace xcore::textfile::version_2
                     {
                         // We don't have the same count
                         m_DataMapping[m_DataMapping.size()-1] = -1;
-                        XLOG_CHANNEL_WARNING( m_Channel, "Found the coloumn but the type count did not match. %s", pFieldName );
+                        XLOG_CHANNEL_WARNING( m_Channel, "Found the coloumn but the type count did not match. %s", pColumnName );
                     }
                 }
             }
             else
             {
-                XLOG_CHANNEL_WARNING( m_Channel, "Unable to find the field amount the types. %s", pFieldName );
+                XLOG_CHANNEL_WARNING( m_Channel, "Unable to find the field amount the types. %s", pColumnName );
             }
             */
         }
@@ -1933,7 +1966,7 @@ namespace xcore::textfile::version_2
                 {
                     if( isCompatibleTypes( Column.m_FieldInfo[i].m_AtomicType, Args[i] ) == false )
                     {
-                        XLOG_CHANNEL_WARNING( m_Channel, "Found the coloumn but the types did not match. %s", pFieldName );
+                        XLOG_CHANNEL_WARNING( m_Channel, "Found the coloumn but the types did not match. %s", pColumnName );
                         return xerr_code( Error, error_state::READ_TYPES_DONTMATCH, "Fail to find the correct type" );
                     }
                 }
@@ -1941,7 +1974,7 @@ namespace xcore::textfile::version_2
             else
             {
                 // We don't have the same count
-                XLOG_CHANNEL_WARNING( m_Channel, "Found the coloumn but the type count did not match. %s", pFieldName );
+                XLOG_CHANNEL_WARNING( m_Channel, "Found the coloumn but the type count did not match. %s", pColumnName );
                 return xerr_code( Error, error_state::READ_TYPES_DONTMATCH, "Fail to find the correct type" );
             }
         }
