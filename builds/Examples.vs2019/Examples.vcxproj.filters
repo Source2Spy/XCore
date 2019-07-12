@@ -15,9 +15,6 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\..\src\xcore_arglist.h">
-      <Filter>xCore</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\src\xcore_assert.h">
       <Filter>xCore</Filter>
     </ClInclude>
@@ -137,6 +134,9 @@
     </ClInclude>
     <ClInclude Include="..\..\src\Implementation\xcore_textfile2_inline.h">
       <Filter>xCore\Implementation</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\xcore_arglist.h">
+      <Filter>xCore</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

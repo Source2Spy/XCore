@@ -10,7 +10,7 @@ namespace xcore::textfile::version_2
         static_assert( (std::is_const_v<T_ARGS> || ... ) == false );
         if( isReading() )
         {
-            arglist::out Out{ &static_cast<typename details::type_filter<T_ARGS>::type>(Args)... };
+            arglist::out Out{ &Args... };
             return ReadFieldC( UserType, pFieldName, Out );
         }
 

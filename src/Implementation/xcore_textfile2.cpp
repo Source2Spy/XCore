@@ -976,6 +976,7 @@ namespace xcore::textfile::version_2
                         else    if constexpr ( std::is_same_v<t,float*>              ) return 'f';
                         else    if constexpr ( std::is_same_v<t,double*>             ) return 'F';
                         else    if constexpr ( std::is_same_v<t,string::view<char>*> ) return 's';
+                        else    if constexpr ( std::is_same_v<t,string::ref<char>*>  ) return 's';
                         else    { xassume(false); return char{0}; }
                     }, A );
                 }
@@ -1068,6 +1069,15 @@ namespace xcore::textfile::version_2
                         }
                 else    if constexpr ( std::is_same_v<t,string::view<char>> ) 
                         {
+                            Field.m_iData = m_iMemOffet;
+                            m_iMemOffet += 1 + string::sprintf( m_Memory.ViewFrom(m_iMemOffet), "\"%s\"", p.data() ).m_Value;
+                            Field.m_Width = m_iMemOffet - Field.m_iData - 1;
+                        }
+                else    if constexpr ( std::is_same_v<t,string::ref<char>*> ) 
+                        {
+                            Field.m_iData = m_iMemOffet;
+                            m_iMemOffet += 1 + string::sprintf( m_Memory.ViewFrom(m_iMemOffet), "\"%s\"", p->data() ).m_Value;
+                            Field.m_Width = m_iMemOffet - Field.m_iData - 1;
                         }
                 else    
                 { 

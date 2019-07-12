@@ -12,7 +12,8 @@ namespace xcore::arglist
                                      float*, double*, 
                                      void*,
                                      float, double, 
-                                     const char*, xcore::string::view<char>, std::string >;
+                                     const char*, xcore::string::view<char>, 
+                                     xcore::string::ref<char>* >;
 
     //------------------------------------------------------------------------------
     using view = xcore::span<out_types>;
@@ -69,8 +70,9 @@ namespace xcore::arglist
             using t = std::decay_t<decltype(Value)>;
             if constexpr (std::is_same_v<T,const char*> && types::variant_t2i_v<t,out_types> >= types::variant_t2i_v<const char*,out_types> )
             {
-                if constexpr ( types::variant_t2i_v<t,out_types> == types::variant_t2i_v<std::string,out_types> )   Answer = Value.c_str();
-                else                                                                                                Answer = Value;
+                     if constexpr ( types::variant_t2i_v<t,out_types> == types::variant_t2i_v<xcore::string::view<char>,out_types> )   Answer = Value.data();
+                else if constexpr ( types::variant_t2i_v<t,out_types> == types::variant_t2i_v<xcore::string::ref<char>*,out_types> )   Answer = Value->data();
+                else                                                                                                                   Answer = Value;
             }
             else if constexpr( std::is_integral_v<T> 
                 && types::variant_t2i_v<t,out_types> >= types::variant_t2i_v<std::uint8_t,out_types> 

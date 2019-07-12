@@ -57,10 +57,7 @@ namespace xcore::textfile::examples
             ,   [&]( std::size_t i, xcore::err& Error )
                 {
                     0
-                        /*
                     ||  TextFile.Field( "String",   String[i]       ).isError(Error)
-                                                */
-
                     ||  TextFile.Field( "Floats",   Floats64[i]
                                                 ,   Floats32[i]     ).isError(Error)
                     ||  TextFile.Field( "Ints"  ,   Int64[i]
