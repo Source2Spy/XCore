@@ -1251,13 +1251,37 @@ namespace xcore::textfile::version_2
             else
             {
                 //
+                // For any sub-columns that are floats we need to compute the max_int first
+                //
+                for( int it =0; it<Column.m_nTypes; ++it )
+                {
+                    if( Column.m_SystemTypes[it] != 'f' && Column.m_SystemTypes[it] != 'F' )
+                        continue;
+                    
+                    auto& SubColumn = Column.m_SubColumn[it];
+                    for( int iff = it; iff < Column.m_FieldInfo.size(); iff += Column.m_nTypes )
+                    {
+                        auto& Field = Column.m_FieldInfo[iff];
+                        SubColumn.m_FormatIntWidth = std::max( SubColumn.m_FormatIntWidth, Field.m_IntWidth );
+                    }
+                }
+
+                //
                 // Computes the sub-columns sizes
                 //
                 for( auto& Field : Column.m_FieldInfo )
                 {
                     const int iSubColumn = Column.m_FieldInfo.getIndexByEntry(Field)%Column.m_nTypes;
                     auto&     SubColumn  = Column.m_SubColumn[iSubColumn];
-                    SubColumn.m_FormatWidth = std::max( SubColumn.m_FormatWidth, Field.m_Width );
+                    if( Column.m_SystemTypes[iSubColumn] == 'f' || Column.m_SystemTypes[iSubColumn] == 'F' )
+                    {
+                        const int Width = (Field.m_Width - Field.m_IntWidth) + SubColumn.m_FormatIntWidth;
+                        SubColumn.m_FormatWidth = std::max( SubColumn.m_FormatWidth, Width );
+                    }
+                    else
+                    {
+                        SubColumn.m_FormatWidth = std::max( SubColumn.m_FormatWidth, Field.m_Width );
+                    }
                 }
 
                 //
@@ -1465,11 +1489,20 @@ namespace xcore::textfile::version_2
                     
                             if( Column.m_SystemTypes[n] == 'f' || Column.m_SystemTypes[n] == 'F' )
                             {
-                                // Make sure to add spaces to match the floating point part
+                                // point align Right align
+                                if( m_File.WriteChar( ' ', SubColumn.m_FormatIntWidth - FieldInfo.m_IntWidth ).isError(Error) )
+                                    return Error;
+
+                                if( m_File.WriteStr( string::view{ &m_Memory[ FieldInfo.m_iData ], FieldInfo.m_Width } ).isError(Error) )
+                                    return Error;
+
+                                // Write spaces to reach the next sub-column
+                                int nSpaces = SubColumn.m_FormatWidth - ( SubColumn.m_FormatIntWidth + FieldInfo.m_Width - FieldInfo.m_IntWidth );
+                                if( m_File.WriteChar( ' ', nSpaces ).isError(Error) ) return Error;
                             }
                             else
                             {
-                                // Get ready for the next type
+                                // Right align
                                 if( m_File.WriteChar( ' ', SubColumn.m_FormatWidth - FieldInfo.m_Width ).isError(Error) )
                                     return Error;
 

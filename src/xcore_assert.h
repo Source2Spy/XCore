@@ -58,9 +58,9 @@ constexpr static auto ms_xCoreAssertLevel = xcore::assert_level::MEDIUM;
     // xassert_block_basic, ... - Assert block allows to create a section for debugging
     //------------------------------------------------------------------------------
 #if _XCORE_ASSERTS
-    #define xassert_block_basic()  if ( xcore::assert_level::BASIC  >= ms_xCoreAssertLevel )
-    #define xassert_block_medium() if ( xcore::assert_level::MEDIUM >= ms_xCoreAssertLevel )
-    #define xassert_block_max()    if ( xcore::assert_level::MAX    >= ms_xCoreAssertLevel )
+    #define xassert_block_basic()  if ( ms_xCoreAssertLevel >= xcore::assert_level::BASIC   )
+    #define xassert_block_medium() if ( ms_xCoreAssertLevel >= xcore::assert_level::MEDIUM  )
+    #define xassert_block_max()    if ( ms_xCoreAssertLevel >= xcore::assert_level::MAX     )
 #else
     #define xassert_block_basic()  if constexpr ( false )
     #define xassert_block_medium() if constexpr ( false )
