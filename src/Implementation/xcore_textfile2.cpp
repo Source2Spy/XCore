@@ -1443,8 +1443,8 @@ namespace xcore::textfile::version_2
 
                     if( Column.m_nTypes == -1 )
                     {
-                        const auto& DynamicFields = Column.m_DynamicFields[L];
-                        int         TotalWidth = 0;
+                        const auto& DynamicFields = Column.m_DynamicFields[l];
+                        int         TotalWidth    = 0;
 
                         //
                         // First write the type
@@ -1456,14 +1456,14 @@ namespace xcore::textfile::version_2
                             if( m_File.WriteFmtStr( ";%s ", p->m_UserType.data() ).isError(Error) )
                                 return Error;
 
-                            TotalWidth += 2 + p->m_TypeLength;
+                            TotalWidth += m_nSpacesBetweenFields + p->m_TypeLength;
                         }
                         else
                         {
-                            if( m_File.WriteFmtStr( ":%s ", Column.m_SystemTypes.data() ).isError(Error) )
+                            if( m_File.WriteFmtStr( ":%s ", DynamicFields.m_SystemTypes.data() ).isError(Error) )
                                 return Error;
 
-                            TotalWidth += 2 + Column.m_nTypes;
+                            TotalWidth += m_nSpacesBetweenFields + Column.m_nTypes;
                         }
 
                         //
@@ -1478,15 +1478,16 @@ namespace xcore::textfile::version_2
                                 return Error;
 
                             // Get ready for the next type
-                            if( m_File.WriteChar( ' ', 2 ).isError(Error) )
+                            if( m_File.WriteChar( ' ', m_nSpacesBetweenFields ).isError(Error) )
                                 return Error;
 
-                            TotalWidth += StrLength + 2;
+                            TotalWidth += StrLength;
+                            if( (n+1) != DynamicFields.m_nTypes ) TotalWidth += m_nSpacesBetweenFields;
                         }
 
                         // Pad the width to match the columns width
                         if( Column.m_FormatWidth < TotalWidth )
-                            if( m_File.WriteChar( ' ', Column.m_FormatWidth - TotalWidth ).isError(Error) )
+                            if( m_File.WriteChar( ' ', TotalWidth - Column.m_FormatWidth ).isError(Error) )
                                 return Error;
                     }
                     else
@@ -1509,6 +1510,15 @@ namespace xcore::textfile::version_2
                                 // Write spaces to reach the next sub-column
                                 int nSpaces = SubColumn.m_FormatWidth - ( SubColumn.m_FormatIntWidth + FieldInfo.m_Width - FieldInfo.m_IntWidth );
                                 if( m_File.WriteChar( ' ', nSpaces ).isError(Error) ) return Error;
+                            }
+                            else if( Column.m_SystemTypes[n] == 's' )
+                            {
+                                // Left align
+                                if( m_File.WriteStr( string::view{ &m_Memory[ FieldInfo.m_iData ], FieldInfo.m_Width } ).isError(Error) )
+                                    return Error;
+
+                                if( m_File.WriteChar( ' ', SubColumn.m_FormatWidth - FieldInfo.m_Width ).isError(Error) )
+                                    return Error;
                             }
                             else
                             {

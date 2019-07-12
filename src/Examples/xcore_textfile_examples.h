@@ -298,9 +298,10 @@ namespace xcore::textfile::examples
         //
         if( true ) if( 0
             || Test01( TextFileName, false, file_type::TEXT, {flags::WRITE_FLOATS} ).isError(Error) 
-            || Test01( TextFileName, true,  file_type::TEXT ).isError(Error)
-            || Test01( TextFileName, false, file_type::TEXT, {xcore::textfile::flags::WRITE_FLOATS} ).isError(Error)
-            || Test01( TextFileName, true,  file_type::TEXT, {xcore::textfile::flags::WRITE_FLOATS} ).isError(Error) )
+//            || Test01( TextFileName, true,  file_type::TEXT ).isError(Error)
+//            || Test01( TextFileName, false, file_type::TEXT, {xcore::textfile::flags::WRITE_FLOATS} ).isError(Error)
+//            || Test01( TextFileName, true,  file_type::TEXT, {xcore::textfile::flags::WRITE_FLOATS} ).isError(Error)
+            )
         {
             xassert(false);
         }
@@ -310,7 +311,8 @@ namespace xcore::textfile::examples
         //
         if( true ) if( 0
             || Test02( TextFileName, false, xcore::textfile::file_type::TEXT ).isError(Error) 
-            || Test02( TextFileName, true,  xcore::textfile::file_type::TEXT ).isError(Error) )
+//            || Test02( TextFileName, true,  xcore::textfile::file_type::TEXT ).isError(Error) 
+            )
         {
             xassert(false);
         }
