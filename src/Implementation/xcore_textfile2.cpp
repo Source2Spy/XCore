@@ -785,14 +785,7 @@ namespace xcore::textfile::version_2
         m_iLine         = 0;
         m_iColumn       = 0;
         m_iMemOffet     = 0;
-
-        //
-        // Kill all the lists
-        //
-        for( auto& C : m_Columns )
-        {
-            C.clear();
-        }
+        m_nColumns      = 0;
 
         return Error;
     }
@@ -886,7 +879,14 @@ namespace xcore::textfile::version_2
         if( m_iLine == 0 )
         {
             // Make sure we have enough columns to store our data
-            if( m_Columns.size() <= m_nColumns ) m_Columns.append();
+            if( m_Columns.size() <= m_nColumns ) 
+            {
+                m_Columns.append();
+            }
+            else
+            {
+                m_Columns[m_nColumns].clear();
+            }
 
             auto& Column = m_Columns[m_nColumns++];
             
@@ -1432,7 +1432,7 @@ namespace xcore::textfile::version_2
         // Print all the data
         //
         {
-            int L = m_iLine%MaxLines;
+            int L = m_iLine % MaxLines;
             for( int l = 0; l<L; ++l )
             {
                 // Prefix with two spaces to align things
@@ -1497,7 +1497,7 @@ namespace xcore::textfile::version_2
                         {
                             const auto  Index       = l*Column.m_nTypes + n;
                             const auto& FieldInfo   = Column.m_FieldInfo[ Index ];
-                            const auto& SubColumn   = Column.m_SubColumn[n];
+                            const auto& SubColumn   = Column.m_SubColumn[ n ];
                     
                             if( Column.m_SystemTypes[n] == 'f' || Column.m_SystemTypes[n] == 'F' )
                             {

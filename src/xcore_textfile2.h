@@ -105,7 +105,7 @@ namespace xcore::textfile::version_2
             int                                 m_FormatNameWidth;      // Text Formatting name width 
             int                                 m_FormatWidth;          // Width of the column
 
-            void clear ( void ) noexcept { m_DynamicFields.clear(); m_FieldInfo.clear(); m_Name.clear(); m_NameLength = 0; }
+            void clear ( void ) noexcept { m_DynamicFields.clear(); m_FieldInfo.clear(); m_Name.clear(); }
         };
 
         //-----------------------------------------------------------------------------------------------------
@@ -228,18 +228,18 @@ namespace xcore::textfile::version_2
 
         xcore::log::channel                                 m_Channel               { "xcore::textfile::stream" };
 
-        details::file                                       m_File                  {}; // File pointer
-        details::record                                     m_Record                {}; // This contains information about the current record
+        details::file                                       m_File                  {};     // File pointer
+        details::record                                     m_Record                {};     // This contains information about the current record
         int                                                 m_nColumns              {0};
         xcore::vector<details::column>                      m_Columns               {};
         xcore::vector<char>                                 m_Memory                {};
         xcore::vector<details::user_types>                  m_UserTypes             {};
         xcore::vector<int>                                  m_DataMapping           {};
-        std::unordered_map<crc::units<32>, std::uint32_t>   m_UserTypeMap           {}; // First uint32 is the CRC32 of the err name
-                                                                                        // Second uint32 is the index in the UserTypes vector which contains the actual data
-        int                                                 m_iLine                 {}; // Which line we are in the current record
-        int                                                 m_iField                {}; // Current Field that we are trying to read
-        int                                                 m_nTypesLine            {}; // Number of types per line
+        std::unordered_map<crc::units<32>, std::uint32_t>   m_UserTypeMap           {};     // First uint32 is the CRC32 of the err name
+                                                                                            // Second uint32 is the index in the UserTypes vector which contains the actual data
+        int                                                 m_iLine                 {};     // Which line we are in the current record
+        int                                                 m_iField                {};     // Current Field that we are trying to read
+        int                                                 m_nTypesLine            {};     // Number of types per line
 
         int                                                 m_iMemOffet             {};
         int                                                 m_iColumn               {};

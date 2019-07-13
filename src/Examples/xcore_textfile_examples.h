@@ -20,7 +20,7 @@ namespace xcore::textfile::examples
     // Test different types
     //------------------------------------------------------------------------------
     inline
-    xcore::err Test01( xcore::string::view<char> FileName, bool isRead, xcore::textfile::file_type FileType, xcore::textfile::flags Flags = {} ) noexcept
+    xcore::err AllTypes( xcore::textfile::stream& TextFile, const bool isRead, const flags Flags ) noexcept
     {
         std::array<string::ref<char>,3>                 String                  = { StringBack[0].getView(),    StringBack[1].getView(), StringBack[2].getView() };
 
@@ -37,14 +37,8 @@ namespace xcore::textfile::examples
         auto                                            UInt16                  = UInt16Back;
         auto                                            UInt8                   = UInt8Back ;
 
-        xcore::textfile::stream                         TextFile;
         xcore::err                                      Error;
-
-        //
-        // Open File
-        //
-        if( TextFile.Open( isRead, std::string_view{ FileName }, FileType, Flags ).isError(Error) ) return Error;
-
+    
         //
         // Save/Load a record
         //
@@ -71,7 +65,7 @@ namespace xcore::textfile::examples
                     ;
                 }
             )) return Error;
-            
+
         //
         // Sanity check
         //
@@ -111,6 +105,98 @@ namespace xcore::textfile::examples
             xassert( UInt16Back[i]  == UInt16[i] );
             xassert( UInt8Back [i]  == UInt8[i]  );
         }
+
+        return Error;
+    }
+
+    //------------------------------------------------------------------------------
+    // Test different types
+    //------------------------------------------------------------------------------
+    inline
+    xcore::err SimpleVariableTypes( xcore::textfile::stream& TextFile, const bool isRead, const flags Flags ) noexcept
+    {
+        std::array<string::ref<char>,3>                 String                  = { StringBack[0].getView(),    StringBack[1].getView(), StringBack[2].getView() };
+
+        auto                                            Floats32                = Floats32Back;
+        auto                                            Floats64                = Floats64Back;
+
+        auto                                            Int64                   = Int64Back;
+        auto                                            Int32                   = Int32Back;
+        auto                                            Int16                   = Int16Back;
+        auto                                            Int8                    = Int8Back ;
+
+        auto                                            UInt64                  = UInt64Back;
+        auto                                            UInt32                  = UInt32Back;
+        auto                                            UInt16                  = UInt16Back;
+        auto                                            UInt8                   = UInt8Back ;
+
+        xcore::err                                      Error;
+
+        //
+        // Save/Load record
+        //
+        if( TextFile.Record( Error, "TestTypes"
+            ,   [&]( std::size_t& C, xcore::err& Error )
+                {
+                    if( isRead ) xassert( C == StringBack.size() );
+                    else         C = StringBack.size();
+                }
+            ,   [&]( std::size_t i, xcore::err& Error )
+                {
+                    string::ref<char> ReadTypes;
+
+                    // For user_types data
+                    // if( TextFile.Field( UserInfo, "Ints", Int32[i] ).isError(Error) ) return;
+
+                    // Just save some integers to show that we can still safe normal fields at any point
+                    if( TextFile.Field( "Ints", Int32[i] ).isError(Error) ) return;
+
+                    // Here we are going to save different types and give meaning to 'type' from above
+                    // so in a way here we are saving two columns first the "type:<?>" then the "value<type>"
+                    // the (i&1) shows that we can choose whatever types we want
+                    if( i&1 ) if( TextFile.Field( "value:?", Floats64[i], Floats32[i] ).isError( Error ) ) return; else;
+                    else      if( TextFile.Field( "value:?", Int64[i]                 ).isError( Error ) ) return;
+                }
+            )) return Error;
+
+        return Error;
+    }
+
+    //------------------------------------------------------------------------------
+    // Test different types
+    //------------------------------------------------------------------------------
+    inline
+    xcore::err Test01( xcore::string::view<char> FileName, bool isRead, xcore::textfile::file_type FileType, xcore::textfile::flags Flags = {} ) noexcept
+    {
+        std::array<string::ref<char>,3>                 String                  = { StringBack[0].getView(),    StringBack[1].getView(), StringBack[2].getView() };
+
+        auto                                            Floats32                = Floats32Back;
+        auto                                            Floats64                = Floats64Back;
+
+        auto                                            Int64                   = Int64Back;
+        auto                                            Int32                   = Int32Back;
+        auto                                            Int16                   = Int16Back;
+        auto                                            Int8                    = Int8Back ;
+
+        auto                                            UInt64                  = UInt64Back;
+        auto                                            UInt32                  = UInt32Back;
+        auto                                            UInt16                  = UInt16Back;
+        auto                                            UInt8                   = UInt8Back ;
+
+        xcore::textfile::stream                         TextFile;
+        xcore::err                                      Error;
+
+        //
+        // Open File
+        //
+        if( TextFile.Open( isRead, std::string_view{ FileName }, FileType, Flags ).isError(Error) ) return Error;
+
+        //
+        // AllTypes
+        // 
+        if( AllTypes( TextFile, isRead, Flags ).isError( Error ) ) return Error;
+
+        if( SimpleVariableTypes( TextFile, isRead, Flags ).isError( Error ) ) return Error;
 
         //
         // When we are reading and we are done dealing with records we can check if we are done reading a file like this
@@ -155,39 +241,18 @@ namespace xcore::textfile::examples
         //
         // Open File
         //
-        if( TextFile.Open( isRead, std::string_view{ FileName }, FileType, Flags ).isError(Error) ) return Error;
+        if( TextFile.Open( isRead, std::string_view{ FileName }, FileType, Flags ).isError( Error ) ) return Error;
 
         //
         // Save/Load record
         //
-        if( TextFile.Record( Error, "TestTypes"
-            ,   [&]( std::size_t& C, xcore::err& Error )
-                {
-                    if( isRead ) xassert( C == StringBack.size() );
-                    else         C = StringBack.size();
-                }
-            ,   [&]( std::size_t i, xcore::err& Error )
-                {
-                    string::ref<char> ReadTypes;
-
-                    // For user_types data
-                    // if( TextFile.Field( UserInfo, "Ints", Int32[i] ).isError(Error) ) return;
-
-                    // Just save some integers to show that we can still safe normal fields at any point
-                    if( TextFile.Field( "Ints", Int32[i] ).isError(Error) ) return;
-
-                    // Here we are going to save different types and give meaning to 'type' from above
-                    // so in a way here we are saving two columns first the "type:<?>" then the "value<type>"
-                    // the (i&1) shows that we can choose whatever types we want
-                    if( i&1 ) if( TextFile.Field( "value:?", Floats64[i], Floats32[i] ).isError( Error ) ) return; else;
-                    else      if( TextFile.Field( "value:?", Int64[i]                 ).isError( Error ) ) return;
-                }
-            )) return Error;
+        if( SimpleVariableTypes( TextFile, isRead, Flags ).isError( Error ) ) return Error;
 
         //
         // Close
         //
         TextFile.close();
+
         return Error;
     }
 
