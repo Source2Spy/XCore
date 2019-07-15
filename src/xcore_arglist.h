@@ -5,14 +5,17 @@
 namespace xcore::arglist
 {
     //------------------------------------------------------------------------------
-    using out_types = std::variant<  std::uint8_t,  std::uint16_t,  std::uint32_t,  std::uint64_t,
+    using out_types = std::variant<  bool,
+                                     std::uint8_t,  std::uint16_t,  std::uint32_t,  std::uint64_t,
                                      std::int8_t,   std::int16_t,   std::int32_t,   std::int64_t, 
+                                     bool*,
                                      std::uint8_t*, std::uint16_t*, std::uint32_t*, std::uint64_t*,
                                      std::int8_t*,  std::int16_t*,  std::int32_t*,  std::int64_t*, 
                                      float*, double*, 
                                      void*,
                                      float, double, 
-                                     const char*, xcore::string::view<char>, 
+                                     const char*, xcore::string::view<char>,
+                                     xcore::string::view<char>*, 
                                      xcore::string::ref<char>* >;
 
     //------------------------------------------------------------------------------
@@ -70,7 +73,7 @@ namespace xcore::arglist
             using t = std::decay_t<decltype(Value)>;
             if constexpr (std::is_same_v<T,const char*> && types::variant_t2i_v<t,out_types> >= types::variant_t2i_v<const char*,out_types> )
             {
-                     if constexpr ( types::variant_t2i_v<t,out_types> == types::variant_t2i_v<xcore::string::view<char>,out_types> )   Answer = Value.data();
+                     if constexpr ( types::variant_t2i_v<t,out_types> == types::variant_t2i_v<xcore::string::view<char>*,out_types> )  Answer = Value->data();
                 else if constexpr ( types::variant_t2i_v<t,out_types> == types::variant_t2i_v<xcore::string::ref<char>*,out_types> )   Answer = Value->data();
                 else                                                                                                                   Answer = Value;
             }

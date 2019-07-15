@@ -93,6 +93,7 @@ namespace xcore::string
         constexpr                   fixed                                       ( const char_t (&Str)[T_SIZE_V] )           noexcept { for(int i=0; i<T_SIZE_V; ++i) parent::at(i) = Str[i]; }
         template< std::size_t N >
         constexpr                   fixed                                       ( const char_t (&Str)[N] )                  noexcept { static_assert( N <= T_SIZE_V); for(int i=0; i<T_SIZE_V; ++i) parent::at(i) = Str[i]; }
+        constexpr                   fixed                                       ( const char_t* pStr )                      noexcept { int i=0; while(parent::at(i)=pStr[i]) ++i; xassert(i<ms_BufferSize.m_Value); }
 
         inline                      operator view<char_t,T_SIZE_V>              ( void )                                    noexcept { return { parent::data() }; }
         inline                      operator view<char_t>                       ( void )                                    noexcept { return { parent::data(), size() }; }

@@ -5,7 +5,7 @@ namespace xcore::textfile::version_2
     //------------------------------------------------------------------------------------------------
 
     template< std::size_t N, typename... T_ARGS > inline
-    xcore::err stream::Field( crc::units<32>& UserType, const char(&pFieldName)[N], T_ARGS&... Args ) noexcept
+    xcore::err stream::Field( crc::units<32> UserType, const char(&pFieldName)[N], T_ARGS&... Args ) noexcept
     {
         static_assert( (std::is_const_v<T_ARGS> || ... ) == false );
         if( isReading() )
@@ -67,5 +67,19 @@ namespace xcore::textfile::version_2
             }
         }
         return false;
+    }
+
+    //------------------------------------------------------------------------------------------------
+
+    template< std::size_t N, typename T > inline
+    bool stream::Record( xcore::err& Error, const char (&Str)[N], T&& Callback ) noexcept
+    {
+        return Record( Error, Str, 
+            [&]( std::size_t& C, xcore::err& Error )
+            {
+                if( m_File.m_States.m_isReading )   xassert( C == 1 );
+                else                                C = 1;
+            }
+            , std::forward<T&&>(Callback) );
     }
 }

@@ -61,6 +61,22 @@ auto ViewTo( T iEnd )
 }
 
 //------------------------------------------------------------------------------
+public: inline
+auto View( void ) noexcept
+{
+    xassert( size() );
+    return xcore::span{ data(), size() };
+}
+
+//------------------------------------------------------------------------------
+public: constexpr
+const auto View( void ) const noexcept
+{
+    xassert( size() );
+    return xcore::span{ data(), size() };
+}
+
+//------------------------------------------------------------------------------
 public: constexpr 
 bool Belongs( const void* pPtr )    const   noexcept
 { 

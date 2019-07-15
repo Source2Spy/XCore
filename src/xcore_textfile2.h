@@ -24,6 +24,56 @@
 namespace xcore::textfile::version_2
 {
     //-----------------------------------------------------------------------------------------------------
+    // Error and such
+    //-----------------------------------------------------------------------------------------------------
+    enum class error_state : std::uint32_t
+    {
+          GUID                      = xcore::crc::FromString<32>("xcore::textfile").m_Value
+        , OK                        = 0
+        , FAILURE
+        , FILE_NOT_FOUND
+        , UNEXPECTED_EOF
+        , READ_TYPES_DONTMATCH
+        , MISMATCH_TYPES
+    };
+
+    enum class file_type
+    {
+          TEXT
+        , BINARY
+    };
+
+    union flags
+    {
+        std::uint32_t   m_Value{0};
+
+        constexpr static std::uint32_t WRITE_FLOATS       = (1<<0);
+        constexpr static std::uint32_t WRITE_SWAP_ENDIAN  = (1<<1);
+
+        struct 
+        {
+            bool        m_isWriteFloats:1               // Writes floating point numbers as floating point rather than hex
+            ,           m_isWriteEndianSwap:1;          // Swaps endian before writing (Only useful when writing binary)
+        };
+    };
+
+    struct user_defined_types
+    {
+        constexpr user_defined_types( const char* pName, const char* pTypes ) noexcept 
+            : m_Name                    {pName}
+            , m_SystemTypes             {pTypes}
+            , m_CRC                     { crc::FromString<32>(pName) }
+            , m_NameLength              { []( const char* pName )  constexpr { int i=0; while( pName[++i] ); return i;}(pName) }
+            , m_nSystemTypes            { []( const char* pTypes ) constexpr { int i=0; while( pTypes[++i]); return i;}(pTypes) } 
+            {}
+        string::fixed<char,32>  m_Name;
+        string::fixed<char,32>  m_SystemTypes;
+        crc::units<32>          m_CRC;
+        int                     m_NameLength;
+        int                     m_nSystemTypes;     // How many system types we are using, this is basically the length of the m_SystemType string
+    };
+
+    //-----------------------------------------------------------------------------------------------------
     // private interface
     //-----------------------------------------------------------------------------------------------------
     namespace details
@@ -109,13 +159,8 @@ namespace xcore::textfile::version_2
         };
 
         //-----------------------------------------------------------------------------------------------------
-        struct user_types
+        struct user_types : user_defined_types
         {
-            string::fixed<char,128>             m_UserType          {};         // Name of the user_types type
-            int                                 m_TypeLength        {};
-            string::fixed<char,16>              m_SystemType        {};         // System types such: fff
-            crc::units<32>                      m_CRC32             {};         // CRC32 of the user_types type string
-            std::uint8_t                        m_nSystemTypes      {};         // How many system types we are using, this is basically the length of the m_SystemType string
             bool                                m_bAlreadySaved     {false};    
         };
 
@@ -127,40 +172,6 @@ namespace xcore::textfile::version_2
             bool                                    m_bWriteCount       {};     // If we need to write out the count
         };
     }
-
-    //-----------------------------------------------------------------------------------------------------
-    // Error and such
-    //-----------------------------------------------------------------------------------------------------
-    enum class error_state : std::uint32_t
-    {
-          GUID                      = xcore::crc::FromString<32>("xcore::textfile").m_Value
-        , OK                        = 0
-        , FAILURE
-        , FILE_NOT_FOUND
-        , UNEXPECTED_EOF
-        , READ_TYPES_DONTMATCH
-        , MISMATCH_TYPES
-    };
-
-    enum class file_type
-    {
-          TEXT
-        , BINARY
-    };
-
-    union flags
-    {
-        std::uint32_t   m_Value{0};
-
-        constexpr static std::uint32_t WRITE_FLOATS       = (1<<0);
-        constexpr static std::uint32_t WRITE_SWAP_ENDIAN  = (1<<1);
-
-        struct 
-        {
-            bool        m_isWriteFloats:1               // Writes floating point numbers as floating point rather than hex
-            ,           m_isWriteEndianSwap:1;          // Swaps endian before writing (Only useful when writing binary)
-        };
-    };
 
     //-----------------------------------------------------------------------------------------------------
     // public interface
@@ -175,7 +186,7 @@ namespace xcore::textfile::version_2
                         xcore::err      Open                ( bool isRead, std::string_view View, file_type FileType, flags Flags={} )  noexcept;
 
                         template< std::size_t N, typename... T_ARGS >
-        inline          xcore::err      Field               ( crc::units<32>& UserType, const char(&pFieldName)[N], T_ARGS&... Args )   noexcept;
+        inline          xcore::err      Field               ( crc::units<32> UserType, const char(&pFieldName)[N], T_ARGS&... Args )    noexcept;
 
                         template< std::size_t N, typename... T_ARGS >
         inline          xcore::err      Field               ( const char(&pFieldName)[N], T_ARGS&... Args )                             noexcept;
@@ -186,11 +197,18 @@ namespace xcore::textfile::version_2
         inline          bool            Record              ( xcore::err& Error, const char (&Str)[N]
                                                                 , TT&& RecordStar, T&& Callback )                                       noexcept;
 
+                        template< std::size_t N, typename T >
+        inline          bool            Record              ( xcore::err& Error, const char (&Str)[N]
+                                                                , T&& Callback )                                                        noexcept;
+
         constexpr       bool            isReading           ( void )                                                            const   noexcept { return m_File.m_States.m_isReading; }
         constexpr       bool            isEOF               ( void )                                                            const   noexcept { return m_File.m_States.m_isEOF; }
         constexpr       bool            isWriteFloats       ( void )                                                            const   noexcept { return m_File.m_States.m_isSaveFloats; }
         inline          auto&           getRecordName       ( void )                                                            const   noexcept { return m_Record.m_Name;  }
         inline          int             getRecordCount      ( void )                                                            const   noexcept { return m_Record.m_Count; }
+                        std::uint32_t   AddUserType         ( const user_defined_types& UserType )                                      noexcept;
+                        void            AddUserTypes        ( xcore::span<user_defined_types> UserTypes )                               noexcept;
+                        void            AddUserTypes        ( xcore::span<const user_defined_types> UserTypes )                         noexcept;
 
     protected:
 
@@ -199,7 +217,6 @@ namespace xcore::textfile::version_2
                         xcore::err      openForWriting      ( const std::filesystem::path& FilePath
                                                                 , file_type FileType, flags Flags )                                     noexcept;
                         bool            isValidType         ( int Type )                                                        const   noexcept;
-                        std::uint32_t   AddUserType         ( const char* pUserType, crc::units<32> CRC, const char* pSystemTypes )     noexcept;
                         template< typename T >
                         xcore::err      Read                ( T& Buffer, int Size = sizeof(T), int Count = 1 )                          noexcept;
                         xcore::err      ReadRecord          ( void )                                                                    noexcept;
@@ -215,7 +232,7 @@ namespace xcore::textfile::version_2
                         xcore::err      WriteStr            ( string::view<const char> Buffer )                                         noexcept;
                         xcore::err      WriteFmtStr         ( const char* pFmt, ... )                                                   noexcept;
                         xcore::err      WriteChar           ( char C, int Count = 1 )                                                   noexcept;
-                        xcore::err      WriteColumn         ( crc::units<32>& UserType, const char* pFieldName, arglist::view Args )    noexcept;
+                        xcore::err      WriteColumn         ( crc::units<32> UserType, const char* pFieldName, arglist::view Args )     noexcept;
                         xcore::err      WriteUserTypes      ( void )                                                                    noexcept;
 
                         xcore::err      HandleDynamicTable  ( int& Count )                                                              noexcept;

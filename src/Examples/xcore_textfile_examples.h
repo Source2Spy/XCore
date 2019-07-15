@@ -1,3 +1,10 @@
+    //------------------------------------------------------------------------------
+    // Description:
+    //      Converts an rvalue to an lvalue 
+    //------------------------------------------------------------------------------
+    template <typename T>
+    constexpr T& lvalue(T&& r) noexcept { return r; }
+
 
 namespace xcore::textfile::examples
 {
@@ -135,7 +142,7 @@ namespace xcore::textfile::examples
         //
         // Save/Load record
         //
-        if( TextFile.Record( Error, "TestTypes"
+        if( TextFile.Record( Error, "VariableTypes"
             ,   [&]( std::size_t& C, xcore::err& Error )
                 {
                     if( isRead ) xassert( C == StringBack.size() );
@@ -154,10 +161,93 @@ namespace xcore::textfile::examples
                     // Here we are going to save different types and give meaning to 'type' from above
                     // so in a way here we are saving two columns first the "type:<?>" then the "value<type>"
                     // the (i&1) shows that we can choose whatever types we want
-                    if( i&1 ) if( TextFile.Field( "value:?", Floats64[i], Floats32[i] ).isError( Error ) ) return; else;
-                    else      if( TextFile.Field( "value:?", Int64[i]                 ).isError( Error ) ) return;
+                    switch(i)
+                    {
+                    case 0: if( TextFile.Field( "value:?", String[0] ).isError( Error )                                 ) return; break;
+                    case 1: if( TextFile.Field( "value:?", Floats64[0], Floats32[0] ).isError( Error )                  ) return; break;
+                    case 2: if( TextFile.Field( "value:?", Int64[0],  Int32[0],  Int16[0],  Int8[0]  ).isError( Error ) ) return; break;
+                    case 3: if( TextFile.Field( "value:?", UInt64[0], UInt32[0], UInt16[0], UInt8[0] ).isError( Error ) ) return; break;
+                    }
                 }
             )) return Error;
+
+        //
+        // Sanity check
+        //
+        if( isRead )
+        {
+            auto Convert = []( auto V, const char* Fmt ) -> string::view<char>
+            {
+                static string::fixed<char, 256> Buffer;
+                string::sprintf( Buffer, Fmt, V );
+                return Buffer;
+            };
+
+            //
+            // If we tell the file system to write floats as floats then we will leak precision
+            // so we need to take that into account when checking.
+            //
+            if( Flags.m_isWriteFloats )
+            {
+                double a = std::atof(Convert(Floats64Back[0],"%Lg"));
+                float  b = static_cast<float>(std::atof(Convert(Floats32Back[0],"%g")));
+                xassert( a == Floats64[0] );
+                xassert( b == Floats32[0] );
+            }
+            else
+            {
+                xassert( Floats64Back[0]    == Floats64[0] );
+                xassert( Floats32Back[0]    == Floats32[0] );
+            }
+
+            xassert( StringBack[0]  == String[0] );
+            xassert( Int64Back[0]   == Int64[0] );
+            xassert( Int32Back[0]   == Int32[0] );
+            xassert( Int16Back[0]   == Int16[0] );
+            xassert( Int8Back [0]   == Int8[0]  );
+            xassert( UInt64Back[0]  == UInt64[0] );
+            xassert( UInt32Back[0]  == UInt32[0] );
+            xassert( UInt16Back[0]  == UInt16[0] );
+            xassert( UInt8Back [0]  == UInt8[0]  );
+        }
+
+        return Error;
+    }
+
+    //------------------------------------------------------------------------------
+    // Test different types
+    //------------------------------------------------------------------------------
+    inline
+    xcore::err UserTypes( stream& TextFile, const bool isRead, const flags Flags ) noexcept
+    {
+        xcore::err                    Error;
+        constexpr static xcore::array Types
+        {
+                user_defined_types{     "V3", "fff"  }
+            ,   user_defined_types{   "BOOL",   "c"  }
+            ,   user_defined_types{ "STRING",   "s"  }
+        };
+
+        string::fixed<char,64> Name{ "Hello" };
+        bool                   isValid = true;
+        xcore::array<float,3>  Position { 0.1f, 0.5f, 0.6f };
+
+        TextFile.AddUserTypes( Types );
+
+        //
+        // Save/Load a record
+        //
+        if( TextFile.Record( Error, "TestUserTypes"
+            ,   [&]( std::size_t i, xcore::err& Error )
+                {
+                    0
+                    ||  TextFile.Field( Types[0].m_CRC, "Position", Position[0], Position[1], Position[2]   ).isError(Error)
+                    ||  TextFile.Field( Types[1].m_CRC, "IsValid",  isValid                                 ).isError(Error)
+                    ||  TextFile.Field( Types[2].m_CRC, "Name",     lvalue(Name.getView())                  ).isError(Error)
+                    ;
+                }
+            )) return Error;
+
 
         return Error;
     }
@@ -168,23 +258,8 @@ namespace xcore::textfile::examples
     inline
     xcore::err Test01( xcore::string::view<char> FileName, bool isRead, xcore::textfile::file_type FileType, xcore::textfile::flags Flags = {} ) noexcept
     {
-        std::array<string::ref<char>,3>                 String                  = { StringBack[0].getView(),    StringBack[1].getView(), StringBack[2].getView() };
-
-        auto                                            Floats32                = Floats32Back;
-        auto                                            Floats64                = Floats64Back;
-
-        auto                                            Int64                   = Int64Back;
-        auto                                            Int32                   = Int32Back;
-        auto                                            Int16                   = Int16Back;
-        auto                                            Int8                    = Int8Back ;
-
-        auto                                            UInt64                  = UInt64Back;
-        auto                                            UInt32                  = UInt32Back;
-        auto                                            UInt16                  = UInt16Back;
-        auto                                            UInt8                   = UInt8Back ;
-
-        xcore::textfile::stream                         TextFile;
-        xcore::err                                      Error;
+        xcore::textfile::stream     TextFile;
+        xcore::err                  Error;
 
         //
         // Open File
@@ -198,6 +273,8 @@ namespace xcore::textfile::examples
 
         if( SimpleVariableTypes( TextFile, isRead, Flags ).isError( Error ) ) return Error;
 
+        if( UserTypes( TextFile, isRead, Flags ).isError( Error ) ) return Error;
+
         //
         // When we are reading and we are done dealing with records we can check if we are done reading a file like this
         //
@@ -208,35 +285,13 @@ namespace xcore::textfile::examples
     }
 
     //------------------------------------------------------------------------------
-    // Description:
-    //      Converts an rvalue to an lvalue 
-    //------------------------------------------------------------------------------
-    template <typename T>
-    constexpr T& lvalue(T&& r) noexcept { return r; }
-
-    //------------------------------------------------------------------------------
     // Test different types
     //------------------------------------------------------------------------------
     inline
     xcore::err Test02( xcore::string::view<char> FileName, bool isRead, xcore::textfile::file_type FileType, xcore::textfile::flags Flags = {} ) noexcept
     {
-        std::array<string::ref<char>,3>                 String                  = { StringBack[0].getView(),    StringBack[1].getView(), StringBack[2].getView() };
-
-        auto                                            Floats32                = Floats32Back;
-        auto                                            Floats64                = Floats64Back;
-
-        auto                                            Int64                   = Int64Back;
-        auto                                            Int32                   = Int32Back;
-        auto                                            Int16                   = Int16Back;
-        auto                                            Int8                    = Int8Back ;
-
-        auto                                            UInt64                  = UInt64Back;
-        auto                                            UInt32                  = UInt32Back;
-        auto                                            UInt16                  = UInt16Back;
-        auto                                            UInt8                   = UInt8Back ;
-
-        xcore::textfile::stream                         TextFile;
-        xcore::err                                      Error;
+        xcore::textfile::stream     TextFile;
+        xcore::err                  Error;
 
         //
         // Open File
@@ -374,7 +429,7 @@ namespace xcore::textfile::examples
         //
         // Test write and read (Text Style)
         //
-        if( true ) if( 0
+        if( false ) if( 0
             || Test02( TextFileName, false, xcore::textfile::file_type::TEXT ).isError(Error) 
 //            || Test02( TextFileName, true,  xcore::textfile::file_type::TEXT ).isError(Error) 
             )

@@ -527,7 +527,10 @@ namespace xcore::textfile::version_2
                 //
                 // Add the err
                 //
-                AddUserType( SystemType.data(), xcore::crc::FromString<32>(UserType.data()), UserType.data() );
+                {
+                    user_defined_types Type{ UserType.data(), SystemType.data() };
+                    AddUserType( Type );
+                }
 
                 // Read the next character
                 if( m_File.getC(c).isError(Failure) ) return Failure;
@@ -622,7 +625,10 @@ namespace xcore::textfile::version_2
                 //
                 // Add the User err
                 //
-                AddUserType( UserSystemType.data(), xcore::crc::FromString<32>(UserTypeName.data()), UserTypeName.data() );
+                {
+                    user_defined_types UserT{ UserTypeName.data(), UserSystemType.data() };
+                    AddUserType( UserT );
+                }
 
                 //
                 // Skip spaces
@@ -717,17 +723,14 @@ namespace xcore::textfile::version_2
 
     //------------------------------------------------------------------------------
 
-    std::uint32_t stream::AddUserType( const char* pUserType, crc::units<32> CRC32UserType, const char* pSystemTypes ) noexcept
+    std::uint32_t stream::AddUserType( const user_defined_types& UserType ) noexcept
     {
-        // Must have this in order to follow standard
-        xassert( CRC32UserType == xcore::crc::FromString<32>(pUserType) );
-
-        if( const auto It = m_UserTypeMap.find(CRC32UserType); It != m_UserTypeMap.end() )
+        if( const auto It = m_UserTypeMap.find(UserType.m_CRC); It != m_UserTypeMap.end() )
         {
             const auto Index = It->second;
             
             // Make sure that this registered err is fully duplicated
-            xassert( std::strcmp( pSystemTypes, m_UserTypes[Index].m_SystemType.data() ) == 0 );
+            xassert( UserType.m_SystemTypes == m_UserTypes[Index].m_SystemTypes );
         
             // we already have it so we don't need to added again
             return Index;
@@ -736,31 +739,40 @@ namespace xcore::textfile::version_2
         //
         // Sanity check the user_types types
         //
-    #ifdef _DEBUG
-        for( int i=0; pUserType[i]; i++ )
+        xassert_block_basic()
         {
-            xassert( false == std::isspace(pUserType[i]) );
-        }
+            for( int i=0; UserType.m_Name[i]; i++ )
+            {
+                xassert( false == std::isspace(UserType.m_Name[i]) );
+            }
     
-        for( int i=0; pSystemTypes[i]; i++ )
-        {
-            xassert( false == std::isspace(pSystemTypes[i]) );
+            for( int i=0; UserType.m_SystemTypes[i]; i++ )
+            {
+                xassert( false == std::isspace(UserType.m_SystemTypes[i]) );
+            }
         }
-    #endif
-    
+
         //
         // Fill the entry
         //
-        auto& Entry = m_UserTypes.append();
-        for( Entry.m_TypeLength = 0; (Entry.m_UserType[Entry.m_TypeLength] = pUserType[Entry.m_TypeLength]); ++Entry.m_TypeLength );
-        string::Copy( Entry.m_SystemType, pSystemTypes );
-        Entry.m_CRC32        = CRC32UserType;
-        Entry.m_nSystemTypes = static_cast<std::uint8_t>(std::strlen( Entry.m_SystemType.data() ));
-    
-        std::uint32_t Index  = static_cast<std::uint32_t>(m_UserTypes.size()-1);
-        m_UserTypeMap.insert( {CRC32UserType, Index} );
+        std::uint32_t Index  = m_UserTypes.getIndexByEntry<std::uint32_t>( m_UserTypes.append(UserType) );
+        m_UserTypeMap.insert( {UserType.m_CRC, Index} );
 
         return Index;
+    }
+
+    //------------------------------------------------------------------------------
+    void stream::AddUserTypes( xcore::span<user_defined_types> UserTypes ) noexcept
+    {
+        for( auto& T : UserTypes )
+            AddUserType( T );
+    }
+
+    //------------------------------------------------------------------------------
+    void stream::AddUserTypes( xcore::span<const user_defined_types> UserTypes ) noexcept
+    {
+        for( auto& T : UserTypes )
+            AddUserType( T );
     }
 
     //------------------------------------------------------------------------------
@@ -797,17 +809,19 @@ namespace xcore::textfile::version_2
         return std::visit([&]( auto Value )
         {
             using t = std::decay_t<decltype(Value)>;
-                    if constexpr ( std::is_same_v<t,std::uint8_t>       ) return X == 'h';
-            else    if constexpr ( std::is_same_v<t,std::uint16_t>      ) return X == 'H';
-            else    if constexpr ( std::is_same_v<t,std::uint32_t>      ) return X == 'g';
-            else    if constexpr ( std::is_same_v<t,std::uint64_t>      ) return X == 'G';
-            else    if constexpr ( std::is_same_v<t,std::int8_t>        ) return X == 'c';
-            else    if constexpr ( std::is_same_v<t,std::int16_t>       ) return X == 'C';
-            else    if constexpr ( std::is_same_v<t,std::int32_t>       ) return X == 'd';
-            else    if constexpr ( std::is_same_v<t,std::int64_t>       ) return X == 'D';
-            else    if constexpr ( std::is_same_v<t,float>              ) return X == 'f';
-            else    if constexpr ( std::is_same_v<t,double>             ) return X == 'F';
-            else    if constexpr ( std::is_same_v<t,string::view<char>> ) return X == 's';
+                    if constexpr ( std::is_same_v<t,bool*>               ) return X == 'c';
+            else    if constexpr ( std::is_same_v<t,std::uint8_t*>       ) return X == 'h';
+            else    if constexpr ( std::is_same_v<t,std::uint16_t*>      ) return X == 'H';
+            else    if constexpr ( std::is_same_v<t,std::uint32_t*>      ) return X == 'g';
+            else    if constexpr ( std::is_same_v<t,std::uint64_t*>      ) return X == 'G';
+            else    if constexpr ( std::is_same_v<t,std::int8_t*>        ) return X == 'c';
+            else    if constexpr ( std::is_same_v<t,std::int16_t*>       ) return X == 'C';
+            else    if constexpr ( std::is_same_v<t,std::int32_t*>       ) return X == 'd';
+            else    if constexpr ( std::is_same_v<t,std::int64_t*>       ) return X == 'D';
+            else    if constexpr ( std::is_same_v<t,float*>              ) return X == 'f';
+            else    if constexpr ( std::is_same_v<t,double*>             ) return X == 'F';
+            else    if constexpr ( std::is_same_v<t,string::view<char>*> ) return X == 's';
+            else    if constexpr ( std::is_same_v<t,string::ref<char>*>  ) return X == 's';
             else    return false;
         }, Y );
     }
@@ -831,11 +845,11 @@ namespace xcore::textfile::version_2
                 if( m_File.WriteChar( '<' ).isError(Error) )
                     return Error;
 
-                if( m_File.WriteStr( { UserType.m_UserType.data(), string::Length(UserType.m_UserType).m_Value+1 } ).isError(Error) )
+                if( m_File.WriteStr( { UserType.m_Name.data(), UserType.m_NameLength+1 } ).isError(Error) )
                     return Error;
 
                 // Now dump the data for the user_types type
-                if( m_File.WriteStr( { UserType.m_SystemType.data(), UserType.m_nSystemTypes+1 } ).isError(Error) )
+                if( m_File.WriteStr( { UserType.m_SystemTypes.data(), UserType.m_nSystemTypes+1 } ).isError(Error) )
                     return Error;
             }
         }
@@ -859,19 +873,19 @@ namespace xcore::textfile::version_2
                 UserType.m_bAlreadySaved = true;
                 string::fixed<char,256> temp;
 
-                string::sprintf( temp, "%s:%s ", UserType.m_SystemType.data(), UserType.m_UserType.data() );
+                string::sprintf( temp, "%s:%s ", UserType.m_Name.data(), UserType.m_SystemTypes.data() );
                 if( m_File.WriteStr( temp ).isError(Error) ) return Error;
             }
 
-            if( bNewTypes ) if( m_File.WriteStr( string::constant(">") ).isError(Error) ) return Error;
+            if( bNewTypes ) if( m_File.WriteStr( string::constant(">\n") ).isError(Error) ) return Error;
         }
 
         return Error;
     }
 
     //------------------------------------------------------------------------------
-
-    xcore::err stream::WriteColumn( crc::units<32>& UserType, const char* pColumnName, arglist::view Args ) noexcept
+    
+    xcore::err stream::WriteColumn( crc::units<32> UserType, const char* pColumnName, arglist::view Args ) noexcept
     {
         //
         // When we are at the first line we must double check the syntax of the user_types
@@ -934,7 +948,7 @@ namespace xcore::textfile::version_2
                 xassert(pUserType->m_nSystemTypes == Args.size() );
                 for( auto& A  : Args )
                 {
-                    xassert(isCompatibleTypes( pUserType->m_SystemType[Args.getIndexByEntry(A)], A ));
+                    xassert(isCompatibleTypes( pUserType->m_SystemTypes[Args.getIndexByEntry(A)], A ));
                 }
             }
         }
@@ -965,7 +979,8 @@ namespace xcore::textfile::version_2
                     FieldInfo.m_SystemTypes[Args.getIndexByEntry(A)] = std::visit( [&]( auto Value ) constexpr
                     {
                         using t = std::decay_t<decltype(Value)>;
-                                if constexpr ( std::is_same_v<t,std::uint8_t*>       ) return 'h';
+                                if constexpr ( std::is_same_v<t,bool*>               ) return 'c';
+                        else    if constexpr ( std::is_same_v<t,std::uint8_t*>       ) return 'h';
                         else    if constexpr ( std::is_same_v<t,std::uint16_t*>      ) return 'H';
                         else    if constexpr ( std::is_same_v<t,std::uint32_t*>      ) return 'g';
                         else    if constexpr ( std::is_same_v<t,std::uint64_t*>      ) return 'G';
@@ -1053,6 +1068,7 @@ namespace xcore::textfile::version_2
                 else    if constexpr ( std::is_same_v<t,std::uint16_t*>     ) Numerics( Field, *p, "#%X" );
                 else    if constexpr ( std::is_same_v<t,std::uint32_t*>     ) Numerics( Field, *p, "#%X" );
                 else    if constexpr ( std::is_same_v<t,std::uint64_t*>     ) Numerics( Field, *p, "#%LX" );
+                else    if constexpr ( std::is_same_v<t,bool*>              ) Numerics( Field, (int)*p, "%d" );
                 else    if constexpr ( std::is_same_v<t,std::int8_t*>       ) Numerics( Field, *p, "%d" );
                 else    if constexpr ( std::is_same_v<t,std::int16_t*>      ) Numerics( Field, *p, "%d" );
                 else    if constexpr ( std::is_same_v<t,std::int32_t*>      ) Numerics( Field, *p, "%d" );
@@ -1073,7 +1089,7 @@ namespace xcore::textfile::version_2
                             m_iMemOffet += 1 + string::sprintf( m_Memory.ViewFrom(m_iMemOffet), "\"%s\"", p.data() ).m_Value;
                             Field.m_Width = m_iMemOffet - Field.m_iData - 1;
                         }
-                else    if constexpr ( std::is_same_v<t,string::ref<char>*> ) 
+                else    if constexpr ( std::is_same_v<t,string::ref<char>*> || std::is_same_v<t,string::view<char>*> ) 
                         {
                             Field.m_iData = m_iMemOffet;
                             m_iMemOffet += 1 + string::sprintf( m_Memory.ViewFrom(m_iMemOffet), "\"%s\"", p->data() ).m_Value;
@@ -1243,7 +1259,7 @@ namespace xcore::textfile::version_2
                     {
                         auto p = getUserType(DField.m_UserType);
                         xassert(p);
-                        Width += p->m_TypeLength + 1 + m_nSpacesBetweenFields;  // includes "; "
+                        Width += p->m_NameLength + 1 + m_nSpacesBetweenFields;  // includes "; "
                     }
                     else
                     {
@@ -1317,7 +1333,7 @@ namespace xcore::textfile::version_2
                 {
                     auto p = getUserType( Column.m_UserType );
                     xassert(p);
-                    Column.m_FormatNameWidth += p->m_TypeLength;
+                    Column.m_FormatNameWidth += p->m_NameLength;
                 }
                 else
                 {
@@ -1377,7 +1393,7 @@ namespace xcore::textfile::version_2
                             auto p = getUserType(Column.m_UserType);
                             xassert(p);
 
-                            if( m_File.WriteFmtStr( "%s;%s", Column.m_Name.data(), p->m_UserType.data() ).isError(Error) )
+                            if( m_File.WriteFmtStr( "%s;%s", Column.m_Name.data(), p->m_Name.data() ).isError(Error) )
                                 return Error;
                         }
                         else
@@ -1454,10 +1470,10 @@ namespace xcore::textfile::version_2
                         {
                             auto p = getUserType( DynamicFields.m_UserType );
                             xassert(p);
-                            if( m_File.WriteFmtStr( ";%s ", p->m_UserType.data() ).isError(Error) )
+                            if( m_File.WriteFmtStr( ";%s ", p->m_Name.data() ).isError(Error) )
                                 return Error;
 
-                            TotalWidth += m_nSpacesBetweenFields + p->m_TypeLength;
+                            TotalWidth += m_nSpacesBetweenFields + p->m_NameLength;
                         }
                         else
                         {
@@ -2076,7 +2092,8 @@ namespace xcore::textfile::version_2
                 }
                 else if constexpr ( std::is_same_v<t,string::view<char>*> )
                 {
-                    string::Copy( *p, m_Memory[ iData ] );
+                    string::Copy( string::view<char>{ p->data(), p->size()}, &m_Memory[ iData ] );
+                    //string::Copy( &p, &m_Memory[ iData ] );
                 }
                 else
                 {

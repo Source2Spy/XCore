@@ -63,40 +63,6 @@ namespace xcore::containers
             std::array<entry<T>, T_MAX_SIZE> m_Buffer;
         };
     }
-
-    //------------------------------------------------------------------------------
-    // standard C++17 array but give additional functions to make it more useful
-    //------------------------------------------------------------------------------
-    namespace array
-    {
-        template< class T, std::size_t T_MAX_SIZE >
-        struct type : std::array<T,T_MAX_SIZE>
-        {
-            using parent                    = std::array<T,T_MAX_SIZE>;
-            using value_type                = typename parent::value_type;
-            using size_type                 = typename parent::size_type;
-            using difference_type           = typename parent::difference_type;
-            using pointer                   = typename parent::pointer;
-            using const_pointer             = typename parent::const_pointer;
-            using reference                 = typename parent::reference;
-            using const_reference           = typename parent::const_reference;
-            using iterator                  = typename parent::iterator;
-            using const_iterator            = typename parent::const_iterator;
-            using reverse_iterator          = typename parent::reverse_iterator;
-            using const_reverse_iterator    = typename parent::const_reverse_iterator;
-
-            //using parent::array;
-            using parent::operator =;
-            using parent::operator [];
-            using parent::data;
-
-            template < typename C = size_type>  constexpr static    auto        size            ( void )                                        { return static_cast<C>(T_MAX_SIZE);                                  }
-            template < typename C >             constexpr           bool        isIndexValid    ( C i )                     const   noexcept    { return i >= 0 && i <= static_cast<decltype(i)>(T_MAX_SIZE);         }
-
-            // More of the interface is found here
-            #include "Implementation/xcore_linear_buffers_hardness.h"
-        };
-    }
 }
 
 //------------------------------------------------------------------------------
@@ -104,7 +70,42 @@ namespace xcore::containers
 namespace xcore
 {
     template< class T, std::size_t T_MAX_SIZE >
-    using array = containers::array::type<T,T_MAX_SIZE>;
+    struct t : std::array<T,T_MAX_SIZE>{};
+
+    //------------------------------------------------------------------------------
+    // standard C++17 array but give additional functions to make it more useful
+    //------------------------------------------------------------------------------
+    template< class T, std::size_t T_MAX_SIZE >
+    struct array : t<T,T_MAX_SIZE>
+    {
+        using parent                    = t<T,T_MAX_SIZE>;
+        using value_type                = typename parent::value_type;
+        using size_type                 = typename parent::size_type;
+        using difference_type           = typename parent::difference_type;
+        using pointer                   = typename parent::pointer;
+        using const_pointer             = typename parent::const_pointer;
+        using reference                 = typename parent::reference;
+        using const_reference           = typename parent::const_reference;
+        using iterator                  = typename parent::iterator;
+        using const_iterator            = typename parent::const_iterator;
+        using reverse_iterator          = typename parent::reverse_iterator;
+        using const_reverse_iterator    = typename parent::const_reverse_iterator;
+
+        //using parent::array;
+        using parent::operator =;
+        using parent::operator [];
+        using parent::data;
+
+        template < typename C = size_type>  constexpr static    auto        size            ( void )                                        { return static_cast<C>(T_MAX_SIZE);                                  }
+        template < typename C >             constexpr           bool        isIndexValid    ( C i )                     const   noexcept    { return i >= 0 && i <= static_cast<decltype(i)>(T_MAX_SIZE);         }
+
+        // More of the interface is found here
+        #include "Implementation/xcore_linear_buffers_hardness.h"
+    };
+
+    // Construction guide
+    template <class T, class... T_ARGS >
+    array(T, T_ARGS...) -> array<typename std::common_type_t<T, T_ARGS...>, 1 + sizeof...(T_ARGS)>;
 }
 
 
