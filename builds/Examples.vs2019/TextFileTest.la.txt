@@ -9,9 +9,9 @@
 [ VariableTypes : 3 ]
 { Ints:d  value:?                }
 //------  ----------------------
-      0   :s "String Test" 
-  21231   :Ff -32.32321231 -50 
-   4344   :DdCc 13452 0 -2312 16 
+      0   :s    "String Test"   
+  21231   :Ff   -32.32321231 -50   
+   4344   :DdCc 13452 0 -2312 16   
 
 // New Types
 < V3:fff BOOL:c STRING:s >
