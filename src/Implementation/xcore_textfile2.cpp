@@ -1230,6 +1230,10 @@ namespace xcore::textfile::version_2
             for( int i=0; i<m_nColumns; ++i )
             {
                 auto& Column            = m_Columns[i];
+                
+                Column.m_FormatTotalSubColumns = 0;
+                Column.m_FormatWidth           = 0;
+
                 if( Column.m_nTypes != -1 )
                 {
                     Column.m_SubColumn.clear();
@@ -1349,6 +1353,7 @@ namespace xcore::textfile::version_2
                 }
 
                 // Decide the final width for this column
+                Column.m_FormatTotalSubColumns = std::max( Column.m_FormatTotalSubColumns, Column.m_FormatWidth );
                 Column.m_FormatWidth = std::max( Column.m_FormatWidth, Column.m_FormatNameWidth );
             }
         }
@@ -1516,13 +1521,17 @@ namespace xcore::textfile::version_2
                     }
                     else
                     {
-                        int TotalSpaces = 0;
+                        const auto  Center      = Column.m_FormatWidth - Column.m_FormatTotalSubColumns;
+
+                        if( (Center>>1) > 0 )
+                            if( m_File.WriteChar( ' ', Center>>1).isError(Error) ) return Error;
+
                         for( int n=0; n<Column.m_nTypes; ++n )
                         {
                             const auto  Index       = l*Column.m_nTypes + n;
                             const auto& FieldInfo   = Column.m_FieldInfo[ Index ];
                             const auto& SubColumn   = Column.m_SubColumn[ n ];
-                    
+
                             if( Column.m_SystemTypes[n] == 'f' || Column.m_SystemTypes[n] == 'F' )
                             {
                                 // point align Right align
@@ -1555,21 +1564,16 @@ namespace xcore::textfile::version_2
                                     return Error;
                             }
 
-                            TotalSpaces += SubColumn.m_FormatWidth;
-
                             // Write spaces to reach the next sub-column
                             if( (n+1) != Column.m_nTypes ) 
                             {
                                 if( m_File.WriteChar( ' ', m_nSpacesBetweenFields ).isError(Error) ) return Error;
                             }
-                            else
-                            {
-                                TotalSpaces += (Column.m_nTypes-1) * m_nSpacesBetweenFields;
-                            }
                         }
 
-                        if( TotalSpaces < Column.m_FormatWidth ) 
-                            if( m_File.WriteChar( ' ', Column.m_FormatWidth - TotalSpaces ).isError(Error) ) return Error;
+                        // Add spaces to finish this column
+                        if( Center > 0 )
+                            if( m_File.WriteChar( ' ', Center - (Center>>1) ).isError(Error) ) return Error;
                     }
 
                     // Write spaces to reach the next column

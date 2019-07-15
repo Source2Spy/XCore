@@ -154,6 +154,7 @@ namespace xcore::textfile::version_2
 
             int                                 m_FormatNameWidth;      // Text Formatting name width 
             int                                 m_FormatWidth;          // Width of the column
+            int                                 m_FormatTotalSubColumns;// Total width taken by the subcolumns
 
             void clear ( void ) noexcept { m_DynamicFields.clear(); m_FieldInfo.clear(); m_Name.clear(); }
         };
