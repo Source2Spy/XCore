@@ -16,7 +16,7 @@
 // New Types
 < V3:fff BOOL:c STRING:s >
 
-[ TestUserTypes : 1 ]
+[ TestUserTypes ]
 { Position;V3                    IsValid;BOOL  Name;STRING }
 //-----------------------------  ------------  -----------
   0.1000000015 0.5 0.6000000238  1             "Hello"    

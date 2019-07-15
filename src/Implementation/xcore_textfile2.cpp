@@ -788,8 +788,16 @@ namespace xcore::textfile::version_2
         // Fill the record info
         //
         string::Copy( m_Record.m_Name, pHeaderName );
-        m_Record.m_bWriteCount  = Count != ~0;
-        m_Record.m_Count        = m_Record.m_bWriteCount?static_cast<int>(Count):1;
+        if( Count == ~0 ) 
+        { 
+            m_Record.m_bWriteCount  = false;  
+            m_Record.m_Count = 1; 
+        }
+        else
+        { 
+            m_Record.m_bWriteCount  = true; 
+            m_Record.m_Count = static_cast<int>(Count); 
+        }
 
         //
         // Reset the line count

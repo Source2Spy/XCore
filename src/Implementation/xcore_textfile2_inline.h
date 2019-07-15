@@ -59,6 +59,7 @@ namespace xcore::textfile::version_2
             RecordStar(Count,Error);
             if( WriteRecord( Str, Count ).isError( Error ) ) return true;
 
+            if( Count == ~0 ) Count = 1;
             for( std::remove_const_t<decltype(Count)> i=0; i<Count; i++ )
             {
                 Callback(i,Error);
@@ -78,7 +79,7 @@ namespace xcore::textfile::version_2
             [&]( std::size_t& C, xcore::err& Error )
             {
                 if( m_File.m_States.m_isReading )   xassert( C == 1 );
-                else                                C = 1;
+                else                                C = ~0;
             }
             , std::forward<T&&>(Callback) );
     }
