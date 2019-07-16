@@ -248,6 +248,26 @@ namespace xcore::textfile::examples
                 }
             )) return Error;
 
+        //
+        // Save/Load a record
+        //
+        if( TextFile.Record( Error, "VariableUserTypes"
+            ,   [&]( std::size_t& C, xcore::err& Error )
+                {
+                    if( isRead ) xassert( C == 3 );
+                    else         C = 3;
+                }
+            ,   [&]( std::size_t i, xcore::err& Error )
+                {
+                    switch(i)
+                    {
+                    case 0: if( TextFile.Field( Types[0].m_CRC, "Value:?", Position[0], Position[1], Position[2]   ).isError(Error)    ) return; break;
+                    case 1: if( TextFile.Field( Types[1].m_CRC, "Value:?", isValid                                 ).isError(Error)    ) return; break;
+                    case 2: if( TextFile.Field( Types[2].m_CRC, "Value:?", lvalue(Name.getView())                  ).isError(Error)    ) return; break;
+                    }
+                }
+            )) return Error;
+
 
         return Error;
     }

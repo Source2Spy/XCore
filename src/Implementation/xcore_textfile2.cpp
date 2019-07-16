@@ -1264,14 +1264,18 @@ namespace xcore::textfile::version_2
                 //
                 for( auto& DField : Column.m_DynamicFields )
                 {
-                    // Add the spaces between each field
-                    ValuesSubColumn.m_FormatWidth = (DField.m_nTypes-1) * m_nSpacesBetweenFields;
-
-                    // count all the widths of the types
-                    for( int n=0; n<DField.m_nTypes; n++ )
                     {
-                        const auto& FieldInfo   = Column.m_FieldInfo[ DField.m_iField + n ];
-                        ValuesSubColumn.m_FormatWidth += FieldInfo.m_Width;
+                        // Add the spaces between each field
+                        int ValueSubColumnFormatWidth = (DField.m_nTypes-1) * m_nSpacesBetweenFields;
+
+                        // count all the widths of the types
+                        for( int n=0; n<DField.m_nTypes; n++ )
+                        {
+                            const auto& FieldInfo   = Column.m_FieldInfo[ DField.m_iField + n ];
+                            ValueSubColumnFormatWidth += FieldInfo.m_Width;
+                        }
+
+                        ValuesSubColumn.m_FormatWidth = std::max( ValuesSubColumn.m_FormatWidth, ValueSubColumnFormatWidth );
                     }
 
                     // Dynamic types must include the type inside the column
@@ -1285,14 +1289,13 @@ namespace xcore::textfile::version_2
                     {
                         TypeSubColumn.m_FormatWidth = std::max( TypeSubColumn.m_FormatWidth, DField.m_nTypes + 1 ); // includes ":"
                     }
-
-                    Column.m_FormatWidth = std::max( Column.m_FormatWidth, ValuesSubColumn.m_FormatWidth + TypeSubColumn.m_FormatWidth + m_nSpacesBetweenFields );
                 }
 
                 //
                 // Handle the column name as well 
                 //
                 Column.m_FormatNameWidth = Column.m_NameLength + 1 + 1; // includes ":?"
+                Column.m_FormatWidth           = std::max( Column.m_FormatWidth, ValuesSubColumn.m_FormatWidth + TypeSubColumn.m_FormatWidth + m_nSpacesBetweenFields );
                 Column.m_FormatTotalSubColumns = std::max( Column.m_FormatTotalSubColumns, Column.m_FormatWidth );
                 Column.m_FormatWidth           = std::max( Column.m_FormatWidth, Column.m_FormatNameWidth );
             }

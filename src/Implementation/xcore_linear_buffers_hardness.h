@@ -122,3 +122,11 @@ auto& first ( void ) noexcept
     xassert(size()>=1);
     return *data(); 
 }
+
+//------------------------------------------------------------------------------
+public: constexpr
+operator const span<const value_type> ( void ) const noexcept 
+{ 
+    xassume( data() ); 
+    return { data(), size() }; 
+}
