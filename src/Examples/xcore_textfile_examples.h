@@ -265,6 +265,8 @@ namespace xcore::textfile::examples
                     case 1: if( TextFile.Field( Types[1].m_CRC, "Value:?", isValid                                 ).isError(Error)    ) return; break;
                     case 2: if( TextFile.Field( Types[2].m_CRC, "Value:?", lvalue(Name.getView())                  ).isError(Error)    ) return; break;
                     }
+
+                    TextFile.Field( Types[1].m_CRC, "IsValid",  isValid                                 ).isError(Error);
                 }
             )) return Error;
 

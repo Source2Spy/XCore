@@ -1266,16 +1266,16 @@ namespace xcore::textfile::version_2
                 {
                     {
                         // Add the spaces between each field
-                        int ValueSubColumnFormatWidth = (DField.m_nTypes-1) * m_nSpacesBetweenFields;
+                        DField.m_FormatWidth = (DField.m_nTypes-1) * m_nSpacesBetweenFields;
 
                         // count all the widths of the types
                         for( int n=0; n<DField.m_nTypes; n++ )
                         {
                             const auto& FieldInfo   = Column.m_FieldInfo[ DField.m_iField + n ];
-                            ValueSubColumnFormatWidth += FieldInfo.m_Width;
+                            DField.m_FormatWidth += FieldInfo.m_Width;
                         }
 
-                        ValuesSubColumn.m_FormatWidth = std::max( ValuesSubColumn.m_FormatWidth, ValueSubColumnFormatWidth );
+                        ValuesSubColumn.m_FormatWidth = std::max( ValuesSubColumn.m_FormatWidth, DField.m_FormatWidth );
                     }
 
                     // Dynamic types must include the type inside the column
@@ -1520,15 +1520,17 @@ namespace xcore::textfile::version_2
                     
                             if( m_File.WriteStr( string::view{ &m_Memory[ FieldInfo.m_iData ], FieldInfo.m_Width } ).isError(Error) )
                                 return Error;
-
+                                
                             // Get ready for the next type
-                            if( m_File.WriteChar( ' ', m_nSpacesBetweenFields ).isError(Error) )
+                            if( (DynamicFields.m_nTypes-1) != n) if( m_File.WriteChar( ' ', m_nSpacesBetweenFields ).isError(Error) )
                                 return Error;
                         }
 
                         // Pad the width to match the columns width
-                        if( m_File.WriteChar( ' ', Column.m_FormatWidth - Column.m_SubColumn[0].m_FormatWidth - Column.m_SubColumn[1].m_FormatWidth
-                            - m_nSpacesBetweenFields + m_nSpacesBetweenColumns ).isError(Error) )
+                        if( m_File.WriteChar( ' ', Column.m_FormatWidth 
+                            - DynamicFields.m_FormatWidth
+                            - Column.m_SubColumn[0].m_FormatWidth 
+                            - m_nSpacesBetweenFields  ).isError(Error) )
                             return Error;
                     }
                     else

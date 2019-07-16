@@ -134,6 +134,8 @@ namespace xcore::textfile::version_2
             crc::units<32>                      m_UserType;             // if 0 then is not valid
             string::fixed<char,16>              m_SystemTypes;          // System types
             int                                 m_iField;               // Index to the m_FieldInfo from the column 
+
+            int                                 m_FormatWidth;          // Width of the column
         };
 
         //-----------------------------------------------------------------------------------------------------
@@ -153,7 +155,6 @@ namespace xcore::textfile::version_2
             xcore::vector<sub_column>           m_SubColumn;            // Each of the types inside of a column is a sub_column.
 
             int                                 m_FormatNameWidth;      // Text Formatting name width 
-            int                                 m_FormatWidth;          // Width of the column
             int                                 m_FormatTotalSubColumns;// Total width taken by the subcolumns
 
             void clear ( void ) noexcept { m_DynamicFields.clear(); m_FieldInfo.clear(); m_Name.clear(); }
