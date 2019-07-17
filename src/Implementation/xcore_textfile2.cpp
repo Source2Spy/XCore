@@ -724,9 +724,8 @@ namespace xcore::textfile::version_2
         // Reset the line count
         //
         m_iLine         = 0;
-        m_iField        = 0;
-        m_iMemOffet = 0;
-        m_nTypesLine    = 0;
+        m_iMemOffet     = 0;
+        m_iColumn       = 0;
 
         return {};
     }
@@ -1832,9 +1831,94 @@ namespace xcore::textfile::version_2
     }
 
     //------------------------------------------------------------------------------
-    xcore::err xcore::textfile::stream::ReadLine( void ) noexcept
+    inline
+    bool stream::ValidateColumnChar( int c ) const noexcept
     {
-#if 0
+        return false
+            || (c >= 'a' && c <= 'z')
+            || (c >= 'A' && c <= 'Z')
+            || (c=='_')
+            || (c==':')
+            || (c=='>')
+            || (c=='<')
+            || (c=='?')
+            || (c >= '0' && c <= '9' )
+            ;
+    }
+
+    //------------------------------------------------------------------------------
+
+    xcore::err stream::BuildTypeInformation( const char* pFieldName ) noexcept
+    {
+        xcore::err Error;
+        xcore::error::scope Scope( Error, [&]
+        {
+            XLOG_CHANNEL_ERROR( m_Channel, "%s [%s] of Record[%s]", Error.getCode().m_pString, pFieldName, m_Record.m_Name.data() );
+        });
+
+        // Make sure we have enough columns to store our data
+        if( m_Columns.size() <= m_nColumns ) 
+        {
+            m_Columns.append();
+        }
+        else
+        {
+            m_Columns[m_nColumns].clear();
+        }
+
+        auto& Column = m_Columns[m_nColumns++];
+    
+        //
+        // Copy the column name 
+        //
+        for( Column.m_NameLength=0; pFieldName[Column.m_NameLength] !=';' && pFieldName[Column.m_NameLength] !=':'; ++Column.m_NameLength )
+        {
+            if( pFieldName[Column.m_NameLength]==0 || Column.m_NameLength >= Column.m_Name.size() ) 
+                return xerr_failure( Error, "Fail to read a column named, either string is too long or it has no types" );
+
+            Column.m_Name[Column.m_NameLength] = pFieldName[Column.m_NameLength];
+        }
+
+        // Terminate name 
+        Column.m_Name[Column.m_NameLength] = 0;
+
+        if( pFieldName[Column.m_NameLength] !=';' )
+        {
+            Column.m_UserType = crc::FromString<32>( &pFieldName[Column.m_NameLength+1] );
+            auto p = getUserType( Column.m_UserType );
+            if( p == nullptr )
+                return xerr_failure( Error, "Fail to find the user type for a column" );
+
+            Column.m_nTypes = p->m_nSystemTypes;
+            string::Copy( Column.m_SystemTypes, p->m_SystemTypes );
+
+        }
+        else
+        {
+            xassert(pFieldName[Column.m_NameLength] !=':');
+
+            if( pFieldName[Column.m_NameLength+1] == '?' )
+            {
+                Column.m_nTypes = -1;
+                Column.m_SystemTypes.clear();
+            }
+            else
+            {
+                Column.m_nTypes = string::Copy( Column.m_SystemTypes, &pFieldName[Column.m_NameLength+1] ).m_Value;
+                if( Column.m_nTypes <= 0 )
+                    return xerr_failure( Error, "Fail to read a column, type. not system types specified" );
+            }
+
+            Column.m_UserType.m_Value = 0;
+        }
+
+        return Error;
+    }
+
+    //------------------------------------------------------------------------------
+
+    xcore::err stream::ReadLine( void ) noexcept
+    {
         int                     c;
         int                     Size=0;
         string::fixed<char,256> Buffer;
@@ -1852,6 +1936,7 @@ namespace xcore::textfile::version_2
             m_DataMapping.clear();
 
             // Solve types
+            /*
             if( m_File.m_States.m_isBinary )
             {
                 // make sure it starts okay
@@ -1873,7 +1958,7 @@ namespace xcore::textfile::version_2
                     {
                         Buffer[Size++] = c;
                         if( c == 0 ) break;
-                        if( c == '.' )
+                        if( c == ';' )
                         {
                             if( m_File.Read( reinterpret_cast<std::uint16_t&>(Buffer[Size])).isError( Error ) )
                                 return Error;
@@ -1889,13 +1974,13 @@ namespace xcore::textfile::version_2
                         if( m_File.getC(c).isError(Error) ) return Error;
                     }
 
-                    /*
+                    / *
                     if( c == -1 )
                     {
                         if( m_pFile->isEOF()  ) x_throw( "Found an expected end of file");
                         else x_throw( "Found an error while reading the types");
                     }
-                    */
+                    * /
 
                     if( Buffer[0] != '}' )
                     {
@@ -1906,6 +1991,7 @@ namespace xcore::textfile::version_2
                 } while( Buffer[0] != '}' );
             }
             else
+            */
             {
                 // Read out all the white space
                 if( m_File.ReadWhiteSpace(c).isError( Error ) )
@@ -1924,15 +2010,7 @@ namespace xcore::textfile::version_2
                 {
                     // Read a word
                     Size=0;
-                    while( (c >= 'a' && c <= 'z') || 
-                           (c >= 'A' && c <= 'Z') || 
-                           (c=='_') ||
-                           (c==':') || 
-                           (c=='>') || 
-                           (c=='<') ||
-                           (c=='?') ||
-                           (c >= '0' && c <= '9' ) ||
-                           (c=='.') )
+                    while( ValidateColumnChar(c) || c == ';' || c == ':' )
                     {
                         Buffer[Size++] = c;                    
                         if( m_File.getC(c).isError(Error) ) return Error;
@@ -1942,7 +2020,8 @@ namespace xcore::textfile::version_2
                     Buffer[Size++] = 0;
 
                     // Okay build the type information
-                    BuildTypeInformation( Buffer );
+                    if( BuildTypeInformation( Buffer ).isError(Error) ) 
+                        return Error;
 
                     // Read any white space
                     if( m_File.ReadWhiteSpace(c).isError( Error ) )
@@ -1952,6 +2031,165 @@ namespace xcore::textfile::version_2
             }
         }
 
+        //
+        // Okay now we must read a line worth of data
+        //    
+        auto ReadComponent = [&]( details::field_info& Info, char SystemType ) noexcept
+        {
+            xcore::err Error;
+
+            Size = 0;
+            if ( c == '"' )
+            {
+                if( SystemType != 's' )
+                    return xerr_failure( Error, "Unexpeced string value expecting something else");
+
+                Info.m_iData = m_iMemOffet;
+                do 
+                {
+                    m_Memory[m_iMemOffet++] = c;
+                    if( m_File.getC(c).isError(Error) ) return Error;
+                } while( c != '"' );
+
+                m_Memory[m_iMemOffet++] = 0;
+            }
+            else
+            {
+                std::uint64_t H;
+                if( c == '#' )
+                {
+                    if( m_File.getC(c).isError(Error) ) return Error;
+                    while( string::isCharHex(c) )
+                    {
+                        Buffer[Size++] = c;                    
+                        if( m_File.getC(c).isError(Error) ) return Error;
+                    }
+
+                    if( Size == 0 )
+                        return xerr_failure( Error, "Expecting an hex number");
+                
+                    Buffer[Size++] = 0;
+
+                    H = strtoul( Buffer, nullptr, 16 );
+                }
+                else if( SystemType == 'f' || SystemType == 'F' )
+                {
+                    do 
+                    {
+                        Buffer[Size++] = c;                    
+                        if( m_File.getC(c).isError(Error) ) return Error;
+                    } while( string::isCharDigit(c) || c == '.' );
+
+                    Buffer[Size++] = 0;
+
+                    reinterpret_cast<double&>(H)= atof( Buffer );
+                }
+                else
+                {
+                    while( string::isCharDigit(c) ) 
+                    {
+                        Buffer[Size++] = c;                    
+                        if( m_File.getC(c).isError(Error) ) return Error;
+                    }
+
+                    if( Size == 0 )
+                        return xerr_failure( Error, "Expecting an int number");
+
+                    Buffer[Size++] = 0;
+
+                    H = static_cast<std::uint64_t>(strtol( Buffer, nullptr, 10 ));
+                }
+
+                switch( SystemType )
+                {
+                    case 'c': 
+                    case 'h':
+                                Info.m_iData = bits::Align( m_iMemOffet, 1); m_iMemOffet += Info.m_iData + 1; reinterpret_cast<std::uint8_t &>(m_Memory[Info.m_iData]) = static_cast<std::uint8_t>(H);
+                                break;
+                    case 'C':
+                    case 'H':
+                                Info.m_iData = bits::Align( m_iMemOffet, 2); m_iMemOffet += Info.m_iData + 2; reinterpret_cast<std::uint16_t&>(m_Memory[Info.m_iData]) = static_cast<std::uint16_t>(H);
+                                break;
+                    case 'f':
+                    case 'd':
+                    case 'g':
+                                Info.m_iData = bits::Align( m_iMemOffet, 4); m_iMemOffet += Info.m_iData + 4; reinterpret_cast<std::uint32_t&>(m_Memory[Info.m_iData]) = static_cast<std::uint32_t>(H);
+                                break;
+                    case 'F':
+                    case 'G':
+                    case 'D':
+                                Info.m_iData = bits::Align( m_iMemOffet, 8); m_iMemOffet += Info.m_iData + 8; reinterpret_cast<std::uint64_t&>(m_Memory[Info.m_iData]) = static_cast<std::uint64_t>(H);
+                                break;
+                }
+            }
+
+            return Error;
+        };
+
+        for( m_iColumn=0; m_iColumn<m_nColumns; ++m_iColumn )
+        {
+            auto& Column = m_Columns[m_iColumn];
+
+            // Read any white space
+            if( m_File.ReadWhiteSpace(c).isError( Error ) )
+                return Error;
+
+            Column.m_FieldInfo.clear();
+            if( Column.m_nTypes == -1 )
+            {
+                if( c != ':'  || c != ';' )
+                    return xerr_failure( Error, "Expecting a type definition" );
+
+                Column.m_DynamicFields.clear();
+                auto& D = Column.m_DynamicFields.append();
+                D.m_iField = 0;
+
+                Size = 0;
+                do 
+                {
+                    int c;
+                    if( m_File.getC(c).isError(Error) ) return Error;
+                    Buffer[Size++] = c;
+                } while( string::isCharSpace(c) == false );
+
+                if( c == ';' )
+                {
+                    D.m_UserType = crc::FromString<32>( Buffer.data() );
+                    auto p = getUserType( D.m_UserType );
+                    if( p == nullptr )
+                        return xerr_failure( Error, "Fail to find the user type for a column" );
+
+                    D.m_nTypes = p->m_nSystemTypes;
+                    string::Copy( D.m_SystemTypes, p->m_SystemTypes );
+                }
+                else
+                {
+                    xassert(c !=':');
+                    D.m_nTypes = string::Copy( D.m_SystemTypes, Buffer ).m_Value;
+                    if( D.m_nTypes <= 0 )
+                        return xerr_failure( Error, "Fail to read a column, type. not system types specified" );
+                }
+
+                // Read all the types
+                for( int n=0; n<D.m_nTypes ;n++ )
+                {
+                    auto& Field = Column.m_FieldInfo.append();
+                    if( ReadComponent( Field, D.m_SystemTypes[n] ).isError(Error) )
+                        return Error;
+                }
+            }
+            else
+            {
+                for( int n=0; n<Column.m_nTypes ;n++ )
+                {
+                    auto& Field = Column.m_FieldInfo.append();
+                    if( ReadComponent( Field, Column.m_SystemTypes[n] ).isError(Error) )
+                        return Error;
+                }
+            }
+        }
+
+        /******
         //
         // Okay now we must read a line worth of data
         //    
@@ -2026,12 +2264,12 @@ namespace xcore::textfile::version_2
                         }
                         else
                         {
-                            /*
+                            / *
                             if( m_UserTypes.BinarySearch( user_type( pType ), Index ) == false )
                             {
                                 x_throw( "Unable to find user_types type");
                             }
-                            */
+                            * / 
                             xassert(false);
                         }
                     
@@ -2058,6 +2296,7 @@ namespace xcore::textfile::version_2
                 }
             }
         }
+        *******/
 
         //
         // Increment the line count
@@ -2065,12 +2304,8 @@ namespace xcore::textfile::version_2
         // reset the memory count
         //
         m_iLine++;
-        m_iField        = 0;
-        m_iMemOffet = 0;
-        m_nTypesLine    = 0;
+        m_iMemOffet     = 0;
 
         return Error;
-#endif
-        return {};
     }
 }

@@ -162,11 +162,6 @@ namespace xcore::textfile::examples
                 }
             ,   [&]( std::size_t i, xcore::err& Error )
                 {
-                    string::ref<char> ReadTypes;
-
-                    // For user_types data
-                    // if( TextFile.Field( UserInfo, "Ints", Int32[i] ).isError(Error) ) return;
-
                     // Just save some integers to show that we can still safe normal fields at any point
                     if( TextFile.Field( "Ints", Int32[i] ).isError(Error) ) return;
 
@@ -461,7 +456,7 @@ namespace xcore::textfile::examples
         //
         if( true ) if( 0
             || Test01( TextFileName, false, file_type::TEXT, {flags::WRITE_FLOATS} ).isError(Error) 
-//            || Test01( TextFileName, true,  file_type::TEXT ).isError(Error)
+            || Test01( TextFileName, true,  file_type::TEXT ).isError(Error)
 //            || Test01( TextFileName, false, file_type::TEXT, {xcore::textfile::flags::WRITE_FLOATS} ).isError(Error)
 //            || Test01( TextFileName, true,  file_type::TEXT, {xcore::textfile::flags::WRITE_FLOATS} ).isError(Error)
             )
