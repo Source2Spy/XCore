@@ -46,6 +46,12 @@ namespace xcore::textfile::examples
 
         xcore::err                                      Error;
     
+        if( TextFile.WriteComment( string::constant(
+            "----------------------------------------------------\n"
+            " Example that shows how to use all system types\n"
+            "----------------------------------------------------\n"
+            ) ).isError(Error) ) return Error;
+
         //
         // Save/Load a record
         //
@@ -138,6 +144,12 @@ namespace xcore::textfile::examples
         auto                                            UInt8                   = UInt8Back ;
 
         xcore::err                                      Error;
+
+        if( TextFile.WriteComment( string::constant(
+            "----------------------------------------------------\n"
+            " Example that shows how to use per line (rather than per column) types\n"
+            "----------------------------------------------------\n"
+            ) ).isError(Error) ) return Error;
 
         //
         // Save/Load record
@@ -232,6 +244,15 @@ namespace xcore::textfile::examples
         bool                   isValid = true;
         xcore::array<float,3>  Position { 0.1f, 0.5f, 0.6f };
 
+        if( TextFile.WriteComment( string::constant(
+            "----------------------------------------------------\n"
+            " Example that shows how to use user types\n"
+            "----------------------------------------------------\n"
+            ) ).isError(Error) ) return Error;
+
+        //
+        // Tell the file system about the user types
+        //
         TextFile.AddUserTypes( Types );
 
         //

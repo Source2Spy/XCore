@@ -183,7 +183,6 @@ namespace xcore::textfile::version_2
     public:
 
         constexpr                       stream              ( void )                                                                    noexcept = default;
-                                       ~stream              ( void )                                                                    noexcept {}
         void                            close               ( void )                                                                    noexcept;
                         xcore::err      Open                ( bool isRead, std::string_view View, file_type FileType, flags Flags={} )  noexcept;
 
@@ -202,6 +201,8 @@ namespace xcore::textfile::version_2
                         template< std::size_t N, typename T >
         inline          bool            Record              ( xcore::err& Error, const char (&Str)[N]
                                                                 , T&& Callback )                                                        noexcept;
+                        xcore::err      WriteComment        ( const string::view<char> Comment )                                        noexcept;
+
 
         constexpr       bool            isReading           ( void )                                                            const   noexcept { return m_File.m_States.m_isReading; }
         constexpr       bool            isEOF               ( void )                                                            const   noexcept { return m_File.m_States.m_isEOF; }
@@ -240,7 +241,6 @@ namespace xcore::textfile::version_2
                         xcore::err      HandleDynamicTable  ( int& Count )                                                              noexcept;
 
                         xcore::err      WriteRecord         ( const char* pHeaderName, std::size_t Count )                              noexcept;
-                        xcore::err      WriteComment        ( const string::view<char> Comment )                                        noexcept;
 
 
     protected:
@@ -262,9 +262,6 @@ namespace xcore::textfile::version_2
 
         int                                                 m_iMemOffet             {};
         int                                                 m_iColumn               {};
-
-        constexpr static int                                m_nSpacesBetweenFields   { 1 };
-        constexpr static int                                m_nSpacesBetweenColumns  { 2 };
     };
 }
 #endif

@@ -26,12 +26,12 @@ namespace xcore::string
     // view - string view
     //------------------------------------------------------------------------------------
     template< typename T_CHAR, std::ptrdiff_t T_SIZE_V = -1 >
-    struct view : std::span<T_CHAR,T_SIZE_V>
+    struct view : xcore::span<T_CHAR,T_SIZE_V>
     {
         using char_t = T_CHAR;
         using units  = units<char_t>;
         constexpr static auto size_v = T_SIZE_V;
-        using parent = std::span<char_t,T_SIZE_V>;
+        using parent = xcore::span<char_t,T_SIZE_V>;
         using parent::operator =;
         using parent::span;
 
@@ -41,6 +41,25 @@ namespace xcore::string
         constexpr                   operator const std::string_view ( void )                    const   noexcept { xassume(parent::empty()==false); return { parent::data(), std::strlen(parent::data()) }; }
         constexpr   bool            empty                           ( void )                    const   noexcept { return parent::data() == nullptr || parent::data()[0] == 0; }
     };
+
+    // Deduction Guides
+    template <class T, size_t N>
+    view(T (&)[N])->view<T, N>;
+
+    template <class T, size_t N>
+    view(std::array<T, N>&)->view<T, N>;
+
+    template <class T, size_t N>
+    view(const std::array<T, N>&)->view<const T, N>;
+
+    template <class T>
+    view(T*,int)->view<T>;
+
+    template <class Container>
+    view(Container&)->view<typename Container::value_type>;
+
+    template <class Container>
+    view(const Container&)->view<const typename Container::value_type>;
 
     //------------------------------------------------------------------------------------
     // constant - string can not be modified

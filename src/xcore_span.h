@@ -27,6 +27,22 @@ namespace xcore
         // More of the interface is found here
         #include "Implementation/xcore_linear_buffers_hardness.h"
     };
+
+    // Deduction Guides
+    template <class T, size_t N>
+    span(T (&)[N])->span<T, N>;
+
+    template <class T, size_t N>
+    span(std::array<T, N>&)->span<T, N>;
+
+    template <class T, size_t N>
+    span(const std::array<T, N>&)->span<const T, N>;
+
+    template <class Container>
+    span(Container&)->span<typename Container::value_type>;
+
+    template <class Container>
+    span(const Container&)->span<const typename Container::value_type>;
 }
 
 #endif

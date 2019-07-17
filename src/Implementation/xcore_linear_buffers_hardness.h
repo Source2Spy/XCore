@@ -24,7 +24,17 @@ auto& CopyFromTo( const xcore::span<value_type>     View,
 
 //------------------------------------------------------------------------------
 public: template< typename T > inline
-auto ViewFromTo( T iStart, T iEnd )
+auto ViewFromTo( T iStart, T iEnd ) noexcept
+{
+    xassert( iStart >= 0 );
+    xassert( iEnd   <= size() );
+    xassert( iStart <= iEnd );
+    return xcore::span{ &(*this)[ iStart ], iEnd - iStart };
+}
+
+        //------------------------------------------------------------------------------
+public: template< typename T > inline
+auto ViewFromTo( T iStart, T iEnd ) const noexcept
 {
     xassert( iStart >= 0 );
     xassert( iEnd   <= size() );
@@ -34,7 +44,7 @@ auto ViewFromTo( T iStart, T iEnd )
 
 //------------------------------------------------------------------------------
 public: template< typename T > inline
-auto ViewFromCount( T iStart, T Count )
+auto ViewFromCount( T iStart, T Count ) noexcept
 {
     xassert( iStart >= 0 );
     xassert( iStart + Count <= size() );
@@ -44,7 +54,7 @@ auto ViewFromCount( T iStart, T Count )
 
 //------------------------------------------------------------------------------
 public: template< typename T > inline     
-auto ViewFrom( T iStart )
+auto ViewFrom( T iStart ) noexcept
 {
     const auto s = size();
     xassert( iStart >= 0 );

@@ -171,7 +171,10 @@ namespace xcore::textfile::version_2::details
         }
         else
         {
-            return WriteFmtStr( Buffer.data() );
+            const std::int64_t L           = string::Length(Buffer).m_Value;
+            const std::int64_t TotalData   = L>Buffer.size()?Buffer.size():L;
+            if( TotalData != std::fwrite( Buffer.data(), 1, TotalData, m_pFP ) )
+                return xerr_failure_s( "Fail 'fwrite' writing the required data" );
         }
     #else
     #endif
@@ -304,6 +307,13 @@ namespace xcore::textfile::version_2::details
 //-----------------------------------------------------------------------------------------------------
 namespace xcore::textfile::version_2
 {
+    //------------------------------------------------------------------------------------------------
+    // Some static variables
+    //------------------------------------------------------------------------------------------------
+    constexpr static int    m_nSpacesBetweenFields   { 1 };
+    constexpr static int    m_nSpacesBetweenColumns  { 2 };
+    constexpr static int    m_nLinesBeforeFileWrite  { 64 };
+
     //------------------------------------------------------------------------------------------------
     bool stream::isValidType( int Type ) const noexcept
     {
@@ -832,6 +842,51 @@ namespace xcore::textfile::version_2
             else    if constexpr ( std::is_same_v<t,string::ref<char>*>  ) return X == 's';
             else    return false;
         }, Y );
+    }
+
+    //------------------------------------------------------------------------------
+
+    xcore::err stream::WriteComment( const string::view<char> Comment ) noexcept
+    {
+        xcore::err Error;
+        xassert( m_File.m_States.m_isReading == false );
+
+        if( m_File.m_States.m_isBinary )
+        {
+            // No comments supported for binary files
+            //    m_pFile->Write( Comment(), 1, Comment.GetLength()+1 );
+        }
+        else
+        {
+            int iStart = 0;
+            int iEnd   = iStart;
+
+            if( m_File.WriteChar( '\n' ).isError( Error ) )
+                return Error;
+
+            do 
+            {
+                if( m_File.WriteStr( "//" ).isError( Error ) )
+                    return Error;
+
+                xassert( iEnd < Comment.size() );
+
+                while( Comment[iEnd] ) 
+                    if( Comment[iEnd] == '\n' ) { iEnd++; break; }
+                    else                          iEnd++;
+
+                if( m_File.WriteStr( Comment.ViewFromTo(iStart, iEnd) ).isError( Error ) )
+                    return Error;
+
+                if( Comment[iEnd] == 0 ) break;
+
+                // Get ready for the next line
+                iStart = iEnd++;
+
+            } while( true );
+        }
+
+        return Error;
     }
 
     //------------------------------------------------------------------------------
