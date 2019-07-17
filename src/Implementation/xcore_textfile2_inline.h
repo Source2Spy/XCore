@@ -3,19 +3,35 @@
 namespace xcore::textfile::version_2
 {
     //------------------------------------------------------------------------------------------------
+    namespace details
+    {
+        template< typename T >  
+        constexpr static bool is_valid_type_v = false
+            || std::is_same_v< bool                  ,T >
+            || std::is_same_v< std::uint8_t          ,T >
+            || std::is_same_v< std::uint16_t         ,T >
+            || std::is_same_v< std::uint32_t         ,T >
+            || std::is_same_v< std::uint64_t         ,T >
+            || std::is_same_v< std::int8_t           ,T >
+            || std::is_same_v< std::int16_t          ,T >
+            || std::is_same_v< std::int32_t          ,T >
+            || std::is_same_v< std::int64_t          ,T >
+            || std::is_same_v< std::int8_t           ,T >
+            || std::is_same_v< float                 ,T >
+            || std::is_same_v< double                ,T >
+            || std::is_same_v< string::view<char>    ,T >
+            || std::is_same_v< string::ref<char>     ,T >;
+    }
+
+    //------------------------------------------------------------------------------------------------
 
     template< std::size_t N, typename... T_ARGS > inline
     xcore::err stream::Field( crc::units<32> UserType, const char(&pFieldName)[N], T_ARGS&... Args ) noexcept
     {
-        static_assert( (std::is_const_v<T_ARGS> || ... ) == false );
-        if( isReading() )
-        {
-            arglist::out Out{ &Args... };
-            return ReadFieldC( UserType, pFieldName, Out );
-        }
-
+        static_assert( (details::is_valid_type_v<T_ARGS> || ... ) );
         arglist::out Out{ &Args... };
-        return WriteColumn( UserType, pFieldName, Out );
+        return isReading() ? ReadFieldC( UserType, pFieldName, Out ) 
+                           : WriteColumn( UserType, pFieldName, Out );
     }
 
     //------------------------------------------------------------------------------------------------
@@ -26,6 +42,7 @@ namespace xcore::textfile::version_2
         crc::units<32> UserType = crc::units<32>{0};
         return Field( UserType, pFieldName, Args... );
     }
+
     //------------------------------------------------------------------------------------------------
 
     template< std::size_t N, typename TT, typename T > inline
@@ -83,4 +100,5 @@ namespace xcore::textfile::version_2
             }
             , std::forward<T&&>(Callback) );
     }
+
 }
