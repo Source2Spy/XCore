@@ -7,20 +7,20 @@ namespace xcore::textfile::version_2
     {
         template< typename T >  
         constexpr static bool is_valid_type_v = false
-            || std::is_same_v< bool                  ,T >
-            || std::is_same_v< std::uint8_t          ,T >
-            || std::is_same_v< std::uint16_t         ,T >
-            || std::is_same_v< std::uint32_t         ,T >
-            || std::is_same_v< std::uint64_t         ,T >
-            || std::is_same_v< std::int8_t           ,T >
-            || std::is_same_v< std::int16_t          ,T >
-            || std::is_same_v< std::int32_t          ,T >
-            || std::is_same_v< std::int64_t          ,T >
-            || std::is_same_v< std::int8_t           ,T >
-            || std::is_same_v< float                 ,T >
-            || std::is_same_v< double                ,T >
-            || std::is_same_v< string::view<char>    ,T >
-            || std::is_same_v< string::ref<char>     ,T >;
+            || std::is_same_v< bool                  , T >
+            || std::is_same_v< std::uint8_t          , T >
+            || std::is_same_v< std::uint16_t         , T >
+            || std::is_same_v< std::uint32_t         , T >
+            || std::is_same_v< std::uint64_t         , T >
+            || std::is_same_v< std::int8_t           , T >
+            || std::is_same_v< std::int16_t          , T >
+            || std::is_same_v< std::int32_t          , T >
+            || std::is_same_v< std::int64_t          , T >
+            || std::is_same_v< std::int8_t           , T >
+            || std::is_same_v< float                 , T >
+            || std::is_same_v< double                , T >
+            || std::is_same_v< string::view<char>    , T >
+            || std::is_same_v< string::ref<char>     , T >;
     }
 
     //------------------------------------------------------------------------------------------------

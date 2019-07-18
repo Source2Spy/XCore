@@ -848,7 +848,9 @@ namespace xcore::textfile::version_2
     xcore::err stream::WriteComment( const string::view<char> Comment ) noexcept
     {
         xcore::err Error;
-        xassert( m_File.m_States.m_isReading == false );
+
+        if( m_File.m_States.m_isReading )
+            return Error;
 
         if( m_File.m_States.m_isBinary )
         {
@@ -1882,7 +1884,7 @@ namespace xcore::textfile::version_2
         // Terminate name 
         Column.m_Name[Column.m_NameLength] = 0;
 
-        if( pFieldName[Column.m_NameLength] !=';' )
+        if( pFieldName[Column.m_NameLength] ==';' )
         {
             Column.m_UserType = crc::FromString<32>( &pFieldName[Column.m_NameLength+1] );
             auto p = getUserType( Column.m_UserType );
@@ -1895,7 +1897,7 @@ namespace xcore::textfile::version_2
         }
         else
         {
-            xassert(pFieldName[Column.m_NameLength] !=':');
+            xassert(pFieldName[Column.m_NameLength] ==':');
 
             if( pFieldName[Column.m_NameLength+1] == '?' )
             {
@@ -2038,6 +2040,10 @@ namespace xcore::textfile::version_2
         {
             xcore::err Error;
 
+            if( c == ' ' )
+                if( m_File.ReadWhiteSpace(c).isError( Error ) )
+                    return Error;
+
             Size = 0;
             if ( c == '"' )
             {
@@ -2086,7 +2092,7 @@ namespace xcore::textfile::version_2
                 }
                 else
                 {
-                    while( string::isCharDigit(c) ) 
+                    while( string::isCharDigit(c) || c == '-' ) 
                     {
                         Buffer[Size++] = c;                    
                         if( m_File.getC(c).isError(Error) ) return Error;
@@ -2100,25 +2106,26 @@ namespace xcore::textfile::version_2
                     H = static_cast<std::uint64_t>(strtol( Buffer, nullptr, 10 ));
                 }
 
+                xassert( c == ' ' || c == '\n' );
                 switch( SystemType )
                 {
                     case 'c': 
                     case 'h':
-                                Info.m_iData = bits::Align( m_iMemOffet, 1); m_iMemOffet += Info.m_iData + 1; reinterpret_cast<std::uint8_t &>(m_Memory[Info.m_iData]) = static_cast<std::uint8_t>(H);
+                                Info.m_iData = bits::Align( m_iMemOffet, 1); m_iMemOffet = Info.m_iData + 1; reinterpret_cast<std::uint8_t &>(m_Memory[Info.m_iData]) = static_cast<std::uint8_t>(H);
                                 break;
                     case 'C':
                     case 'H':
-                                Info.m_iData = bits::Align( m_iMemOffet, 2); m_iMemOffet += Info.m_iData + 2; reinterpret_cast<std::uint16_t&>(m_Memory[Info.m_iData]) = static_cast<std::uint16_t>(H);
+                                Info.m_iData = bits::Align( m_iMemOffet, 2); m_iMemOffet = Info.m_iData + 2; reinterpret_cast<std::uint16_t&>(m_Memory[Info.m_iData]) = static_cast<std::uint16_t>(H);
                                 break;
                     case 'f':
                     case 'd':
                     case 'g':
-                                Info.m_iData = bits::Align( m_iMemOffet, 4); m_iMemOffet += Info.m_iData + 4; reinterpret_cast<std::uint32_t&>(m_Memory[Info.m_iData]) = static_cast<std::uint32_t>(H);
+                                Info.m_iData = bits::Align( m_iMemOffet, 4); m_iMemOffet = Info.m_iData + 4; reinterpret_cast<std::uint32_t&>(m_Memory[Info.m_iData]) = static_cast<std::uint32_t>(H);
                                 break;
                     case 'F':
                     case 'G':
                     case 'D':
-                                Info.m_iData = bits::Align( m_iMemOffet, 8); m_iMemOffet += Info.m_iData + 8; reinterpret_cast<std::uint64_t&>(m_Memory[Info.m_iData]) = static_cast<std::uint64_t>(H);
+                                Info.m_iData = bits::Align( m_iMemOffet, 8); m_iMemOffet = Info.m_iData + 8; reinterpret_cast<std::uint64_t&>(m_Memory[Info.m_iData]) = static_cast<std::uint64_t>(H);
                                 break;
                 }
             }
