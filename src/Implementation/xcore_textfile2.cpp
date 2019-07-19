@@ -894,7 +894,7 @@ namespace xcore::textfile::version_2
                 else    if constexpr ( std::is_same_v<t,float*>             ) 
                         { 
                             if( m_File.m_States.m_isSaveFloats )    Numerics( Field, static_cast<double>(*p), "%Lg" );
-                            else                                    Numerics( Field, *reinterpret_cast<std::uint32_t*>(p),  "#%X" ); 
+                            else                                    Numerics( Field, reinterpret_cast<std::uint32_t&>(*p),  "#%X" ); 
                         }
                 else    if constexpr ( std::is_same_v<t,double*>            ) 
                         { 
@@ -1526,15 +1526,18 @@ namespace xcore::textfile::version_2
                 auto& Column = m_Columns[i];
 
                 if( pColumnName[ Column.m_NameLength ] != 0 )
-                    continue;
+                {
+                    if( pColumnName[ Column.m_NameLength ] != ':' || pColumnName[ Column.m_NameLength+1 ] != '?' )
+                        continue;
+                }
 
                 // Make sure that we have a match
                 {
                     int j;
-                    for( j=0; (Column.m_Name[j] == pColumnName[j]) && pColumnName[j]; j++ );
+                    for( j=Column.m_NameLength-1; j >= 0 && (Column.m_Name[j] == pColumnName[j]) ; --j );
 
                     // The string must not be the same
-                    if( j != Column.m_NameLength )
+                    if( j != -1 )
                         continue;
 
                     m_DataMapping.last() = i;
@@ -1622,7 +1625,7 @@ namespace xcore::textfile::version_2
             {
                 using t = std::decay_t<decltype(p)>;
 
-                if constexpr ( std::is_same_v<t,std::uint8_t*> || std::is_same_v<t,std::int8_t*> )
+                if constexpr ( std::is_same_v<t,std::uint8_t*> || std::is_same_v<t,std::int8_t*> || std::is_same_v<t,bool*> )
                 {
                     reinterpret_cast<std::uint8_t&>(*p) = reinterpret_cast<const std::uint8_t&>( m_Memory[ iData ]);
                 }
@@ -1908,7 +1911,7 @@ namespace xcore::textfile::version_2
                         Buffer[Size++] = x;
                     } while( string::isCharSpace(x) == false );
 
-                    Buffer[Size] = 0;
+                    Buffer[Size-1] = 0;
                 }
 
                 if( c == ';' )
@@ -2073,61 +2076,52 @@ namespace xcore::textfile::version_2
             // We read the err in case the user_types has not register it already.
             // But the user_types should have register something....
             //
-            while( c == '<' )
+            if( c == '<' )
             {
-                int                     nUserSystemTypeChars    = 0;
-                std::array<char,64>     UserSystemType;
-                int                     nUserTypeChars          = 0;
-                std::array<char,64>     UserTypeName;
-            
-                do 
+                // Read any white space
+                if( m_File.ReadWhiteSpace( c ).isError(Failure) ) return Failure;
+
+                do
                 {
-                    if( m_File.getC(c).isError(Failure) ) return Failure;
-                    if( c != '>' ) break;
+                    // Create a user type
+                    user_defined_types UserType;
 
-                    if( isValidType(c) == false ) return xerr_failure( Failure, "Found a non-atomic type in user type definition" );
+                    UserType.m_NameLength=0;
+                    while( c != ':' ) 
+                    {
+                        UserType.m_Name[UserType.m_NameLength++] = static_cast<char>(c);
+                        if( m_File.getC(c).isError(Failure) ) return Failure;
+                        if( UserType.m_NameLength >= UserType.m_Name.size() ) return xerr_failure( Failure, "Failed to find the termination character ':' for a user type");
+                    }
+                    UserType.m_Name[UserType.m_NameLength]=0;
+                    UserType.m_CRC = crc::FromString<32>(UserType.m_Name);
 
-                    UserSystemType[nUserSystemTypeChars++] = static_cast<char>(c);
-                } while( true );
+                    UserType.m_nSystemTypes=0;
+                    do 
+                    {
+                        if( m_File.getC(c).isError(Failure) ) return Failure;
+                        if( c == '>' || c == ' ' ) break;
+                        if( isValidType(c) == false ) return xerr_failure( Failure, "Found a non-atomic type in user type definition" );
+                        UserType.m_SystemTypes[UserType.m_nSystemTypes++] = static_cast<char>(c);
+                        if( UserType.m_nSystemTypes >= UserType.m_SystemTypes.size() ) return xerr_failure( Failure, "Failed to find the termination character '>' for a user type block");
+                    } while( true );
+                    UserType.m_SystemTypes[UserType.m_nSystemTypes]=0;
 
-                // Terminate the string
-                UserSystemType[nUserSystemTypeChars] = 0;
-            
-                if( m_File.getC(c).isError(Failure) ) return Failure;
-                if( c != '.' ) return xerr_failure( Failure, "Expecting a '.' but found a another character in user type declaration" );
-            
-                // Set the period as it is part of the err
-                UserTypeName[nUserTypeChars++] = c;
+                    //
+                    // Add the User err
+                    //
+                    AddUserType( UserType );
 
-                //
-                // Skip blank spaces and comments
-                //
-                do 
-                {
-                    if( m_File.getC(c).isError(Failure) ) return Failure;
-                    if( std::isspace(c) ) break;
+                    // Read any white space
+                    if( string::isCharSpace(c) )
+                        if( m_File.ReadWhiteSpace( c ).isError(Failure) ) return Failure;
 
-                    UserTypeName[nUserTypeChars++] = c;
-                } while( true );
-            
-                // Terminate the string
-                UserTypeName[nUserTypeChars] = 0;
-            
-                //
-                // Add the User err
-                //
-                {
-                    user_defined_types UserT{ UserTypeName.data(), UserSystemType.data() };
-                    AddUserType( UserT );
-                }
+                } while( c != '>' );
 
                 //
                 // Skip spaces
                 //
-                if( std::isspace( c ) ) 
-                {
-                    if ( m_File.ReadWhiteSpace( c ).isError(Failure) ) return Failure;
-                }
+                if ( m_File.ReadWhiteSpace( c ).isError(Failure) ) return Failure;
             }
         
             //

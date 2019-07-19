@@ -309,7 +309,7 @@ namespace xcore::textfile::examples
         if( TextFile.Open( isRead, std::string_view{ FileName }, FileType, Flags ).isError(Error) ) return Error;
 
         //
-        // AllTypes
+        // Run tests
         // 
         if( AllTypes( TextFile, isRead, Flags ).isError( Error ) ) return Error;
 
@@ -326,127 +326,6 @@ namespace xcore::textfile::examples
         return Error;
     }
 
-    //------------------------------------------------------------------------------
-    // Test different types
-    //------------------------------------------------------------------------------
-    inline
-    xcore::err Test02( xcore::string::view<char> FileName, bool isRead, xcore::textfile::file_type FileType, xcore::textfile::flags Flags = {} ) noexcept
-    {
-        xcore::textfile::stream     TextFile;
-        xcore::err                  Error;
-
-        //
-        // Open File
-        //
-        if( TextFile.Open( isRead, std::string_view{ FileName }, FileType, Flags ).isError( Error ) ) return Error;
-
-        //
-        // Save/Load record
-        //
-        if( SimpleVariableTypes( TextFile, isRead, Flags ).isError( Error ) ) return Error;
-
-        //
-        // Close
-        //
-        TextFile.close();
-
-        return Error;
-    }
-
-#if 0
-        //
-        // Big types
-        //
-        if( TextFile.WriteRecord( "SecondRecord" ).isError( Error ) )
-            return Error;
-
-        if( TextFile.Field( "pepe", g_Int64[0], g_Floats64[0] ).isError( Error ) )
-            return Error;
-
-        if( TextFile.WriteLine().isError( Error ) )
-            return Error;
-    
-        //
-        // Dynamic Type
-        //
-        if( TextFile.WriteRecord( "TheirdRecord", 3 ).isError( Error ) )
-            return Error;
-    
-        // 1
-        if( TextFile.Field( "type:<?>", string::fixed<char,128>("fff").getView() ).isError( Error ) )
-            return Error;
-
-        if( TextFile.Field( "value:<type>", g_Floats32[0], g_Floats32[1], g_Floats32[2] ).isError( Error ) )
-            return Error;
-
-        if( TextFile.WriteLine().isError( Error ) )
-            return Error;
-    
-        // 2
-        if( TextFile.Field( "type:<?>", string::fixed<char,128>("s").getView() ).isError( Error ) )
-            return Error;
-
-        if( TextFile.Field( "value:<type>", g_String[0].getView() ).isError( Error ) )
-            return Error;
-
-        if( TextFile.WriteLine().isError( Error ) )
-            return Error;
-
-        // 3
-        if( TextFile.Field( "type:<?>", string::fixed<char,128>("DF").getView() ).isError( Error ) )
-            return Error;
-
-        if( TextFile.Field( "value:<type>", g_Int64[0], g_Floats64[0] ).isError( Error ) )
-            return Error;
-
-        if( TextFile.WriteLine().isError( Error ) )
-            return Error;
-
-        //
-        // Lets test user_types types
-        //
-        TextFile.AddUserType( "fff", ".V3",   crc::FromString<32>(".V3"),   0 );
-        TextFile.AddUserType( "fff", ".V3D",  crc::FromString<32>(".V3D"),  1 );
-        TextFile.AddUserType( "f",   ".F",    crc::FromString<32>(".F"),    2 );
-        TextFile.AddUserType( "sf",  ".SS",   crc::FromString<32>(".SS"),   3 );
-
-        if( TextFile.WriteRecord( "UsersTypes", 2 ).isError(Error) )
-            return Error;
-    
-        // 0
-        if( TextFile.Field ( "mytype:<?>", string::fixed<char,128>(".V3").getView() ).isError( Error ) )
-            return Error;
-
-        if( TextFile.Field ( "myvalue:<mytype>", g_Floats32[0], g_Floats32[1], g_Floats32[2] ).isError( Error ) )
-            return Error;
-
-        if( TextFile.WriteLine().isError( Error ) )
-            return Error;
-    
-        // 1
-        if( TextFile.Field ( "mytype:<?>", string::fixed<char,128>(".SS").getView() ).isError( Error ) )
-            return Error;
-
-        if( TextFile.Field ( "myvalue:<mytype>", g_String[0].getView(), g_String[1].getView() ).isError( Error ) )
-            return Error;
-
-        if( TextFile.WriteLine().isError( Error ) )
-            return Error;
-    
-        //
-        // Other record
-        //
-        if(    TextFile.WriteRecord( "UsersTypes2" ).isError( Error ) 
-            || TextFile.Field( "One:.F", g_Floats64[0] ).isError( Error )
-            || TextFile.Field( "Two:.V3D", g_Floats32[0], g_Floats32[1], g_Floats32[2] ).isError( Error )
-            || TextFile.WriteLine().isError( Error ) )
-            return Error;
-
-        TextFile.close();
-        return Error;
-    }
-#endif
-
     //-----------------------------------------------------------------------------------------
 
     void Test( void )
@@ -459,21 +338,10 @@ namespace xcore::textfile::examples
         // Test write and read (Text Style)
         //
         if( true ) if( 0
-            || Test01( TextFileName, false, file_type::TEXT, {flags::WRITE_FLOATS} ).isError(Error) 
+            || Test01( TextFileName, false, file_type::TEXT, {flags::DEFAULTS} ).isError(Error) 
+            || Test01( TextFileName, true,  file_type::TEXT, {flags::DEFAULTS} ).isError(Error)
+            || Test01( TextFileName, false, file_type::TEXT, {flags::WRITE_FLOATS} ).isError(Error)
             || Test01( TextFileName, true,  file_type::TEXT, {flags::WRITE_FLOATS} ).isError(Error)
-//            || Test01( TextFileName, false, file_type::TEXT, {xcore::textfile::flags::WRITE_FLOATS} ).isError(Error)
-//            || Test01( TextFileName, true,  file_type::TEXT, {xcore::textfile::flags::WRITE_FLOATS} ).isError(Error)
-            )
-        {
-            xassert(false);
-        }
-
-        //
-        // Test write and read (Text Style)
-        //
-        if( false ) if( 0
-            || Test02( TextFileName, false, xcore::textfile::file_type::TEXT ).isError(Error) 
-//            || Test02( TextFileName, true,  xcore::textfile::file_type::TEXT ).isError(Error) 
             )
         {
             xassert(false);

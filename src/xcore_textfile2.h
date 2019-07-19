@@ -47,6 +47,7 @@ namespace xcore::textfile::version_2
     {
         std::uint32_t   m_Value{0};
 
+        constexpr static std::uint32_t DEFAULTS           = 0;
         constexpr static std::uint32_t WRITE_FLOATS       = (1<<0);
         constexpr static std::uint32_t WRITE_SWAP_ENDIAN  = (1<<1);
 
@@ -59,6 +60,7 @@ namespace xcore::textfile::version_2
 
     struct user_defined_types
     {
+        constexpr user_defined_types() noexcept = default;
         constexpr user_defined_types( const char* pName, const char* pTypes ) noexcept 
             : m_Name                    {pName}
             , m_SystemTypes             {pTypes}
