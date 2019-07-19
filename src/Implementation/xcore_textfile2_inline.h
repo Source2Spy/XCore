@@ -30,7 +30,7 @@ namespace xcore::textfile::version_2
     {
         static_assert( (details::is_valid_type_v<T_ARGS> || ... ) );
         arglist::out Out{ &Args... };
-        return isReading() ? ReadFieldC( UserType, pFieldName, Out ) 
+        return isReading() ? ReadColumn( UserType, pFieldName, Out ) 
                            : WriteColumn( UserType, pFieldName, Out );
     }
 

@@ -23,6 +23,28 @@ namespace xcore::textfile::examples
     constexpr static std::array                            UInt16Back              = { std::uint16_t{31352},       std::uint16_t{2221},    std::uint16_t{11434}    };
     constexpr static std::array                            UInt8Back               = { std::uint8_t {33},          std::uint8_t {22},      std::uint8_t {44}       };
 
+
+    //------------------------------------------------------------------------------
+    // Comparing floating points numbers
+    //------------------------------------------------------------------------------
+    // https://randomascii.wordpress.com/2012/02/25/comparing-floating-point-numbers-2012-edition/ 
+    // https://www.floating-point-gui.de/errors/comparison/
+    template< typename T >
+    bool AlmostEqualRelative( T A, T B, T maxRelDiff = sizeof(T) == 4 ? FLT_EPSILON : (DBL_EPSILON*1000000) )
+    {
+        // Calculate the difference.
+        T diff = std::abs(A - B);
+        A = std::abs(A);
+        B = std::abs(B);
+
+        // Find the largest
+        T largest = (B > A) ? B : A;
+ 
+        if (diff <= largest * maxRelDiff)
+            return true;
+        return false;
+    }
+
     //------------------------------------------------------------------------------
     // Test different types
     //------------------------------------------------------------------------------
@@ -84,28 +106,19 @@ namespace xcore::textfile::examples
         //
         if( isRead ) for( int i=0; i<StringBack.size(); ++i )
         {
-            auto Convert = []( auto V, const char* Fmt ) -> string::view<char>
-            {
-                static string::fixed<char, 256> Buffer;
-                string::sprintf( Buffer, Fmt, V );
-                return Buffer;
-            };
-
             //
             // If we tell the file system to write floats as floats then we will leak precision
             // so we need to take that into account when checking.
             //
             if( Flags.m_isWriteFloats )
             {
-                double a = std::atof(Convert(Floats64Back[i],"%Lg"));
-                float  b = static_cast<float>(std::atof(Convert(Floats32Back[i],"%g")));
-                xassert( a == Floats64[i] );
-                xassert( b == Floats32[i] );
+                xassert( AlmostEqualRelative( Floats64Back[i], Floats64[i] ) );
+                xassert( AlmostEqualRelative( Floats32Back[i], Floats32[i] ) );
             }
             else
             {
-                xassert( Floats64Back[i]    == Floats64[i] );
-                xassert( Floats32Back[i]    == Floats32[i] );
+                xassert( Floats64Back[i] == Floats64[i] );
+                xassert( Floats32Back[i] == Floats32[i] );
             }
 
             xassert( StringBack[i]  == String[i] );
@@ -183,28 +196,19 @@ namespace xcore::textfile::examples
         //
         if( isRead )
         {
-            auto Convert = []( auto V, const char* Fmt ) -> string::view<char>
-            {
-                static string::fixed<char, 256> Buffer;
-                string::sprintf( Buffer, Fmt, V );
-                return Buffer;
-            };
-
             //
             // If we tell the file system to write floats as floats then we will leak precision
             // so we need to take that into account when checking.
             //
             if( Flags.m_isWriteFloats )
             {
-                double a = std::atof(Convert(Floats64Back[0],"%Lg"));
-                float  b = static_cast<float>(std::atof(Convert(Floats32Back[0],"%g")));
-                xassert( a == Floats64[0] );
-                xassert( b == Floats32[0] );
+                xassert( AlmostEqualRelative( Floats64Back[0], Floats64[0] ) );
+                xassert( AlmostEqualRelative( Floats32Back[0], Floats32[0] ) );
             }
             else
             {
-                xassert( Floats64Back[0]    == Floats64[0] );
-                xassert( Floats32Back[0]    == Floats32[0] );
+                xassert( Floats64Back[0] == Floats64[0] );
+                xassert( Floats32Back[0] == Floats32[0] );
             }
 
             xassert( StringBack[0]  == String[0] );
@@ -456,7 +460,7 @@ namespace xcore::textfile::examples
         //
         if( true ) if( 0
             || Test01( TextFileName, false, file_type::TEXT, {flags::WRITE_FLOATS} ).isError(Error) 
-            || Test01( TextFileName, true,  file_type::TEXT ).isError(Error)
+            || Test01( TextFileName, true,  file_type::TEXT, {flags::WRITE_FLOATS} ).isError(Error)
 //            || Test01( TextFileName, false, file_type::TEXT, {xcore::textfile::flags::WRITE_FLOATS} ).isError(Error)
 //            || Test01( TextFileName, true,  file_type::TEXT, {xcore::textfile::flags::WRITE_FLOATS} ).isError(Error)
             )

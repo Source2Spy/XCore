@@ -227,7 +227,7 @@ namespace xcore::textfile::version_2
                         xcore::err      ReadWhiteSpace      ( int& c )                                                                  noexcept;
                         xcore::err      ReadLine            ( void )                                                                    noexcept;
                         xcore::err      getC                ( int& c )                                                                  noexcept;
-                        xcore::err      ReadFieldC          ( crc::units<32>& UserType, const char* pFieldName, arglist::view Args )    noexcept;
+                        xcore::err      ReadColumn          ( crc::units<32> UserType, const char* pFieldName, arglist::view Args )     noexcept;
 
                         template< typename T >
                         xcore::err      Write               ( T& Buffer, int Size = sizeof(T), int Count = 1 )                          noexcept;
