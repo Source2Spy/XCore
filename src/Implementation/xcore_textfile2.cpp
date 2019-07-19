@@ -401,7 +401,7 @@ namespace xcore::textfile::version_2
         m_Memory.clear();
 
         // Growing this guy is really slow so we create a decent count from the start
-        m_Memory.appendList( 512 );
+        if( m_Memory.capacity() < 1048 ) m_Memory.appendList( 1048 );
 
         //
         // Read the first record
@@ -703,7 +703,8 @@ namespace xcore::textfile::version_2
         //
         // Make sure we always have enough memory
         //
-        if( (m_iMemOffet + 1024*2) > m_Memory.size() ) m_Memory.appendList( 1024*4 );
+        if( (m_iMemOffet + 1024*2) > m_Memory.size() ) 
+            m_Memory.appendList( 1024*4 );
 
         //
         // When we are at the first line we must double check the syntax of the user_types
@@ -904,13 +905,13 @@ namespace xcore::textfile::version_2
                 else    if constexpr ( std::is_same_v<t,string::view<char>> ) 
                         {
                             Field.m_iData = m_iMemOffet;
-                            m_iMemOffet += 1 + string::sprintf( m_Memory.ViewFrom(m_iMemOffet), "\"%s\"", p.data() ).m_Value;
+                            m_iMemOffet += 1 + string::sprintf( m_Memory.ViewFrom(Field.m_iData), "\"%s\"", p.data() ).m_Value;
                             Field.m_Width = m_iMemOffet - Field.m_iData - 1;
                         }
                 else    if constexpr ( std::is_same_v<t,string::ref<char>*> || std::is_same_v<t,string::view<char>*> ) 
                         {
                             Field.m_iData = m_iMemOffet;
-                            m_iMemOffet += 1 + string::sprintf( m_Memory.ViewFrom(m_iMemOffet), "\"%s\"", p->data() ).m_Value;
+                            m_iMemOffet += 1 + string::sprintf( m_Memory.ViewFrom(Field.m_iData), "\"%s\"", p->data() ).m_Value;
                             Field.m_Width = m_iMemOffet - Field.m_iData - 1;
                         }
                 else    
@@ -1020,14 +1021,9 @@ namespace xcore::textfile::version_2
         m_iColumn   = 0;
 
         //
-        // Handle writing text format
-        //
-        static constexpr int MaxLines = 64;
-
-        //
         // We will wait writing the line if we can so we can format
         //
-        if( (m_iLine < m_Record.m_Count && (m_iLine%MaxLines) != 0) )
+        if( (m_iLine < m_Record.m_Count && (m_iLine%m_nLinesBeforeFileWrite) != 0) )
         {
             return Error;
         }
@@ -1035,7 +1031,7 @@ namespace xcore::textfile::version_2
         //
         // Initialize the columns
         //
-        if( m_iLine < MaxLines )
+        if( m_iLine <= m_nLinesBeforeFileWrite )
         {
             for( int i=0; i<m_nColumns; ++i )
             {
@@ -1183,7 +1179,7 @@ namespace xcore::textfile::version_2
         //
         // Save the record info
         //
-        if( m_iLine <= MaxLines )
+        if( m_iLine <= m_nLinesBeforeFileWrite )
         {
             //
             // Write any pending user_types types
@@ -1283,7 +1279,8 @@ namespace xcore::textfile::version_2
         // Print all the data
         //
         {
-            int L = m_iLine % MaxLines;
+            int L = m_iLine%m_nLinesBeforeFileWrite;
+            if( L == 0 ) L = m_nLinesBeforeFileWrite;
             for( int l = 0; l<L; ++l )
             {
                 // Prefix with two spaces to align things

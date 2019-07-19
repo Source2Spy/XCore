@@ -77,14 +77,17 @@ namespace xcore::textfile::examples
         //
         // Save/Load a record
         //
+        int Times = 128;
         if( TextFile.Record( Error, "TestTypes"
             ,   [&]( std::size_t& C, xcore::err& Error )
                 {
-                    if( isRead )    xassert( C == StringBack.size() );
-                    else            C = StringBack.size();
+                    if( isRead )    xassert( C == StringBack.size() * Times );
+                    else            C = StringBack.size() * Times;
                 }
             ,   [&]( std::size_t i, xcore::err& Error )
                 {
+                    i %= StringBack.size();
+
                     0
                     ||  TextFile.Field( "String",   String[i]       ).isError(Error)
                     ||  TextFile.Field( "Floats",   Floats64[i]
@@ -298,7 +301,7 @@ namespace xcore::textfile::examples
     // Test different types
     //------------------------------------------------------------------------------
     inline
-    xcore::err Test01( xcore::string::view<char> FileName, bool isRead, xcore::textfile::file_type FileType, xcore::textfile::flags Flags = {} ) noexcept
+    xcore::err Test01( xcore::string::view<char> FileName, bool isRead, xcore::textfile::file_type FileType, xcore::textfile::flags Flags ) noexcept
     {
         xcore::textfile::stream     TextFile;
         xcore::err                  Error;
@@ -337,12 +340,12 @@ namespace xcore::textfile::examples
         //
         // Test write and read (Text Style)
         //
-        if( true ) if( 0
+        if( true && ( 0
             || Test01( TextFileName, false, file_type::TEXT, {flags::DEFAULTS} ).isError(Error) 
             || Test01( TextFileName, true,  file_type::TEXT, {flags::DEFAULTS} ).isError(Error)
             || Test01( TextFileName, false, file_type::TEXT, {flags::WRITE_FLOATS} ).isError(Error)
             || Test01( TextFileName, true,  file_type::TEXT, {flags::WRITE_FLOATS} ).isError(Error)
-            )
+            ))
         {
             xassert(false);
         }

@@ -64,8 +64,11 @@ namespace xcore::containers::vector
         //
         // Lets construct
         //
-        for( size_type i = Index; i<NewPosOldItems; ++i )
-            new( &m_Allocator[i] ) value_type{};
+        if constexpr( std::is_trivially_constructible_v<T> == false )
+        {
+            for( size_type i = Index; i<NewPosOldItems; ++i )
+                new( &m_Allocator[i] ) value_type{};
+        }
     
         //
         // Finally set the new count
@@ -99,10 +102,19 @@ namespace xcore::containers::vector
         //
         // Lets copy construct all the new items
         //
-        size_type i=0;
-        for( const auto& Entry : View )
-            new( &m_Allocator[Index+i] ) value_type{ Entry }, i++;
-    
+        if constexpr( std::is_trivially_constructible_v<T> == false )
+        {
+            size_type i=0;
+            for( const auto& Entry : View )
+                new( &m_Allocator[Index+i] ) value_type{ Entry }, i++;
+        }
+        else
+        {
+            size_type i=0;
+            for( const auto& Entry : View )
+                m_Allocator[Index+i] = Entry, i++;
+        }
+
         //
         // Finally set the new count
         //
@@ -127,8 +139,11 @@ namespace xcore::containers::vector
         // Construct all of them
         //
         const auto FinalCount = m_Count + Count; 
-        for( auto i=m_Count; i<FinalCount; i++ )
-            new( &m_Allocator[i] ) value_type{ std::forward<T_ARG>(Args)... };
+        if constexpr( std::is_trivially_constructible_v<T,T_ARG&&...> == false )
+        {
+            for( auto i=m_Count; i<FinalCount; i++ )
+                new( &m_Allocator[i] ) value_type{ std::forward<T_ARG&&>(Args)... };
+        }
     
         // Set the new count and return
         m_Count = FinalCount;
@@ -152,9 +167,18 @@ namespace xcore::containers::vector
         //
         // Construct all of them
         //
-        size_type i=0;
-        for( const auto& Entry : View )
-            new( &m_Allocator[Index+i] ) value_type{ Entry }, i++;
+        if constexpr ( std::is_trivially_constructible_v<T> == false )
+        {
+            size_type i=0;
+            for( const auto& Entry : View )
+                new( &m_Allocator[Index+i] ) value_type{ Entry }, i++;
+        }
+        else
+        {
+            size_type i=0;
+            for( const auto& Entry : View )
+                m_Allocator[Index+i] = { Entry }, i++;
+        }
 
         // Set the new count and return
         m_Count += View.size();
