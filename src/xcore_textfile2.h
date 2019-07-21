@@ -264,6 +264,10 @@ namespace xcore::textfile::version_2
         int                                                 m_iLine                 {};     // Which line we are in the current record
         int                                                 m_iMemOffet             {};
         int                                                 m_iColumn               {};
+
+        constexpr static int                                m_nSpacesBetweenFields  { 1 };
+        constexpr static int                                m_nSpacesBetweenColumns { 2 };
+        constexpr static int                                m_nLinesBeforeFileWrite { 64 };
     };
 }
 #endif

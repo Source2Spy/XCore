@@ -170,14 +170,17 @@ namespace xcore::textfile::examples
         //
         // Save/Load record
         //
+        int Times = 128;
         if( TextFile.Record( Error, "VariableTypes"
             ,   [&]( std::size_t& C, xcore::err& Error )
                 {
-                    if( isRead ) xassert( C == StringBack.size() );
-                    else         C = StringBack.size();
+                    if( isRead ) xassert( C == StringBack.size() * Times );
+                    else         C = StringBack.size() * Times;
                 }
             ,   [&]( std::size_t i, xcore::err& Error )
                 {
+                    i %= StringBack.size();
+
                     // Just save some integers to show that we can still safe normal fields at any point
                     if( TextFile.Field( "Ints", Int32[i] ).isError(Error) ) return;
 

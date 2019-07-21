@@ -1,5 +1,3 @@
-
-
 //-----------------------------------------------------------------------------------------------------
 //-----------------------------------------------------------------------------------------------------
 // Details
@@ -310,9 +308,6 @@ namespace xcore::textfile::version_2
     //------------------------------------------------------------------------------------------------
     // Some static variables
     //------------------------------------------------------------------------------------------------
-    constexpr static int    m_nSpacesBetweenFields   { 1 };
-    constexpr static int    m_nSpacesBetweenColumns  { 2 };
-    constexpr static int    m_nLinesBeforeFileWrite  { 64 };
 
     //------------------------------------------------------------------------------------------------
     bool stream::isValidType( int Type ) const noexcept
@@ -1407,7 +1402,24 @@ namespace xcore::textfile::version_2
             }
         }
 
+        //
+        // Reset to get ready for the next block of lines
+        //
+
+        // Clear the columns
+        if( m_iLine < m_Record.m_Count )
+        {
+            for( int i=0; i<m_nColumns; ++i )
+            {
+                auto& C = m_Columns[i];
+
+                C.m_DynamicFields.clear();
+                C.m_FieldInfo.clear();
+            }
+        }
+        // Clear the memory pointer
         m_iMemOffet = 0;
+
         return Error;
     }
 
