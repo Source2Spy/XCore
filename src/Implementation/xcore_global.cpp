@@ -104,7 +104,7 @@ void xcore::Init( const char* pAppName ) noexcept
     if( false )
     {
         _CrtSetReportMode( _CRT_ERROR, _CRTDBG_MODE_DEBUG );
-        _CrtSetBreakAlloc(158);
+        _CrtSetBreakAlloc(299);
     }
 #endif
 

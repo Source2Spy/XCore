@@ -35,14 +35,24 @@ namespace xcore::allocator
 
         //--------------------------------------------------------------------------------------------
 
+        ~unique_span( void ) noexcept 
+        { 
+            auto p = parent::data();
+            if( p ) delete []p;
+        }
+
+        //--------------------------------------------------------------------------------------------
+
         template< typename...T_ARGS > inline
         xcore::err New( size_type Count, T_ARGS&&...Args ) noexcept
         {
             xassert(Count>=0);
             err Error;
+            auto op = parent::data();
+            if( op ) delete []op;
+
             auto p = new entry[Count]{ std::forward<T_ARGS>(Args)... };
             if( p == nullptr ) return xerr_code( Error, error_state::OUT_OF_MEMORY, "Memory Allocation Failure" );
-            clear();
             new( this ) xcore::span( p, Count );
             return Error;
         }
@@ -52,24 +62,38 @@ namespace xcore::allocator
         {
             xassert( Count >= 0 );
             err     Error;
-            auto    op      = parent::data();
+
             auto    p       = new entry[ Count ];
-            if( p == nullptr ) return xerr_code( Error, error_state::OUT_OF_MEMORY, "Resize Failure" );
-            for( decltype(parent::size()) i = 0; i<parent::size(); ++i )
-                p[i] = std::move(op[i]);
-            clear();
+            if( p == nullptr ) 
+            {
+                delete []p;
+                return xerr_code( Error, error_state::OUT_OF_MEMORY, "Resize Failure" );
+            }
+
+            auto    op      = parent::data();
+            if( op )
+            {
+                xassert( parent::size() > 0 );
+                for( decltype(parent::size()) i = 0; i<parent::size(); ++i )
+                    p[i] = std::move(op[i]);
+            
+                delete []op;
+            }
+            
             new( this ) xcore::span( p, Count );
             return Error;
         }
 
         //--------------------------------------------------------------------------------------------
-        void clear  ( void )        noexcept 
+        void clear  ( void ) noexcept 
         { 
             auto p = parent::data();
             if( p ) delete []p;
             p = nullptr;
             new( this ) xcore::span( p, parent::index_type{0} );
         }
+
+        //--------------------------------------------------------------------------------------------
     };
 }
 

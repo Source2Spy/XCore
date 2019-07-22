@@ -1819,21 +1819,27 @@ namespace xcore::textfile::version_2
             else
             {
                 std::uint64_t H;
-                bool isInt = true;
-                bool isHex = false;
 
                 if( c == '#' )
                 {
-                    isHex = true;
                     if( m_File.getC(c).isError(Error) ) return Error;
                     while( string::isCharHex(c) ) 
                     {
                         Buffer[Size++] = c;                    
                         if( m_File.getC(c).isError(Error) ) return Error;
                     }
+
+                    if( Size == 0 )
+                        return xerr_failure( Error, "Fail to read a numeric value");
+
+                    Buffer[Size++] = 0;
+
+                    H = strtoull( Buffer, nullptr, 16 );
                 }
                 else
                 {
+                    bool isInt = true;
+
                     if( c == '-' )
                     {
                         Buffer[Size++] = c;                    
@@ -1846,49 +1852,49 @@ namespace xcore::textfile::version_2
                         if( m_File.getC(c).isError(Error) ) return Error;
                         if( c == '.' )
                         {
-                            if( isInt == false || isHex == true ) return xerr_failure( Error, "I found an error loading a floating point number");
+                            if( isInt == false ) return xerr_failure( Error, "I found an error loading a floating point number");
 
                             isInt = false;
                             Buffer[Size++] = c;                    
                             if( m_File.getC(c).isError(Error) ) return Error;
                         }
                     }
-                }
 
-                if( Size == 0 )
-                    return xerr_failure( Error, "Fail to read a numeric value");
+                    if( Size == 0 )
+                        return xerr_failure( Error, "Fail to read a numeric value");
 
-                Buffer[Size++] = 0;
+                    Buffer[Size++] = 0;
 
-                     if( isHex ) H = strtoull( Buffer, nullptr, 16 );
-                else if( SystemType == 'F' ) reinterpret_cast<double&>(H) = atof( Buffer );
-                else if( SystemType == 'f' ) reinterpret_cast<float&>(H)  = static_cast<float>(atof( Buffer ));
-                else if( isInt == false )
+
+                         if( SystemType == 'F' ) reinterpret_cast<double&>(H) = atof( Buffer );
+                    else if( SystemType == 'f' ) reinterpret_cast<float&>(H)  = static_cast<float>(atof( Buffer ));
+                    else if( isInt == false )
+                            {
+                                return xerr_code( Error, error_state::MISMATCH_TYPES, "I found a floating point number while trying to load an interger value");
+                            }
+                    else if( Buffer[0] == '-' )
+                    {
+                        if(    SystemType == 'g' 
+                            || SystemType == 'G' 
+                            || SystemType == 'h' 
+                            || SystemType == 'H' )
                         {
-                            return xerr_code( Error, error_state::MISMATCH_TYPES, "I found a floating point number while trying to load an interger value");
+                            XLOG_CHANNEL_WARNING( m_Channel, "Reading a sign interger into a field which is unsign-int form this record [%s](%d)", m_Record.m_Name.data(), m_iLine );
                         }
-                else if( Buffer[0] == '-' )
-                {
-                    if(    SystemType == 'g' 
-                        || SystemType == 'G' 
-                        || SystemType == 'h' 
-                        || SystemType == 'H' )
-                    {
-                        XLOG_CHANNEL_WARNING( m_Channel, "Reading a sign interger into a field which is unsign-int form this record [%s](%d)", m_Record.m_Name.data(), m_iLine );
-                    }
 
-                    H = static_cast<std::uint64_t>(strtoll( Buffer, nullptr, 10 ));
-                }
-                else
-                {
-                    H = static_cast<std::uint64_t>(strtoull( Buffer, nullptr, 10 ));
-                    if(    (SystemType == 'c' && H >= static_cast<std::uint64_t>(std::numeric_limits<std::int8_t>::max() ))
-                        || (SystemType == 'C' && H >= static_cast<std::uint64_t>(std::numeric_limits<std::int16_t>::max()))
-                        || (SystemType == 'd' && H >= static_cast<std::uint64_t>(std::numeric_limits<std::int32_t>::max()))
-                        || (SystemType == 'D' && H >= static_cast<std::uint64_t>(std::numeric_limits<std::int64_t>::max()))
-                        )
+                        H = static_cast<std::uint64_t>(strtoll( Buffer, nullptr, 10 ));
+                    }
+                    else
                     {
-                        XLOG_CHANNEL_WARNING( m_Channel, "Reading a sign interger but the value in the file exceeds the allow positive interger portion in record [%s](%d)", m_Record.m_Name.data(), m_iLine );
+                        H = static_cast<std::uint64_t>(strtoull( Buffer, nullptr, 10 ));
+                        if(    (SystemType == 'c' && H >= static_cast<std::uint64_t>(std::numeric_limits<std::int8_t>::max() ))
+                            || (SystemType == 'C' && H >= static_cast<std::uint64_t>(std::numeric_limits<std::int16_t>::max()))
+                            || (SystemType == 'd' && H >= static_cast<std::uint64_t>(std::numeric_limits<std::int32_t>::max()))
+                            || (SystemType == 'D' && H >= static_cast<std::uint64_t>(std::numeric_limits<std::int64_t>::max()))
+                            )
+                        {
+                            XLOG_CHANNEL_WARNING( m_Channel, "Reading a sign interger but the value in the file exceeds the allow positive interger portion in record [%s](%d)", m_Record.m_Name.data(), m_iLine );
+                        }
                     }
                 }
 

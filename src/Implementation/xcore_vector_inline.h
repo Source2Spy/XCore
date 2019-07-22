@@ -5,10 +5,14 @@ namespace xcore::containers::vector
     template< typename T, typename T_ALLOCATOR > inline
     void type<T, T_ALLOCATOR>::clear ( void ) noexcept
     {
-        if( empty() == false )
+        if constexpr( std::is_destructible_v<T> )
         {
-            std::destroy( &m_Allocator[0], &m_Allocator.data()[m_Count] );
-            m_Count = 0;
+            if( empty() == false )
+            {
+                auto p = std::launder(reinterpret_cast<T*>(&m_Allocator[0]));
+                std::destroy( p, p + m_Count );
+                m_Count = 0;
+            }
         }
     }
 
