@@ -1510,7 +1510,7 @@ namespace xcore::textfile::version_2
 
     //------------------------------------------------------------------------------
 
-    xcore::err stream::ReadFieldType( crc::units<32>& UserType, const char* pColumnName ) noexcept
+    xcore::err stream::ReadFieldUserType( const char* pColumnName ) noexcept
     {
         xcore::err Error;
 
@@ -1556,6 +1556,25 @@ namespace xcore::textfile::version_2
         if( -1 == m_DataMapping[m_iColumn] )
             return xerr_code( Error, error_state::FIELD_NOT_FOUND, "Skipping unkown field" );
 
+        return Error;
+    }
+
+    //------------------------------------------------------------------------------
+
+    xcore::err stream::ReadFieldUserType( crc::units<32>& UserType, const char* pColumnName ) noexcept
+    {
+        xcore::err Error;
+        error::scope( Error, [&]
+        {
+            // If we have any error lets make sure we always move to the next column
+             m_iColumn++;
+        });
+
+        //
+        // Read the new field
+        //
+        if( ReadFieldUserType(pColumnName).isError(Error) ) return Error; 
+
         //
         // Get ready to read to column
         //
@@ -1573,6 +1592,11 @@ namespace xcore::textfile::version_2
             UserType = Column.m_UserType;
         }
 
+        //
+        // Let the system know that we have moved on
+        //
+        m_iColumn++;
+
         return Error;
     }
 
@@ -1583,7 +1607,6 @@ namespace xcore::textfile::version_2
         xassert( m_iLine > 0 );
 
         xcore::err      Error;
-        crc::units<32>  FileUserType;
 
         error::scope( Error, [&]
         {
@@ -1594,7 +1617,7 @@ namespace xcore::textfile::version_2
         //
         // Get the user type if any
         //
-        if( ReadFieldType( FileUserType, pColumnName ).isError(Error) )
+        if( ReadFieldUserType( pColumnName ).isError(Error) )
             return Error;
 
         //

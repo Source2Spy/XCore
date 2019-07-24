@@ -267,7 +267,7 @@ namespace xcore::textfile::examples
                     crc::units<32> Type;
                     if( isRead )
                     {
-                        if( TextFile.ReadFieldType( Type, "Value:?" ).isError(Error) ) return;
+                        if( TextFile.ReadFieldUserType( Type, "Value:?" ).isError(Error) ) return;
                     }
                     else
                     {

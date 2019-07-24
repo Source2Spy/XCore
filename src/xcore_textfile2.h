@@ -192,7 +192,7 @@ namespace xcore::textfile::version_2
                         template< std::size_t N, typename... T_ARGS >
         inline          xcore::err      Field               ( crc::units<32> UserType, const char(&pFieldName)[N], T_ARGS&... Args )    noexcept;
 
-                        xcore::err      ReadFieldType       ( crc::units<32>& UserType, const char* pFieldName )                        noexcept;
+                        xcore::err      ReadFieldUserType   ( crc::units<32>& UserType, const char* pFieldName )                        noexcept;
 
                         template< std::size_t N, typename... T_ARGS >
         inline          xcore::err      Field               ( const char(&pFieldName)[N], T_ARGS&... Args )                             noexcept;
@@ -233,6 +233,7 @@ namespace xcore::textfile::version_2
                         xcore::err      ReadLine            ( void )                                                                    noexcept;
                         xcore::err      getC                ( int& c )                                                                  noexcept;
                         xcore::err      ReadColumn          ( crc::units<32> UserType, const char* pFieldName, arglist::view Args )     noexcept;
+                        xcore::err      ReadFieldUserType   ( const char* pFieldName )                                                  noexcept;
 
                         template< typename T >
                         xcore::err      Write               ( T& Buffer, int Size = sizeof(T), int Count = 1 )                          noexcept;
