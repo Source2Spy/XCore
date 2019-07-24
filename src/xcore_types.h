@@ -25,8 +25,15 @@ namespace xcore::types
     //------------------------------------------------------------------------------------------
     // Safe cast
     //------------------------------------------------------------------------------------------
-    template< typename T_TYPEA, typename T_TYPEB > constexpr
-    std::enable_if_t< std::is_integral_v<T_TYPEA>, T_TYPEA > safe_cast( T_TYPEB B ) noexcept { xassert( static_cast<T_TYPEB>(static_cast<T_TYPEA>(B)) == B ); return static_cast<T_TYPEA>(B); }
+    // template< typename T_TYPEA, typename T_TYPEB > constexpr
+    // std::enable_if_t< std::is_integral_v<T_TYPEA>, T_TYPEA > safe_cast( T_TYPEB B ) noexcept { xassert( static_cast<T_TYPEB>(static_cast<T_TYPEA>(B)) == B ); return static_cast<T_TYPEA>(B); }
+
+    //------------------------------------------------------------------------------
+    // Description:
+    //      Converts an rvalue to an lvalue 
+    //------------------------------------------------------------------------------
+    template <typename T>
+    constexpr T& lvalue(T&& r) noexcept { return r; }
 
     //------------------------------------------------------------------------------------------
     // Tuple err to index conversion

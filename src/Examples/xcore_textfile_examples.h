@@ -1,10 +1,3 @@
-    //------------------------------------------------------------------------------
-    // Description:
-    //      Converts an rvalue to an lvalue 
-    //------------------------------------------------------------------------------
-    template <typename T>
-    constexpr T& lvalue(T&& r) noexcept { return r; }
-
 
 namespace xcore::textfile::examples
 {
@@ -22,7 +15,6 @@ namespace xcore::textfile::examples
     constexpr static std::array                            UInt32Back              = { std::uint32_t{33313452},    std::uint32_t{222321},  std::uint32_t{111434}   };
     constexpr static std::array                            UInt16Back              = { std::uint16_t{31352},       std::uint16_t{2221},    std::uint16_t{11434}    };
     constexpr static std::array                            UInt8Back               = { std::uint8_t {33},          std::uint8_t {22},      std::uint8_t {44}       };
-
 
     //------------------------------------------------------------------------------
     // Comparing floating points numbers
@@ -279,7 +271,7 @@ namespace xcore::textfile::examples
                     {
                     case crc::FromString<32>("V3").m_Value:     if( TextFile.Field( Type, "Value:?", Position[0], Position[1], Position[2]   ).isError(Error)    ) return; break;
                     case crc::FromString<32>("BOOL").m_Value:   if( TextFile.Field( Type, "Value:?", isValid                                 ).isError(Error)    ) return; break;
-                    case crc::FromString<32>("STRING").m_Value: if( TextFile.Field( Type, "Value:?", lvalue(Name.getView())                  ).isError(Error)    ) return; break;
+                    case crc::FromString<32>("STRING").m_Value: if( TextFile.Field( Type, "Value:?", types::lvalue(Name.getView())           ).isError(Error)    ) return; break;
                     }
                 }
             )) return Error;
@@ -325,7 +317,7 @@ namespace xcore::textfile::examples
                     0
                     ||  TextFile.Field( Types[0].m_CRC, "Position", Position[0], Position[1], Position[2]   ).isError(Error)
                     ||  TextFile.Field( Types[1].m_CRC, "IsValid",  isValid                                 ).isError(Error)
-                    ||  TextFile.Field( Types[2].m_CRC, "Name",     lvalue(Name.getView())                  ).isError(Error)
+                    ||  TextFile.Field( Types[2].m_CRC, "Name",     types::lvalue(Name.getView())           ).isError(Error)
                     ;
                 }
             )) return Error;
@@ -345,13 +337,12 @@ namespace xcore::textfile::examples
                     {
                     case 0: if( TextFile.Field( Types[0].m_CRC, "Value:?", Position[0], Position[1], Position[2]   ).isError(Error)    ) return; break;
                     case 1: if( TextFile.Field( Types[1].m_CRC, "Value:?", isValid                                 ).isError(Error)    ) return; break;
-                    case 2: if( TextFile.Field( Types[2].m_CRC, "Value:?", lvalue(Name.getView())                  ).isError(Error)    ) return; break;
+                    case 2: if( TextFile.Field( Types[2].m_CRC, "Value:?", types::lvalue(Name.getView())           ).isError(Error)    ) return; break;
                     }
 
                     TextFile.Field( Types[1].m_CRC, "IsValid",  isValid                                 ).isError(Error);
                 }
             )) return Error;
-
 
         return Error;
     }
@@ -410,26 +401,6 @@ namespace xcore::textfile::examples
         {
             xassert(false);
         }
-
-/*
-        //
-        // Test write and read (Binary Style)
-        //
-        Test01( TextFileName,  xtextfile::access_type::MASK_BINARY );
-        TextFileRead( TextFileName );
-
-        //
-        // Transform to binary format
-        //
-        xtextfile::TransformTo( TextFileName, BinaryFileName, xtextfile::access_type::MASK_BINARY );
-        TextFileRead( BinaryFileName );
-    
-        //
-        // Transform to text format
-        //
-        xtextfile::TransformTo( BinaryFileName, TextFileName, xtextfile::access_type::MASK_ZERO );
-        TextFileRead( TextFileName );
-*/
     }
 
 }
