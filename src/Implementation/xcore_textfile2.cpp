@@ -1510,26 +1510,17 @@ namespace xcore::textfile::version_2
 
     //------------------------------------------------------------------------------
 
-    xcore::err stream::ReadColumn( const crc::units<32> iUserRef, const char* pColumnName, arglist::view Args ) noexcept
+    xcore::err stream::ReadFieldType( crc::units<32>& UserType, const char* pColumnName ) noexcept
     {
-        xassert( m_iLine > 0 );
-
         xcore::err Error;
-        error::scope( Error, [&]
-        {
-            // If we have any error lets make sure we always move to the next column
-             m_iColumn++;
-        });
 
-        //
-        // Create a mapping from user_types order to file order of fields
-        //
         if( m_iLine == 1 )
         {
             m_DataMapping.append() = -1;
-            xassert( m_iColumn == (m_DataMapping.size()-1) );
+            //xassert( m_iColumn == (m_DataMapping.size()-1) );
 
             // Find the column name
+            bool bFound = false;
             for( int i=0; i<m_nColumns; ++i )
             {
                 auto& Column = m_Columns[i];
@@ -1550,10 +1541,67 @@ namespace xcore::textfile::version_2
                         continue;
 
                     m_DataMapping.last() = i;
+                    bFound = true;
                     break;
                 }
             }
 
+            if( bFound == false )
+            {
+                XLOG_CHANNEL_WARNING( m_Channel, "Unable to find the field %s", pColumnName );
+                return xerr_code( Error, error_state::FIELD_NOT_FOUND, "Unable to find the filed requrested" );
+            }
+        }
+
+        if( -1 == m_DataMapping[m_iColumn] )
+            return xerr_code( Error, error_state::FIELD_NOT_FOUND, "Skipping unkown field" );
+
+        //
+        // Get ready to read to column
+        //
+        auto& Column = m_Columns[m_DataMapping[m_iColumn]];
+
+        //
+        // if the type is '?' then check the types every call
+        //
+        if( Column.m_nTypes == -1 )
+        {
+            UserType = Column.m_DynamicFields[0].m_UserType;
+        }
+        else
+        {
+            UserType = Column.m_UserType;
+        }
+
+        return Error;
+    }
+
+    //------------------------------------------------------------------------------
+
+    xcore::err stream::ReadColumn( const crc::units<32> iUserRef, const char* pColumnName, arglist::view Args ) noexcept
+    {
+        xassert( m_iLine > 0 );
+
+        xcore::err      Error;
+        crc::units<32>  FileUserType;
+
+        error::scope( Error, [&]
+        {
+            // If we have any error lets make sure we always move to the next column
+             m_iColumn++;
+        });
+
+        //
+        // Get the user type if any
+        //
+        if( ReadFieldType( FileUserType, pColumnName ).isError(Error) )
+            return Error;
+
+        //
+        // Create a mapping from user_types order to file order of fields
+        //
+        if( m_iLine == 1 )
+        {
             // If we have a mapping then lets see if we can determine the types
             if( m_DataMapping[m_iColumn] != - 1 )
             {
@@ -1575,21 +1623,11 @@ namespace xcore::textfile::version_2
                     else
                     {
                         // We don't have the same count
-                        m_DataMapping[m_DataMapping.size()-1] = -1;
+                        m_DataMapping.last() = -1;
                         XLOG_CHANNEL_WARNING( m_Channel, "Found the coloumn but the type count did not match. %s", pColumnName );
                     }
                 }
             }
-            else
-            {
-                XLOG_CHANNEL_WARNING( m_Channel, "Unable to find the field amount the types. %s", pColumnName );
-            }
-        }
-
-        // Make sure we have the type in question
-        if( -1 == m_DataMapping[m_iColumn] )
-        {
-            return xerr_code( Error, error_state::READ_TYPES_DONTMATCH, "Fail to find the correct type" );
         }
 
         //

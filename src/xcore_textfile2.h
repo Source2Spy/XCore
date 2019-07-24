@@ -35,6 +35,7 @@ namespace xcore::textfile::version_2
         , UNEXPECTED_EOF
         , READ_TYPES_DONTMATCH
         , MISMATCH_TYPES
+        , FIELD_NOT_FOUND
     };
 
     enum class file_type
@@ -190,6 +191,8 @@ namespace xcore::textfile::version_2
 
                         template< std::size_t N, typename... T_ARGS >
         inline          xcore::err      Field               ( crc::units<32> UserType, const char(&pFieldName)[N], T_ARGS&... Args )    noexcept;
+
+                        xcore::err      ReadFieldType       ( crc::units<32>& UserType, const char* pFieldName )                        noexcept;
 
                         template< std::size_t N, typename... T_ARGS >
         inline          xcore::err      Field               ( const char(&pFieldName)[N], T_ARGS&... Args )                             noexcept;

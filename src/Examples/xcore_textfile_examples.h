@@ -232,6 +232,62 @@ namespace xcore::textfile::examples
     }
 
     //------------------------------------------------------------------------------
+    // Property examples
+    //------------------------------------------------------------------------------
+    inline
+    xcore::err Properties( xcore::textfile::stream& TextFile, const bool isRead, const flags Flags ) noexcept
+    {
+        xcore::err                              Error;
+        std::array<string::ref<char>,3>         String          { StringBack[0].getView(),    StringBack[1].getView(), StringBack[2].getView() };
+        string::fixed<char,64>                  Name            { "Hello" };
+        bool                                    isValid         { true };
+        xcore::array<float,3>                   Position        { 0.1f, 0.5f, 0.6f };
+        constexpr static xcore::array           Types
+        {
+                user_defined_types{     "V3", "fff"  }
+            ,   user_defined_types{   "BOOL",   "c"  }
+            ,   user_defined_types{ "STRING",   "s"  }
+        };
+
+        //
+        // Save/Load a record
+        //
+        if( TextFile.Record( Error, "Properties"
+            ,   [&]( std::size_t& C, xcore::err& Error )
+                {
+                    if( isRead ) xassert( C == 3 );
+                    else         C = 3;
+                }
+            ,   [&]( std::size_t i, xcore::err& Error )
+                {
+                    // Just save some integers to show that we can still safe normal fields at any point
+                    if( TextFile.Field( "Name", String[i] ).isError(Error) ) return;
+
+                    // Handle the data
+                    crc::units<32> Type;
+                    if( isRead )
+                    {
+                        if( TextFile.ReadFieldType( Type, "Value:?" ).isError(Error) ) return;
+                    }
+                    else
+                    {
+                        // Property_to_type
+                        Type = Types[i].m_CRC;
+                    }
+
+                    switch(Type.m_Value)
+                    {
+                    case crc::FromString<32>("V3").m_Value:     if( TextFile.Field( Type, "Value:?", Position[0], Position[1], Position[2]   ).isError(Error)    ) return; break;
+                    case crc::FromString<32>("BOOL").m_Value:   if( TextFile.Field( Type, "Value:?", isValid                                 ).isError(Error)    ) return; break;
+                    case crc::FromString<32>("STRING").m_Value: if( TextFile.Field( Type, "Value:?", lvalue(Name.getView())                  ).isError(Error)    ) return; break;
+                    }
+                }
+            )) return Error;
+
+        return Error;
+    }
+
+    //------------------------------------------------------------------------------
     // Test different types
     //------------------------------------------------------------------------------
     inline
@@ -322,6 +378,8 @@ namespace xcore::textfile::examples
         if( SimpleVariableTypes( TextFile, isRead, Flags ).isError( Error ) ) return Error;
 
         if( UserTypes( TextFile, isRead, Flags ).isError( Error ) ) return Error;
+
+        if( Properties( TextFile, isRead, Flags ).isError( Error ) ) return Error;
 
         //
         // When we are reading and we are done dealing with records we can check if we are done reading a file like this

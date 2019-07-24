@@ -801,3 +801,10 @@
   ;V3     0.1000000015 0.5 0.6000000238       1      
   ;BOOL   1                                   1      
   ;STRING "Hello"                             1      
+
+[ Properties : 3 ]
+{ Name:s          Value:?                               }
+//--------------  -------------------------------------
+  "String Test"   ;V3     0.1000000015 0.5 0.6000000238
+  "Another test"  ;BOOL   1                            
+  "Yet another"   ;STRING "Hello"                      
