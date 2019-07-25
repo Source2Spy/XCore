@@ -89,7 +89,8 @@ namespace xcore::target
     constexpr endian        getEndian           ( void )                    noexcept;
     constexpr bits          getBits             ( void )                    noexcept;
     constexpr auto          getPlatformCount    ( void )                    noexcept { return static_cast<int>(platform::COUNT); }
-    constexpr const char*   getPlatformString   ( const platform Platform ) noexcept
+    
+    namespace details
     {
         constexpr static std::array<const char*,static_cast<int>(platform::COUNT)> Strings =
         { 
@@ -99,7 +100,11 @@ namespace xcore::target
             , "LINUX" 
             , "ANDROID" 
         };
-        return Strings[ static_cast<int>(Platform) ];
+    }
+
+    constexpr const char*   getPlatformString   ( const platform Platform ) noexcept
+    {
+        return details::Strings[ static_cast<int>(Platform) ];
     }
 }
 
