@@ -72,8 +72,8 @@ namespace xcore::textfile::version_2
         string::fixed<char,32>  m_Name;
         string::fixed<char,32>  m_SystemTypes;
         crc::units<32>          m_CRC;
-        int                     m_NameLength;
-        int                     m_nSystemTypes;     // How many system types we are using, this is basically the length of the m_SystemType string
+        int                     m_NameLength{};
+        int                     m_nSystemTypes{};     // How many system types we are using, this is basically the length of the m_SystemType string
     };
 
     //-----------------------------------------------------------------------------------------------------

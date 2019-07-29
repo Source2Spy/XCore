@@ -1564,7 +1564,7 @@ namespace xcore::textfile::version_2
     xcore::err stream::ReadFieldUserType( crc::units<32>& UserType, const char* pColumnName ) noexcept
     {
         xcore::err Error;
-        error::scope( Error, [&]
+        error::scope Scope( Error, [&]
         {
             // If we have any error lets make sure we always move to the next column
              m_iColumn++;
@@ -1607,8 +1607,7 @@ namespace xcore::textfile::version_2
         xassert( m_iLine > 0 );
 
         xcore::err      Error;
-
-        error::scope( Error, [&]
+        error::scope    Scope( Error, [&]
         {
             // If we have any error lets make sure we always move to the next column
              m_iColumn++;

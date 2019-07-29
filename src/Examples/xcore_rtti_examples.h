@@ -18,13 +18,13 @@ namespace xcore::rtti::examples
     //--------------------------------------------------------------------------------------------------------
     struct test
     {
-        int m_X;
+        int m_X{};
         xcore_rtti_start(test)
     };
 
     struct test2
     {
-        int m_Y;
+        int m_Y{};
         xcore_rtti_start(test2)
     };
 
@@ -32,19 +32,19 @@ namespace xcore::rtti::examples
     //--------------------------------------------------------------------------------------------------------
     struct child1 : test
     {
-        int m_A;
+        int m_A{};
         xcore_rtti(child1,test)
     };
 
     struct child2 : child1
     {
-        int m_B;
+        int m_B{};
         xcore_rtti(child2,child1)
     };
 
     struct child3 : child2, test2
     {
-        int m_C;
+        int m_C{};
         xcore_rtti(child3,child2,test2)
     };
 

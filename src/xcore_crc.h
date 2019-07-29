@@ -295,7 +295,7 @@ namespace xcore::crc
         for( auto i = 0u; auto c = pIn[i]; ++i )
         {
             c = c^CRC.m_Value;
-            CRC.m_Value = details::table<std::uint8_t>::ms_Table[c & 0x0f] ^ details::table<std::uint8_t>::ms_Table[16 + ((c >> 4) & 0x0f)];
+            CRC.m_Value = details::table<std::uint8_t>::ms_Table[c & 0x0f] ^ details::table<std::uint8_t>::ms_Table[16l + ((c >> 4) & 0x0f)];
         }
 
         return units<8>{static_cast<std::uint8_t>(~CRC.m_Value)};
@@ -324,7 +324,7 @@ namespace xcore::crc
         for( auto i = 0u; auto c = static_cast<std::uint8_t>(pIn[i]); ++i )
         {
             c = c ^ CRC.m_Value;
-            CRC.m_Value = details::table<std::uint8_t>::ms_Table[c & 0x0f] ^ details::table<std::uint8_t>::ms_Table[16 + ((c >> 4) & 0x0f)];
+            CRC.m_Value = details::table<std::uint8_t>::ms_Table[c & 0x0f] ^ details::table<std::uint8_t>::ms_Table[16l + ((c >> 4) & 0x0f)];
         }
         return units<8>{static_cast<std::uint8_t>(~CRC.m_Value)};
     }

@@ -60,7 +60,7 @@ namespace xcore::allocator
         //--------------------------------------------------------------------------------------------
         xcore::err resize( size_type Count ) noexcept 
         {
-            xassert( Count >= 0 );
+            xassert( Count > 0 );
             err     Error;
 
             auto    p       = new entry[ Count ];
@@ -74,7 +74,10 @@ namespace xcore::allocator
             if( op )
             {
                 xassert( parent::size() > 0 );
-                for( decltype(parent::size()) i = 0; i<parent::size(); ++i )
+                
+                // Move all entries to new buffer
+                const auto count = std::min( static_cast<size_type>(parent::size()), Count );
+                for( size_type i = 0; i<count; ++i )
                     p[i] = std::move(op[i]);
             
                 delete []op;
