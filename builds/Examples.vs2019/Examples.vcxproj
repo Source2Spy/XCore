@@ -27,15 +27,16 @@
     <ClInclude Include="..\..\src\Examples\xcore_function_examples.h" />
     <ClInclude Include="..\..\src\Examples\xcore_guid_examples.h" />
     <ClInclude Include="..\..\src\Examples\xcore_log_examples.h" />
+    <ClInclude Include="..\..\src\Examples\xcore_properties.h" />
     <ClInclude Include="..\..\src\Examples\xcore_rtti_examples.h" />
     <ClInclude Include="..\..\src\Examples\xcore_string_examples.h" />
     <ClInclude Include="..\..\src\Examples\xcore_textfile_examples.h" />
     <ClInclude Include="..\..\src\Examples\xcore_vector_examples.h" />
-    <ClInclude Include="..\..\src\Implementation\Settings\PropertyConfig.h" />
     <ClInclude Include="..\..\src\Implementation\xcore_linear_buffers_hardness.h" />
     <ClInclude Include="..\..\src\Implementation\xcore_string_inline.h" />
     <ClInclude Include="..\..\src\Implementation\xcore_textfile2_inline.h" />
     <ClInclude Include="..\..\src\Implementation\xcore_vector_inline.h" />
+    <ClInclude Include="..\..\src\Settings\PropertyConfig.h" />
     <ClInclude Include="..\..\src\xcore.h" />
     <ClInclude Include="..\..\src\xcore_arglist.h" />
     <ClInclude Include="..\..\src\xcore_array.h" />

@@ -29,19 +29,15 @@ namespace xcore
 }
 
 //---------------------------------------------------------------------------
-// 3RDParty / Dependencies
-//---------------------------------------------------------------------------
-
 // including span 
+//---------------------------------------------------------------------------
 #define TCB_SPAN_NAMESPACE_NAME std
 #include "../dependencies/span/include/tcb/span.hpp"
 
+//---------------------------------------------------------------------------
 // including meow hash
+//---------------------------------------------------------------------------
 #include "../dependencies/meow_hash_cpp/meow_hash.hpp"
-
-// including properties
-#include "../dependencies/Properties/src/Properties.h" 
-namespace xcore::property{ using namespace property; }
 
 //---------------------------------------------------------------------------
 // xCore headers
@@ -72,6 +68,12 @@ namespace xcore::textfile { namespace version_1{} namespace version_2{} using na
 #include "xcore_textfile.h"
 #include "xcore_textfile2.h"
 #include "xcore_rtti.h"
+
+//---------------------------------------------------------------------------
+// including properties
+//---------------------------------------------------------------------------
+#include "../dependencies/Properties/src/Properties.h" 
+namespace xcore::property{ using namespace ::property; }
 
 //---------------------------------------------------------------------------
 // Inline functions

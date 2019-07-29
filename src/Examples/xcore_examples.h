@@ -8,6 +8,7 @@
 #include "xcore_guid_examples.h"
 #include "xcore_rtti_examples.h"
 #include "xcore_vector_examples.h"
+#include "xcore_properties.h"
 
 
 namespace xcore::examples
@@ -24,8 +25,9 @@ namespace xcore::examples
             xcore::rtti::examples::Test();
             xcore::guid::examples::Test();
             xcore::containers::vector::examples::Test();
+            xcore::textfile::examples::Test();
         }
 
-        xcore::textfile::examples::Test();
+        xcore::property::examples::Test();
     }
 }

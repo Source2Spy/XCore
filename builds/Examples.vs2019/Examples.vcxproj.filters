@@ -144,7 +144,10 @@
     <ClInclude Include="..\..\dependencies\properties\src\Properties.h">
       <Filter>xCore\Dependencies</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\src\Implementation\Settings\PropertyConfig.h">
+    <ClInclude Include="..\..\src\Examples\xcore_properties.h">
+      <Filter>Examples</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\Settings\PropertyConfig.h">
       <Filter>xCore\Settings</Filter>
     </ClInclude>
   </ItemGroup>

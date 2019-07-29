@@ -62,7 +62,7 @@ namespace property
               int
             , bool
             , float
-            , std::string
+            , xcore::string::fixed<char,256>
             , oobb
         >;
     
