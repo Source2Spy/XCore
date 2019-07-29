@@ -19,6 +19,9 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\..\dependencies\meow_hash_cpp\meowhash_cpp\meow_hash.h" />
+    <ClInclude Include="..\..\dependencies\properties\src\Properties.h" />
+    <ClInclude Include="..\..\dependencies\span\include\tcb\span.hpp" />
     <ClInclude Include="..\..\src\Examples\xcore_error_examples.h" />
     <ClInclude Include="..\..\src\Examples\xcore_examples.h" />
     <ClInclude Include="..\..\src\Examples\xcore_function_examples.h" />
@@ -28,8 +31,7 @@
     <ClInclude Include="..\..\src\Examples\xcore_string_examples.h" />
     <ClInclude Include="..\..\src\Examples\xcore_textfile_examples.h" />
     <ClInclude Include="..\..\src\Examples\xcore_vector_examples.h" />
-    <ClInclude Include="..\..\src\Implementation\3rdparty\span.hpp" />
-    <ClInclude Include="..\..\src\Implementation\meow_hash.hpp" />
+    <ClInclude Include="..\..\src\Implementation\Settings\PropertyConfig.h" />
     <ClInclude Include="..\..\src\Implementation\xcore_linear_buffers_hardness.h" />
     <ClInclude Include="..\..\src\Implementation\xcore_string_inline.h" />
     <ClInclude Include="..\..\src\Implementation\xcore_textfile2_inline.h" />
@@ -64,6 +66,10 @@
   <ItemGroup>
     <ClCompile Include="..\..\src\Examples\main.cpp" />
     <ClCompile Include="..\..\src\xcore.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\README.md" />
+    <None Include="..\UpdateDependencies.bat" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>15.0</VCProjectVersion>
@@ -124,6 +130,7 @@
       <SDLCheck>true</SDLCheck>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
+      <AdditionalIncludeDirectories>..\..\src\Settings</AdditionalIncludeDirectories>
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -133,6 +140,7 @@
       <SDLCheck>true</SDLCheck>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpplatest</LanguageStandard>
+      <AdditionalIncludeDirectories>..\..\src\Settings</AdditionalIncludeDirectories>
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -144,6 +152,7 @@
       <SDLCheck>true</SDLCheck>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
+      <AdditionalIncludeDirectories>..\..\src\Settings</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
@@ -159,6 +168,7 @@
       <SDLCheck>true</SDLCheck>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
+      <AdditionalIncludeDirectories>..\..\src\Settings</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>

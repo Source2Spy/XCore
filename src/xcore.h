@@ -20,15 +20,6 @@
 #include <stdarg.h>  
 
 //---------------------------------------------------------------------------
-// 3RDParty
-//---------------------------------------------------------------------------
-
-// Src from: https://github.com/tcbrindle/span
-#define TCB_SPAN_NAMESPACE_NAME std
-#include "Implementation/3rdparty/span.hpp"
-
-
-//---------------------------------------------------------------------------
 // Predefinitions
 //---------------------------------------------------------------------------
 namespace xcore
@@ -36,6 +27,21 @@ namespace xcore
     namespace log       { struct logger; }
     namespace context   { struct base;   }
 }
+
+//---------------------------------------------------------------------------
+// 3RDParty / Dependencies
+//---------------------------------------------------------------------------
+
+// including span 
+#define TCB_SPAN_NAMESPACE_NAME std
+#include "../dependencies/span/include/tcb/span.hpp"
+
+// including meow hash
+#include "../dependencies/meow_hash_cpp/meow_hash.hpp"
+
+// including properties
+#include "../dependencies/Properties/src/Properties.h" 
+namespace xcore::property{ using namespace property; }
 
 //---------------------------------------------------------------------------
 // xCore headers
@@ -60,7 +66,6 @@ namespace xcore
 #include "xcore_event.h"
 #include "xcore_string.h"
 #include "xcore_arglist.h"
-#include "Implementation/meow_hash.hpp"
 #include "xcore_guid.h"
 #include "xcore_log.h"
 namespace xcore::textfile { namespace version_1{} namespace version_2{} using namespace version_2; }
