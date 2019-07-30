@@ -1,18 +1,95 @@
 
 //--------------------------------------------------------------------------------
-//example0
+//example3_custom_lists
 //--------------------------------------------------------------------------------
 
 // New Types
 < S32:d BOOL:c F32:f STRING:s OOBB:ff >
 
-[ Property-Paths : 2 ]
+[ Property-Paths : 50 ]
 { Index:G            Key:g     }
 //-----------------  ---------
-  #FFFFFFFFFFFFFFFF  #D94178E9
+  #FFFFFFFFFFFFFFFF  #2AE91AAC
+  #FFFFFFFFFFFFFFFF  #7E8AD774
+           #DD0E82A  #7E8AD774
   #FFFFFFFFFFFFFFFF  #C7A226F7
+          #2A27B8F7  #7E8AD774
+  #FFFFFFFFFFFFFFFF  #C7A226F7
+          #32B92591  #7E8AD774
+  #FFFFFFFFFFFFFFFF  #C7A226F7
+          #3DB989CD  #7E8AD774
+  #FFFFFFFFFFFFFFFF  #C7A226F7
+          #432BD61B  #7E8AD774
+  #FFFFFFFFFFFFFFFF  #C7A226F7
+          #4F94ED93  #7E8AD774
+  #FFFFFFFFFFFFFFFF  #C7A226F7
+          #534F3364  #7E8AD774
+  #FFFFFFFFFFFFFFFF  #C7A226F7
+          #616D5CF6  #7E8AD774
+  #FFFFFFFFFFFFFFFF  #C7A226F7
+          #68C893B8  #7E8AD774
+  #FFFFFFFFFFFFFFFF  #C7A226F7
+          #718A5282  #7E8AD774
+  #FFFFFFFFFFFFFFFF  #C7A226F7
+  #FFFFFFFFFFFFFFFF  #262FD356
+          #4A8F14CE  #262FD356
+  #FFFFFFFFFFFFFFFF  #3955E65F
+  #FFFFFFFFFFFFFFFF  #753DCD57
+  #FFFFFFFFFFFFFFFF  #839064D7
+  #FFFFFFFFFFFFFFFF  #2F8769AD
+  #FFFFFFFFFFFFFFFF  #D6ABC107
+  #FFFFFFFFFFFFFFFF  #E579A345
+                 #0  #E579A345
+                 #1  #E579A345
+          #4BE1F5C9  #262FD356
+  #FFFFFFFFFFFFFFFF  #3955E65F
+  #FFFFFFFFFFFFFFFF  #753DCD57
+  #FFFFFFFFFFFFFFFF  #839064D7
+  #FFFFFFFFFFFFFFFF  #2F8769AD
+  #FFFFFFFFFFFFFFFF  #D6ABC107
+  #FFFFFFFFFFFFFFFF  #E579A345
+                 #0  #E579A345
+                 #1  #E579A345
+          #557E21D0  #262FD356
+  #FFFFFFFFFFFFFFFF  #3955E65F
+  #FFFFFFFFFFFFFFFF  #753DCD57
+  #FFFFFFFFFFFFFFFF  #839064D7
+  #FFFFFFFFFFFFFFFF  #2F8769AD
+  #FFFFFFFFFFFFFFFF  #D6ABC107
+  #FFFFFFFFFFFFFFFF  #E579A345
+                 #0  #E579A345
+                 #1  #E579A345
 
-[ Property-Data : 1 ]
+[ Property-Data : 30 ]
 { isArrayCount:c  nPaths:h  nPopPaths:h  Value:?        }
 //--------------  --------  -----------  --------------
+        1            #2         #0       ;S32 10       
         0            #2         #0       ;F32 #42CC33B8
+        0            #2         #1       ;F32 #42CC33B8
+        0            #2         #1       ;F32 #42CC33B8
+        0            #2         #1       ;F32 #42CC33B8
+        0            #2         #1       ;F32 #42CC33B8
+        0            #2         #1       ;F32 #42CC33B8
+        0            #2         #1       ;F32 #42CC33B8
+        0            #2         #1       ;F32 #42CC33B8
+        0            #2         #1       ;F32 #42CC33B8
+        0            #2         #1       ;F32 #42CC33B8
+        1            #1         #1       ;S32 3        
+        0            #3         #0       ;S32 22       
+        0            #1         #0       ;S32 222      
+        0            #1         #1       ;F32 #3ED70A3D
+        1            #2         #0       ;S32 2        
+        0            #1         #0       ;S32 0        
+        0            #1         #0       ;S32 1        
+        0            #3         #2       ;S32 22       
+        0            #1         #0       ;S32 222      
+        0            #1         #1       ;F32 #3ED70A3D
+        1            #2         #0       ;S32 2        
+        0            #1         #0       ;S32 0        
+        0            #1         #0       ;S32 1        
+        0            #3         #2       ;S32 22       
+        0            #1         #0       ;S32 222      
+        0            #1         #1       ;F32 #3ED70A3D
+        1            #2         #0       ;S32 2        
+        0            #1         #0       ;S32 0        
+        0            #1         #0       ;S32 1        

@@ -318,7 +318,7 @@ namespace xcore::textfile::version_2
             case 'f': case 'F':
             case 'd': case 'D':
             case 'c': case 'C':
-            case 's': case 'e':
+            case 's': 
             case 'g': case 'G':
             case 'h': case 'H':
             return true;

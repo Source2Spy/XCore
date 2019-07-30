@@ -19,7 +19,6 @@
 //      H      16 bit unsigned integer
 //      s      this is a std::string
 //      S      undefined (DONT USE)
-//      e      Enum this is a std::string but without spaces
 //-----------------------------------------------------------------------------------------------------
 namespace xcore::textfile::version_2
 {
