@@ -206,7 +206,7 @@ namespace xcore::textfile::version_2
                         template< std::size_t N, typename T >
         inline          bool            Record              ( xcore::err& Error, const char (&Str)[N]
                                                                 , T&& Callback )                                                        noexcept;
-                        xcore::err      WriteComment        ( const string::view<char> Comment )                                        noexcept;
+                        xcore::err      WriteComment        ( const string::view<const char> Comment )                                  noexcept;
 
 
         constexpr       bool            isReading           ( void )                                                            const   noexcept { return m_File.m_States.m_isReading; }

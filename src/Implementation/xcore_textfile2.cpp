@@ -589,7 +589,7 @@ namespace xcore::textfile::version_2
 
     //------------------------------------------------------------------------------
 
-    xcore::err stream::WriteComment( const string::view<char> Comment ) noexcept
+    xcore::err stream::WriteComment( const string::view<const char> Comment ) noexcept
     {
         xcore::err Error;
 

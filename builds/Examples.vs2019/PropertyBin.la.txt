@@ -1,0 +1,18 @@
+
+//--------------------------------------------------------------------------------
+//example0
+//--------------------------------------------------------------------------------
+
+// New Types
+< S32:d BOOL:c F32:f STRING:s OOBB:ff >
+
+[ Property-Paths : 2 ]
+{ Index:G            Key:g     }
+//-----------------  ---------
+  #FFFFFFFFFFFFFFFF  #D94178E9
+  #FFFFFFFFFFFFFFFF  #C7A226F7
+
+[ Property-Data : 1 ]
+{ isArrayCount:c  nPaths:h  nPopPaths:h  Value:?        }
+//--------------  --------  -----------  --------------
+        0            #2         #0       ;F32 #42CC33B8

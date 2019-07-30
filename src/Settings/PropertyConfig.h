@@ -1,4 +1,6 @@
 
+using string_t = xcore::string::ref<char>;
+
 //--------------------------------------------------------------------------------------------
 // Some structure to show that you can add your own atomic structures
 //--------------------------------------------------------------------------------------------
@@ -62,7 +64,7 @@ namespace property
               int
             , bool
             , float
-            , xcore::string::fixed<char,256>
+            , string_t
             , oobb
         >;
     

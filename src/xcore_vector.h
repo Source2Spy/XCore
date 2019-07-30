@@ -50,7 +50,7 @@ namespace xcore::containers::vector
         inline      void                                        eraseSwap                   ( const size_type Index, const size_type Count=1 )  noexcept;
     
         template<typename ...T_ARG>
-        inline      value_type&                                 append                      ( T_ARG&&...Args )                                  noexcept { auto Index = m_Count; appendList(1, std::forward<T_ARG>(Args)... ); return data()[Index]; }
+        inline      value_type&                                 append                      ( T_ARG&&...Args )                                  noexcept { auto Index = m_Count; appendList(1, std::forward<T_ARG&&>(Args)... ); return data()[Index]; }
     
         template<typename ...T_ARG>
         inline      value_type&                                 append                      ( size_type& Index, T_ARG&&...Args )                noexcept {      Index = m_Count; appendList(1, std::forward<T_ARG>(Args)... ); return data()[Index]; }

@@ -169,6 +169,25 @@ namespace xcore::string
     //------------------------------------------------------------------------------
     //------------------------------------------------------------------------------
 
+    template< typename T_CHAR > inline 
+    ref<T_CHAR>& ref<T_CHAR>::operator = ( const char_t* pStr ) noexcept
+    {
+        string::Copy( *this, pStr );
+        return *this;
+    }
+
+    //------------------------------------------------------------------------------
+
+    template< typename T_CHAR > inline 
+    ref<T_CHAR>& ref<T_CHAR>::operator = ( const self& Str ) noexcept
+    {
+        string::Copy( *this, Str );
+        return *this;
+    }
+
+    //------------------------------------------------------------------------------
+    //------------------------------------------------------------------------------
+
     /*
     inline
     units<char> sprintf ( view<char> Dest, const char* pFmt, ... ) noexcept

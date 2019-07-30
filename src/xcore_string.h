@@ -156,6 +156,7 @@ namespace xcore::string
     template< typename T_CHAR >
     struct ref 
     { 
+        using                           self            = ref<T_CHAR>;
         using                           char_t          = T_CHAR;
         using                           units           = xcore::string::units<char_t>;
         constexpr static int            cache_size_v    = (64 - sizeof(std::size_t))/sizeof(char_t); // 64bytes - (the variant type index with alignment)
@@ -226,6 +227,9 @@ namespace xcore::string
         {
             string::Copy(*this, View);
         }
+
+        inline ref<T_CHAR>& operator = ( const char_t* pStr ) noexcept;
+        inline ref<T_CHAR>& operator = ( const self& Str ) noexcept;
 
         constexpr int size( void ) const noexcept 
         { 
