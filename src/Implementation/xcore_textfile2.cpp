@@ -966,7 +966,6 @@ namespace xcore::textfile::version_2
 
     xcore::err stream::WriteLine( void ) noexcept
     {
-//        int         j;
         xcore::err  Error;
 
         xassert( m_File.m_States.m_isReading == false );
@@ -1018,32 +1017,39 @@ namespace xcore::textfile::version_2
                 //
                 // Write types
                 //
-                
-                if( m_File.Write( m_nColumns ).isError( Error ) )
-                    return Error;
+                {
+                    std::uint8_t nColumns = static_cast<std::uint8_t>(m_nColumns);
+                    if( m_File.Write( nColumns ).isError( Error ) ) return Error;
+                }
 
                 for( int i=0; i<m_nColumns; ++i )
                 {
                     auto& Column = m_Columns[i];
 
-                    if( m_File.WriteStr( { Column.m_Name.data(), Column.m_NameLength + 1 } ).isError( Error ) )
+                    if( m_File.WriteStr( string::view{ Column.m_Name.data(), Column.m_NameLength } ).isError( Error ) )
                         return Error;
 
                     if( Column.m_nTypes == -1 )
                     {
-                        if( m_File.WriteStr( string::constant{ ":?" } ).isError( Error ) )
+                        if( m_File.WriteChar( '?' ).isError( Error ) )
                             return Error;
                     }
                     else
                     {
                         if( Column.m_UserType.m_Value )
                         {
-                            const auto Index = m_UserTypes.getIndexByEntry<int>( *getUserType(Column.m_UserType) );
+                            if( m_File.WriteChar( ';' ).isError( Error ) )
+                                return Error;
+
+                            auto Index = m_UserTypes.getIndexByEntry<std::uint8_t>( *getUserType(Column.m_UserType) );
                             if( m_File.Write( Index ).isError( Error ) )
                                 return Error;
                         }
                         else
                         {
+                            if( m_File.WriteChar( ':' ).isError( Error ) )
+                                return Error;
+
                             if( m_File.WriteStr( { Column.m_SystemTypes.data(), static_cast<int>(Column.m_nTypes + 1) } ).isError( Error ) )
                                 return Error;
                         }
@@ -1072,9 +1078,12 @@ namespace xcore::textfile::version_2
                         if( DynamicFields.m_UserType.m_Value ) 
                         {
                             auto p     = getUserType( DynamicFields.m_UserType );
-                            auto Index = m_UserTypes.getIndexByEntry<int>( *p );
+                            auto Index = m_UserTypes.getIndexByEntry<std::uint8_t>( *p );
 
                             if( m_File.WriteChar( ';' ).isError(Error) )
+                                return Error;
+
+                            if( m_File.Write( Index ).isError(Error) )
                                 return Error;
                         }
                         else
@@ -1849,62 +1858,67 @@ namespace xcore::textfile::version_2
             m_DataMapping.clear();
 
             // Solve types
-            /*
             if( m_File.m_States.m_isBinary )
             {
-                // make sure it starts okay
-                if( m_File.getC(c).isError(Error) || c != '{' ) 
-                    if( Error )   return Error;
-                    else          return xerr_failure( Error, "Error reading file. Expecting '{' but didn't find it" );
-
-                if( m_File.getC(c).isError(Error) || c != 0 ) 
-                    if( Error )   return Error;
-                    else          return xerr_failure( Error, "Error reading file. Expecting 'end_of_string' but didn't find it" );
-
-                // Read all the types
-                do
+                // Read the number of columns
                 {
-                    // Read type information
-                    Size = 0;
-                    if( m_File.getC(c).isError(Error) ) return Error;
-                    while( c != -1 )
+                    std::uint8_t nColumns;
+                    if( m_File.Read(nColumns).isError(Error) ) 
+                        return Error;
+
+                    m_nColumns = nColumns;
+                    m_Columns.clear();
+                    m_Columns.appendList( m_nColumns );
+                }
+
+                //
+                // Read all the types
+                //
+                for( int l=0; l<m_nColumns; l++)
+                {
+                    auto& Column = m_Columns[l];
+
+                    // Name
+                    Column.m_NameLength = 0;
+                    do 
                     {
-                        Buffer[Size++] = c;
-                        if( c == 0 ) break;
-                        if( c == ';' )
-                        {
-                            if( m_File.Read( reinterpret_cast<std::uint16_t&>(Buffer[Size])).isError( Error ) )
-                                return Error;
-                            xassert_block_basic()
-                            {
-                                auto Index = reinterpret_cast<std::uint16_t&>(Buffer[Size]);
-                                xassert( Index <= m_UserTypes.size() );
-                            }
-                        
-                            Size += 2;
-                            break;
-                        }
                         if( m_File.getC(c).isError(Error) ) return Error;
-                    }
+                        Column.m_Name[Column.m_NameLength++] = c;
+                    } while( c != ':'
+                          && c != ';'
+                          && c != '?' );
 
-                    / *
-                    if( c == -1 )
+                    Column.m_Name[Column.m_NameLength-1] = 0;
+
+                    // Read type information
+                    if( c == ':' )
                     {
-                        if( m_pFile->isEOF()  ) x_throw( "Found an expected end of file");
-                        else x_throw( "Found an error while reading the types");
+                        Column.m_nTypes = 0;
+                        do 
+                        {
+                            if( m_File.getC(c).isError(Error) ) return Error;
+                            Column.m_SystemTypes[Column.m_nTypes++] = c;
+                        } while(c);
+                        Column.m_nTypes--;
+                        Column.m_UserType.m_Value = 0;
                     }
-                    * /
+                    else if( c == ';' )
+                    { 
+                        std::uint8_t Index;
+                        if( m_File.Read(Index).isError(Error) ) return Error;
 
-                    if( Buffer[0] != '}' )
+                        auto& UserType = m_UserTypes[Index];
+                        Column.m_UserType = UserType.m_CRC;
+                        Column.m_nTypes   = UserType.m_nSystemTypes;
+                    }
+                    else if( c == '?' )
                     {
-                        // Okay build the type information
-                        BuildTypeInformation( Buffer );
+                        Column.m_nTypes = -1;
+                        Column.m_UserType.m_Value = 0;
                     }
-
-                } while( Buffer[0] != '}' );
+                }
             }
             else
-            */
             {
                 // Read out all the white space
                 if( m_File.ReadWhiteSpace(c).isError( Error ) )
@@ -1945,206 +1959,267 @@ namespace xcore::textfile::version_2
         }
 
         //
-        // Okay now we must read a line worth of data
-        //    
-        auto ReadComponent = [&]( details::field_info& Info, char SystemType ) noexcept
+        // Read the actual data
+        //
+        if( m_File.m_States.m_isBinary )
         {
-            xcore::err Error;
-
-            if( c == ' ' )
-                if( m_File.ReadWhiteSpace(c).isError( Error ) )
-                    return Error;
-
-            Size = 0;
-            if ( c == '"' )
+            for( m_iColumn=0; m_iColumn<m_nColumns; ++m_iColumn )
             {
-                if( SystemType != 's' )
-                    return xerr_failure( Error, "Unexpeced string value expecting something else");
+                auto& Column = m_Columns[m_iColumn];
 
-                Info.m_iData = m_iMemOffet;
-                do 
+                Column.m_FieldInfo.clear();
+                if( Column.m_nTypes == -1 )
                 {
-                    if( m_File.getC(c).isError(Error) ) return Error;
-                    m_Memory[m_iMemOffet++] = c;
-                } while( c != '"' );
+                    Column.m_DynamicFields.clear();
+                    auto& D = Column.m_DynamicFields.append();
+                    D.m_iField = 0;
 
-                m_Memory[m_iMemOffet-1] = 0;
-            }
-            else
-            {
-                std::uint64_t H;
-
-                if( c == '#' )
-                {
-                    if( m_File.getC(c).isError(Error) ) return Error;
-                    while( string::isCharHex(c) ) 
+                    D.m_NameLength = 0;
+                    do 
                     {
-                        Buffer[Size++] = c;                    
                         if( m_File.getC(c).isError(Error) ) return Error;
-                    }
+                        D.m_Name[D.m_NameLength++] = c;
+                    } while( c != ':'
+                          && c != ';' );
 
-                    if( Size == 0 )
-                        return xerr_failure( Error, "Fail to read a numeric value");
+                    D.m_Name[D.m_NameLength-1] = 0;
 
-                    Buffer[Size++] = 0;
-
-                    H = strtoull( Buffer, nullptr, 16 );
-                }
-                else
-                {
-                    bool isInt = true;
-
-                    if( c == '-' )
+                    // Read type information
+                    if( c == ':' )
                     {
-                        Buffer[Size++] = c;                    
-                        if( m_File.getC(c).isError(Error) ) return Error;
-                    }
-
-                    while( string::isCharDigit(c) ) 
-                    {
-                        Buffer[Size++] = c;                    
-                        if( m_File.getC(c).isError(Error) ) return Error;
-                        if( c == '.' )
+                        D.m_nTypes = 0;
+                        do 
                         {
-                            if( isInt == false ) return xerr_failure( Error, "I found an error loading a floating point number");
-
-                            isInt = false;
-                            Buffer[Size++] = c;                    
                             if( m_File.getC(c).isError(Error) ) return Error;
-                        }
+                            D.m_SystemTypes[D.m_nTypes++] = c;
+                        } while(c);
+                        D.m_nTypes--;
+                        D.m_UserType.m_Value = 0;
                     }
+                    else if( c == ';' )
+                    { 
+                        std::uint8_t Index;
+                        if( m_File.Read(Index).isError(Error) ) return Error;
 
-                    if( Size == 0 )
-                        return xerr_failure( Error, "Fail to read a numeric value");
-
-                    Buffer[Size++] = 0;
-
-
-                         if( SystemType == 'F' ) reinterpret_cast<double&>(H) = atof( Buffer );
-                    else if( SystemType == 'f' ) reinterpret_cast<float&>(H)  = static_cast<float>(atof( Buffer ));
-                    else if( isInt == false )
-                            {
-                                return xerr_code( Error, error_state::MISMATCH_TYPES, "I found a floating point number while trying to load an interger value");
-                            }
-                    else if( Buffer[0] == '-' )
-                    {
-                        if(    SystemType == 'g' 
-                            || SystemType == 'G' 
-                            || SystemType == 'h' 
-                            || SystemType == 'H' )
-                        {
-                            XLOG_CHANNEL_WARNING( m_Channel, "Reading a sign interger into a field which is unsign-int form this record [%s](%d)", m_Record.m_Name.data(), m_iLine );
-                        }
-
-                        H = static_cast<std::uint64_t>(strtoll( Buffer, nullptr, 10 ));
+                        auto& UserType = m_UserTypes[Index];
+                        D.m_UserType = UserType.m_CRC;
+                        D.m_nTypes   = UserType.m_nSystemTypes;
                     }
                     else
                     {
-                        H = static_cast<std::uint64_t>(strtoull( Buffer, nullptr, 10 ));
-                        if(    (SystemType == 'c' && H >= static_cast<std::uint64_t>(std::numeric_limits<std::int8_t>::max() ))
-                            || (SystemType == 'C' && H >= static_cast<std::uint64_t>(std::numeric_limits<std::int16_t>::max()))
-                            || (SystemType == 'd' && H >= static_cast<std::uint64_t>(std::numeric_limits<std::int32_t>::max()))
-                            || (SystemType == 'D' && H >= static_cast<std::uint64_t>(std::numeric_limits<std::int64_t>::max()))
-                            )
-                        {
-                            XLOG_CHANNEL_WARNING( m_Channel, "Reading a sign interger but the value in the file exceeds the allow positive interger portion in record [%s](%d)", m_Record.m_Name.data(), m_iLine );
-                        }
+                        xassert(false);
                     }
-                }
-
-                if( c != ' ' && c != '\n' ) 
-                    return xerr_failure( Error, "Expecting a space separator but I got a different character" );
-
-                switch( SystemType )
-                {
-                    case 'c': 
-                    case 'h':
-                                Info.m_iData = bits::Align( m_iMemOffet, 1); m_iMemOffet = Info.m_iData + 1; reinterpret_cast<std::uint8_t &>(m_Memory[Info.m_iData]) = static_cast<std::uint8_t>(H);
-                                break;
-                    case 'C':
-                    case 'H':
-                                Info.m_iData = bits::Align( m_iMemOffet, 2); m_iMemOffet = Info.m_iData + 2; reinterpret_cast<std::uint16_t&>(m_Memory[Info.m_iData]) = static_cast<std::uint16_t>(H);
-                                break;
-                    case 'f':
-                    case 'd':
-                    case 'g':
-                                Info.m_iData = bits::Align( m_iMemOffet, 4); m_iMemOffet = Info.m_iData + 4; reinterpret_cast<std::uint32_t&>(m_Memory[Info.m_iData]) = static_cast<std::uint32_t>(H);
-                                break;
-                    case 'F':
-                    case 'G':
-                    case 'D':
-                                Info.m_iData = bits::Align( m_iMemOffet, 8); m_iMemOffet = Info.m_iData + 8; reinterpret_cast<std::uint64_t&>(m_Memory[Info.m_iData]) = static_cast<std::uint64_t>(H);
-                                break;
-                }
-            }
-
-            return Error;
-        };
-
-        for( m_iColumn=0; m_iColumn<m_nColumns; ++m_iColumn )
-        {
-            auto& Column = m_Columns[m_iColumn];
-
-            // Read any white space
-            if( m_File.ReadWhiteSpace(c).isError( Error ) )
-                return Error;
-
-            Column.m_FieldInfo.clear();
-            if( Column.m_nTypes == -1 )
-            {
-                if( c != ':'  && c != ';' )
-                    return xerr_failure( Error, "Expecting a type definition" );
-
-                Column.m_DynamicFields.clear();
-                auto& D = Column.m_DynamicFields.append();
-                D.m_iField = 0;
-
-                Size = 0;
-                {
-                    int x;
-                    do 
-                    {
-                        if( m_File.getC(x).isError(Error) ) return Error;
-                        Buffer[Size++] = x;
-                    } while( string::isCharSpace(x) == false );
-
-                    Buffer[Size-1] = 0;
-                }
-
-                if( c == ';' )
-                {
-                    D.m_UserType = crc::FromString<32>( Buffer.data() );
-                    auto p = getUserType( D.m_UserType );
-                    if( p == nullptr )
-                        return xerr_failure( Error, "Fail to find the user type for a column" );
-
-                    D.m_nTypes = p->m_nSystemTypes;
-                    string::Copy( D.m_SystemTypes, p->m_SystemTypes );
                 }
                 else
                 {
-                    xassert(c ==':');
-                    D.m_nTypes = string::Copy( D.m_SystemTypes, Buffer ).m_Value;
-                    if( D.m_nTypes <= 0 )
-                        return xerr_failure( Error, "Fail to read a column, type. not system types specified" );
-                }
 
-                // Read all the types
-                c = ' ';
-                for( int n=0; n<D.m_nTypes ;n++ )
-                {
-                    auto& Field = Column.m_FieldInfo.append();
-                    if( ReadComponent( Field, D.m_SystemTypes[n] ).isError(Error) )
-                        return Error;
                 }
             }
-            else
+        }
+        else
+        {
+            //
+            // Okay now we must read a line worth of data
+            //    
+            auto ReadComponent = [&]( details::field_info& Info, char SystemType ) noexcept
             {
-                for( int n=0; n<Column.m_nTypes ;n++ )
-                {
-                    auto& Field = Column.m_FieldInfo.append();
-                    if( ReadComponent( Field, Column.m_SystemTypes[n] ).isError(Error) )
+                xcore::err Error;
+
+                if( c == ' ' )
+                    if( m_File.ReadWhiteSpace(c).isError( Error ) )
                         return Error;
+
+                Size = 0;
+                if ( c == '"' )
+                {
+                    if( SystemType != 's' )
+                        return xerr_failure( Error, "Unexpeced string value expecting something else");
+
+                    Info.m_iData = m_iMemOffet;
+                    do 
+                    {
+                        if( m_File.getC(c).isError(Error) ) return Error;
+                        m_Memory[m_iMemOffet++] = c;
+                    } while( c != '"' );
+
+                    m_Memory[m_iMemOffet-1] = 0;
+                }
+                else
+                {
+                    std::uint64_t H;
+
+                    if( c == '#' )
+                    {
+                        if( m_File.getC(c).isError(Error) ) return Error;
+                        while( string::isCharHex(c) ) 
+                        {
+                            Buffer[Size++] = c;                    
+                            if( m_File.getC(c).isError(Error) ) return Error;
+                        }
+
+                        if( Size == 0 )
+                            return xerr_failure( Error, "Fail to read a numeric value");
+
+                        Buffer[Size++] = 0;
+
+                        H = strtoull( Buffer, nullptr, 16 );
+                    }
+                    else
+                    {
+                        bool isInt = true;
+
+                        if( c == '-' )
+                        {
+                            Buffer[Size++] = c;                    
+                            if( m_File.getC(c).isError(Error) ) return Error;
+                        }
+
+                        while( string::isCharDigit(c) ) 
+                        {
+                            Buffer[Size++] = c;                    
+                            if( m_File.getC(c).isError(Error) ) return Error;
+                            if( c == '.' )
+                            {
+                                if( isInt == false ) return xerr_failure( Error, "I found an error loading a floating point number");
+
+                                isInt = false;
+                                Buffer[Size++] = c;                    
+                                if( m_File.getC(c).isError(Error) ) return Error;
+                            }
+                        }
+
+                        if( Size == 0 )
+                            return xerr_failure( Error, "Fail to read a numeric value");
+
+                        Buffer[Size++] = 0;
+
+
+                             if( SystemType == 'F' ) reinterpret_cast<double&>(H) = atof( Buffer );
+                        else if( SystemType == 'f' ) reinterpret_cast<float&>(H)  = static_cast<float>(atof( Buffer ));
+                        else if( isInt == false )
+                                {
+                                    return xerr_code( Error, error_state::MISMATCH_TYPES, "I found a floating point number while trying to load an interger value");
+                                }
+                        else if( Buffer[0] == '-' )
+                        {
+                            if(    SystemType == 'g' 
+                                || SystemType == 'G' 
+                                || SystemType == 'h' 
+                                || SystemType == 'H' )
+                            {
+                                XLOG_CHANNEL_WARNING( m_Channel, "Reading a sign interger into a field which is unsign-int form this record [%s](%d)", m_Record.m_Name.data(), m_iLine );
+                            }
+
+                            H = static_cast<std::uint64_t>(strtoll( Buffer, nullptr, 10 ));
+                        }
+                        else
+                        {
+                            H = static_cast<std::uint64_t>(strtoull( Buffer, nullptr, 10 ));
+                            if(    (SystemType == 'c' && H >= static_cast<std::uint64_t>(std::numeric_limits<std::int8_t>::max() ))
+                                || (SystemType == 'C' && H >= static_cast<std::uint64_t>(std::numeric_limits<std::int16_t>::max()))
+                                || (SystemType == 'd' && H >= static_cast<std::uint64_t>(std::numeric_limits<std::int32_t>::max()))
+                                || (SystemType == 'D' && H >= static_cast<std::uint64_t>(std::numeric_limits<std::int64_t>::max()))
+                                )
+                            {
+                                XLOG_CHANNEL_WARNING( m_Channel, "Reading a sign interger but the value in the file exceeds the allow positive interger portion in record [%s](%d)", m_Record.m_Name.data(), m_iLine );
+                            }
+                        }
+                    }
+
+                    if( c != ' ' && c != '\n' ) 
+                        return xerr_failure( Error, "Expecting a space separator but I got a different character" );
+
+                    switch( SystemType )
+                    {
+                        case 'c': 
+                        case 'h':
+                                    Info.m_iData = bits::Align( m_iMemOffet, 1); m_iMemOffet = Info.m_iData + 1; reinterpret_cast<std::uint8_t &>(m_Memory[Info.m_iData]) = static_cast<std::uint8_t>(H);
+                                    break;
+                        case 'C':
+                        case 'H':
+                                    Info.m_iData = bits::Align( m_iMemOffet, 2); m_iMemOffet = Info.m_iData + 2; reinterpret_cast<std::uint16_t&>(m_Memory[Info.m_iData]) = static_cast<std::uint16_t>(H);
+                                    break;
+                        case 'f':
+                        case 'd':
+                        case 'g':
+                                    Info.m_iData = bits::Align( m_iMemOffet, 4); m_iMemOffet = Info.m_iData + 4; reinterpret_cast<std::uint32_t&>(m_Memory[Info.m_iData]) = static_cast<std::uint32_t>(H);
+                                    break;
+                        case 'F':
+                        case 'G':
+                        case 'D':
+                                    Info.m_iData = bits::Align( m_iMemOffet, 8); m_iMemOffet = Info.m_iData + 8; reinterpret_cast<std::uint64_t&>(m_Memory[Info.m_iData]) = static_cast<std::uint64_t>(H);
+                                    break;
+                    }
+                }
+
+                return Error;
+            };
+
+            for( m_iColumn=0; m_iColumn<m_nColumns; ++m_iColumn )
+            {
+                auto& Column = m_Columns[m_iColumn];
+
+                // Read any white space
+                if( m_File.ReadWhiteSpace(c).isError( Error ) )
+                    return Error;
+
+                Column.m_FieldInfo.clear();
+                if( Column.m_nTypes == -1 )
+                {
+                    if( c != ':'  && c != ';' )
+                        return xerr_failure( Error, "Expecting a type definition" );
+
+                    Column.m_DynamicFields.clear();
+                    auto& D = Column.m_DynamicFields.append();
+                    D.m_iField = 0;
+
+                    Size = 0;
+                    {
+                        int x;
+                        do 
+                        {
+                            if( m_File.getC(x).isError(Error) ) return Error;
+                            Buffer[Size++] = x;
+                        } while( string::isCharSpace(x) == false );
+
+                        Buffer[Size-1] = 0;
+                    }
+
+                    if( c == ';' )
+                    {
+                        D.m_UserType = crc::FromString<32>( Buffer.data() );
+                        auto p = getUserType( D.m_UserType );
+                        if( p == nullptr )
+                            return xerr_failure( Error, "Fail to find the user type for a column" );
+
+                        D.m_nTypes = p->m_nSystemTypes;
+                        string::Copy( D.m_SystemTypes, p->m_SystemTypes );
+                    }
+                    else
+                    {
+                        xassert(c ==':');
+                        D.m_nTypes = string::Copy( D.m_SystemTypes, Buffer ).m_Value;
+                        if( D.m_nTypes <= 0 )
+                            return xerr_failure( Error, "Fail to read a column, type. not system types specified" );
+                    }
+
+                    // Read all the types
+                    c = ' ';
+                    for( int n=0; n<D.m_nTypes ;n++ )
+                    {
+                        auto& Field = Column.m_FieldInfo.append();
+                        if( ReadComponent( Field, D.m_SystemTypes[n] ).isError(Error) )
+                            return Error;
+                    }
+                }
+                else
+                {
+                    for( int n=0; n<Column.m_nTypes ;n++ )
+                    {
+                        auto& Field = Column.m_FieldInfo.append();
+                        if( ReadComponent( Field, Column.m_SystemTypes[n] ).isError(Error) )
+                            return Error;
+                    }
                 }
             }
         }
@@ -2188,7 +2263,7 @@ namespace xcore::textfile::version_2
             //
             // Lets deal with user_types types
             //
-            while( c == '<' )
+            if( c == '<' ) do
             {
                 std::array<char,64> SystemType;
                 std::array<char,64> UserType;
@@ -2225,15 +2300,13 @@ namespace xcore::textfile::version_2
 
                 // Read the next character
                 if( m_File.getC(c).isError(Failure) ) return Failure;
-            }
+
+            } while( c != '[' );
 
             //
             // Deal with a record
             //
             if( c != '[' ) return xerr_failure( Failure, "Unexpected character while reading the binary file." );
-
-            if( m_File.getC(c).isError(Failure) ) return Failure;
-            if( c != 0 ) return xerr_failure( Failure, "Error reading file. Expecting 'end_of_string' but didn't find it" );
 
             // Read the record name
             {
@@ -2248,13 +2321,6 @@ namespace xcore::textfile::version_2
 
             // Read the record count
             if( m_File.Read( m_Record.m_Count ).isError(Failure) ) return Failure;
-
-            // make sure it terminates okay
-            if( m_File.getC(c).isError(Failure) ) return Failure;
-            if( c != ']' ) return xerr_failure( Failure, "Error reading file. Expecting ']' but didn't find it" );
-
-            if( m_File.getC(c).isError(Failure) ) return Failure;
-            if( c != 0 ) return xerr_failure( Failure, "Error reading file. Expecting 'end_of_string' but didn't find it" );
         }
         else
         {
