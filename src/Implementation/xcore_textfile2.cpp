@@ -544,12 +544,12 @@ namespace xcore::textfile::version_2
         if( Count == ~0 ) 
         { 
             m_Record.m_bWriteCount  = false;  
-            m_Record.m_Count = 1; 
+            m_Record.m_Count        = 1; 
         }
         else
         { 
             m_Record.m_bWriteCount  = true; 
-            m_Record.m_Count = static_cast<int>(Count); 
+            m_Record.m_Count        = static_cast<int>(Count); 
         }
 
         //
@@ -598,8 +598,7 @@ namespace xcore::textfile::version_2
 
         if( m_File.m_States.m_isBinary )
         {
-            // No comments supported for binary files
-            //    m_pFile->Write( Comment(), 1, Comment.GetLength()+1 );
+            return Error;
         }
         else
         {
@@ -642,6 +641,7 @@ namespace xcore::textfile::version_2
 
         if( m_File.m_States.m_isBinary )
         {
+            bool bHaveUserTypes = false;
             for( auto& UserType : m_UserTypes )
             {
                 if( UserType.m_bAlreadySaved )
@@ -650,13 +650,18 @@ namespace xcore::textfile::version_2
                 UserType.m_bAlreadySaved = true;
             
                 // First write the standard symbol for the user_types types
-                if( m_File.WriteChar( '<' ).isError(Error) )
-                    return Error;
+                if( bHaveUserTypes == false )
+                {
+                    bHaveUserTypes = true;
+                    if( m_File.WriteChar( '<' ).isError(Error) )
+                        return Error;
+                }
 
+                // Write the name 
                 if( m_File.WriteStr( { UserType.m_Name.data(), UserType.m_NameLength+1 } ).isError(Error) )
                     return Error;
 
-                // Now dump the data for the user_types type
+                // Write type/s
                 if( m_File.WriteStr( { UserType.m_SystemTypes.data(), UserType.m_nSystemTypes+1 } ).isError(Error) )
                     return Error;
             }
@@ -816,43 +821,67 @@ namespace xcore::textfile::version_2
         }
 
         //
-        // Lambda Used to write the fields
+        // Ready to buffer the actual fields
         //
-        auto Numerics = [&]( details::field_info& FieldInfo, auto p, const char* pFmt ) noexcept
+        if( m_File.m_States.m_isBinary )
         {
-            using T = std::decay_t<decltype(p)>;
-
-            if( m_File.m_States.m_isBinary )
+            //
+            // Write to a buffer the data
+            //
+            for( auto& A : Args )
             {
-                FieldInfo.m_iData = bits::Align( m_iMemOffet, std::alignment_of_v<T> );
-                m_iMemOffet = FieldInfo.m_iData + sizeof(T);
+                auto& FieldInfo = Column.m_FieldInfo.append(); 
 
-                        if constexpr ( sizeof(T) ==  1 ) 
-                        {
-                            auto& x = reinterpret_cast<std::uint8_t& >(m_Memory[FieldInfo.m_iData]);
-                            x = reinterpret_cast<std::uint8_t&>(p);
-                        }
-                else    if constexpr ( sizeof(T) == 2 ) 
-                        {
-                            auto& x = reinterpret_cast<std::uint16_t& >(m_Memory[FieldInfo.m_iData]);
-                            x = reinterpret_cast<std::uint16_t&>(p);
-                            if( m_File.m_States.m_isEndianSwap ) x = endian::Convert(x);
-                        }
-                else    if constexpr ( sizeof(T) == 4 ) 
-                        {
-                            auto& x = reinterpret_cast<std::uint32_t& >(m_Memory[FieldInfo.m_iData]);
-                            x = reinterpret_cast<std::uint32_t&>(p);
-                            if( m_File.m_States.m_isEndianSwap ) x = endian::Convert(x);
-                        }
-                else    if constexpr ( sizeof(T) == 8 ) 
-                        {
-                            auto& x = reinterpret_cast<std::uint64_t& >(m_Memory[FieldInfo.m_iData]);
-                            x = reinterpret_cast<std::uint64_t&>(p);
-                            if( m_File.m_States.m_isEndianSwap ) x = endian::Convert(x);
-                        }
+                std::visit( [&]( auto p ) constexpr
+                {
+                    using T = std::decay_t<decltype(p)>;
+
+                    if constexpr ( std::is_same_v<T,string::ref<char>*> || std::is_same_v<T,string::view<char>*> ) 
+                    {
+                        FieldInfo.m_iData = m_iMemOffet;
+                        m_iMemOffet += 1 + xcore::string::Copy<string::view<char>,string::view<char>>( m_Memory.ViewFrom(FieldInfo.m_iData), p->View() ).m_Value;
+                    }
+                    else    
+                    {
+                        FieldInfo.m_iData = bits::Align( m_iMemOffet, std::alignment_of_v<T> );
+                        m_iMemOffet = FieldInfo.m_iData + sizeof(T);
+
+                                if constexpr ( sizeof(T) ==  1 ) 
+                                {
+                                    auto& x = reinterpret_cast<std::uint8_t& >(m_Memory[FieldInfo.m_iData]);
+                                    x = reinterpret_cast<std::uint8_t&>(p);
+                                }
+                        else    if constexpr ( sizeof(T) == 2 ) 
+                                {
+                                    auto& x = reinterpret_cast<std::uint16_t& >(m_Memory[FieldInfo.m_iData]);
+                                    x = reinterpret_cast<std::uint16_t&>(p);
+                                    if( m_File.m_States.m_isEndianSwap ) x = endian::Convert(x);
+                                }
+                        else    if constexpr ( sizeof(T) == 4 ) 
+                                {
+                                    auto& x = reinterpret_cast<std::uint32_t& >(m_Memory[FieldInfo.m_iData]);
+                                    x = reinterpret_cast<std::uint32_t&>(p);
+                                    if( m_File.m_States.m_isEndianSwap ) x = endian::Convert(x);
+                                }
+                        else    if constexpr ( sizeof(T) == 8 ) 
+                                {
+                                    auto& x = reinterpret_cast<std::uint64_t& >(m_Memory[FieldInfo.m_iData]);
+                                    x = reinterpret_cast<std::uint64_t&>(p);
+                                    if( m_File.m_States.m_isEndianSwap ) x = endian::Convert(x);
+                                }
+                    }
+                }, A );
             }
-            else
+        }
+        else
+        {
+            //
+            // Lambda Used to write the fields
+            //
+            auto Numerics = [&]( details::field_info& FieldInfo, auto p, const char* pFmt ) noexcept
             {
+                using T = std::decay_t<decltype(p)>;
+
                 FieldInfo.m_iData = m_iMemOffet;
                 m_iMemOffet += 1 + string::sprintf( m_Memory.ViewFrom(m_iMemOffet), pFmt, p ).m_Value;
                 FieldInfo.m_Width = m_iMemOffet - FieldInfo.m_iData - 1;
@@ -865,55 +894,55 @@ namespace xcore::textfile::version_2
                 {
                     for( FieldInfo.m_IntWidth = 0; m_Memory[FieldInfo.m_iData + FieldInfo.m_IntWidth] != '.' && m_Memory[FieldInfo.m_iData+FieldInfo.m_IntWidth]; FieldInfo.m_IntWidth++ );
                 }
-            }
-        };
+            };
 
-        //
-        // Write to a buffer the data
-        //
-        for( auto& A : Args )
-        {
-            auto& Field = Column.m_FieldInfo.append(); 
-
-            std::visit( [&]( auto p ) constexpr
+            //
+            // Write to a buffer the data
+            //
+            for( auto& A : Args )
             {
-                using t = std::decay_t<decltype(p)>;
-                        if constexpr ( std::is_same_v<t,std::uint8_t*>      ) Numerics( Field, *p, "#%X" );
-                else    if constexpr ( std::is_same_v<t,std::uint16_t*>     ) Numerics( Field, *p, "#%X" );
-                else    if constexpr ( std::is_same_v<t,std::uint32_t*>     ) Numerics( Field, *p, "#%X" );
-                else    if constexpr ( std::is_same_v<t,std::uint64_t*>     ) Numerics( Field, *p, "#%LX" );
-                else    if constexpr ( std::is_same_v<t,bool*>              ) Numerics( Field, (int)*p, "%d" );
-                else    if constexpr ( std::is_same_v<t,std::int8_t*>       ) Numerics( Field, *p, "%d" );
-                else    if constexpr ( std::is_same_v<t,std::int16_t*>      ) Numerics( Field, *p, "%d" );
-                else    if constexpr ( std::is_same_v<t,std::int32_t*>      ) Numerics( Field, *p, "%d" );
-                else    if constexpr ( std::is_same_v<t,std::int64_t*>      ) Numerics( Field, *p, "%ld" );
-                else    if constexpr ( std::is_same_v<t,float*>             ) 
-                        { 
-                            if( m_File.m_States.m_isSaveFloats )    Numerics( Field, static_cast<double>(*p), "%Lg" );
-                            else                                    Numerics( Field, reinterpret_cast<std::uint32_t&>(*p),  "#%X" ); 
-                        }
-                else    if constexpr ( std::is_same_v<t,double*>            ) 
-                        { 
-                            if( m_File.m_States.m_isSaveFloats )    Numerics( Field, *p, "%Lg" );
-                            else                                    Numerics( Field, reinterpret_cast<std::uint64_t&>(*p),  "#%LX" ); 
-                        }
-                else    if constexpr ( std::is_same_v<t,string::view<char>> ) 
-                        {
-                            Field.m_iData = m_iMemOffet;
-                            m_iMemOffet += 1 + string::sprintf( m_Memory.ViewFrom(Field.m_iData), "\"%s\"", p.data() ).m_Value;
-                            Field.m_Width = m_iMemOffet - Field.m_iData - 1;
-                        }
-                else    if constexpr ( std::is_same_v<t,string::ref<char>*> || std::is_same_v<t,string::view<char>*> ) 
-                        {
-                            Field.m_iData = m_iMemOffet;
-                            m_iMemOffet += 1 + string::sprintf( m_Memory.ViewFrom(Field.m_iData), "\"%s\"", p->data() ).m_Value;
-                            Field.m_Width = m_iMemOffet - Field.m_iData - 1;
-                        }
-                else    
-                { 
-                    xassume(false); 
-                }
-            }, A );
+                auto& Field = Column.m_FieldInfo.append(); 
+
+                std::visit( [&]( auto p ) constexpr
+                {
+                    using t = std::decay_t<decltype(p)>;
+                            if constexpr ( std::is_same_v<t,std::uint8_t*>      ) Numerics( Field, *p, "#%X" );
+                    else    if constexpr ( std::is_same_v<t,std::uint16_t*>     ) Numerics( Field, *p, "#%X" );
+                    else    if constexpr ( std::is_same_v<t,std::uint32_t*>     ) Numerics( Field, *p, "#%X" );
+                    else    if constexpr ( std::is_same_v<t,std::uint64_t*>     ) Numerics( Field, *p, "#%LX" );
+                    else    if constexpr ( std::is_same_v<t,bool*>              ) Numerics( Field, (int)*p, "%d" );
+                    else    if constexpr ( std::is_same_v<t,std::int8_t*>       ) Numerics( Field, *p, "%d" );
+                    else    if constexpr ( std::is_same_v<t,std::int16_t*>      ) Numerics( Field, *p, "%d" );
+                    else    if constexpr ( std::is_same_v<t,std::int32_t*>      ) Numerics( Field, *p, "%d" );
+                    else    if constexpr ( std::is_same_v<t,std::int64_t*>      ) Numerics( Field, *p, "%ld" );
+                    else    if constexpr ( std::is_same_v<t,float*>             ) 
+                            { 
+                                if( m_File.m_States.m_isSaveFloats )    Numerics( Field, static_cast<double>(*p), "%Lg" );
+                                else                                    Numerics( Field, reinterpret_cast<std::uint32_t&>(*p),  "#%X" ); 
+                            }
+                    else    if constexpr ( std::is_same_v<t,double*>            ) 
+                            { 
+                                if( m_File.m_States.m_isSaveFloats )    Numerics( Field, *p, "%Lg" );
+                                else                                    Numerics( Field, reinterpret_cast<std::uint64_t&>(*p),  "#%LX" ); 
+                            }
+                    else    if constexpr ( std::is_same_v<t,string::view<char>> ) 
+                            {
+                                Field.m_iData = m_iMemOffet;
+                                m_iMemOffet += 1 + string::sprintf( m_Memory.ViewFrom(Field.m_iData), "\"%s\"", p.data() ).m_Value;
+                                Field.m_Width = m_iMemOffet - Field.m_iData - 1;
+                            }
+                    else    if constexpr ( std::is_same_v<t,string::ref<char>*> || std::is_same_v<t,string::view<char>*> ) 
+                            {
+                                Field.m_iData = m_iMemOffet;
+                                m_iMemOffet += 1 + string::sprintf( m_Memory.ViewFrom(Field.m_iData), "\"%s\"", p->data() ).m_Value;
+                                Field.m_Width = m_iMemOffet - Field.m_iData - 1;
+                            }
+                    else    
+                    { 
+                        xassume(false); 
+                    }
+                }, A );
+            }
         }
 
         return {};
