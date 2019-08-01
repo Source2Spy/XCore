@@ -205,6 +205,18 @@ namespace xcore::textfile::version_2::details
 
     //------------------------------------------------------------------------------
 
+    xcore::err file::WriteData( string::view<const char> Buffer ) noexcept
+    {
+        xassert( m_States.m_isBinary );
+
+        if( Buffer.size() != std::fwrite( Buffer.data(), 1, Buffer.size(), m_pFP ) )
+            return xerr_failure_s( "Fail 'fwrite' binary mode" );
+
+        return {};
+    }
+
+    //------------------------------------------------------------------------------
+
     xcore::err file::ReadWhiteSpace( int& c ) noexcept
     {
         // Read any spaces
@@ -839,10 +851,12 @@ namespace xcore::textfile::version_2
                     if constexpr ( std::is_same_v<T,string::ref<char>*> || std::is_same_v<T,string::view<char>*> ) 
                     {
                         FieldInfo.m_iData = m_iMemOffet;
-                        m_iMemOffet += 1 + xcore::string::Copy<string::view<char>,string::view<char>>( m_Memory.ViewFrom(FieldInfo.m_iData), p->View() ).m_Value;
+                        m_iMemOffet += 1 + xcore::string::Copy<string::view<char>,string::view<char>>( m_Memory.ViewFrom(FieldInfo.m_iData), *p ).m_Value;
+                        FieldInfo.m_Width = m_iMemOffet - FieldInfo.m_iData;
                     }
-                    else    
+                    else
                     {
+                        FieldInfo.m_Width = sizeof(T);
                         FieldInfo.m_iData = bits::Align( m_iMemOffet, std::alignment_of_v<T> );
                         m_iMemOffet = FieldInfo.m_iData + sizeof(T);
 
@@ -961,12 +975,27 @@ namespace xcore::textfile::version_2
         xassert( m_iLine < m_Record.m_Count );
 
         //
+        // Increment the line count
+        // and reset the column index
+        //
+        m_iLine++;
+        m_iColumn   = 0;
+
+        //
+        // We will wait writing the line if we can so we can format
+        //
+        if( (m_iLine < m_Record.m_Count && (m_iLine%m_nLinesBeforeFileWrite) != 0) )
+        {
+            return Error;
+        }
+
+
+        //
         // Lets handle the binary case first
         //
-        /*
         if( m_File.m_States.m_isBinary )
         {
-            if( m_iLine == 0 )
+            if( m_iLine <= m_nLinesBeforeFileWrite )
             {
                 //
                 // Write any pending user_types types
@@ -986,69 +1015,105 @@ namespace xcore::textfile::version_2
                 if( m_File.Write( m_Record.m_Count ).isError( Error ) )
                     return Error;
 
-                if( m_File.WriteChar( ']' ).isError( Error ) )
-                    return Error;
-            
                 //
-                // Print types
+                // Write types
                 //
-                if( m_File.WriteChar( '{' ).isError( Error ) )
+                
+                if( m_File.Write( m_nColumns ).isError( Error ) )
                     return Error;
-            
-                for( const auto& Field : m_Field )
+
                 for( int i=0; i<m_nColumns; ++i )
                 {
-                    if( Field.m_Type[ Field.m_TypeOffset ] == '.' )
-                    {
-                        if( m_File.WriteStr( { Field.m_Type.data(), static_cast<int>(Field.m_TypeOffset + 1) } ).isError( Error ) )
-                            return Error;
+                    auto& Column = m_Columns[i];
 
-                        if( m_File.Write( Field.m_iUserType ).isError( Error ) )
+                    if( m_File.WriteStr( { Column.m_Name.data(), Column.m_NameLength + 1 } ).isError( Error ) )
+                        return Error;
+
+                    if( Column.m_nTypes == -1 )
+                    {
+                        if( m_File.WriteStr( string::constant{ ":?" } ).isError( Error ) )
                             return Error;
                     }
                     else
                     {
-                        if( m_File.WriteStr( { Field.m_Type, string::Length( Field.m_Type ).m_Value+1 } ).isError( Error ) )
-                            return Error;
+                        if( Column.m_UserType.m_Value )
+                        {
+                            const auto Index = m_UserTypes.getIndexByEntry<int>( *getUserType(Column.m_UserType) );
+                            if( m_File.Write( Index ).isError( Error ) )
+                                return Error;
+                        }
+                        else
+                        {
+                            if( m_File.WriteStr( { Column.m_SystemTypes.data(), static_cast<int>(Column.m_nTypes + 1) } ).isError( Error ) )
+                                return Error;
+                        }
                     }
                 }
-            
-                if( m_File.WriteChar( '}' ).isError( Error ) )
-                    return Error;
-            }
+            } // End of first line
 
             //
             // Dump line info
             //
-            if( m_File.WriteStr( { m_Memory.data(), static_cast<int>(m_iMemOffet) } ).isError( Error ) )
-                return Error;
+            int L = m_iLine%m_nLinesBeforeFileWrite;
+            if( L == 0 ) L = m_nLinesBeforeFileWrite;
+            for( int l = 0; l<L; ++l )
+            {
+                for( int i = 0; i<m_nColumns; ++i )
+                {
+                    const auto& Column        = m_Columns[i];
+
+                    if( Column.m_nTypes == -1 )
+                    {
+                        const auto& DynamicFields = Column.m_DynamicFields[l];
+
+                        //
+                        // First write the type
+                        //
+                        if( DynamicFields.m_UserType.m_Value ) 
+                        {
+                            auto p     = getUserType( DynamicFields.m_UserType );
+                            auto Index = m_UserTypes.getIndexByEntry<int>( *p );
+
+                            if( m_File.WriteChar( ';' ).isError(Error) )
+                                return Error;
+                        }
+                        else
+                        {
+                            if( m_File.WriteChar( ':' ).isError(Error) )
+                                return Error;
+
+                            if( m_File.WriteStr( string::view{ DynamicFields.m_SystemTypes.data(), DynamicFields.m_nTypes + 1 } ).isError(Error) )
+                                return Error;
+                        }
+
+                        //
+                        // Then write the values
+                        //
+                        for( int n=0; n<DynamicFields.m_nTypes; ++n )
+                        {
+                            const auto& FieldInfo   = Column.m_FieldInfo[ DynamicFields.m_iField + n ];
+                            if( m_File.WriteData( string::view{ &m_Memory[ FieldInfo.m_iData ], FieldInfo.m_Width } ).isError(Error) )
+                                return Error;
+                        }
+                    }
+                    else
+                    {
+                        for( int n=0; n<Column.m_nTypes; ++n )
+                        {
+                            const auto  Index       = l*Column.m_nTypes + n;
+                            const auto& FieldInfo   = Column.m_FieldInfo[ Index ];
+                            if( m_File.WriteData( string::view{ &m_Memory[ FieldInfo.m_iData ], FieldInfo.m_Width } ).isError(Error) )
+                                return Error;
+                        }
+                    }
+                }
+            }
 
             //
-            // Increment the line count
-            // and reset the field count
-            // reset the memory count
+            // Clear the memory pointer
             //
-            m_iLine++;
-            m_iField        = 0;
             m_iMemOffet = 0;
-            m_nTypesLine    = 0;
 
-            return Error;
-        }
-        */
-
-        //
-        // Increment the line count
-        // and reset the column index
-        //
-        m_iLine++;
-        m_iColumn   = 0;
-
-        //
-        // We will wait writing the line if we can so we can format
-        //
-        if( (m_iLine < m_Record.m_Count && (m_iLine%m_nLinesBeforeFileWrite) != 0) )
-        {
             return Error;
         }
 

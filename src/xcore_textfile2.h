@@ -117,6 +117,7 @@ namespace xcore::textfile::version_2
             template< typename T >
             xcore::err      Write               ( T& Buffer, int Size = sizeof(T), int Count = 1 )                          noexcept;
             xcore::err      WriteChar           ( char C, int Count = 1 )                                                   noexcept;
+            xcore::err      WriteData           ( string::view<const char> Buffer )                                         noexcept;
             xcore::err      ReadWhiteSpace      ( int& c )                                                                  noexcept;
             xcore::err      HandleDynamicTable  ( int& Count )                                                              noexcept;
         };

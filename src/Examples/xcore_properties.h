@@ -239,8 +239,8 @@ namespace xcore::property::examples
         {
             xcore::textfile::stream         TextFile;
 
-            // Open file for writing/reading
-            if( TextFile.Open( isRead, std::string_view{ FileName }, textfile::file_type::TEXT ).isError(Error) ) return Error;
+            // Open file for writing/reading      textfile::file_type::TEXT
+            if( TextFile.Open( isRead, std::string_view{ FileName }, textfile::file_type::BINARY ).isError(Error) ) return Error;
 
             if( isRead == false )
             {
@@ -415,11 +415,11 @@ namespace xcore::property::examples
     void Test( void ) noexcept
     {
         constexpr static xcore::string::constant TextFileName( "PropertyText.la.txt" ); 
-        constexpr static xcore::string::constant BinFileName( "PropertyBin.la.txt" ); 
+        constexpr static xcore::string::constant BinFileName( "PropertyBin.la.bin" ); 
 
         xcore::err  Error;
 
-        if( 1 && ( Test01<example3_custom_lists>(TextFileName).isError(Error)
+        if( 0 && ( Test01<example3_custom_lists>(TextFileName).isError(Error)
                 || Test01<example2_custom_lists>(TextFileName).isError(Error)
                 || Test01<example1_custom_lists>(TextFileName).isError(Error)
                 || Test01<example0_custom_lists>(TextFileName).isError(Error)
