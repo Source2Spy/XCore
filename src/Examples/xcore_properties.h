@@ -419,7 +419,7 @@ namespace xcore::property::examples
 
         xcore::err  Error;
 
-        if( 0 && ( Test01<example3_custom_lists>(TextFileName).isError(Error)
+        if( 1 && ( Test01<example3_custom_lists>(TextFileName).isError(Error)
                 || Test01<example2_custom_lists>(TextFileName).isError(Error)
                 || Test01<example1_custom_lists>(TextFileName).isError(Error)
                 || Test01<example0_custom_lists>(TextFileName).isError(Error)

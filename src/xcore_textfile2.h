@@ -17,8 +17,7 @@
 //      h       8 bit unsigned integer
 //      C      16 bit integer
 //      H      16 bit unsigned integer
-//      s      this is a std::string
-//      S      undefined (DONT USE)
+//      s      this is a xcore::string
 //-----------------------------------------------------------------------------------------------------
 namespace xcore::textfile::version_2
 {
