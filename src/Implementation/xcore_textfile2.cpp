@@ -856,33 +856,53 @@ namespace xcore::textfile::version_2
                     }
                     else
                     {
-                        FieldInfo.m_Width = sizeof(T);
-                        FieldInfo.m_iData = bits::Align( m_iMemOffet, std::alignment_of_v<T> );
-                        m_iMemOffet = FieldInfo.m_iData + sizeof(T);
+                        if constexpr ( std::is_pointer_v<T> == false 
+                            || std::is_same_v<T,void*> 
+                            || std::is_same_v<T,const char*> ) 
+                        {
+                            xassert(false);
+                        }
+                        else 
+                        {
+                            static_assert ( std::is_pointer_v<T> );
+                            constexpr auto size = sizeof(decltype(*p)); 
+                            FieldInfo.m_Width = size;
+                            FieldInfo.m_iData = bits::Align( m_iMemOffet, std::alignment_of_v<T> );
+                            m_iMemOffet = FieldInfo.m_iData + FieldInfo.m_Width;
 
-                                if constexpr ( sizeof(T) ==  1 ) 
-                                {
-                                    auto& x = reinterpret_cast<std::uint8_t& >(m_Memory[FieldInfo.m_iData]);
-                                    x = reinterpret_cast<std::uint8_t&>(p);
-                                }
-                        else    if constexpr ( sizeof(T) == 2 ) 
-                                {
-                                    auto& x = reinterpret_cast<std::uint16_t& >(m_Memory[FieldInfo.m_iData]);
-                                    x = reinterpret_cast<std::uint16_t&>(p);
-                                    if( m_File.m_States.m_isEndianSwap ) x = endian::Convert(x);
-                                }
-                        else    if constexpr ( sizeof(T) == 4 ) 
-                                {
-                                    auto& x = reinterpret_cast<std::uint32_t& >(m_Memory[FieldInfo.m_iData]);
-                                    x = reinterpret_cast<std::uint32_t&>(p);
-                                    if( m_File.m_States.m_isEndianSwap ) x = endian::Convert(x);
-                                }
-                        else    if constexpr ( sizeof(T) == 8 ) 
-                                {
-                                    auto& x = reinterpret_cast<std::uint64_t& >(m_Memory[FieldInfo.m_iData]);
-                                    x = reinterpret_cast<std::uint64_t&>(p);
-                                    if( m_File.m_States.m_isEndianSwap ) x = endian::Convert(x);
-                                }
+                                    if constexpr ( size ==  1 ) 
+                                    {
+                                        auto& x = reinterpret_cast<std::uint8_t& >(m_Memory[FieldInfo.m_iData]);
+                                        if constexpr ( std::is_same_v<bool,T> )
+                                        {
+                                            x = *p;
+                                        }
+                                        else
+                                        {
+                                            x = reinterpret_cast<std::uint8_t&>(*p);
+                                        }
+                                    }
+                            else    if constexpr ( size == 2 ) 
+                                    {
+                                        auto& x = reinterpret_cast<std::uint16_t& >(m_Memory[FieldInfo.m_iData]);
+                                        x = reinterpret_cast<std::uint16_t&>(*p);
+                                        if( m_File.m_States.m_isEndianSwap ) x = endian::Convert(x);
+                                    }
+                            else    if constexpr ( size == 4 ) 
+                                    {
+                                        auto& x = reinterpret_cast<std::uint32_t& >(m_Memory[FieldInfo.m_iData]);
+                                        x = reinterpret_cast<std::uint32_t&>(*p);
+                                        if( m_File.m_States.m_isEndianSwap ) x = endian::Convert(x);
+                                    }
+                            else    if constexpr ( size == 8 ) 
+                                    {
+                                        auto& x = reinterpret_cast<std::uint64_t& >(m_Memory[FieldInfo.m_iData]);
+                                        x = reinterpret_cast<std::uint64_t&>(*p);
+
+                                        if( m_File.m_States.m_isEndianSwap ) 
+                                            x = endian::Convert(x);
+                                    }
+                        }
                     }
                 }, A );
             }
@@ -1888,7 +1908,8 @@ namespace xcore::textfile::version_2
                           && c != ';'
                           && c != '?' );
 
-                    Column.m_Name[Column.m_NameLength-1] = 0;
+                    Column.m_NameLength--;
+                    Column.m_Name[Column.m_NameLength] = 0;
 
                     // Read type information
                     if( c == ':' )
@@ -1908,8 +1929,9 @@ namespace xcore::textfile::version_2
                         if( m_File.Read(Index).isError(Error) ) return Error;
 
                         auto& UserType = m_UserTypes[Index];
-                        Column.m_UserType = UserType.m_CRC;
-                        Column.m_nTypes   = UserType.m_nSystemTypes;
+                        Column.m_UserType       = UserType.m_CRC;
+                        Column.m_nTypes         = UserType.m_nSystemTypes;
+                        Column.m_FormatWidth    = Index;
                     }
                     else if( c == '?' )
                     {
@@ -1963,6 +1985,67 @@ namespace xcore::textfile::version_2
         //
         if( m_File.m_States.m_isBinary )
         {
+            auto ReadData = [&]( details::field_info& Info, int SystemType )
+            {
+                xcore::err Error;
+
+                switch( SystemType )
+                {
+                    case 'c': 
+                    case 'h':
+                    {
+                        std::uint8_t H;
+                        if( m_File.Read(H).isError(Error) ) return Error;
+                        Info.m_iData = bits::Align( m_iMemOffet, 1); m_iMemOffet = Info.m_iData + 1; reinterpret_cast<std::uint8_t &>(m_Memory[Info.m_iData]) = static_cast<std::uint8_t>(H);
+                        Info.m_Width = 1;
+                        break;
+                    }
+                    case 'C':
+                    case 'H':
+                    {
+                        std::uint16_t H;
+                        if( m_File.Read(H).isError(Error) ) return Error;
+                        Info.m_iData = bits::Align( m_iMemOffet, 2); m_iMemOffet = Info.m_iData + 2; reinterpret_cast<std::uint16_t&>(m_Memory[Info.m_iData]) = static_cast<std::uint16_t>(H);
+                        Info.m_Width = 2;
+                        break;
+                    }
+                    case 'f':
+                    case 'd':
+                    case 'g':
+                    {
+                        std::uint32_t H;
+                        if( m_File.Read(H).isError(Error) ) return Error;
+                        Info.m_iData = bits::Align( m_iMemOffet, 4); m_iMemOffet = Info.m_iData + 4; reinterpret_cast<std::uint32_t&>(m_Memory[Info.m_iData]) = static_cast<std::uint32_t>(H);
+                        Info.m_Width = 4;
+                        break;
+                    }
+                    case 'F':
+                    case 'G':
+                    case 'D':
+                    {
+                        std::uint64_t H;
+                        if( m_File.Read(H).isError(Error) ) return Error;
+                        Info.m_iData = bits::Align( m_iMemOffet, 8); m_iMemOffet = Info.m_iData + 8; reinterpret_cast<std::uint64_t&>(m_Memory[Info.m_iData]) = static_cast<std::uint64_t>(H);
+                        Info.m_Width = 8;
+                        break;
+                    }
+                    case 's':
+                    {
+                        int c;
+                        Info.m_iData = m_iMemOffet;
+                        do
+                        {
+                            if( m_File.getC(c).isError(Error) ) return Error;
+                            m_Memory[m_iMemOffet++] = c;
+                        } while(c); 
+                        Info.m_Width = m_iMemOffet - Info.m_iData;
+                        break;
+                    }
+                }
+
+                return Error;
+            };
+
             for( m_iColumn=0; m_iColumn<m_nColumns; ++m_iColumn )
             {
                 auto& Column = m_Columns[m_iColumn];
@@ -1974,15 +2057,8 @@ namespace xcore::textfile::version_2
                     auto& D = Column.m_DynamicFields.append();
                     D.m_iField = 0;
 
-                    D.m_NameLength = 0;
-                    do 
-                    {
-                        if( m_File.getC(c).isError(Error) ) return Error;
-                        D.m_Name[D.m_NameLength++] = c;
-                    } while( c != ':'
-                          && c != ';' );
-
-                    D.m_Name[D.m_NameLength-1] = 0;
+                    // Get the first key code
+                    if( m_File.getC(c).isError(Error) ) return Error;
 
                     // Read type information
                     if( c == ':' )
@@ -2004,15 +2080,41 @@ namespace xcore::textfile::version_2
                         auto& UserType = m_UserTypes[Index];
                         D.m_UserType = UserType.m_CRC;
                         D.m_nTypes   = UserType.m_nSystemTypes;
+                        for( int i=0; i<D.m_nTypes; ++i) D.m_SystemTypes[i] = UserType.m_SystemTypes[i];
                     }
                     else
                     {
                         xassert(false);
                     }
+
+                    //
+                    // Read all the data
+                    //
+                    for( int i=0; i<D.m_nTypes; i++ )
+                    {
+                        if( ReadData( Column.m_FieldInfo.append(), D.m_SystemTypes[i] ).isError(Error) ) return Error;
+                    }
                 }
                 else
                 {
-
+                    //
+                    // Read all the data
+                    //
+                    if( Column.m_UserType.m_Value )
+                    {
+                        auto& UserType = m_UserTypes[Column.m_FormatWidth];
+                        for( int i=0; i<UserType.m_nSystemTypes; i++ )
+                        {
+                            if( ReadData( Column.m_FieldInfo.append(), UserType.m_SystemTypes[i] ).isError(Error) ) return Error;
+                        }
+                    }
+                    else
+                    {
+                        for( int i=0; i<Column.m_nTypes; i++ )
+                        {
+                            if( ReadData( Column.m_FieldInfo.append(), Column.m_SystemTypes[i] ).isError(Error) ) return Error;
+                        }
+                    }
                 }
             }
         }
@@ -2267,9 +2369,25 @@ namespace xcore::textfile::version_2
             {
                 std::array<char,64> SystemType;
                 std::array<char,64> UserType;
+                int i;
+
+                // Read the first character of the user type
+                if( m_File.getC(c).isError(Failure) ) return Failure;
+                if( c == '[' ) break;
+
+                // Read the user_types err
+                i=0;
+                UserType[i++] = c;
+                while( c ) 
+                {
+                    if( m_File.getC(c).isError(Failure) ) return Failure;
+                    UserType[i++] = c;
+                }
+
+                UserType[i] = 0;
 
                 // Read the system err
-                int i=0;
+                i=0;
                 do 
                 {
                     if( m_File.getC(c).isError(Failure) ) return Failure;
@@ -2279,17 +2397,6 @@ namespace xcore::textfile::version_2
 
                 SystemType[i] = 0;
 
-                // Read the user_types err
-                i=0;
-                do 
-                {
-                    if( m_File.getC(c).isError(Failure) ) return Failure;
-                    if( c == 0 ) break;
-                    UserType[i++] = c;
-                } while( true );
-
-                UserType[i] = 0;
-
                 //
                 // Add the err
                 //
@@ -2298,10 +2405,7 @@ namespace xcore::textfile::version_2
                     AddUserType( Type );
                 }
 
-                // Read the next character
-                if( m_File.getC(c).isError(Failure) ) return Failure;
-
-            } while( c != '[' );
+            } while( true );
 
             //
             // Deal with a record
