@@ -66,6 +66,7 @@ namespace xcore::containers
 }
 
 //------------------------------------------------------------------------------
+// Shortcuts
 //------------------------------------------------------------------------------
 namespace xcore
 {
@@ -106,6 +107,16 @@ namespace xcore
     // Construction guide
     template <class T, class... T_ARGS >
     array(T, T_ARGS...) -> array<typename std::common_type_t<T, T_ARGS...>, 1 + sizeof...(T_ARGS)>;
+
+    //------------------------------------------------------------------------------
+    // raw array
+    //------------------------------------------------------------------------------
+    template< class T, std::size_t T_MAX_SIZE >
+    struct rawarray : xcore::containers::raw::array<T,T_MAX_SIZE> {};
+
+    // Construction guide
+    template <class T, class... T_ARGS >
+    rawarray(T, T_ARGS...) -> rawarray<typename std::common_type_t<T, T_ARGS...>, 1 + sizeof...(T_ARGS)>;
 }
 
 
