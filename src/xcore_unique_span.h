@@ -48,11 +48,20 @@ namespace xcore::allocator
         {
             xassert(Count>=0);
             err Error;
+
             auto op = parent::data();
-            if( op ) delete []op;
+            if( op )
+            {
+                if( Count == parent::size() ) return Error;
+                delete []op;
+            }
 
             auto p = new entry[Count]{ std::forward<T_ARGS>(Args)... };
-            if( p == nullptr ) return xerr_code( Error, error_state::OUT_OF_MEMORY, "Memory Allocation Failure" );
+            if( p == nullptr ) 
+            {
+                new( this ) xcore::span<value_type>( nullptr, static_cast<std::ptrdiff_t>( 0 ) );
+                return xerr_code( Error, error_state::OUT_OF_MEMORY, "Memory Allocation Failure" );
+            }
             new( this ) xcore::span( p, Count );
             return Error;
         }
@@ -63,18 +72,18 @@ namespace xcore::allocator
             xassert( Count > 0 );
             err     Error;
 
-            auto    p       = new entry[ Count ];
-            if( p == nullptr ) 
-            {
-                delete []p;
-                return xerr_code( Error, error_state::OUT_OF_MEMORY, "Resize Failure" );
-            }
-
             auto    op      = parent::data();
             if( op )
             {
-                xassert( parent::size() > 0 );
-                
+                if( Count == parent::size() ) return Error;
+            }
+
+            auto    p       = new entry[ Count ];
+            if( p == nullptr ) 
+                return xerr_code( Error, error_state::OUT_OF_MEMORY, "Resize Failure" );
+
+            if( op )
+            {
                 // Move all entries to new buffer
                 const auto count = std::min( static_cast<size_type>(parent::size()), Count );
                 std::memcpy( p, op, count*sizeof(entry) );
@@ -156,7 +165,11 @@ namespace xcore::allocator
             #else
                 auto p = reinterpret_cast<entry*>( std::aligned_alloc( std::alignment_of_v<entry>, sizeof(entry)*Count ) );
             #endif
-            if( p == nullptr ) return xerr_code( Error, error_state::OUT_OF_MEMORY, "Memory Allocation Failure" );
+            if( p == nullptr ) 
+            {
+                new( this ) xcore::span<value_type>( nullptr, static_cast<std::ptrdiff_t>( 0 ) );
+                return xerr_code( Error, error_state::OUT_OF_MEMORY, "Memory Allocation Failure" );
+            }
             new( this ) xcore::span( p, Count );
             return Error;
         }
