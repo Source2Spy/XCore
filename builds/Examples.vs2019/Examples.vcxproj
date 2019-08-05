@@ -26,6 +26,7 @@
     <ClInclude Include="..\..\src\Examples\xcore_examples.h" />
     <ClInclude Include="..\..\src\Examples\xcore_function_examples.h" />
     <ClInclude Include="..\..\src\Examples\xcore_guid_examples.h" />
+    <ClInclude Include="..\..\src\Examples\xcore_lockless_queues.h" />
     <ClInclude Include="..\..\src\Examples\xcore_log_examples.h" />
     <ClInclude Include="..\..\src\Examples\xcore_properties.h" />
     <ClInclude Include="..\..\src\Examples\xcore_rtti_examples.h" />
@@ -51,6 +52,7 @@
     <ClInclude Include="..\..\src\xcore_global.h" />
     <ClInclude Include="..\..\src\xcore_guid.h" />
     <ClInclude Include="..\..\src\xcore_lock.h" />
+    <ClInclude Include="..\..\src\xcore_lockless_queues.h" />
     <ClInclude Include="..\..\src\xcore_log.h" />
     <ClInclude Include="..\..\src\xcore_ptr.h" />
     <ClInclude Include="..\..\src\xcore_rtti.h" />

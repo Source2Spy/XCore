@@ -26,7 +26,6 @@ namespace xcore::allocator
     {
         using value_type = T;
         using size_type  = T_COUNTER;
-        using entry      = std::remove_pointer_t<std::remove_reference_t<T>>;
         using parent     = xcore::span<T>;
 
         unique_span& operator=(const unique_span&) = delete;
@@ -56,7 +55,7 @@ namespace xcore::allocator
                 delete []op;
             }
 
-            auto p = new entry[Count]{ std::forward<T_ARGS>(Args)... };
+            auto p = new value_type[Count]{ std::forward<T_ARGS>(Args)... };
             if( p == nullptr ) 
             {
                 new( this ) xcore::span<value_type>( nullptr, static_cast<std::ptrdiff_t>( 0 ) );
@@ -78,7 +77,7 @@ namespace xcore::allocator
                 if( Count == parent::size() ) return Error;
             }
 
-            auto    p       = new entry[ Count ];
+            auto    p       = new value_type[ Count ];
             if( p == nullptr ) 
                 return xerr_code( Error, error_state::OUT_OF_MEMORY, "Resize Failure" );
 
@@ -86,7 +85,7 @@ namespace xcore::allocator
             {
                 // Move all entries to new buffer
                 const auto count = std::min( static_cast<size_type>(parent::size()), Count );
-                std::memcpy( p, op, count*sizeof(entry) );
+                std::memcpy( p, op, count*sizeof(value_type) );
             
                 delete []op;
             }
@@ -124,7 +123,6 @@ namespace xcore::allocator
         {
             using value_type = T;
             using size_type  = T_COUNTER;
-            using entry      = std::remove_pointer_t<std::remove_reference_t<T>>;
             using parent     = xcore::span<T>;
         
             unique_span& operator=(const unique_span&) = delete;
@@ -166,9 +164,9 @@ namespace xcore::allocator
                 }
 
                 #if _XCORE_COMPILER_VISUAL_STUDIO
-                    auto p = reinterpret_cast<entry*>( _aligned_malloc( std::alignment_of_v<entry>, sizeof(entry)*Count ) );
+                    auto p = reinterpret_cast<value_type*>( _aligned_malloc( std::alignment_of_v<value_type>, sizeof(value_type)*Count ) );
                 #else
-                    auto p = reinterpret_cast<entry*>( std::aligned_alloc( std::alignment_of_v<entry>, sizeof(entry)*Count ) );
+                    auto p = reinterpret_cast<value_type*>( std::aligned_alloc( std::alignment_of_v<value_type>, sizeof(value_type)*Count ) );
                 #endif
                 if( p == nullptr ) 
                 {
@@ -192,9 +190,9 @@ namespace xcore::allocator
                 }
 
                 #if _XCORE_COMPILER_VISUAL_STUDIO
-                    auto p = reinterpret_cast<entry*>( _aligned_malloc( std::alignment_of_v<entry>, sizeof(entry)*Count ) );
+                    auto p = reinterpret_cast<value_type*>( _aligned_malloc( std::alignment_of_v<value_type>, sizeof(value_type)*Count ) );
                 #else
-                    auto p = reinterpret_cast<entry*>( std::aligned_alloc( std::alignment_of_v<entry>, sizeof(entry)*Count ) );
+                    auto p = reinterpret_cast<value_type*>( std::aligned_alloc( std::alignment_of_v<value_type>, sizeof(value_type)*Count ) );
                 #endif
                 if( p == nullptr ) 
                     return xerr_code( Error, error_state::OUT_OF_MEMORY, "Resize Failure" );
@@ -205,7 +203,7 @@ namespace xcore::allocator
                 
                     // Move all entries to new buffer
                     const auto count = std::min( static_cast<size_type>(parent::size()), Count );
-                    std::memcpy( p, op, count*sizeof(entry) );
+                    std::memcpy( p, op, count*sizeof(value_type) );
             
                     #if _XCORE_COMPILER_VISUAL_STUDIO
                         _aligned_free( op );

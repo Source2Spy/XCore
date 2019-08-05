@@ -143,7 +143,7 @@ namespace xcore::containers::vector
         // Construct all of them
         //
         const auto FinalCount = m_Count + Count; 
-        if constexpr( std::is_trivially_constructible_v<T,T_ARG&&...> == false )
+        if constexpr( std::is_trivially_constructible_v<T,T_ARG&&...> == false || sizeof...(T_ARG))
         {
             for( auto i=m_Count; i<FinalCount; i++ )
                 new( &m_Allocator[i] ) value_type{ std::forward<T_ARG&&>(Args)... };

@@ -150,6 +150,12 @@
     <ClInclude Include="..\..\src\Settings\PropertyConfig.h">
       <Filter>xCore\Settings</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\src\xcore_lockless_queues.h">
+      <Filter>xCore</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\Examples\xcore_lockless_queues.h">
+      <Filter>Examples</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\src\xcore.cpp">

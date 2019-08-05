@@ -83,13 +83,22 @@ namespace xcore::target
     
     // Constant expressions functions to find out detail of the about the target been build
     constexpr compiler      getCompiler         ( void )                    noexcept;
-    constexpr unsigned      getCacheLineSize    ( void )                    noexcept { return 64; }
+    constexpr unsigned      getCacheLineSize    ( void )                    noexcept 
+    { 
+        #if _XCORE_PLATFORM_WINDOWS || _XCORE_PLATFORM_MAC_LINUX
+            return 128;
+        #else
+            return 64; 
+        #endif
+    }
     constexpr platform      getPlatform         ( void )                    noexcept;
     constexpr chipset       getChipset          ( void )                    noexcept;
     constexpr endian        getEndian           ( void )                    noexcept;
     constexpr bits          getBits             ( void )                    noexcept;
     constexpr auto          getPlatformCount    ( void )                    noexcept { return static_cast<int>(platform::COUNT); }
     
+    struct cache_line_block { char v[xcore::target::getCacheLineSize()]; };
+
     namespace details
     {
         constexpr static std::array<const char*,static_cast<int>(platform::COUNT)> Strings =

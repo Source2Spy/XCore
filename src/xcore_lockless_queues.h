@@ -1,0 +1,276 @@
+#ifndef _XCORE_LOCKLES_QUEUES_H
+#define _XCORE_LOCKLES_QUEUES_H
+#pragma once
+
+namespace xcore::lockless::queues
+{
+    //------------------------------------------------------------------------------
+    // https://github.com/craflin/LockFreeQueue
+    //------------------------------------------------------------------------------
+    template< typename T, std::size_t T_COUNT >
+    class mpmc_bounded
+    {
+    public:
+
+        static constexpr auto mask_v = T_COUNT-1;
+        static constexpr auto size_v = T_COUNT;
+        static_assert( ((mask_v)&T_COUNT) == 0, "Queue size must be power of 2" );
+
+    public:
+
+                            mpmc_bounded    ( const mpmc_bounded& ) = delete;
+        mpmc_bounded&       operator =      ( const mpmc_bounded& ) = delete;
+
+        constexpr mpmc_bounded( void ) noexcept
+        {
+            for( std::size_t i = 0; i < size_v;  ++i )
+                m_Buffer[i].m_Sequence.store( i, std::memory_order_relaxed );
+
+            m_EnqueuePos.store( 0, std::memory_order_relaxed );
+            m_DequeuePos.store( 0, std::memory_order_relaxed );
+        }
+
+        std::size_t size( void ) const noexcept
+        {
+            size_t head = m_DequeuePos.load( std::memory_order_acquire );
+            return m_EnqueuePos.load( std::memory_order_relaxed ) - head;
+        }
+
+        static constexpr std::size_t capacity( void ) noexcept
+        {
+            return size_v + 1;
+        }
+
+        template< typename... T_ARGS > 
+        bool push( T_ARGS&&... Args ) noexcept 
+        {
+            cell_t*     pCell;
+            std::size_t pos = m_EnqueuePos.load( std::memory_order_relaxed );
+
+            while(true)
+            {
+                pCell = &m_Buffer[ pos & mask_v ];
+
+                const std::size_t     seq = pCell->m_Sequence.load( std::memory_order_acquire );
+                const std::intptr_t   dif = static_cast<intptr_t>(seq) - static_cast<intptr_t>(pos);
+
+                if( dif == 0 )
+                {
+                    if( m_EnqueuePos.compare_exchange_weak( pos, pos + 1, std::memory_order_relaxed) )
+                        break;
+                }
+                else
+                {
+                    if( dif < 0 ) return false;
+                    pos = m_EnqueuePos.load( std::memory_order_relaxed );
+                }
+            }
+
+            new( &pCell->m_Data ) T{ std::forward<T_ARGS>(Args)... };
+            pCell->m_Sequence.store( pos + 1, std::memory_order_release );
+            return true;
+        }
+
+        bool pop( T& Data ) noexcept
+        {
+            cell_t*         pCell;
+            std::size_t     pos = m_DequeuePos.load(std::memory_order_relaxed);
+
+            while( true )
+            {
+                pCell = &m_Buffer[ pos & mask_v ];
+
+                const std::size_t     seq = pCell->m_Sequence.load( std::memory_order_acquire );
+                const std::intptr_t   dif = static_cast<intptr_t>(seq) - static_cast<intptr_t>(pos + 1);
+
+                if( dif == 0 )
+                {
+                    if( m_DequeuePos.compare_exchange_weak( pos, pos + 1, std::memory_order_relaxed ))
+                        break;
+                }
+                else 
+                {
+                    if( dif < 0 ) return false;
+                    pos = m_DequeuePos.load( std::memory_order_relaxed );
+                }
+            }
+
+            Data = std::move( pCell->m_Data );
+            pCell->m_Sequence.store( pos + mask_v + 1, std::memory_order_release );
+
+            return true;
+      }
+
+    protected:
+
+        struct cell_t
+        {
+            std::atomic<size_t>   m_Sequence;
+            T                     m_Data;
+        };
+
+    protected:
+
+        xcore::target::cache_line_block             m_Pad0;
+        std::array< cell_t, size_v >                m_Buffer;
+        xcore::target::cache_line_block             m_Pad1;
+        std::atomic<size_t>                         m_EnqueuePos{ 0 };
+        xcore::target::cache_line_block             m_Pad2;
+        std::atomic<size_t>                         m_DequeuePos{ 0 };
+        xcore::target::cache_line_block             m_Pad3;
+    };
+
+    //------------------------------------------------------------------------------
+    // https://github.com/rigtorp/MPMCQueue
+    //------------------------------------------------------------------------------
+    template< typename T, std::size_t T_COUNT >
+    class mpmc_bounded_v2
+    {
+    public:
+
+        using self = mpmc_bounded_v2<T,T_COUNT>;
+        static constexpr auto mask_v = T_COUNT-1;
+        static constexpr auto size_v = T_COUNT;
+        static constexpr auto pow_v  = xcore::bits::Log2Int(T_COUNT);
+
+        static_assert( ((mask_v)&T_COUNT) == 0, "Queue size must be power of 2" );
+        static_assert( (1<<pow_v) == T_COUNT );
+
+    public:
+
+        mpmc_bounded_v2(const mpmc_bounded_v2 &) = delete;
+        mpmc_bounded_v2 &operator=(const mpmc_bounded_v2 &) = delete;
+
+        mpmc_bounded_v2( void ) 
+        {
+            static_assert( std::is_nothrow_copy_assignable<T>::value || std::is_nothrow_move_assignable<T>::value, "T must be nothrow copy or move assignable" );
+            static_assert( std::is_nothrow_destructible<T>::value, "T must be nothrow destructible" );
+            static_assert( sizeof(self) % xcore::target::getCacheLineSize() == 0, "mpmc_bounded_v2<T> size must be a multiple of cache line size to prevent false sharing between adjacent queues" );
+            static_assert( sizeof(slot) % xcore::target::getCacheLineSize() == 0, "Slot size must be a multiple of cache line size to prevent false sharing between adjacent slots" );
+
+            // head and tail must be a cache line apart to prevent false sharing
+            xassert( reinterpret_cast<std::size_t>( &m_Tail ) - reinterpret_cast<std::size_t>( &m_Head ) >= static_cast<std::size_t>(xcore::target::getCacheLineSize()) );
+
+            for( std::size_t i = 0; i < size_v; ++i ) 
+            {
+                new( &m_Slots[i] ) slot{};
+            }
+        }
+
+        ~mpmc_bounded_v2() noexcept 
+        {
+            for( std::size_t i = 0; i < size_v; ++i )
+            {
+                m_Slots[i].~slot();
+            }
+        }
+
+        template< typename... T_ARGS > 
+        bool push( T_ARGS&&... Args ) noexcept 
+        {
+            static_assert(std::is_nothrow_constructible<T, T_ARGS&&...>::value, "T must be nothrow constructible with T_ARGS&&..." );
+            auto Head = m_Head.load( std::memory_order_acquire );
+            while( true ) 
+            {
+                auto& Slot = m_Slots[ idx(Head) ];
+                if( turn( Head ) * 2 == Slot.m_Turn.load(std::memory_order_acquire)) 
+                {
+                    if( m_Head.compare_exchange_strong( Head, Head + 1) ) 
+                    {
+                        Slot.construct( std::forward<T_ARGS>(Args)... );
+                        Slot.m_Turn.store( turn(Head) * 2 + 1, std::memory_order_release );
+                        return true;
+                    }
+                }
+                else 
+                {
+                    auto const prevHead = Head;
+                    Head = m_Head.load(std::memory_order_acquire);
+                    if( Head == prevHead )
+                        return false;
+                }
+            }
+            xassume(false);
+        }
+
+        bool pop( T& Value ) noexcept 
+        {
+            auto Tail = m_Tail.load( std::memory_order_acquire );
+            while( true ) 
+            {
+                auto& Slot = m_Slots[ idx(Tail) ];
+                if( turn(Tail) * 2 + 1 == Slot.m_Turn.load(std::memory_order_acquire) ) 
+                {
+                    if( m_Tail.compare_exchange_strong( Tail, Tail + 1) ) 
+                    {
+                        Value = reinterpret_cast<T&&>(Slot.m_Storage);
+                        Slot.destroy();
+                        Slot.m_Turn.store( turn(Tail) * 2 + 2, std::memory_order_release );
+                        return true;
+                    }
+                } 
+                else 
+                {
+                    auto const PrevTail = Tail;
+                    Tail = m_Tail.load( std::memory_order_acquire );
+                    if( Tail == PrevTail ) 
+                        return false;
+                }
+            }
+        }
+
+        static constexpr std::size_t capacity( void ) noexcept
+        {
+            return size_v + 1;
+        }
+
+        std::size_t size( void ) const noexcept
+        {
+            size_t head = m_Head.load( std::memory_order_acquire );
+            return m_Tail.load( std::memory_order_relaxed ) - head;
+        }
+
+    protected:
+
+        constexpr size_t idx  ( size_t i ) const noexcept { return i &  mask_v; }
+        constexpr size_t turn ( size_t i ) const noexcept { return i >> pow_v;  }
+
+        struct slot 
+        {
+            ~slot() noexcept 
+            {
+                if( m_Turn & 1 ) 
+                {
+                    destroy();
+                }
+            }
+
+            template< typename... T_ARGS > 
+            void construct( T_ARGS&&... Args ) noexcept 
+            {
+                static_assert( std::is_nothrow_constructible<T, T_ARGS&&...>::value, "T must be nothrow constructible with Args&&...");
+                new ( &m_Storage ) T( std::forward<T_ARGS>(Args)... );
+            }
+
+            void destroy() noexcept 
+            {
+                static_assert( std::is_nothrow_destructible<T>::value, "T must be nothrow destructible" );
+                reinterpret_cast<T*>(&m_Storage)->~T();
+            }
+
+            // Align to avoid false sharing between adjacent slots
+            alignas(xcore::target::getCacheLineSize()) std::atomic<size_t>  m_Turn = { 0 };
+            std::aligned_storage_t<sizeof(T), alignof(T)>                   m_Storage;
+      };
+
+    protected:
+      
+        std::array< slot, T_COUNT >                                     m_Slots;
+
+        // Align to avoid false sharing between head_ and tail_
+        alignas(xcore::target::getCacheLineSize()) std::atomic<size_t>  m_Head{ 0 };
+        alignas(xcore::target::getCacheLineSize()) std::atomic<size_t>  m_Tail{ 0 };
+    };
+}
+
+#endif

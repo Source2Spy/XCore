@@ -9,6 +9,7 @@
 #include "xcore_rtti_examples.h"
 #include "xcore_vector_examples.h"
 #include "xcore_properties.h"
+#include "xcore_lockless_queues.h"
 
 
 namespace xcore::examples
@@ -27,8 +28,9 @@ namespace xcore::examples
             xcore::containers::vector::examples::Test();
             xcore::textfile::examples::Test();
             xcore::property::examples::Test();
+            xcore::containers::vector::examples::Test();
         }
 
-        xcore::containers::vector::examples::Test();
+        xcore::lockless::queues::examples::Test();
     }
 }
