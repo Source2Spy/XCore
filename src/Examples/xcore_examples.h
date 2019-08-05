@@ -26,8 +26,9 @@ namespace xcore::examples
             xcore::guid::examples::Test();
             xcore::containers::vector::examples::Test();
             xcore::textfile::examples::Test();
+            xcore::property::examples::Test();
         }
 
-        xcore::property::examples::Test();
+        xcore::containers::vector::examples::Test();
     }
 }

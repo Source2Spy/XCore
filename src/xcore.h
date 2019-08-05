@@ -17,7 +17,13 @@
 #include <filesystem>
 #include <stdlib.h>
 #include <unordered_map>
-#include <stdarg.h>  
+#include <stdarg.h>
+
+#ifdef _MSC_VER 
+    #include <malloc.h>         // align_alloc
+#else
+    #include <cstdlib>
+#endif
 
 //---------------------------------------------------------------------------
 // Predefinitions

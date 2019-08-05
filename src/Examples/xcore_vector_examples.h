@@ -2,6 +2,22 @@
 
 namespace xcore::containers::vector::examples
 {
+    struct test
+    {
+        const char* m_pName    {"Hello world"};
+        int         m_Number   { 22 };
+    };
+
+    //--------------------------------------------------------------------------
+    void Test02( void )
+    {
+        xcore::vector<test> X;
+        X.append();
+        auto Y = X.View();
+
+        xassert( Y[0].m_Number == 22 );
+    }
+
     //--------------------------------------------------------------------------
     void Test01( void )
     {
@@ -14,6 +30,7 @@ namespace xcore::containers::vector::examples
     {
         log::channel Channel("xcore::vector");
         Test01();
+        Test02();
 
     
     }

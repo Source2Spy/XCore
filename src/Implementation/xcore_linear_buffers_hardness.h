@@ -75,7 +75,7 @@ public: inline
 auto View( void ) noexcept
 {
     xassert( size() );
-    return xcore::span{ data(), size() };
+    return xcore::span{ data(), static_cast<std::ptrdiff_t>(size()) };
 }
 
 //------------------------------------------------------------------------------

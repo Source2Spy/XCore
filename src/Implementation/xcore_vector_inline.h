@@ -36,7 +36,7 @@ namespace xcore::containers::vector
         //
         const auto CurCount = m_Allocator.size();
         if( CurCount == 0 )
-           return m_Allocator.New( NewItems );
+           return m_Allocator.malloc( NewItems );
 
         const auto NewCapacity = m_Count + NewItems;
         return m_Allocator.resize( NewCapacity );

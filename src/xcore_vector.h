@@ -78,7 +78,7 @@ namespace xcore::containers::vector
 namespace xcore
 {
     template< typename T >
-    using vector = xcore::containers::vector::type< T, xcore::unique_span< xcore::containers::raw::entry<T>, std::uint64_t > >;
+    using vector = xcore::containers::vector::type< T, xcore::unique_rawspan< T, std::uint64_t > >;
 }
 
 #endif
