@@ -5,6 +5,28 @@
 namespace xcore::units
 {
     //------------------------------------------------------------------------------
+    // handle
+    //------------------------------------------------------------------------------
+    template< typename T_TAG, typename T = std::uint32_t >
+    struct handle
+    {
+        using value_t = T;
+        
+        constexpr static value_t null_v = ~value_t{0}; 
+
+        value_t m_Value{};
+
+        constexpr                       handle              ( void )                        noexcept = default;
+        constexpr explicit              handle              ( std::nullptr_t  )             noexcept : m_Value{ null_v } {}
+        constexpr explicit              handle              ( std::uint32_t v )             noexcept : m_Value{ v }    {}
+        constexpr           bool        isValid             ( void )                const   noexcept { return m_Value != null_v;    }
+        constexpr           bool        isNull              ( void )                const   noexcept { return m_Value == null_v;    }
+        inline              void        setNull             ( void )                        noexcept { m_Value = null_v;            }  
+        constexpr           bool        operator    ==      ( handle H )            const   noexcept { return H.m_Value == m_Value; }
+        constexpr           bool        operator    !=      ( handle H )            const   noexcept { return H.m_Value != m_Value; }
+    };
+
+    //------------------------------------------------------------------------------
     // type
     //------------------------------------------------------------------------------
     template< typename T_PARENT, typename T >

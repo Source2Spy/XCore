@@ -75,6 +75,7 @@ namespace xcore::textfile { namespace version_1{} namespace version_2{} using na
 #include "xcore_textfile2.h"
 #include "xcore_rtti.h"
 #include "xcore_lockless_queues.h"
+#include "xcore_lockless_pool.h"
 
 //---------------------------------------------------------------------------
 // including properties
