@@ -110,6 +110,7 @@ namespace xcore::error
         inline      bool                isError             ( err& F )                              noexcept { xassert(F.m_pCode==nullptr); F.m_pCode = m_pCode; m_pCode = nullptr; return  F.m_pCode; }
         inline      bool                isOK                ( err& F )                              noexcept { xassert(F.m_pCode==nullptr); F.m_pCode = m_pCode; m_pCode = nullptr; return !F.m_pCode; }
         inline      void                clear               ( void )                                noexcept { m_pCode = nullptr; }
+        inline      void                CheckError          ( void )                                noexcept { xassert(m_pCode==nullptr); m_pCode = nullptr; }
 
     protected:
 

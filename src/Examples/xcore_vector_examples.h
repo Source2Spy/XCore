@@ -21,8 +21,9 @@ namespace xcore::containers::vector::examples
     //--------------------------------------------------------------------------
     void Test01( void )
     {
-        xcore::vector<char> X;
-        X.append();
+        xcore::vector<int> X;
+        for( int i=0; i< 100000; i++ )
+            X.append(i);
     }
 
     //--------------------------------------------------------------------------

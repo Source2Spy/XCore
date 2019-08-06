@@ -55,7 +55,7 @@ namespace xcore::containers::vector
         xassert( (m_Count + Count) < std::numeric_limits<size_type>::max() );
 
         const size_type NewCount = m_Count + Count;
-        if( NewCount >= m_Allocator.size() )
+        if( NewCount > m_Allocator.size() )
             GrowBy( std::max( NewCount/2, Count + DEFAULT_GROWTH ) );
 
         //
@@ -93,7 +93,7 @@ namespace xcore::containers::vector
         xassert( static_cast<std::uint64_t>(m_Count + View.size()) < std::numeric_limits<size_type>::max() );
 
         const auto NewCount = m_Count + View.size();
-        if( NewCount >= m_Allocator.size() )
+        if( NewCount > m_Allocator.size() )
             GrowBy( std::max( NewCount/2, View.size() + DEFAULT_GROWTH ) );
         
         //
@@ -133,7 +133,7 @@ namespace xcore::containers::vector
         //
         // Make sure that we have memory
         //
-        if( Count > (m_Allocator.size() - m_Count) )
+        if( (m_Count + Count) > m_Allocator.size<size_type>() )
             if( auto Error = GrowBy( std::max( (m_Allocator.size() + Count)/2, Count + DEFAULT_GROWTH ) ); Error )
             {
                 // This should fail here
@@ -162,7 +162,7 @@ namespace xcore::containers::vector
         //
         // Make sure that we have memory
         //
-        if( View.size() > (size() - m_Count) )
+        if( (m_Count + View.size()) > Index )
             if( auto Error = GrowBy( std::max( (size()+View.size())/2, View.size() + DEFAULT_GROWTH )); Error )
             {
                 // This should fail here

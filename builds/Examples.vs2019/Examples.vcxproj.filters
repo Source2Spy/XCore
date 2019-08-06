@@ -156,6 +156,9 @@
     <ClInclude Include="..\..\src\Examples\xcore_lockless_q.h">
       <Filter>Examples</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\src\Examples\xcore_unique_span.h">
+      <Filter>Examples</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\src\xcore.cpp">

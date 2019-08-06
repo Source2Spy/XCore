@@ -32,6 +32,7 @@
     <ClInclude Include="..\..\src\Examples\xcore_rtti_examples.h" />
     <ClInclude Include="..\..\src\Examples\xcore_string_examples.h" />
     <ClInclude Include="..\..\src\Examples\xcore_textfile_examples.h" />
+    <ClInclude Include="..\..\src\Examples\xcore_unique_span.h" />
     <ClInclude Include="..\..\src\Examples\xcore_vector_examples.h" />
     <ClInclude Include="..\..\src\Implementation\xcore_linear_buffers_hardness.h" />
     <ClInclude Include="..\..\src\Implementation\xcore_string_inline.h" />

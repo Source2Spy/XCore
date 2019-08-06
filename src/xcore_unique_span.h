@@ -1,6 +1,6 @@
 
-#ifndef _XCORE_UNITE_Q_H
-#define _XCORE_UNITE_Q_H
+#ifndef _XCORE_UNIQUE_SPAN_H
+#define _XCORE_UNIQUE_SPAN_H
 
 namespace xcore::allocator
 {
@@ -71,14 +71,11 @@ namespace xcore::allocator
             xassert( Count > 0 );
             err     Error;
 
-            auto    op      = parent::data();
-            if( op )
-            {
-                if( Count == parent::size() ) return Error;
-            }
+            auto op = parent::data();
+            if( op && Count == parent::size() ) return Error;
 
-            auto    p       = new value_type[ Count ];
-            if( p == nullptr ) 
+            auto p = new value_type[ Count ];
+            if( p == nullptr )
                 return xerr_code( Error, error_state::OUT_OF_MEMORY, "Resize Failure" );
 
             if( op )
@@ -98,12 +95,20 @@ namespace xcore::allocator
         void clear  ( void ) noexcept 
         { 
             auto p = parent::data();
-            if( p ) delete []p;
-            p = nullptr;
-            new( this ) xcore::span( p, parent::index_type{0} );
+            if( p )
+            {
+                delete []p;
+                p = nullptr;
+                new( this ) xcore::span( p, parent::index_type{0} );
+            }
         }
 
         //--------------------------------------------------------------------------------------------
+        template< typename T = std::size_t >
+        constexpr T size( void ) const noexcept 
+        {
+            return static_cast<T>(parent::size());
+        }
     };
 
     //--------------------------------------------------------------------------------------------
@@ -164,7 +169,7 @@ namespace xcore::allocator
                 }
 
                 #if _XCORE_COMPILER_VISUAL_STUDIO
-                    auto p = reinterpret_cast<value_type*>( _aligned_malloc( std::alignment_of_v<value_type>, sizeof(value_type)*Count ) );
+                    auto p = reinterpret_cast<value_type*>( _aligned_malloc( sizeof(value_type)*Count, std::alignment_of_v<value_type> ) );
                 #else
                     auto p = reinterpret_cast<value_type*>( std::aligned_alloc( std::alignment_of_v<value_type>, sizeof(value_type)*Count ) );
                 #endif
@@ -184,13 +189,10 @@ namespace xcore::allocator
                 err     Error;
 
                 auto op = parent::data();
-                if( op )
-                {
-                    if( Count == parent::size() ) return Error;
-                }
+                if( op && Count == parent::size() ) return Error;
 
                 #if _XCORE_COMPILER_VISUAL_STUDIO
-                    auto p = reinterpret_cast<value_type*>( _aligned_malloc( std::alignment_of_v<value_type>, sizeof(value_type)*Count ) );
+                    auto p = reinterpret_cast<value_type*>( _aligned_malloc( sizeof(value_type)*Count, std::alignment_of_v<value_type> ) );
                 #else
                     auto p = reinterpret_cast<value_type*>( std::aligned_alloc( std::alignment_of_v<value_type>, sizeof(value_type)*Count ) );
                 #endif
@@ -227,9 +229,16 @@ namespace xcore::allocator
                     #else
                         free( p );
                     #endif
+                    p = nullptr;
+                    new( this ) xcore::span( p, parent::index_type{0} );
                 }
-                p = nullptr;
-                new( this ) xcore::span( p, parent::index_type{0} );
+            }
+
+            //--------------------------------------------------------------------------------------------
+            template< typename T = std::size_t >
+            constexpr T size( void ) const noexcept 
+            {
+                return static_cast<T>(parent::size());
             }
         };
     }
