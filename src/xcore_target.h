@@ -45,7 +45,7 @@ namespace xcore::target
 {
     enum class compiler : unsigned char
     {
-        VS_2017             // for #ifs use: _XCORE_COMPILER_VISUAL_STUDIO
+          VS_2017           // for #ifs use: _XCORE_COMPILER_VISUAL_STUDIO
         , VS_2019           // for #ifs use: _XCORE_COMPILER_VISUAL_STUDIO
         , CLANG             // for #ifs use: _XCORE_COMPILER_CLANG even if it has LLVM backend
         , GCC               // for #ifs use: _XCORE_COMPILER_GCC
@@ -53,7 +53,7 @@ namespace xcore::target
 
     enum class platform : unsigned char
     {
-        FIRST
+          FIRST
         , WINDOWS = FIRST   // for #ifs use: _XCORE_TARGET_WINDOWS
         , MAC               // for #ifs use: _XCORE_TARGET_MAC
         , IOS               // for #ifs use: _XCORE_TARGET_IOS
@@ -64,20 +64,20 @@ namespace xcore::target
 
     enum class chipset : unsigned char
     {
-        INTEL               // for #ifs use: _XCORE_TARGET_INTEL
+          INTEL             // for #ifs use: _XCORE_TARGET_INTEL
         , ARM               // for #ifs use: _XCORE_TARGET_ARM
     };
     
     enum class endian : unsigned char
     {
-        LITTLE              // for #ifs use: _XCORE_ENDIAN_LITTLE
+          LITTLE            // for #ifs use: _XCORE_ENDIAN_LITTLE
         , BIG               // for #ifs use: _XCORE_ENDIAN_BIG
     };
     
     // X_TARGET_BITS - will be assigned at compile time one of the following
     enum class bits : unsigned char
     {
-        b64 = 64            // for #ifs use: _XCORE_TARGET_64BITS
+          b64 = 64          // for #ifs use: _XCORE_TARGET_64BITS
         , b32 = 32          // for #ifs use: _XCORE_TARGET_32BITS
     };
     
@@ -96,14 +96,13 @@ namespace xcore::target
     constexpr endian        getEndian           ( void )                    noexcept;
     constexpr bits          getBits             ( void )                    noexcept;
     constexpr auto          getPlatformCount    ( void )                    noexcept { return static_cast<int>(platform::COUNT); }
-    
-    struct cache_line_block { char v[xcore::target::getCacheLineSize()]; };
+    constexpr bool          isDebug             ( void )                    noexcept;
 
     namespace details
     {
         constexpr static std::array<const char*,static_cast<int>(platform::COUNT)> Strings =
         { 
-            "WINDOWS" 
+              "WINDOWS" 
             , "MAC" 
             , "IOS"
             , "LINUX" 
@@ -188,8 +187,10 @@ constexpr xcore::target::compiler   xcore::target::getCompiler      ( void ) noe
 //------------------------------------------------------------------------------
 #if defined(_DEBUG) || defined(DEBUG)
     #define _XCORE_DEBUG             true
+    constexpr bool xcore::target::isDebug( void ) noexcept { return true; }
 #else
     #define _XCORE_RELEASE           true
+    constexpr bool xcore::target::isDebug( void ) noexcept { return false; }
 #endif
 
 //------------------------------------------------------------------------------

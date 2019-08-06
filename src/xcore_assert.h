@@ -82,7 +82,7 @@ constexpr static auto ms_xCoreAssertLevel = xcore::assert_level::MEDIUM;
 #if _XCORE_ASSERTS
     #define XCORE_CMD_ASSERT( EXP ) EXP
 #else
-    #define XCORE_CMD_ASSERT( EXP ) ((void)(0))
+    #define XCORE_CMD_ASSERT( EXP ) 
 #endif
 
 //------------------------------------------------------------------------------

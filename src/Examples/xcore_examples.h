@@ -9,7 +9,7 @@
 #include "xcore_rtti_examples.h"
 #include "xcore_vector_examples.h"
 #include "xcore_properties.h"
-#include "xcore_lockless_queues.h"
+#include "xcore_lockless_q.h"
 
 
 namespace xcore::examples

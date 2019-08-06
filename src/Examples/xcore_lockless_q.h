@@ -2,7 +2,7 @@
 
 namespace xcore::lockless::queues::examples
 {
-    static constexpr int testItems = 250000 * 64 / 3 * 10;
+    static constexpr int testItems = xcore::target::isDebug() ? (25000 * 64 / 3 * 10) : (250000 * 64 / 3 * 10);
     static constexpr int testThreadConsumerThreads = 8;
     static constexpr int testThreadProducerThreads = 8;
     static constexpr int testItemsPerConsumerThread = testItems / testThreadConsumerThreads;
@@ -116,32 +116,38 @@ namespace xcore::lockless::queues::examples
         printf("Testing %s... \n", pName );
         {
             std::unique_ptr<TestQueue<int, Q<int,1024*16>>> queue { new TestQueue<int, Q<int,1024*16>>{} };
-            int result;
+            int result=0;
             xassert(queue->capacity() >= 1024*16);
             xassert(!queue->pop(result));
             xassert(queue->push(42));
+            xassert(queue->size()==1);
             xassert(queue->pop(result));
             xassert(result == 42);
             xassert(!queue->pop(result));
+            xassert(queue->size()==0);
         }
 
         {
-            TestQueue<int, Q<int,2>> queue;
-            int result;
-            xassert(queue.capacity() >= 2);
-            xassert(!queue.pop(result));
-            xassert(queue.push(42));
-            xassert(queue.push(43));
-            xassert(queue.pop(result));
+            std::unique_ptr<TestQueue<int, Q<int,2>>> queue { new TestQueue<int, Q<int,2>>{} };
+            int result=0;
+            xassert(queue->capacity() >= 2);
+            xassert(!queue->pop(result));
+            xassert(queue->push(42));
+            xassert(queue->size()==1);
+            xassert(queue->push(43));
+            xassert(queue->size()==2);
+            xassert(queue->pop(result));
+            xassert(queue->size()==1);
             xassert(result == (fifo ? 43 : 42));
-            xassert(queue.pop(result));
+            xassert(queue->pop(result));
+            xassert(queue->size()==0);
             xassert(result == (fifo ? 42 : 43));
-            xassert(!queue.pop(result));
-            xassert(queue.push(44));
-            xassert(queue.push(45));
-            xassert(queue.pop(result));
+            xassert(!queue->pop(result));
+            xassert(queue->push(44));
+            xassert(queue->push(45));
+            xassert(queue->pop(result));
             xassert(result == (fifo ? 45 : 44));
-            xassert(queue.push(47));
+            xassert(queue->push(47));
         }
 
         producerSum = 0;
@@ -149,27 +155,25 @@ namespace xcore::lockless::queues::examples
         maxPushDuration.store( std::chrono::duration<double>{0} );
         maxPopDuration.store( std::chrono::duration<double>{0} );
 
+        std::vector<std::unique_ptr<std::thread>> lThreads;
         auto microStartTime = std::chrono::high_resolution_clock::now();
         {
-            std::unique_ptr<TestQueue<int, Q<int,128>>> queue { new TestQueue<int, Q<int,128>>{} };
-            xcore::vector<std::thread*> lThreads;
+            std::unique_ptr<TestQueue<int, Q<int,128>>>     queue { new TestQueue<int, Q<int,128>>{} };
 
             for (int i = 0; i < testThreadProducerThreads; ++i)
             {
-                auto pThread = new std::thread( producerThread, queue.get() );
-                lThreads.append(pThread);
+                lThreads.push_back( std::unique_ptr<std::thread>{new std::thread( producerThread, queue.get() )} );
             }
+
             for (int i = 0; i < testThreadConsumerThreads; ++i)
             {
-                auto pThread = new std::thread(consumerThread, queue.get() );
-                lThreads.append(pThread);
+                lThreads.push_back( std::unique_ptr<std::thread>{new std::thread(consumerThread, queue.get() )} );
             }
 
             for( auto& pE : lThreads )
-            {
                 pE->join();
-                delete pE;
-            }
+
+            lThreads.clear();
 
             xassert(queue->size() == 0);
             xassert(producerSum == consumerSum);
@@ -181,7 +185,7 @@ namespace xcore::lockless::queues::examples
 
     void Test(void)
     {
-        for (int i = 0; i < 3; ++i)
+        for (int i = 0; i < 300; ++i)
         {
             printf("--- Run %d ---\n", i);
             testQueue<xcore::lockless::queues::mpmc_bounded >   ("V1");

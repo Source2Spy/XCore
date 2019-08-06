@@ -7,14 +7,14 @@ namespace xcore::lockless::queues
     //------------------------------------------------------------------------------
     // https://github.com/craflin/LockFreeQueue
     //------------------------------------------------------------------------------
-    template< typename T, std::size_t T_COUNT >
+    template< typename T, std::size_t T_CAPACITY >
     class mpmc_bounded
     {
     public:
 
-        static constexpr auto mask_v = T_COUNT-1;
-        static constexpr auto size_v = T_COUNT;
-        static_assert( ((mask_v)&T_COUNT) == 0, "Queue size must be power of 2" );
+        static constexpr auto mask_v        = T_CAPACITY-1;
+        static constexpr auto capacity_v    = T_CAPACITY;
+        static_assert( ((mask_v)&capacity_v) == 0, "Queue size must be power of 2" );
 
     public:
 
@@ -23,7 +23,7 @@ namespace xcore::lockless::queues
 
         constexpr mpmc_bounded( void ) noexcept
         {
-            for( std::size_t i = 0; i < size_v;  ++i )
+            for( std::size_t i = 0; i < capacity_v;  ++i )
                 m_Buffer[i].m_Sequence.store( i, std::memory_order_relaxed );
 
             m_EnqueuePos.store( 0, std::memory_order_relaxed );
@@ -32,13 +32,13 @@ namespace xcore::lockless::queues
 
         std::size_t size( void ) const noexcept
         {
-            size_t head = m_DequeuePos.load( std::memory_order_acquire );
+            const size_t head = m_DequeuePos.load( std::memory_order_acquire );
             return m_EnqueuePos.load( std::memory_order_relaxed ) - head;
         }
 
         static constexpr std::size_t capacity( void ) noexcept
         {
-            return size_v + 1;
+            return capacity_v;
         }
 
         template< typename... T_ARGS > 
@@ -111,7 +111,7 @@ namespace xcore::lockless::queues
 
     protected:
 
-        std::array< cell_t, size_v >                                        m_Buffer;
+        std::array< cell_t, capacity_v >                                    m_Buffer;
         alignas(xcore::target::getCacheLineSize()) std::atomic<size_t>      m_EnqueuePos{ 0 };
         alignas(xcore::target::getCacheLineSize()) std::atomic<size_t>      m_DequeuePos{ 0 };
     };
@@ -119,18 +119,18 @@ namespace xcore::lockless::queues
     //------------------------------------------------------------------------------
     // https://github.com/rigtorp/MPMCQueue
     //------------------------------------------------------------------------------
-    template< typename T, std::size_t T_COUNT >
+    template< typename T, std::size_t T_CAPACITY >
     class mpmc_bounded_v2
     {
     public:
 
-        using self = mpmc_bounded_v2<T,T_COUNT>;
-        static constexpr auto mask_v = T_COUNT-1;
-        static constexpr auto size_v = T_COUNT;
-        static constexpr auto pow_v  = xcore::bits::Log2Int(T_COUNT);
+        using self = mpmc_bounded_v2<T,T_CAPACITY>;
+        static constexpr auto mask_v        = T_CAPACITY-1;
+        static constexpr auto capacity_v    = T_CAPACITY;
+        static constexpr auto pow_v         = xcore::bits::Log2Int(capacity_v);
 
-        static_assert( ((mask_v)&T_COUNT) == 0, "Queue size must be power of 2" );
-        static_assert( (1<<pow_v) == T_COUNT );
+        static_assert( ((mask_v)&T_CAPACITY) == 0, "Queue size must be power of 2" );
+        static_assert( (1<<pow_v) == T_CAPACITY );
 
     public:
 
@@ -147,7 +147,7 @@ namespace xcore::lockless::queues
             // head and tail must be a cache line apart to prevent false sharing
             xassert( reinterpret_cast<std::size_t>( &m_Tail ) - reinterpret_cast<std::size_t>( &m_Head ) >= static_cast<std::size_t>(xcore::target::getCacheLineSize()) );
 
-            for( std::size_t i = 0; i < size_v; ++i ) 
+            for( std::size_t i = 0; i < capacity_v; ++i ) 
                 m_Slots[i].m_Turn.store( 0, std::memory_order_relaxed );
         }
 
@@ -207,13 +207,14 @@ namespace xcore::lockless::queues
 
         static constexpr std::size_t capacity( void ) noexcept
         {
-            return size_v + 1;
+            return capacity_v;
         }
 
         std::size_t size( void ) const noexcept
         {
-            size_t head = m_Head.load( std::memory_order_acquire );
-            return m_Tail.load( std::memory_order_relaxed ) - head;
+            const std::size_t head = m_Head.load( std::memory_order_acquire );
+            const std::size_t tail = m_Tail.load( std::memory_order_relaxed );
+            return (head - tail);
         }
 
     protected:
@@ -248,9 +249,9 @@ namespace xcore::lockless::queues
 
     protected:
       
-        std::array< slot, T_COUNT >                                     m_Slots;
+        std::array< slot, T_CAPACITY >                                  m_Slots;
 
-        // Align to avoid false sharing between head_ and tail_
+        // Align to avoid false sharing
         alignas(xcore::target::getCacheLineSize()) std::atomic<size_t>  m_Head{ 0 };
         alignas(xcore::target::getCacheLineSize()) std::atomic<size_t>  m_Tail{ 0 };
     };

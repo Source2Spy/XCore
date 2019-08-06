@@ -26,7 +26,7 @@
     <ClInclude Include="..\..\src\Examples\xcore_examples.h" />
     <ClInclude Include="..\..\src\Examples\xcore_function_examples.h" />
     <ClInclude Include="..\..\src\Examples\xcore_guid_examples.h" />
-    <ClInclude Include="..\..\src\Examples\xcore_lockless_queues.h" />
+    <ClInclude Include="..\..\src\Examples\xcore_lockless_q.h" />
     <ClInclude Include="..\..\src\Examples\xcore_log_examples.h" />
     <ClInclude Include="..\..\src\Examples\xcore_properties.h" />
     <ClInclude Include="..\..\src\Examples\xcore_rtti_examples.h" />
