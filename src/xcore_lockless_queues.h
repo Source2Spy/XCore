@@ -105,19 +105,15 @@ namespace xcore::lockless::queues
 
         struct cell_t
         {
-            std::atomic<size_t>   m_Sequence;
-            T                     m_Data;
+            alignas(xcore::target::getCacheLineSize())  std::atomic<size_t>     m_Sequence;
+                                                        T                       m_Data;
         };
 
     protected:
 
-        xcore::target::cache_line_block             m_Pad0;
-        std::array< cell_t, size_v >                m_Buffer;
-        xcore::target::cache_line_block             m_Pad1;
-        std::atomic<size_t>                         m_EnqueuePos{ 0 };
-        xcore::target::cache_line_block             m_Pad2;
-        std::atomic<size_t>                         m_DequeuePos{ 0 };
-        xcore::target::cache_line_block             m_Pad3;
+        std::array< cell_t, size_v >                                        m_Buffer;
+        alignas(xcore::target::getCacheLineSize()) std::atomic<size_t>      m_EnqueuePos{ 0 };
+        alignas(xcore::target::getCacheLineSize()) std::atomic<size_t>      m_DequeuePos{ 0 };
     };
 
     //------------------------------------------------------------------------------
@@ -152,17 +148,7 @@ namespace xcore::lockless::queues
             xassert( reinterpret_cast<std::size_t>( &m_Tail ) - reinterpret_cast<std::size_t>( &m_Head ) >= static_cast<std::size_t>(xcore::target::getCacheLineSize()) );
 
             for( std::size_t i = 0; i < size_v; ++i ) 
-            {
-                new( &m_Slots[i] ) slot{};
-            }
-        }
-
-        ~mpmc_bounded_v2() noexcept 
-        {
-            for( std::size_t i = 0; i < size_v; ++i )
-            {
-                m_Slots[i].~slot();
-            }
+                m_Slots[i].m_Turn.store( 0, std::memory_order_relaxed );
         }
 
         template< typename... T_ARGS > 
@@ -232,17 +218,14 @@ namespace xcore::lockless::queues
 
     protected:
 
-        constexpr size_t idx  ( size_t i ) const noexcept { return i &  mask_v; }
-        constexpr size_t turn ( size_t i ) const noexcept { return i >> pow_v;  }
+        static constexpr size_t idx  ( size_t i ) noexcept { return i &  mask_v; }
+        static constexpr size_t turn ( size_t i ) noexcept { return i >> pow_v;  }
 
         struct slot 
         {
             ~slot() noexcept 
             {
-                if( m_Turn & 1 ) 
-                {
-                    destroy();
-                }
+                if( m_Turn & 1 ) destroy();
             }
 
             template< typename... T_ARGS > 
@@ -259,8 +242,8 @@ namespace xcore::lockless::queues
             }
 
             // Align to avoid false sharing between adjacent slots
-            alignas(xcore::target::getCacheLineSize()) std::atomic<size_t>  m_Turn = { 0 };
-            std::aligned_storage_t<sizeof(T), alignof(T)>                   m_Storage;
+            alignas(xcore::target::getCacheLineSize()) std::atomic<std::size_t>     m_Turn;
+            std::aligned_storage_t<sizeof(T), alignof(T)>                           m_Storage;
       };
 
     protected:
