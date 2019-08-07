@@ -59,6 +59,7 @@ namespace xcore
 #include "xcore_lock.h"
 #include "xcore_global.h"
 #include "xcore_types.h"
+
 #include "xcore_bits.h"
 #include "xcore_context.h"
 #include "xcore_crc.h"
@@ -76,6 +77,11 @@ namespace xcore::textfile { namespace version_1{} namespace version_2{} using na
 #include "xcore_rtti.h"
 #include "xcore_lockless_queues.h"
 #include "xcore_lockless_pool.h"
+
+#include "xcore_scheduler_job.h"
+#include "xcore_scheduler_trigger.h"
+#include "xcore_scheduler_channel.h"
+#include "xcore_scheduler_system.h"
 
 //---------------------------------------------------------------------------
 // including properties

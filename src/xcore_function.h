@@ -183,6 +183,11 @@ namespace xcore::function
         invoker_ptr                 m_Invoker           { nullptr };    // Pointer to the Invoke function ones all the t_type magic has happen
         void*                       m_Storage[T_SIZE]   {};             // Keep the data used to call the function
     };
+}
 
+namespace xcore
+{
+    template< typename T >
+    using func = function::buffer<bits::Log2IntRoundUp(sizeof(xcore::function::buffer<7,void(void)>)), T >;
 }
 #endif

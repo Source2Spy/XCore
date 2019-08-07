@@ -6,13 +6,10 @@ namespace xcore::lockless::pool
 {
     //------------------------------------------------------------------------------
     // Description:
-    //      ll      - Lockless
-    //      fixed   - Memory pool won't grow automatically
-    //      pool    - Memory pool, (an array of entries)
     //      general - An allocator object is require and it will handle how to allocate memory
     //------------------------------------------------------------------------------
     template< typename T, template<typename,typename> class T_ALLOCATOR, typename T_COUNTER = std::size_t >
-    class mpmc_bounded
+    class mpmc_bounded_general
     {
     public:     using                                                   value_type      = T;
     protected:  struct alignas( xcore::target::getCacheLineSize() )     real_node; 
@@ -20,7 +17,7 @@ namespace xcore::lockless::pool
     public:     using                                                   allocator       = T_ALLOCATOR< real_node, counter >;
     public:
 
-        constexpr               mpmc_bounded    ( bool bClear = true ) noexcept { if( bClear ) clear(); }
+        constexpr               mpmc_bounded_general    ( bool bClear = true ) noexcept { if( bClear ) clear(); }
     
         inline void clear ( void ) noexcept  
         {
@@ -124,11 +121,12 @@ namespace xcore::lockless::pool
     };
 
     //------------------------------------------------------------------------------
+    template< typename T, std::size_t T_MAX_SIZE, typename T_COUNTER = std::size_t >
+    using mpmc_bounded = mpmc_bounded_general< T, xcore::types::container_static_to_dynamic< T, xcore::array, T_MAX_SIZE, T_COUNTER >, T_COUNTER >;
+
+
+    //------------------------------------------------------------------------------
     // Description:
-    //      ll      - Lockless
-    //      fixed   - Memory pool won't grow automatically
-    //      pool    - Memory pool, (an array of entries)
-    //      general - An allocator object is require and it will handle how to allocate memory
     //      jitc    - ( Just In Time Construction/Destruction )
     //                  Means that when an entry is pop then we will constructed and push destruct it
     // Algorithm:
@@ -270,54 +268,44 @@ namespace xcore::lockless::pool
 
     //------------------------------------------------------------------------------
     // Description:
-    //      ll      - Lockless
-    //      fixed   - Memory pool won't grow automatically
-    //      pool    - Memory pool, (an array of entries)
     //      dynamic - The pool will be allocated in the heap, must Init to create the pool size
     //------------------------------------------------------------------------------
-    template< class T, typename T_COUNTER >
-    class mpmc_bounded_dynamic : public mpmc_bounded< T, allocator::unique_span, T_COUNTER >
+    template< typename T, typename T_COUNTER = std::size_t >
+    class mpmc_bounded_dynamic : public mpmc_bounded_general< T, allocator::unique_span, T_COUNTER >
     {
     public:
 
-        using t_self   = x_ll_fixed_pool_dynamic;
-        using t_parent = x_ll_fixed_pool_general< T_ENTRY, xndptr >;
-        using t_entry  = typename t_parent::t_entry;
+        using parent        = mpmc_bounded_general< T, allocator::unique_span, T_COUNTER >;
+        using self          = mpmc_bounded_dynamic;
+        using value_type    = T;
     
     public:
 
-        x_forceinline           x_ll_fixed_pool_dynamic     ( void )        noexcept    : t_parent( false ) {}
-        inline                 ~x_ll_fixed_pool_dynamic     ( void )        noexcept    { Kill();                                                       }
-    
-      //  template< class T, typename ...T_ARG >
-      //  inline  void            Init                        ( s32 Count, T_ARG&&...Args)   noexcept { t_parent::m_Allocator.New( Count, std::forward<T_ARG>(Args)... ); t_parent::Clear(); }
-        inline  void            Init                        ( s32 Count )   noexcept    { t_parent::m_Allocator.New( Count ); t_parent::Clear();        }
-        inline  void            Kill                        ( void )        noexcept    { t_parent::m_Allocator.Delete();                               }
+        constexpr               mpmc_bounded_dynamic    ( void )                noexcept    = default;
+        inline      void        Init                    ( std::size_t Count )   noexcept    { parent::m_Allocator.New( Count ); parent::clear();    }
+        inline      void        destroy                 ( void )                noexcept    { parent::m_Allocator.destroy();                        }
     };
 
     //------------------------------------------------------------------------------
     // Description:
-    //      ll      - Lockless
-    //      fixed   - Memory pool won't grow automatically
-    //      pool    - Memory pool, (an array of entries)
     //      dynamic - The pool will be allocated in the heap, must Init to create the pool size
     //      jitc    - ( Just In Time Construction/Destruction )
     //                  Means that when an entry is pop then we will constructed and push destruct it
     //------------------------------------------------------------------------------
-    template< class T_ENTRY >
-    class x_ll_fixed_pool_dynamic_jitc : public x_ll_fixed_pool_general_jitc<T_ENTRY,xafptr>
+    template< typename T, typename T_COUNTER >
+    class mpmc_bounded_dynamic_jitc : public mpmc_bounded_jitc< T, allocator::raw::unique_span, T_COUNTER >
     {
     public:
 
-        using t_self   = x_ll_fixed_pool_dynamic_jitc< T_ENTRY >;
-        using t_parent = x_ll_fixed_pool_general_jitc< T_ENTRY, xafptr >;
+        using parent        = mpmc_bounded_jitc< T, allocator::raw::unique_span, T_COUNTER >;
+        using self          = mpmc_bounded_dynamic_jitc;
+        using value_type    = T;
     
     public:
 
-        x_forceinline               x_ll_fixed_pool_dynamic_jitc    ( void )         noexcept   : t_parent( false ) {}
-        x_forceinline              ~x_ll_fixed_pool_dynamic_jitc    ( void )         noexcept   { Kill();                                                               }
-        x_forceinline   void        Init                            ( xuptr Count )  noexcept   { t_parent::m_Allocator.Alloc( Count ); t_parent::Clear();              }
-        x_forceinline   void        Kill                            ( void )         noexcept   { t_parent::DestructAllocatedNodes();   t_parent::m_Allocator.Free();   }
+        constexpr               mpmc_bounded_dynamic_jitc       ( void )                noexcept   = default;
+        inline      void        Init                            ( std::size_t Count )   noexcept   { parent::m_Allocator.Alloc( Count ); parent::Clear();              }
+        inline      void        Kill                            ( void )                noexcept   { parent::DestructAllocatedNodes();   parent::m_Allocator.Free();   }
     };
 
 }

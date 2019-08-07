@@ -1,10 +1,10 @@
-#ifndef _XCORE_SCHEDULER_H
-#define _XCORE_SCHEDULER_H
+#ifndef _XCORE_SCHEDULER_SYSTEM_H
+#define _XCORE_SCHEDULER_SYSTEM_H
 #pragma once
 
 namespace xcore::scheduler
 {
-    using worker_uid = xcore::units::handle< scheduler, std::uint32_t >;
+    using worker_uid = xcore::units::handle< struct scheduler, std::uint32_t >;
 
     class system //: xproperty::base, xsystem_reg
     {
@@ -13,13 +13,13 @@ namespace xcore::scheduler
         virtual                    ~system                      ( void )                                            noexcept;
                     void            Init                        ( int nWorkers = -1 )                               noexcept;
                     void            Shutdown                    ( void )                                            noexcept;
-                    void            AddJobToQuantumWorld        ( x_job_base& Job )                                 noexcept;
+                    void            AddJobToQuantumWorld        ( job_base& Job )                                   noexcept;
                     job_base*       getJob                      ( void )                                            noexcept;
                     job_base*       getLightJob                 ( void )                                            noexcept;
-                    void            ProcessWorkPrimitive        ( x_job_base* pJob )                                noexcept;
+                    void            ProcessWorkPrimitive        ( job_base* pJob )                                  noexcept;
         static      worker_uid      getWorkerUID                ( void )                                            noexcept;
-        static      worker_uid      getWorkerUID                ( x_scheduler& S )                                  noexcept;
-        static      void            ProcessWhileWait            ( x_trigger_base& Trigger )                         noexcept;
+        static      worker_uid      getWorkerUID                ( system& S )                                       noexcept;
+        static      void            ProcessWhileWait            ( trigger_base& Trigger )                           noexcept;
                     void            MainThreadStartsWorking     ( void )                                            noexcept;
         inline      void            MainThreadStopWorking       ( void )                                            noexcept { m_bMainThreadShouldWork.store( false, std::memory_order_relaxed); m_SleepWorkerCV.notify_all(); }
         template< typename T = int >
@@ -40,14 +40,14 @@ namespace xcore::scheduler
 
         struct worker_kit
         {
-            using lambda_job = x_job_block_details::lambda_job;
+            using lambda_job = xcore::scheduler::details::lambda_job;
 
             constexpr worker_kit( void ) noexcept = default;
-            x_ll_spmc_bounded_queue<x_job_base>                         m_LightJobQueue         {};
-            xuptr                                                       m_iNextQueue            {~xuptr(0)};
-            x_ll_fixed_pool_dynamic<lambda_job>                         m_LightJobPool          {};
+            xcore::lockless::queues::mpmc_bounded<job_base*,1024>       m_LightJobQueue         {};
+            std::size_t                                                 m_iNextQueue            {~std::size_t(0)};
+            xcore::lockless::pool::mpmc_bounded_dynamic<details::lambda_job>     m_LightJobPool          {};
             bool                                                        m_bException            {false};
-            xarray<char,1024*128>                                       m_ExceptionStackInfo    {};
+            xcore::array<char,1024*128>                                 m_ExceptionStackInfo    {};
         };
 
         using priority_jobs_queue_array     = xcore::array<lockless::queues::mpmc_bounded<job_base, 1024>, static_cast<int>(job_base::priority::COUNT) >;
@@ -84,25 +84,22 @@ namespace xcore::scheduler
     #if _X_DEBUG
         x_debug_linear_quantum                  m_Debug_LQ              {};
     #endif
-        x_reporting::stats_metric               m_Stats_nWorkersWorking {};
-        x_reporting::stats_metric               m_Stats_nJobs           {};
+        // x_reporting::stats_metric               m_Stats_nWorkersWorking {};
+        // x_reporting::stats_metric               m_Stats_nJobs           {};
         std::atomic<bool>                       m_bMainThreadShouldWork { true };
         std::atomic<bool>                       m_bExceptionRaised      { false };
         std::atomic<int>                        m_nReadyWorkers         { 0 };
 
     public:
 
-        x_ll_fixed_pool_static_raw<x_scheduler_jobs::job_chain::state_block, 100>    system_JobChainBlockPool   {};
-        x_ll_fixed_pool_static_raw<x_scheduler_jobs::job_chain::lambda_job,  100>    system_LambdaJobChainPool  {};
-        using kit = worker_kit;
+        //xcore::lockless::pool::mpmc_bounded_jitc<x_scheduler_jobs::job_chain::state_block, 100>    system_JobChainBlockPool   {};
+        //x_ll_fixed_pool_static_raw<x_scheduler_jobs::job_chain::lambda_job,  100>    system_LambdaJobChainPool  {};
+        //using kit = worker_kit;
 
     protected:
 
         friend void WorkersStartWorking( void ) noexcept;
-        friend class x_job_block;
+        friend class xcore::scheduler:channel;
     };
-
-
-
 }
 #endif

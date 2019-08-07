@@ -70,16 +70,16 @@ namespace xcore::containers
 //------------------------------------------------------------------------------
 namespace xcore
 {
-    template< class T, std::size_t T_MAX_SIZE >
+    template< class T, std::size_t T_MAX_SIZE, typename T_COUNTER = std::size_t >
     struct t : std::array<T,T_MAX_SIZE>{};
 
     //------------------------------------------------------------------------------
     // standard C++17 array but give additional functions to make it more useful
     //------------------------------------------------------------------------------
-    template< class T, std::size_t T_MAX_SIZE >
-    struct array : t<T,T_MAX_SIZE>
+    template< class T, std::size_t T_MAX_SIZE, typename T_COUNTER = std::size_t >
+    struct array : t<T,T_MAX_SIZE,T_COUNTER>
     {
-        using parent                    = t<T,T_MAX_SIZE>;
+        using parent                    = t<T,T_MAX_SIZE,T_COUNTER>;
         using value_type                = typename parent::value_type;
         using size_type                 = typename parent::size_type;
         using difference_type           = typename parent::difference_type;

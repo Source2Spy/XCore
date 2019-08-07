@@ -114,19 +114,19 @@ namespace xcore::types
     //--------------------------------------------------------------------------------------------
     namespace details
     {
-        template< std::size_t T_MAX_SIZE, template< typename T, std::size_t T_SIZE > class T_PARENT >
+        template< std::size_t T_MAX_SIZE, template< typename T, std::size_t T_SIZE, typename T_COUNTER > class T_PARENT, typename T_COUNTER  >
         struct container_static_to_dynamic
         {
             template< typename T >
-            struct type : T_PARENT<T,T_MAX_SIZE>
+            struct type : T_PARENT<T,T_MAX_SIZE,T_COUNTER>
             {
-                using parent = T_PARENT<T,T_MAX_SIZE>;
+                using parent = T_PARENT<T,T_MAX_SIZE,T_COUNTER>;
                 using parent::parent;
             };
         };
     }
-    template< typename T, template< typename T, std::size_t T_SIZE > class T_PARENT, std::size_t T_MAX_SIZE >
-    using container_static_to_dynamic = typename details::container_static_to_dynamic<T_MAX_SIZE,T_PARENT>::template type<T>;
+    template< typename T, template< typename T, std::size_t T_SIZE, typename T_COUNTER > class T_PARENT, std::size_t T_MAX_SIZE, typename T_COUNTER >
+    using container_static_to_dynamic = typename details::container_static_to_dynamic<T_MAX_SIZE,T_PARENT,T_COUNTER>::template type<T>;
 }
 
 #endif

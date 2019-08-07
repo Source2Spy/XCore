@@ -92,6 +92,16 @@ namespace xcore::string
     };
 
     //------------------------------------------------------------------------------------
+
+    struct const_universal
+    {
+        constant<char>          m_Str;
+        constant<wchar_t>       m_WStr;
+    };
+
+    #define xconst_universal_str(A)  const_universal{ A, L##A }
+
+    //------------------------------------------------------------------------------------
     // fixed - fixed size string class
     //------------------------------------------------------------------------------------
     template< typename T_CHAR, std::size_t T_SIZE_V >
