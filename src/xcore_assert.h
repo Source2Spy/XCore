@@ -85,6 +85,12 @@ constexpr static auto ms_xCoreAssertLevel = xcore::assert_level::MEDIUM;
     #define XCORE_CMD_ASSERT( EXP ) 
 #endif
 
+    //------------------------------------------------------------------------------
+    // Multicore regions
+    //------------------------------------------------------------------------------
+    #define xassert_linear(A)
+    #define xassert_quantum(A)
+struct x_debug_linear_quantum {};
 //------------------------------------------------------------------------------
 // END
 //------------------------------------------------------------------------------

@@ -18,6 +18,7 @@
 #include <stdlib.h>
 #include <unordered_map>
 #include <stdarg.h>
+#include <mutex>
 
 #ifdef _MSC_VER 
     #include <malloc.h>         // align_alloc
@@ -59,7 +60,6 @@ namespace xcore
 #include "xcore_lock.h"
 #include "xcore_global.h"
 #include "xcore_types.h"
-
 #include "xcore_bits.h"
 #include "xcore_context.h"
 #include "xcore_crc.h"
@@ -71,13 +71,28 @@ namespace xcore
 #include "xcore_arglist.h"
 #include "xcore_guid.h"
 #include "xcore_log.h"
+
+//---------------------------------------------------------------------------
+// Text file
+//---------------------------------------------------------------------------
 namespace xcore::textfile { namespace version_1{} namespace version_2{} using namespace version_2; }
 #include "xcore_textfile.h"
 #include "xcore_textfile2.h"
+
+//---------------------------------------------------------------------------
+// RTTI
+//---------------------------------------------------------------------------
 #include "xcore_rtti.h"
+
+//---------------------------------------------------------------------------
+// Lockless
+//---------------------------------------------------------------------------
 #include "xcore_lockless_queues.h"
 #include "xcore_lockless_pool.h"
 
+//---------------------------------------------------------------------------
+// Scheduler
+//---------------------------------------------------------------------------
 #include "xcore_scheduler_job.h"
 #include "xcore_scheduler_trigger.h"
 #include "xcore_scheduler_channel.h"
@@ -95,5 +110,6 @@ namespace xcore::property{ using namespace ::property; }
 #include "Implementation/xcore_string_inline.h"
 #include "Implementation/xcore_vector_inline.h"
 #include "Implementation/xcore_textfile2_inline.h"
+#include "Implementation/xcore_scheduler_inline.h"
 
 #endif

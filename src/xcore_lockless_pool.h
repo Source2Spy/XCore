@@ -53,7 +53,7 @@ namespace xcore::lockless::pool
         {
             // SanityCheck();
 
-            real_node& Node            = *reinterpret_cast<value_type&>(&(reinterpret_cast<std::byte*>(&userEntry)[-real_node_offset_v]));
+            real_node& Node            = reinterpret_cast<real_node&>( (reinterpret_cast<std::byte*>(&userEntry)[-real_node_offset_v]) );
             real_node* pLocalReality   = m_Head.load( std::memory_order_relaxed );
         
             // SanityCheck( &Node );

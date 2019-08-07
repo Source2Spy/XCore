@@ -188,8 +188,8 @@ namespace xcore::lockless::queues::examples
         for (int i = 0; i < 300; ++i)
         {
             printf("--- Run %d ---\n", i);
-            testQueue<xcore::lockless::queues::mpmc_bounded >   ("V1");
-            testQueue<xcore::lockless::queues::mpmc_bounded_v2 >("V2");
+            testQueue<xcore::lockless::queues::v1::mpmc_bounded >("V1");
+            testQueue<xcore::lockless::queues::v2::mpmc_bounded >("V2");
         }
 
         int a=22;

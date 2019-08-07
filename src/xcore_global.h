@@ -69,7 +69,7 @@ namespace xcore::global
 
         local_cleanup                   m_LocalCleanup      {};
         local_storage                   m_LocalStorage      {};
-        std::unique_ptr<log::logger>    m_MainLogger        {};
+        log::logger&                    m_MainLogger;
         scheduler::system&              m_Scheduler;
 
         const char* const               m_pAppName          { nullptr };

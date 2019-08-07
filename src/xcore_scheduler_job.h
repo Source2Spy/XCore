@@ -4,6 +4,9 @@
 
 namespace xcore::scheduler
 {
+                                class trigger_base;
+    template< int T_MAX_JOBS >  class trigger;
+
     enum class lifetime : std::uint8_t
     {
             DONT_DELETE_WHEN_DONE
@@ -47,18 +50,16 @@ namespace xcore::scheduler
 
         constexpr definition( void ) noexcept = default;
         template< typename...T_ARGS >
-        constexpr definition( T_ARGS&&...Args ) noexcept
+        constexpr definition( T_ARGS&&...Args ) noexcept : m_Value{0}
         {
-            m_Value = 0;
-            std::visit( [&]( auto V )
+            xcore::types::visit( [&]( auto V ) constexpr
             {
                 using t = decltype( V );
-
-                        if constexpr ( std::is_same_v<t,lifetime> )     m_LifeTime = V;
-                else if constexpr ( std::is_same_v<t,jobtype> ) m_JobType  = V;
-                else if constexpr ( std::is_same_v<t,affinity> )     m_Affinity = V;
-                else if constexpr ( std::is_same_v<t,priority> )     m_Priority = V;
-            }, std::tuple<T_ARGS>{ Args... } );
+                     if constexpr ( std::is_same_v<t,lifetime> )    m_LifeTime = V;
+                else if constexpr ( std::is_same_v<t,jobtype>  )    m_JobType  = V;
+                else if constexpr ( std::is_same_v<t,affinity> )    m_Affinity = V;
+                else if constexpr ( std::is_same_v<t,priority> )    m_Priority = V;
+            }, std::tuple{ std::forward<T_ARGS>(Args)... } );
         }
     };
     static_assert( sizeof(definition) == 1 );
@@ -67,9 +68,6 @@ namespace xcore::scheduler
     // Description:
     //      T_BASE class for all the jobs
     //------------------------------------------------------------------------------
-    class trigger_base;
-    template< int T_MAX_JOBS > class trigger;
-
     class job_base
     {
     public:

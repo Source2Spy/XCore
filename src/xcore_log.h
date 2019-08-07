@@ -11,7 +11,7 @@ namespace xcore::log
     //----------------------------------------------------------------------------------------------
     enum class msg_type
     {
-        INFO
+          INFO
         , WARNING
         , ERROR
     };
@@ -43,7 +43,7 @@ namespace xcore::log
 
                                     channel         ( void )                                                        noexcept = delete;
         constexpr                   channel         ( std::string&& Name
-                                                    , logger&       Logger = *xcore::get().m_MainLogger )           noexcept : m_Logger{Logger}, m_Name{std::move(Name)} {}
+                                                    , logger&       Logger = xcore::get().m_MainLogger )            noexcept : m_Logger{Logger}, m_Name{std::move(Name)} {}
         inline      void            TurnOn          ( void )                                                        noexcept { m_bPrint = true;     }
         inline      void            TurnOff         ( void )                                                        noexcept { m_bPrint = false;    }
         constexpr   bool            isPrint         ( void )                                                const   noexcept { return m_bPrint;     }
@@ -76,7 +76,7 @@ namespace xcore::log
         std::array<char,xcore::log::details::log_buffer_size_v> __LogChannelTempBuff;               \
         sprintf_s( __LogChannelTempBuff.data(), __LogChannelTempBuff.size(), FMTSTR, __VA_ARGS__ ); \
         auto& __Logger = __Channel.getLogger();                                                     \
-        xcore::lock::scope<xcore::lock::spin> __Lock( __Logger.m_Lock );                                             \
+        xcore::lock::scope<xcore::lock::spin> __Lock( __Logger.m_Lock );                            \
         __Logger.m_pOutput( __Channel, xcore::log::msg_type::ERROR, __LogChannelTempBuff.data(), __LINE__, __FILE__ ); \
     }                                                                                               \
 }
@@ -87,7 +87,7 @@ namespace xcore::log
         std::array<char,xcore::log::details::log_buffer_size_v> __LogChannelTempBuff;               \
         sprintf_s( __LogChannelTempBuff.data(), __LogChannelTempBuff.size(), FMTSTR, __VA_ARGS__ ); \
         auto& __Logger = __Channel.getLogger();                                                     \
-        xcore::lock::scope __Lock( __Logger.m_Lock );                                             \
+        xcore::lock::scope __Lock( __Logger.m_Lock );                                               \
         __Logger.m_pOutput( __Channel, xcore::log::msg_type::WARNING, __LogChannelTempBuff.data(), __LINE__, __FILE__ ); \
     }                                                                                               \
 }
@@ -98,7 +98,7 @@ namespace xcore::log
         std::array<char,xcore::log::details::log_buffer_size_v> __LogChannelTempBuff;               \
         sprintf_s( __LogChannelTempBuff.data(), __LogChannelTempBuff.size(), FMTSTR, __VA_ARGS__ ); \
         auto& __Logger = __Channel.getLogger();                                                     \
-        xcore::lock::scope __Lock( __Logger.m_Lock );                                             \
+        xcore::lock::scope __Lock( __Logger.m_Lock );                                               \
         __Logger.m_pOutput( __Channel, xcore::log::msg_type::INFO, __LogChannelTempBuff.data(), __LINE__, __FILE__ ); \
     }                                                                                               \
 }

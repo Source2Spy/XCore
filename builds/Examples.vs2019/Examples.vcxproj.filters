@@ -177,6 +177,9 @@
     <ClInclude Include="..\..\src\xcore_scheduler_trigger.h">
       <Filter>xCore</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\src\Implementation\xcore_scheduler_inline.h">
+      <Filter>xCore\Implementation</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\src\xcore.cpp">

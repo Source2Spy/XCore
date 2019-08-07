@@ -25,7 +25,7 @@ namespace xcore::scheduler
         constexpr                       trigger_base                ( flags Flags )                                 noexcept;
         virtual                        ~trigger_base                ( void )                                        noexcept { xassume( m_NotificationCounter == 0 ); }
         constexpr       bool            isGoingToBeDeletedWhenDone  ( void )                                const   noexcept;
-        inline          void            Join                        ( void )                                        noexcept;
+        inline          void            join                        ( void )                                        noexcept;
         template< class T_JOB >
         inline          void            JobWillNotifyMe             ( T_JOB& Job )                                  noexcept;
         inline          void            DontTriggerUntilReady       ( void )                                        noexcept;
@@ -40,7 +40,7 @@ namespace xcore::scheduler
 
     protected:
 
-    #if _X_DEBUG
+    #if _XCORE_DEBUG
         bool                            m_Debug_bReady              { true };
         x_debug_linear_quantum          m_Debug_LQ                  {};
     #endif

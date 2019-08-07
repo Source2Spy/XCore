@@ -24,36 +24,36 @@ namespace xcore::scheduler
         inline      void        SubmitJob       ( T&& func )                                noexcept;
         inline      void        join            ( void )                                    noexcept;
 
-        template< typename T_CONTAINER, typename T_LAMBDA >
-        inline typename std::enable_if
+        template< typename T_CONTAINER, typename T_LAMBDA > inline
+        std::enable_if_t
         < 
-            xcore::function::is_lambda_signature_same_v< T_LAMBDA, void( typename T_CONTAINER::value_type& ) >
+              xcore::function::is_lambda_signature_same_v< T_LAMBDA, void( typename T_CONTAINER::value_type& ) >
             , void 
-        >::type        
+        >
         ForeachLog         ( T_CONTAINER& Container, const std::size_t Diviser, const std::size_t Cutoff, T_LAMBDA&& func ) noexcept;
 
-        template< typename T_CONTAINER, typename T_LAMBDA >
-        inline typename std::enable_if
+        template< typename T_CONTAINER, typename T_LAMBDA > inline
+        std::enable_if_t
         < 
-            xcore::function::is_lambda_signature_same_v< T_LAMBDA, void( xcore::span<typename T_CONTAINER::value_type> ) >
+              xcore::function::is_lambda_signature_same_v< T_LAMBDA, void( xcore::span<typename T_CONTAINER::value_type> ) >
             , void 
-        >::type        
+        >
         ForeachLog         ( T_CONTAINER& Container, const std::size_t Diviser, const std::size_t Cutoff, T_LAMBDA&& func ) noexcept;
 
-        template< typename T_CONTAINER, typename T_LAMBDA >
-        inline typename std::enable_if
+        template< typename T_CONTAINER, typename T_LAMBDA > inline
+        std::enable_if_t
         < 
-            xcore::function::is_lambda_signature_same_v< T_LAMBDA, void( typename T_CONTAINER::value_type& ) >
+              xcore::function::is_lambda_signature_same_v< T_LAMBDA, void( typename T_CONTAINER::value_type& ) >
             , void 
-        >::type        
+        >
         ForeachFlat        ( T_CONTAINER& Container, const std::size_t Diviser, T_LAMBDA&& func ) noexcept;
 
-        template< typename T_CONTAINER, typename T_LAMBDA >
-        inline typename std::enable_if
+        template< typename T_CONTAINER, typename T_LAMBDA > inline
+        std::enable_if_t
         < 
-            xcore::function::is_lambda_signature_same_v< T_LAMBDA, void( xcore::span<typename T_CONTAINER::value_type> ) >
+              xcore::function::is_lambda_signature_same_v< T_LAMBDA, void( xcore::span<typename T_CONTAINER::value_type> ) >
             , void 
-        >::type        
+        >        
         ForeachFlat        ( T_CONTAINER& Container, const std::size_t Diviser, T_LAMBDA&& func ) noexcept;
 
     protected:
@@ -87,7 +87,7 @@ namespace xcore::scheduler
     {
         struct lambda_job final : public job<0>
         {
-            constexpr       lambda_job      ( void ) noexcept : job<0>{ definition{ lifetime::DONT_DELETE_WHEN_DONE, jobtype::LIGHT, affinity::NORMAL, priority::NORMAL } {}
+            constexpr       lambda_job      ( void ) noexcept : job<0>{ definition{ lifetime::DONT_DELETE_WHEN_DONE, jobtype::LIGHT, affinity::NORMAL, priority::NORMAL }} {}
             virtual void    qt_onRun        ( void ) noexcept override { m_Function(); }
             virtual void    qt_onDone       ( void ) noexcept override
             {

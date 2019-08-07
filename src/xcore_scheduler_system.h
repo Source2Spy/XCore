@@ -23,11 +23,15 @@ namespace xcore::scheduler
                     void            MainThreadStartsWorking     ( void )                                            noexcept;
         inline      void            MainThreadStopWorking       ( void )                                            noexcept { m_bMainThreadShouldWork.store( false, std::memory_order_relaxed); m_SleepWorkerCV.notify_all(); }
         template< typename T = int >
-        constexpr   T               getWorkerCount              ( void )                                    const   noexcept { return x_static_cast<T>(m_nAllocatedWorkers+1); }
+        constexpr   T               getWorkerCount              ( void )                                    const   noexcept { return static_cast<T>(m_nAllocatedWorkers+1); }
         inline      bool            getExceptionRaised          ( void )                                    const   noexcept { return m_bExceptionRaised.load(); }
         inline      const char*     getWorkerExceptionInfo      ( worker_uid uidWorker = getWorkerUID() )   const   noexcept { xassert(uidWorker.m_Value >= 0 && (int)uidWorker.m_Value <=m_nAllocatedWorkers ); return m_WorkerKit[uidWorker.m_Value].m_bException ? &m_WorkerKit[uidWorker.m_Value].m_ExceptionStackInfo[0] : nullptr; }
         inline      auto&           getWorkerExceptionBuffer    ( worker_uid uidWorker = getWorkerUID() )           noexcept { xassert(uidWorker.m_Value >= 0 && (int)uidWorker.m_Value <= m_nAllocatedWorkers); return m_WorkerKit[uidWorker.m_Value].m_ExceptionStackInfo; }
         inline      void            RaiseException              ( worker_uid uidWorker = getWorkerUID() )           noexcept { xassert(uidWorker.m_Value >= 0 && (int)uidWorker.m_Value <= m_nAllocatedWorkers); m_WorkerKit[uidWorker.m_Value].m_bException = true;  }
+
+    public:
+
+        xcore::log::channel                     m_LogChannel            {"xcore::Scheduler"};
 
     protected:
 
@@ -43,15 +47,15 @@ namespace xcore::scheduler
             using lambda_job = xcore::scheduler::details::lambda_job;
 
             constexpr worker_kit( void ) noexcept = default;
-            xcore::lockless::queues::mpmc_bounded<job_base*,1024>       m_LightJobQueue         {};
-            std::size_t                                                 m_iNextQueue            {~std::size_t(0)};
-            xcore::lockless::pool::mpmc_bounded_dynamic<details::lambda_job>     m_LightJobPool          {};
-            bool                                                        m_bException            {false};
-            xcore::array<char,1024*128>                                 m_ExceptionStackInfo    {};
+            xcore::lockless::queues::mpmc_bounded<job_base*,1024>               m_LightJobQueue         {};
+            std::size_t                                                         m_iNextQueue            {~std::size_t(0)};
+            xcore::lockless::pool::mpmc_bounded_dynamic<details::lambda_job>    m_LightJobPool          {};
+            bool                                                                m_bException            {false};
+            xcore::array<char,1024*128>                                         m_ExceptionStackInfo    {};
         };
 
-        using priority_jobs_queue_array     = xcore::array<lockless::queues::mpmc_bounded<job_base, 1024>, static_cast<int>(job_base::priority::COUNT) >;
-        using affinity_job_queue_array      = xcore::array<priority_jobs_queue_array, static_cast<int>(job_base::affinity::COUNT) >;
+        using priority_jobs_queue_array     = xcore::array< lockless::queues::mpmc_bounded<job_base*, 1024>, static_cast<int>(priority::ENUM_COUNT) >;
+        using affinity_job_queue_array      = xcore::array< priority_jobs_queue_array, static_cast<int>(affinity::ENUM_COUNT) >;
 
         struct local_storage_data 
         {
@@ -64,15 +68,15 @@ namespace xcore::scheduler
                     void                MainThreadBecomesWorker     ( void )                                    noexcept;
                     void                ThreadBecomesWorker         ( void )                                    noexcept;
                     worker_kit&         getWorketKit                ( void )                                    noexcept;
-        virtual     prop_table&         onPropertyTable             ( void )                            const   noexcept override;
+  //      virtual     prop_table&         onPropertyTable             ( void )                            const   noexcept override;
                     void                setWorkerUID                ( void )                                    noexcept;
                     void                releaseWorkerUID            ( void )                                    noexcept;
                     local_storage_data* getLocalStorageData         ( void )                                    noexcept;
 
     protected:
 
-        u32                                     m_dwThreadIndex         {};
-        std::unique_ptr<worker_kit>             m_WorkerKit             {};
+        std::uint32_t                           m_dwThreadIndex         {};
+        xcore::unique_span<worker_kit>          m_WorkerKit             {};
         affinity_job_queue_array                m_JobQueue              {};
         std::mutex                              m_SleepWorkerMutex      {};
         std::condition_variable                 m_SleepWorkerCV         {};
@@ -99,7 +103,7 @@ namespace xcore::scheduler
     protected:
 
         friend void WorkersStartWorking( void ) noexcept;
-        friend class xcore::scheduler:channel;
+        friend class xcore::scheduler::channel;
     };
 }
 #endif

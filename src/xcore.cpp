@@ -16,4 +16,5 @@
 //#include "Implementation/xcore_textfile.cpp"
 #include "Implementation/xcore_textfile2.cpp"
 #include "Implementation/xcore_sprintf.cpp"
+#include "Implementation/xcore_scheduler.cpp"
 

@@ -127,6 +127,26 @@ namespace xcore::types
     }
     template< typename T, template< typename T, std::size_t T_SIZE, typename T_COUNTER > class T_PARENT, std::size_t T_MAX_SIZE, typename T_COUNTER >
     using container_static_to_dynamic = typename details::container_static_to_dynamic<T_MAX_SIZE,T_PARENT,T_COUNTER>::template type<T>;
+
+
+    //--------------------------------------------------------------------------------------------
+    // Tuple visit similar to the variant visit
+    //--------------------------------------------------------------------------------------------
+    namespace details
+    {
+        template< typename T, typename V, std::size_t... I > inline
+        void visit_impl( T&& t, V&& v, std::index_sequence<I...> ) noexcept
+        {
+            (..., v(std::get<I>(t)));
+        }
+    
+    }
+    template< typename V, typename T > inline
+    void visit(V&& v, T&& t) noexcept
+    {
+        details::visit_impl(std::forward<T>(t), std::forward<V>(v), std::make_index_sequence<std::tuple_size_v<std::decay_t<T>>>());
+    }
+
 }
 
 #endif

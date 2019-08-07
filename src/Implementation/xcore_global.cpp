@@ -40,7 +40,8 @@ void xcore::global::local_storage::setRaw( void* pPtr ) noexcept
 
 xcore::global::state::state( const char* pAppName ) noexcept
     :   m_pAppName  { pAppName } 
-    ,   m_MainLogger{ new log::logger }
+    ,   m_MainLogger{ *new log::logger }
+    ,   m_Scheduler { *new scheduler::system }
 {
     xassert(m_pAppName);
 }
@@ -49,6 +50,8 @@ xcore::global::state::state( const char* pAppName ) noexcept
 
 xcore::global::state::~state( void ) noexcept
 {
+    delete(&m_MainLogger);
+    delete(&m_Scheduler);
 }
 
 //-----------------------------------------------------------------------------------------------
