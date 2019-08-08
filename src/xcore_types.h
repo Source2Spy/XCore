@@ -134,19 +134,18 @@ namespace xcore::types
     //--------------------------------------------------------------------------------------------
     namespace details
     {
-        template< typename T, typename V, std::size_t... I > inline
-        void visit_impl( T&& t, V&& v, std::index_sequence<I...> ) noexcept
+        template< typename T_LAMBDA, typename T_TUPLE, std::size_t... T_SEQUENCE_V > inline
+        void visit( T_LAMBDA&& Lambda, T_TUPLE&& Tuple, std::index_sequence<T_SEQUENCE_V...> ) noexcept
         {
-            (..., v(std::get<I>(t)));
+            (..., Lambda(std::get<T_SEQUENCE_V>(Tuple)));
         }
-    
-    }
-    template< typename V, typename T > inline
-    void visit(V&& v, T&& t) noexcept
-    {
-        details::visit_impl(std::forward<T>(t), std::forward<V>(v), std::make_index_sequence<std::tuple_size_v<std::decay_t<T>>>());
     }
 
+    template< typename T_LAMBDA, typename T_TUPLE > inline
+    void visit( T_LAMBDA&& Lambda, T_TUPLE&& Tuple ) noexcept
+    {
+        details::visit( std::forward<T_LAMBDA>(Lambda), std::forward<T_TUPLE>(Tuple), std::make_index_sequence<std::tuple_size_v<std::decay_t<T_TUPLE>>>());
+    }
 }
 
 #endif

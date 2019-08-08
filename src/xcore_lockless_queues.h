@@ -73,6 +73,7 @@ namespace xcore::lockless::queues
                 return true;
             }
 
+            bool steal( T& Data ) noexcept { return pop(Data); }
             bool pop( T& Data ) noexcept
             {
                 cell_t*         pCell;
@@ -184,6 +185,7 @@ namespace xcore::lockless::queues
                 xassume(false);
             }
 
+            bool steal( T& Data ) noexcept { return pop(Data); }
             bool pop( T& Value ) noexcept 
             {
                 auto Tail = m_Tail.load( std::memory_order_acquire );

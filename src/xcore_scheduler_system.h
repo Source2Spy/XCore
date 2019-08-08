@@ -2,9 +2,14 @@
 #define _XCORE_SCHEDULER_SYSTEM_H
 #pragma once
 
+//--------------------------------------------------------------------------------------------
+//
+//
+//
+//--------------------------------------------------------------------------------------------
 namespace xcore::scheduler
 {
-    using worker_uid = xcore::units::handle< struct scheduler, std::uint32_t >;
+    using worker_uid = xcore::units::handle< class system, std::uint32_t >;
 
     class system //: xproperty::base, xsystem_reg
     {
@@ -57,11 +62,6 @@ namespace xcore::scheduler
         using priority_jobs_queue_array     = xcore::array< lockless::queues::mpmc_bounded<job_base*, 1024>, static_cast<int>(priority::ENUM_COUNT) >;
         using affinity_job_queue_array      = xcore::array< priority_jobs_queue_array, static_cast<int>(affinity::ENUM_COUNT) >;
 
-        struct local_storage_data 
-        {
-            std::uint32_t m_ThreadID;
-        };
-
     protected:
 
                     void                CleanQueues                 ( void )                                    noexcept;
@@ -71,17 +71,15 @@ namespace xcore::scheduler
   //      virtual     prop_table&         onPropertyTable             ( void )                            const   noexcept override;
                     void                setWorkerUID                ( void )                                    noexcept;
                     void                releaseWorkerUID            ( void )                                    noexcept;
-                    local_storage_data* getLocalStorageData         ( void )                                    noexcept;
 
     protected:
 
-        std::uint32_t                           m_dwThreadIndex         {};
         xcore::unique_span<worker_kit>          m_WorkerKit             {};
         affinity_job_queue_array                m_JobQueue              {};
         std::mutex                              m_SleepWorkerMutex      {};
         std::condition_variable                 m_SleepWorkerCV         {};
         std::atomic<int>                        m_nWorkersActive        {0};
-        std::unique_ptr<std::thread>            m_lWorkers              {};
+        xcore::unique_span<std::thread>         m_lWorkers              {};
         int                                     m_nAllocatedWorkers     { 0 };
         std::atomic<state>                      m_State                 { state::NO_INITIALIZED };
 
@@ -98,7 +96,7 @@ namespace xcore::scheduler
 
         //xcore::lockless::pool::mpmc_bounded_jitc<x_scheduler_jobs::job_chain::state_block, 100>    system_JobChainBlockPool   {};
         //x_ll_fixed_pool_static_raw<x_scheduler_jobs::job_chain::lambda_job,  100>    system_LambdaJobChainPool  {};
-        //using kit = worker_kit;
+        using kit = worker_kit;
 
     protected:
 

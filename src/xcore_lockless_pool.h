@@ -282,7 +282,7 @@ namespace xcore::lockless::pool
     public:
 
         constexpr               mpmc_bounded_dynamic    ( void )                noexcept    = default;
-        inline      void        Init                    ( std::size_t Count )   noexcept    { parent::m_Allocator.New( Count ); parent::clear();    }
+        inline      xcore::err  Init                    ( std::size_t Count )   noexcept    { xcore::err Error; if( parent::m_Allocator.New( Count ).isError(Error) == false ) parent::clear(); return Error;  }
         inline      void        destroy                 ( void )                noexcept    { parent::m_Allocator.destroy();                        }
     };
 

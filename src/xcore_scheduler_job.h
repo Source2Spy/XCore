@@ -114,7 +114,7 @@ namespace xcore::scheduler
 
     protected:
 
-        friend class x_scheduler;
+        friend class scheduler::system;
     };
 
     //------------------------------------------------------------------------------

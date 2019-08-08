@@ -2,6 +2,13 @@
 #define _X_CORE_H
 #pragma once
 
+//--------------------------------------------------------------------------------------------
+// xCore can be linked in two modes. One is a normal library which means that there is only one common global state
+// The other mode is linked like a duplication. Which means that there are two distinct xcore running.
+// This is useful for C++ scripting. Where the entire game can be unloaded and reloaded.
+//--------------------------------------------------------------------------------------------
+
+
 //---------------------------------------------------------------------------
 // System headers
 //---------------------------------------------------------------------------
@@ -33,6 +40,7 @@ namespace xcore
 {
     namespace log       { struct logger; }
     namespace context   { struct base;   }
+    namespace scheduler { struct local_storage_data { std::uint32_t m_ThreadID; constexpr local_storage_data(std::nullptr_t) : m_ThreadID{~0u}{} }; }
 }
 
 //---------------------------------------------------------------------------

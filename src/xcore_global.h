@@ -27,7 +27,7 @@ namespace xcore::global
     //------------------------------------------------------------------------------------------
     namespace details
     {
-        using local_storage_ptrs = std::variant< context::base* >;
+        using local_storage_ptrs = std::variant< context::base*, scheduler::local_storage_data >;
         using local_storage_data = std::array< local_storage_ptrs, std::variant_size_v<local_storage_ptrs> >;
 
         template< typename T >
