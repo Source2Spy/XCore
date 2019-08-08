@@ -11,5 +11,7 @@ git clone https://github.com/tcbrindle/span.git "../dependencies/span"
 rmdir "../dependencies/meow_hash_cpp" /S /Q
 git clone https://github.com/RedSpah/meow_hash_cpp "../dependencies/meow_hash_cpp"
 
+rmdir "../dependencies/tracy" /S /Q
+git clone https://bitbucket.org/wolfpld/tracy/src/master/ "../dependencies/tracy"
 
 pause
