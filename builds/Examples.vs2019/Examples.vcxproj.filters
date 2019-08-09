@@ -16,6 +16,9 @@
     <Filter Include="xCore\Settings">
       <UniqueIdentifier>{bcf07caf-588a-4909-83f0-58195a535c7e}</UniqueIdentifier>
     </Filter>
+    <Filter Include="xCore\Implementation\Tracy">
+      <UniqueIdentifier>{295ae45e-3d1d-4173-8d06-d66f737842ff}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\src\xcore_assert.h">
@@ -180,12 +183,117 @@
     <ClInclude Include="..\..\src\Implementation\xcore_scheduler_inline.h">
       <Filter>xCore\Implementation</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\dependencies\tracy\common\tracy_benaphore.h">
+      <Filter>xCore\Implementation\Tracy</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\dependencies\tracy\common\tracy_lz4.hpp">
+      <Filter>xCore\Implementation\Tracy</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\dependencies\tracy\common\tracy_lz4hc.hpp">
+      <Filter>xCore\Implementation\Tracy</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\dependencies\tracy\common\tracy_sema.h">
+      <Filter>xCore\Implementation\Tracy</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\dependencies\tracy\common\TracyAlign.hpp">
+      <Filter>xCore\Implementation\Tracy</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\dependencies\tracy\common\TracyAlloc.hpp">
+      <Filter>xCore\Implementation\Tracy</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\dependencies\tracy\common\TracyApi.h">
+      <Filter>xCore\Implementation\Tracy</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\dependencies\tracy\common\TracyColor.hpp">
+      <Filter>xCore\Implementation\Tracy</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\dependencies\tracy\common\TracyForceInline.hpp">
+      <Filter>xCore\Implementation\Tracy</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\dependencies\tracy\common\TracyMutex.hpp">
+      <Filter>xCore\Implementation\Tracy</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\dependencies\tracy\common\TracyProtocol.hpp">
+      <Filter>xCore\Implementation\Tracy</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\dependencies\tracy\common\TracyQueue.hpp">
+      <Filter>xCore\Implementation\Tracy</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\dependencies\tracy\common\TracySocket.hpp">
+      <Filter>xCore\Implementation\Tracy</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\dependencies\tracy\common\TracySystem.hpp">
+      <Filter>xCore\Implementation\Tracy</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\dependencies\tracy\client\tracy_concurrentqueue.h">
+      <Filter>xCore\Implementation\Tracy</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\dependencies\tracy\client\tracy_rpmalloc.hpp">
+      <Filter>xCore\Implementation\Tracy</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\dependencies\tracy\client\TracyArmCpuTable.hpp">
+      <Filter>xCore\Implementation\Tracy</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\dependencies\tracy\client\TracyCallstack.h">
+      <Filter>xCore\Implementation\Tracy</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\dependencies\tracy\client\TracyCallstack.hpp">
+      <Filter>xCore\Implementation\Tracy</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\dependencies\tracy\client\TracyDxt1.hpp">
+      <Filter>xCore\Implementation\Tracy</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\dependencies\tracy\client\TracyFastVector.hpp">
+      <Filter>xCore\Implementation\Tracy</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\dependencies\tracy\client\TracyLock.hpp">
+      <Filter>xCore\Implementation\Tracy</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\dependencies\tracy\client\TracyProfiler.hpp">
+      <Filter>xCore\Implementation\Tracy</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\dependencies\tracy\client\TracyScoped.hpp">
+      <Filter>xCore\Implementation\Tracy</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\dependencies\tracy\client\TracySysTime.hpp">
+      <Filter>xCore\Implementation\Tracy</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\dependencies\tracy\client\TracyThread.hpp">
+      <Filter>xCore\Implementation\Tracy</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\src\xcore.cpp">
       <Filter>xCore</Filter>
     </ClCompile>
     <ClCompile Include="..\..\src\Examples\main.cpp" />
+    <ClCompile Include="..\..\dependencies\tracy\common\tracy_lz4.cpp">
+      <Filter>xCore\Implementation\Tracy</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\dependencies\tracy\common\tracy_lz4hc.cpp">
+      <Filter>xCore\Implementation\Tracy</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\dependencies\tracy\common\TracySocket.cpp">
+      <Filter>xCore\Implementation\Tracy</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\dependencies\tracy\common\TracySystem.cpp">
+      <Filter>xCore\Implementation\Tracy</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\dependencies\tracy\client\tracy_rpmalloc.cpp">
+      <Filter>xCore\Implementation\Tracy</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\dependencies\tracy\client\TracyCallstack.cpp">
+      <Filter>xCore\Implementation\Tracy</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\dependencies\tracy\client\TracyDxt1.cpp">
+      <Filter>xCore\Implementation\Tracy</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\dependencies\tracy\client\TracyProfiler.cpp">
+      <Filter>xCore\Implementation\Tracy</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\dependencies\tracy\client\TracySysTime.cpp">
+      <Filter>xCore\Implementation\Tracy</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="..\UpdateDependencies.bat" />
