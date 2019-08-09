@@ -70,20 +70,19 @@ namespace xcore::scheduler
         } THREADNAME_INFO;
         #pragma pack(pop)  
         static
-        void SetThreadName( const char* pAppName )
+        void SetThreadName( xcore::string::view<char> outView, const char* pAppName )
         {
             // Force each thread to stay in its core
             // Performance have shown that this is not helping
             //SetThreadAffinityMask(GetCurrentThread(), static_cast<u64>(1) << system::getWorkerUID().m_Value );
 
 
-            char Name[256];
-            sprintf_s<256>( Name, "xWorker (%s): %02d", pAppName, system::getWorkerUID().m_Value );
+            sprintf_s( outView.data(), outView.size(), "xWorker (%s): %02d", pAppName, system::getWorkerUID().m_Value );
 
             DWORD dwThreadID = GetCurrentThreadId();
             THREADNAME_INFO info;
             info.dwType = 0x1000;
-            info.szName = Name;
+            info.szName = outView.data();
             info.dwThreadID = dwThreadID;
             info.dwFlags = 0;
         #pragma warning(push)  
@@ -93,10 +92,10 @@ namespace xcore::scheduler
             }
             __except (EXCEPTION_EXECUTE_HANDLER) {
             }
-        #pragma warning(pop)  
+        #pragma warning(pop)
     }
     #else
-        void SetThreadName( const char* pAppName ) {}
+        void SetThreadName( xcore::string::view<char> outView, const char* pAppName ) {}
     #endif
 
 
@@ -165,7 +164,10 @@ namespace xcore::scheduler
         //
         // Rename our main thread
         //
-        SetThreadName( xcore::get().m_pAppName );
+        {
+            string::fixed<char,256> Name;
+            SetThreadName( Name, xcore::get().m_pAppName );
+        }
 
         //
         // Ok ready to start working
@@ -757,8 +759,16 @@ namespace xcore::scheduler
         // Init basic stuff
         //
         Scheduler.setWorkerUID();
-        SetThreadName( xcore::get().m_pAppName );
-        XLOG_CHANNEL_INFO( *Scheduler.m_LogChannel, "Worker[%d] Created", system::getWorkerUID(Scheduler).m_Value );
+
+        {
+            string::fixed<char,256> Name;
+            SetThreadName( Name, xcore::get().m_pAppName );
+
+            const auto ID = system::getWorkerUID(Scheduler).m_Value;
+            tracy::SetThreadName( Scheduler.m_lWorkers[ID-1], Name.data() );
+
+            XLOG_CHANNEL_INFO( *Scheduler.m_LogChannel, "%s Created", Name.data() );
+        }
 
         //
         // Wait for the system to finish its initialization
