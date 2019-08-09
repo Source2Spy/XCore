@@ -1,4 +1,3 @@
-
 #ifndef _XCORE_UNIQUE_SPAN_H
 #define _XCORE_UNIQUE_SPAN_H
 

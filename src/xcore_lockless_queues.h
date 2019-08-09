@@ -1,5 +1,5 @@
-#ifndef _XCORE_LOCKLES_QUEUES_H
-#define _XCORE_LOCKLES_QUEUES_H
+#ifndef _XCORE_LOCKLESS_QUEUES_H
+#define _XCORE_LOCKLESS_QUEUES_H
 #pragma once
 
 namespace xcore::lockless::queues

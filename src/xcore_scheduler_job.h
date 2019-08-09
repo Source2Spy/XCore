@@ -49,17 +49,20 @@ namespace xcore::scheduler
         };
 
         constexpr definition( void ) noexcept = default;
-        template< typename...T_ARGS >
-        constexpr definition( T_ARGS&&...Args ) noexcept : m_Value{0}
+
+        template< typename...T_ARGS  >
+        static constexpr definition Flags( T_ARGS&&...Args ) noexcept
         {
-            xcore::types::visit( [&]( auto V ) constexpr
+            definition D;
+            xcore::types::visit( [&]( auto&& V ) constexpr
             {
                 using t = decltype( V );
-                     if constexpr ( std::is_same_v<t,lifetime> )    m_LifeTime = V;
-                else if constexpr ( std::is_same_v<t,jobtype>  )    m_JobType  = V;
-                else if constexpr ( std::is_same_v<t,affinity> )    m_Affinity = V;
-                else if constexpr ( std::is_same_v<t,priority> )    m_Priority = V;
+                     if constexpr ( std::is_same_v<t,lifetime> )    D.m_LifeTime = V;
+                else if constexpr ( std::is_same_v<t,jobtype>  )    D.m_JobType  = V;
+                else if constexpr ( std::is_same_v<t,affinity> )    D.m_Affinity = V;
+                else if constexpr ( std::is_same_v<t,priority> )    D.m_Priority = V;
             }, std::tuple{ std::forward<T_ARGS>(Args)... } );
+            return D;
         }
     };
     static_assert( sizeof(definition) == 1 );
@@ -105,10 +108,7 @@ namespace xcore::scheduler
     #if _X_DEBUG
         x_debug_linear_quantum          m_Debug_LQ          {};
     #endif
-        definition                      m_Definition{   lifetime::DONT_DELETE_WHEN_DONE
-                                                      , jobtype::NORMAL                
-                                                      , affinity::NORMAL               
-                                                      , priority::NORMAL };
+        definition                      m_Definition{ definition::Flags( lifetime::DONT_DELETE_WHEN_DONE, jobtype::NORMAL, affinity::NORMAL, priority::NORMAL ) };
 
        // X_CMD_JOB_PROFILER_ON( xwstring::const_str             m_JobName          { X_WSTR("Job") } );
 

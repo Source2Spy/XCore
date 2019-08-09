@@ -161,11 +161,11 @@ namespace xcore::scheduler
     {
         // Can not have this assert here since by the time the destructor is call the class could be gone
         // xassert_quantum( m_Debug_LQ );
-        XLOG_CHANNEL_INFO( xcore::get().m_Scheduler.m_LogChannel, "Trigger: notify: %d\n", m_NotificationCounter.load() );
+        XLOG_CHANNEL_INFO( *xcore::get().m_Scheduler.m_LogChannel, "Trigger: notify: %d\n", m_NotificationCounter.load() );
         xassume( m_NotificationCounter > 0 );
         if( --m_NotificationCounter == 0 )
         {
-            XLOG_CHANNEL_INFO( xcore::get().m_Scheduler.m_LogChannel,  "Trigger: Ready to Releasing Jobs!\n" )
+            XLOG_CHANNEL_INFO( *xcore::get().m_Scheduler.m_LogChannel,  "Trigger: Ready to Releasing Jobs!\n" )
 
             // Lets backup the notification flag
             // notification should happen at the very end since after that we are back into some unknown state
@@ -249,11 +249,11 @@ namespace xcore::scheduler
 
         if( nJobs )
         {
-            XLOG_CHANNEL_INFO( xcore::get().m_Scheduler.m_LogChannel,  "Trigger: Released [ %d ] Jobs.\n", nJobs );
+            XLOG_CHANNEL_INFO( *xcore::get().m_Scheduler.m_LogChannel,  "Trigger: Released [ %d ] Jobs.\n", nJobs );
         }
         else
         {
-            XLOG_CHANNEL_INFO( xcore::get().m_Scheduler.m_LogChannel,  "Trigger: is Completed with no jobs to release\n" );
+            XLOG_CHANNEL_INFO( *xcore::get().m_Scheduler.m_LogChannel,  "Trigger: is Completed with no jobs to release\n" );
         }
     }
 
@@ -461,11 +461,11 @@ namespace xcore::scheduler
         // Can not have this assert here since by the time the destructor is call the class could be gone
         // xassert_quantum( m_Debug_LQ );
         
-        XLOG_CHANNEL_INFO( xcore::get().m_Scheduler.m_LogChannel,  "Trigger: notify: %d", m_NotificationCounter.load( std::memory_order_relaxed ) );
+        XLOG_CHANNEL_INFO( *xcore::get().m_Scheduler.m_LogChannel,  "Trigger: notify: %d", m_NotificationCounter.load( std::memory_order_relaxed ) );
         xassume( m_NotificationCounter > 0 );
         if( --m_NotificationCounter == 0 )
         {
-            XLOG_CHANNEL_INFO( xcore::get().m_Scheduler.m_LogChannel,  "Trigger: Ready to Releasing Jobs!\n" )
+            XLOG_CHANNEL_INFO( *xcore::get().m_Scheduler.m_LogChannel,  "Trigger: Ready to Releasing Jobs!\n" )
             
             // Notify our OO-hierarchy that we are ready to release jobs
             qt_onTriggered();

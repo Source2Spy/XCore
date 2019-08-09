@@ -76,7 +76,7 @@ namespace xcore::scheduler
     
         xcore::scheduler::system&                                           m_Scheduler;
         std::atomic<state>                                                  m_ProcessState  {};
-        lockless::pool::mpmc_bounded_dynamic<details::lambda_job>&          m_Pool;
+        xcore::lockless::pool::mpmc_bounded_dynamic<details::lambda_job>&   m_Pool;
         const int                                                           m_nMaxJobs;
         const xcore::string::const_universal                                m_Name;
 
@@ -87,7 +87,7 @@ namespace xcore::scheduler
     {
         struct lambda_job final : public job<0>
         {
-            constexpr       lambda_job      ( void ) noexcept : job<0>{ definition{ lifetime::DONT_DELETE_WHEN_DONE, jobtype::LIGHT, affinity::NORMAL, priority::NORMAL }} {}
+            constexpr       lambda_job      ( void ) noexcept : job<0>{ definition::Flags( lifetime::DONT_DELETE_WHEN_DONE, jobtype::LIGHT, affinity::NORMAL, priority::NORMAL )} {}
             virtual void    qt_onRun        ( void ) noexcept override { m_Function(); }
             virtual void    qt_onDone       ( void ) noexcept override
             {

@@ -22,7 +22,7 @@ namespace xcore::containers
         // This is a raw array which is similar to a standard array except it does not
         // construct anything.
         //------------------------------------------------------------------------------
-        template< class T, std::size_t T_MAX_SIZE >
+        template< class T, std::size_t T_MAX_SIZE, typename T_COUNTER = std::size_t >
         struct array
         {
             using mirror_type               = typename std::array<T, T_MAX_SIZE>;
@@ -111,8 +111,8 @@ namespace xcore
     //------------------------------------------------------------------------------
     // raw array
     //------------------------------------------------------------------------------
-    template< class T, std::size_t T_MAX_SIZE >
-    struct rawarray : xcore::containers::raw::array<T,T_MAX_SIZE> {};
+    template< class T, std::size_t T_MAX_SIZE, typename T_COUNTER = std::size_t >
+    struct rawarray : xcore::containers::raw::array<T,T_MAX_SIZE,T_COUNTER> {};
 
     // Construction guide
     template <class T, class... T_ARGS >

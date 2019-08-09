@@ -39,9 +39,9 @@ void xcore::global::local_storage::setRaw( void* pPtr ) noexcept
 //-----------------------------------------------------------------------------------------------
 
 xcore::global::state::state( const char* pAppName ) noexcept
-    :   m_pAppName  { pAppName } 
-    ,   m_MainLogger{ *new log::logger }
-    ,   m_Scheduler { *new scheduler::system }
+    :   m_pAppName      { pAppName }
+    ,   m_MainLogger    { *new log::logger }
+    ,   m_Scheduler     { *new scheduler::system }
 {
     xassert(m_pAppName);
 }
@@ -115,6 +115,11 @@ void xcore::Init( const char* pAppName ) noexcept
     // Allocate systems
     //
     xcore::global::state::ms_Instance.emplace<std::unique_ptr<global::state>>( new global::state(pAppName) );
+
+    //
+    // Initialize
+    //
+    get().m_Scheduler.Init();
 }
 
 //------------------------------------------------------------------------------

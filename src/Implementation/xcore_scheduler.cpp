@@ -119,6 +119,11 @@ namespace xcore::scheduler
     void system::Init( int nWorkers ) noexcept
     {
         //
+        // Create the channel
+        //
+        m_LogChannel = std::make_unique<xcore::log::channel>("xcore::Scheduler");
+
+        //
         // Make sure some basic stuff is reset
         //
         m_bExceptionRaised.store( false );
@@ -258,7 +263,7 @@ namespace xcore::scheduler
 
         if( Job.isLightJob() )
         {
-            //TA XLOG_CHANNEL_INFO( m_LogChannel, "Scheduler: A New Light Job, Jobs Left [%d] There are[%d] workers working", m_Stats_nJobs.get(), m_Stats_nWorkersWorking.get() );
+            //TA XLOG_CHANNEL_INFO( *m_LogChannel, "Scheduler: A New Light Job, Jobs Left [%d] There are[%d] workers working", m_Stats_nJobs.get(), m_Stats_nWorkersWorking.get() );
         
             // Currently we do not support light jobs with different affinities because that will require a mpmc_queue and we dont want to spend 
             // performance on optimizing that case. If we really need it to we could use the high priority slots of the non-normal affinity queues.
@@ -269,7 +274,7 @@ namespace xcore::scheduler
         }
         else
         {   
-            //TA XLOG_CHANNEL_INFO( m_LogChannel, "Scheduler: A New Job, Jobs Left [%d] There are [%d] workers working", m_Stats_nJobs.get(), m_Stats_nWorkersWorking.get() );
+            //TA XLOG_CHANNEL_INFO( *m_LogChannel, "Scheduler: A New Job, Jobs Left [%d] There are [%d] workers working", m_Stats_nJobs.get(), m_Stats_nWorkersWorking.get() );
             auto& Queue = m_JobQueue[static_cast<int>(Job.getAffinity())][static_cast<int>(Job.getPriority())];
             Queue.push( &Job );
         }
@@ -437,7 +442,7 @@ namespace xcore::scheduler
         //
         //TA m_Stats_nWorkersWorking.inc();
 
-        //TA XLOG_CHANNEL_INFO( m_LogChannel, "Worker[%d] took a job, jobs left[%d] There are [%d] workers working", getWorkerUID(*this).m_Value, m_Stats_nJobs.get(), m_Stats_nWorkersWorking.get() );
+        //TA XLOG_CHANNEL_INFO( *m_LogChannel, "Worker[%d] took a job, jobs left[%d] There are [%d] workers working", getWorkerUID(*this).m_Value, m_Stats_nJobs.get(), m_Stats_nWorkersWorking.get() );
 
         const bool bDeleteWhenDone = pJob->isDeletedWhenDone();
     
@@ -461,7 +466,7 @@ namespace xcore::scheduler
 
         //TA m_Stats_nWorkersWorking.dec();
 
-        //TA XLOG_CHANNEL_INFO( m_LogChannel, "Worker[%d] finished the job, jobs left[%d], There are [%d] workers working", getWorkerUID(*this).m_Value, m_Stats_nJobs.get(), m_Stats_nWorkersWorking.get() );
+        //TA XLOG_CHANNEL_INFO( *m_LogChannel, "Worker[%d] finished the job, jobs left[%d], There are [%d] workers working", getWorkerUID(*this).m_Value, m_Stats_nJobs.get(), m_Stats_nWorkersWorking.get() );
         
     #if _X_COMPILER_VISUAL_STUDIO
         X_CMD_JOB_PROFILER_ON( s_SeriesStack-- );
@@ -617,7 +622,7 @@ namespace xcore::scheduler
             pJob = getJob();
             if( pJob == false )
             {
-                XLOG_CHANNEL_INFO( m_LogChannel, "Worker[%d] Sleeping", getWorkerUID(*this).m_Value );
+                XLOG_CHANNEL_INFO( *m_LogChannel, "Worker[%d] Sleeping", getWorkerUID(*this).m_Value );
                 Lock.lock();
                 m_SleepWorkerCV.wait( Lock, [ &pJob, this ]()
                 { 
@@ -629,16 +634,16 @@ namespace xcore::scheduler
                 {
                     if( m_State == system::state::EXITING )
                     {
-                        XLOG_CHANNEL_INFO( m_LogChannel, "Worker [%d] Awakes to terminate itself\n", getWorkerUID(*this).m_Value );
+                        XLOG_CHANNEL_INFO( *m_LogChannel, "Worker [%d] Awakes to terminate itself\n", getWorkerUID(*this).m_Value );
                         return;
                     }
 
-                    XLOG_CHANNEL_INFO( m_LogChannel, "Worker [%d] Falsely Awake up", getWorkerUID(*this).m_Value );
+                    XLOG_CHANNEL_INFO( *m_LogChannel, "Worker [%d] Falsely Awake up", getWorkerUID(*this).m_Value );
                     continue;
                 }
                 else
                 {
-                    XLOG_CHANNEL_INFO( m_LogChannel, "Worker [%d] Awakes Ready to work", getWorkerUID(*this).m_Value );
+                    XLOG_CHANNEL_INFO( *m_LogChannel, "Worker [%d] Awakes Ready to work", getWorkerUID(*this).m_Value );
                 }
             }
 
@@ -678,7 +683,7 @@ namespace xcore::scheduler
             pJob = getJob();
             if( pJob == nullptr )
             {
-                XLOG_CHANNEL_INFO( m_LogChannel, "Worker[%d] Sleeping", getWorkerUID(*this).m_Value );
+                XLOG_CHANNEL_INFO( *m_LogChannel, "Worker[%d] Sleeping", getWorkerUID(*this).m_Value );
                 Lock.lock();
                 if( m_bMainThreadShouldWork.load( std::memory_order_relaxed ) == false )
                 {
@@ -694,7 +699,7 @@ namespace xcore::scheduler
                 {
                     if( m_bMainThreadShouldWork.load( std::memory_order_relaxed ) == false )
                     {
-                        XLOG_CHANNEL_INFO( m_LogChannel, "Main thread worker[%d] Awakes to terminate itself", getWorkerUID(*this).m_Value );
+                        XLOG_CHANNEL_INFO( *m_LogChannel, "Main thread worker[%d] Awakes to terminate itself", getWorkerUID(*this).m_Value );
 
                         // Reset to default
                         m_bMainThreadShouldWork.store( true, std::memory_order_relaxed );
@@ -703,16 +708,16 @@ namespace xcore::scheduler
 
                     if( m_State == system::state::EXITING )
                     {
-                        XLOG_CHANNEL_INFO( m_LogChannel, "Main thread worker[%d] Awakes to terminate itself", getWorkerUID(*this).m_Value );
+                        XLOG_CHANNEL_INFO( *m_LogChannel, "Main thread worker[%d] Awakes to terminate itself", getWorkerUID(*this).m_Value );
                         return;
                     }
 
-                    XLOG_CHANNEL_INFO( m_LogChannel, "Main thread Worker[%d] Falsely Awake up", getWorkerUID(*this).m_Value );
+                    XLOG_CHANNEL_INFO( *m_LogChannel, "Main thread Worker[%d] Falsely Awake up", getWorkerUID(*this).m_Value );
                     continue;
                 }
                 else
                 {
-                    XLOG_CHANNEL_INFO( m_LogChannel, "Main thread  Worker[%d] Awakes Ready to work", getWorkerUID(*this).m_Value  );
+                    XLOG_CHANNEL_INFO( *m_LogChannel, "Main thread  Worker[%d] Awakes Ready to work", getWorkerUID(*this).m_Value  );
                 }
             }
 
@@ -727,7 +732,7 @@ namespace xcore::scheduler
 
     void system::MainThreadStartsWorking( void ) noexcept
     {
-        XLOG_CHANNEL_INFO( m_LogChannel, "Main thread becomes a worker[%d]", getWorkerUID(*this).m_Value );
+        XLOG_CHANNEL_INFO( *m_LogChannel, "Main thread becomes a worker[%d]", getWorkerUID(*this).m_Value );
 
         //
         // Wait for the system to finish its initialization
@@ -738,7 +743,7 @@ namespace xcore::scheduler
         }
 
         MainThreadBecomesWorker();
-        XLOG_CHANNEL_INFO( m_LogChannel, "Main thread worker[%d] Stops contributing to the workers [%d]", getWorkerUID(*this).m_Value, m_nWorkersActive.load()  );
+        XLOG_CHANNEL_INFO( *m_LogChannel, "Main thread worker[%d] Stops contributing to the workers [%d]", getWorkerUID(*this).m_Value, m_nWorkersActive.load()  );
     }
 
     //--------------------------------------------------------------------------------------
@@ -753,7 +758,7 @@ namespace xcore::scheduler
         //
         Scheduler.setWorkerUID();
         SetThreadName( xcore::get().m_pAppName );
-        XLOG_CHANNEL_INFO( Scheduler.m_LogChannel, "Worker[%d] Created", system::getWorkerUID(Scheduler).m_Value );
+        XLOG_CHANNEL_INFO( *Scheduler.m_LogChannel, "Worker[%d] Created", system::getWorkerUID(Scheduler).m_Value );
 
         //
         // Wait for the system to finish its initialization
@@ -775,7 +780,7 @@ namespace xcore::scheduler
         // Done
         Scheduler.releaseWorkerUID();
         Scheduler.m_nWorkersActive--;
-        XLOG_CHANNEL_INFO( Scheduler.m_LogChannel, "Worker[%d] Destroyed Number of workers active [%d]", system::getWorkerUID(Scheduler).m_Value, Scheduler.m_nWorkersActive.load() );
+        XLOG_CHANNEL_INFO( *Scheduler.m_LogChannel, "Worker[%d] Destroyed Number of workers active [%d]", system::getWorkerUID(Scheduler).m_Value, Scheduler.m_nWorkersActive.load() );
     }
 
     //--------------------------------------------------------------------------------------

@@ -36,7 +36,7 @@ namespace xcore::scheduler
 
     public:
 
-        xcore::log::channel                     m_LogChannel            {"xcore::Scheduler"};
+        std::unique_ptr<xcore::log::channel>    m_LogChannel; //               {"xcore::Scheduler"};
 
     protected:
 

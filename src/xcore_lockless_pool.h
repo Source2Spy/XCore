@@ -17,20 +17,23 @@ namespace xcore::lockless::pool
     public:     using                                                   allocator       = T_ALLOCATOR< real_node, counter >;
     public:
 
-        constexpr               mpmc_bounded_general    ( bool bClear = true ) noexcept { if( bClear ) clear(); }
+        constexpr               mpmc_bounded_general    ( void ) noexcept { clear(); }
     
         inline void clear ( void ) noexcept  
         {
-            const counter Count = m_Allocator.size() - 1;
-        
-            for( counter i = 0; i<Count; i++ )
+            if( m_Allocator.size() )
             {
-                m_Allocator[i].m_Next.store( &m_Allocator[i + 1], std::memory_order_relaxed );
-            }
+                const counter Count = m_Allocator.size() - 1;
+
+                for( counter i = 0; i<Count; i++ )
+                {
+                    m_Allocator[i].m_Next.store( &m_Allocator[i + 1], std::memory_order_relaxed );
+                }
         
-            m_Allocator[Count].m_Next.store( nullptr, std::memory_order_relaxed );
-            m_Head.store( &m_Allocator[0] );
-            // SanityCheck();
+                m_Allocator[Count].m_Next.store( nullptr, std::memory_order_relaxed );
+                m_Head.store( &m_Allocator[0] );
+                // SanityCheck();
+            }
         }
     
         inline value_type* pop ( void ) noexcept  
@@ -124,7 +127,6 @@ namespace xcore::lockless::pool
     template< typename T, std::size_t T_MAX_SIZE, typename T_COUNTER = std::size_t >
     using mpmc_bounded = mpmc_bounded_general< T, xcore::types::container_static_to_dynamic< T, xcore::array, T_MAX_SIZE, T_COUNTER >, T_COUNTER >;
 
-
     //------------------------------------------------------------------------------
     // Description:
     //      jitc    - ( Just In Time Construction/Destruction )
@@ -143,7 +145,7 @@ namespace xcore::lockless::pool
 
     public:
 
-        constexpr mpmc_bounded_jitc( bool bClear = true ) noexcept { if( bClear ) clear(); }
+        constexpr mpmc_bounded_jitc( void ) noexcept { clear(); }
     
         ~mpmc_bounded_jitc( void ) noexcept
         {
@@ -182,17 +184,18 @@ namespace xcore::lockless::pool
 
         inline void clear ( void ) noexcept
         {
-            if( m_Allocator.size() == 0 ) return;
-
-            const counter Count = m_Allocator.size() - 1;
-        
-            for( counter i = 0; i<Count; i++ )
+            if( m_Allocator.size() ) 
             {
-                reinterpret_cast<next*>(&m_Allocator[i])->m_Next.store( reinterpret_cast<next*>(&m_Allocator[i + 1]), std::memory_order_relaxed );
-            }
+                const counter Count = m_Allocator.size() - 1;
         
-            reinterpret_cast<next*>(&m_Allocator[Count])->m_Next.store( nullptr, std::memory_order_relaxed );
-            m_Head.store( reinterpret_cast<next*>(&m_Allocator[0]), std::memory_order_relaxed );
+                for( counter i = 0; i<Count; i++ )
+                {
+                    reinterpret_cast<next*>(&m_Allocator[i])->m_Next.store( reinterpret_cast<next*>(&m_Allocator[i + 1]), std::memory_order_relaxed );
+                }
+        
+                reinterpret_cast<next*>(&m_Allocator[Count])->m_Next.store( nullptr, std::memory_order_relaxed );
+                m_Head.store( reinterpret_cast<next*>(&m_Allocator[0]), std::memory_order_relaxed );
+            }
         }
 
         inline value_type* popDontConstruct( void ) noexcept 

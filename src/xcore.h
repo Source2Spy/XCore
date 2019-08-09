@@ -1,5 +1,5 @@
-#ifndef _X_CORE_H
-#define _X_CORE_H
+#ifndef _XCORE_CORE_H
+#define _XCORE_CORE_H
 #pragma once
 
 //--------------------------------------------------------------------------------------------
@@ -7,7 +7,6 @@
 // The other mode is linked like a duplication. Which means that there are two distinct xcore running.
 // This is useful for C++ scripting. Where the entire game can be unloaded and reloaded.
 //--------------------------------------------------------------------------------------------
-
 
 //---------------------------------------------------------------------------
 // System headers
