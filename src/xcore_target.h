@@ -2,6 +2,9 @@
 #define _XCORE_TARGET_H
 #pragma once
 
+
+#define _XCORE_PROFILE
+
 //------------------------------------------------------------------------------
 // Determine the compiler err set it in _XCORE_COMPILER_ ...
 //------------------------------------------------------------------------------
@@ -310,6 +313,13 @@ constexpr xcore::target::compiler   xcore::target::getCompiler      ( void ) noe
     #ifdef _CPPUNWIND
  //       #pragma message( __FILE__ "[" X_STRINGIFY(__LINE__) "]:" "xCore Warning: C++ Exceptions are enable, may generate slower and take more memory than required")
     #endif
+#endif
+
+//------------------------------------------------------------------------------
+// PROFILE
+//------------------------------------------------------------------------------
+#ifdef _XCORE_PROFILE
+    #define TRACY_ENABLE
 #endif
 
 //------------------------------------------------------------------------------
