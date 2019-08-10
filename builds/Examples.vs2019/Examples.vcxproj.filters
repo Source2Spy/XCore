@@ -189,6 +189,9 @@
     <ClInclude Include="..\..\src\Examples\xcore_scheduler_examples.h">
       <Filter>Examples</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\src\xcore_system_reg.h">
+      <Filter>xCore</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\src\xcore.cpp">

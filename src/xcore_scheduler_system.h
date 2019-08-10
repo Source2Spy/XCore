@@ -11,9 +11,10 @@ namespace xcore::scheduler
 {
     using worker_uid = xcore::units::handle< class system, std::uint32_t >;
 
-    class system //: xproperty::base, xsystem_reg
+    class system : public property::base, xcore::system::registration 
     {
     public:
+        property_vtable()
                                     system                      ( void )                                            noexcept;
         virtual                    ~system                      ( void )                                            noexcept;
                     void            Init                        ( int nWorkers = -1 )                               noexcept;

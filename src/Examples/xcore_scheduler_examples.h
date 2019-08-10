@@ -1,7 +1,8 @@
 
 namespace xcore::scheduler::examples
 {
-    enum { LOOP_COUNT = 100000000 };
+    constexpr static std::size_t LOOP_COUNT = 100000000;
+    log::channel*   s_pChannel;
 
     //--------------------------------------------------------------------------------------
     // Test job 1 - basic jobs
@@ -22,10 +23,9 @@ namespace xcore::scheduler::examples
             
             void qt_onRun( void ) noexcept override 
             {
-                auto& S = xcore::get();
                 for( int x = 0; x < 10; x++ )
                 {
-                    XLOG_CHANNEL_INFO( *S.m_Scheduler.m_LogChannel, "WORKING IN BANANAS %c \n", char( 'A' + x ) );
+                    XLOG_CHANNEL_INFO( *s_pChannel, "WORKING IN BANANAS %c \n", char( 'A' + x ) );
                     //  std::this_thread::sleep_for( std::chrono::milliseconds( 100 ) );
                     for( int i = 0; i < LOOP_COUNT; i++ );
                 }
@@ -36,11 +36,12 @@ namespace xcore::scheduler::examples
         
         void Test( void )
         {
-            ZoneScoped;
-            auto& S = xcore::get().m_Scheduler;
-            XLOG_CHANNEL_INFO( *S.m_LogChannel, "----------------------------TEST1-----------------------------\n" );
+            XCORE_PERF_ZONE_SCOPED();
+            XLOG_CHANNEL_INFO( *s_pChannel, "----------------------------TEST1-----------------------------\n" );
             const int   Count = 8;
             
+            auto& S = xcore::get().m_Scheduler;
+
             for( int i = 0; i < Count; ++i )
             {
                 auto* pJob = new count;
@@ -55,7 +56,7 @@ namespace xcore::scheduler::examples
                 S.ProcessWorkPrimitive( pJob );
             }
             
-            XLOG_CHANNEL_INFO( *S.m_LogChannel, "----------------------------TEST1 DONE-----------------------------\n" );
+            XLOG_CHANNEL_INFO( *s_pChannel, "----------------------------TEST1 DONE-----------------------------\n" );
         }
     };
     
@@ -74,10 +75,9 @@ namespace xcore::scheduler::examples
 
             void qt_onRun( void ) noexcept override
             {
-                auto& S = xcore::get().m_Scheduler;
                 for( int x = 0; x < 10; x++ )
                 {
-                    XLOG_CHANNEL_INFO( *S.m_LogChannel, "WORKING IN APPLES %c \n", char( 'A' + x ) );
+                    XLOG_CHANNEL_INFO( *s_pChannel, "WORKING IN APPLES %c \n", char( 'A' + x ) );
                     for( int i = 0; i < LOOP_COUNT; i++ );
                 }
             }
@@ -93,8 +93,8 @@ namespace xcore::scheduler::examples
         //--------------------------------------------------------------------------------------
         void Test( void )
         {
-            auto& S = xcore::get().m_Scheduler;
-            XLOG_CHANNEL_INFO( *S.m_LogChannel, "----------------------------TEST2-----------------------------\n" );
+            XCORE_PERF_ZONE_SCOPED();
+            XLOG_CHANNEL_INFO( *s_pChannel, "----------------------------TEST2-----------------------------\n" );
             const int           Count = 4;
             count               Jobs1[Count];
             count               Jobs2[Count];
@@ -117,12 +117,13 @@ namespace xcore::scheduler::examples
             }
             
             // Add graph to the quantum world
+            auto& S = xcore::get().m_Scheduler;
             for( int i = 0; i < Count; ++i )
                 S.AddJobToQuantumWorld( Jobs1[i] );
             
             // Wait untill the last trigger is done as ask the the main thread to help
             WaitingTrigger.join();
-            XLOG_CHANNEL_INFO( *S.m_LogChannel, "----------------------------TEST2 DONE-----------------------------\n" );
+            XLOG_CHANNEL_INFO( *s_pChannel, "----------------------------TEST2 DONE-----------------------------\n" );
         }
     };
     
@@ -137,10 +138,9 @@ namespace xcore::scheduler::examples
             count( definition D ) : job<1>{D} {}
             void qt_onRun( void ) noexcept override
             {
-                auto& S = xcore::get().m_Scheduler;
                 for( int x = 0; x < 10; x++ )
                 {
-                    XLOG_CHANNEL_INFO( *S.m_LogChannel, "WORKING IN APPLES %c \n", char( 'A' + x ) );
+                    XLOG_CHANNEL_INFO( *s_pChannel, "WORKING IN APPLES %c \n", char( 'A' + x ) );
                     for( int i = 0; i < LOOP_COUNT; i++ );
                 }
             }
@@ -151,13 +151,14 @@ namespace xcore::scheduler::examples
         //--------------------------------------------------------------------------------------
         void Test( void )
         {
-            auto& S = xcore::get().m_Scheduler;
-            XLOG_CHANNEL_INFO( *S.m_LogChannel, "----------------------------TEST3-----------------------------\n" );
+            XCORE_PERF_ZONE_SCOPED();
+            XLOG_CHANNEL_INFO( *s_pChannel, "----------------------------TEST3-----------------------------\n" );
 
             using mytrigger = trigger<4>;
             const int       Count           = 4;
             auto            pTrigger        = new mytrigger { lifetime::DELETE_WHEN_DONE };
             auto            pWaitingTrigger = new mytrigger { lifetime::DELETE_WHEN_DONE };
+            auto&           S               = xcore::get().m_Scheduler;
             
             pWaitingTrigger->DontTriggerUntilReady();
             pTrigger->DontTriggerUntilReady();
@@ -188,7 +189,7 @@ namespace xcore::scheduler::examples
             // end up killing this trigger. By calling join we tell the trigger that we are ready.
             pWaitingTrigger->join();
             
-            XLOG_CHANNEL_INFO( *S.m_LogChannel, "----------------------------TEST3 DONE-----------------------------\n" );
+            XLOG_CHANNEL_INFO( *s_pChannel, "----------------------------TEST3 DONE-----------------------------\n" );
         }
     };
     
@@ -201,10 +202,10 @@ namespace xcore::scheduler::examples
         
         void Test( void )
         {
-            auto& S = xcore::get().m_Scheduler;
-            XLOG_CHANNEL_INFO( *S.m_LogChannel, "----------------------------TEST4-----------------------------\n" );
-            const int       Count = 16;
-            channel         JobChannel(xconst_universal_str("Test4"));
+            XCORE_PERF_ZONE_SCOPED();
+            XLOG_CHANNEL_INFO( *s_pChannel, "----------------------------TEST4-----------------------------\n" );
+            const int           Count = 16;
+            scheduler::channel  JobChannel(xconst_universal_str("Test4"));
             
             for( int i = 0; i < Count; ++i )
             {
@@ -214,14 +215,14 @@ namespace xcore::scheduler::examples
                     auto& S = xcore::get().m_Scheduler;
                     for( int x = 0; x < 5; x++ )
                     {
-                        XLOG_CHANNEL_INFO( *S.m_LogChannel, "WORKING IN BANANAS %c \n", char( 'A' + x ) );
+                        XLOG_CHANNEL_INFO( *s_pChannel, "WORKING IN BANANAS %c \n", char( 'A' + x ) );
                        for( int i = 0; i < LOOP_COUNT; i++ );
                     }
                 } );
             }
             
             JobChannel.join();
-            XLOG_CHANNEL_INFO( *S.m_LogChannel, "----------------------------TEST4 DONE----------------------------\n" );
+            XLOG_CHANNEL_INFO( *s_pChannel, "----------------------------TEST4 DONE----------------------------\n" );
         }
     };
     
@@ -234,11 +235,11 @@ namespace xcore::scheduler::examples
         
         void Test( void )
         {
-            auto& S = xcore::get().m_Scheduler;
-            XLOG_CHANNEL_INFO( *S.m_LogChannel, "----------------------------TEST5-----------------------------\n" );
-            const int       Count = 16;
-            channel         JobChannel1(xconst_universal_str("Test5-Steam0"));
-            channel         JobChannel2(xconst_universal_str("Test5-Steam1"));
+            XCORE_PERF_ZONE_SCOPED();
+            XLOG_CHANNEL_INFO( *s_pChannel, "----------------------------TEST5-----------------------------\n" );
+            const int               Count = 16;
+            scheduler::channel      JobChannel1(xconst_universal_str("Test5-Steam0"));
+            scheduler::channel      JobChannel2(xconst_universal_str("Test5-Steam1"));
             
             // assumes this can work in concurrency with job APPLES but not with ORANGES are a dependency
             for( int i = 0; i < Count; ++i )
@@ -248,7 +249,7 @@ namespace xcore::scheduler::examples
                     auto& S = xcore::get().m_Scheduler;
                     for( int x = 0; x < 5; x++ )
                     {
-                        XLOG_CHANNEL_INFO( *S.m_LogChannel, "WORKING IN BANANAS %c \n", char( 'A' + x ) );
+                        XLOG_CHANNEL_INFO( *s_pChannel, "WORKING IN BANANAS %c \n", char( 'A' + x ) );
                         for( int i = 0; i < LOOP_COUNT; i++ );
                     }
                 } );
@@ -259,10 +260,9 @@ namespace xcore::scheduler::examples
             {
                 JobChannel2.SubmitJob( []()
                 {
-                    auto& S = xcore::get().m_Scheduler;
                     for( int x = 0; x < 5; x++ )
                     {
-                        XLOG_CHANNEL_INFO( *S.m_LogChannel, "WORKING IN APPLES %c \n", char( 'A' + x ) );
+                        XLOG_CHANNEL_INFO( *s_pChannel, "WORKING IN APPLES %c \n", char( 'A' + x ) );
                         for( int i = 0; i < LOOP_COUNT; i++ );
                     }
                 } );
@@ -275,10 +275,9 @@ namespace xcore::scheduler::examples
             {
                 JobChannel1.SubmitJob( []()
                 {
-                    auto& S = xcore::get().m_Scheduler;
                     for( int x = 0; x < 5; x++ )
                     {
-                        XLOG_CHANNEL_INFO( *S.m_LogChannel, "WORKING IN ORANGES %c \n", char( 'A' + x ) );
+                        XLOG_CHANNEL_INFO( *s_pChannel, "WORKING IN ORANGES %c \n", char( 'A' + x ) );
                         for( int i = 0; i < LOOP_COUNT; i++ );
                     }
                 } );
@@ -287,12 +286,14 @@ namespace xcore::scheduler::examples
             JobChannel1.join();
             JobChannel2.join();
             
-            XLOG_CHANNEL_INFO( *S.m_LogChannel, "----------------------------TEST5 DONE----------------------------\n" );
+            XLOG_CHANNEL_INFO( *s_pChannel, "----------------------------TEST5 DONE----------------------------\n" );
         }
     };
     
     void Test( void )
     {
+        log::channel Channel("Scheduler Examples");
+        s_pChannel = &Channel;
         job1::Test();
         job2::Test();
         job3::Test();

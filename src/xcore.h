@@ -42,6 +42,7 @@ namespace xcore
     namespace log       { struct logger; }
     namespace context   { struct base;   }
     namespace scheduler { struct local_storage_data { std::uint32_t m_ThreadID; constexpr local_storage_data(std::nullptr_t) : m_ThreadID{~0u}{} }; }
+    namespace system    { class registration; }
 }
 
 //---------------------------------------------------------------------------
@@ -97,17 +98,19 @@ namespace xcore::textfile { namespace version_1{} namespace version_2{} using na
 #include "xcore_lockless_queues.h"
 #include "xcore_lockless_pool.h"
 
+// including properties
+#include "../dependencies/Properties/src/Properties.h" 
+namespace xcore::property{ using namespace ::property; }
+
+// System Registration
+#include "xcore_system_reg.h"
+
 // Scheduler
 #include "xcore_scheduler_job.h"
 #include "xcore_scheduler_trigger.h"
 #include "xcore_scheduler_channel.h"
 #include "xcore_scheduler_system.h"
 
-//---------------------------------------------------------------------------
-// including properties
-//---------------------------------------------------------------------------
-#include "../dependencies/Properties/src/Properties.h" 
-namespace xcore::property{ using namespace ::property; }
 
 //---------------------------------------------------------------------------
 // Inline functions

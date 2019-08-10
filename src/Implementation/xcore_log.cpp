@@ -32,6 +32,23 @@ void xcore::log::Output( const char* pMsg, ... ) noexcept
 }
 
 //-------------------------------------------------------------------------------------------------------------------
+static
+void OutputToProfiler( const char* pMsg, ... ) noexcept
+{
+    thread_local static std::array<char,1024>   Buffer;
+    std::size_t                                 nBytesWritten = 0;
+
+    // Format string to the buffer
+    {
+        va_list args;
+        va_start(args, pMsg);
+        nBytesWritten = vsnprintf( Buffer.data(), Buffer.size(), pMsg, args );    
+        va_end( args );
+        XCORE_PERF_MESSAGE(Buffer.data(), nBytesWritten)
+    }
+}
+
+//-------------------------------------------------------------------------------------------------------------------
 static 
 void DefaultOutput( const xcore::log::channel& Channel, xcore::log::msg_type Type, const char* pString, int Line, const char* pFile ) noexcept
 {
@@ -43,6 +60,14 @@ void DefaultOutput( const xcore::log::channel& Channel, xcore::log::msg_type Typ
         , pFile
         , Line
         , pString );
+
+#ifdef _XCORE_PROFILE
+    OutputToProfiler( "[%s][%s][Top Context/%s]: %s\n"
+        , pType[static_cast<int>(Type)]
+        , Channel.getName().c_str()
+        , xcore::context::get() ? xcore::context::get()->getFullName().c_str() : ""
+        , pString );
+#endif
 }
 
 //-------------------------------------------------------------------------------------------------------------------

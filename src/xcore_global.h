@@ -40,10 +40,16 @@ namespace xcore::global
         };
     }
 
+    struct state_core_vars
+    {
+        using system_reg = xcore::lock::object< std::unordered_map<std::uint64_t, xcore::system::registration*>, lock::spin >;
+        system_reg                      m_SystemReg         {};
+    };
+
     //------------------------------------------------------------------------------------------
     // Global state for xcore
     //------------------------------------------------------------------------------------------
-    struct state final
+    struct state final : state_core_vars
     {
                                         state           ( const char* pAppName )            noexcept;
                                        ~state           ( void )                            noexcept;
@@ -66,7 +72,7 @@ namespace xcore::global
 
         using state_ptr_type = std::variant< state*, std::unique_ptr<state> >;
         using local_cleanup  = xcore::lock::object<std::vector<std::unique_ptr<details::local_storage_data>>,xcore::lock::spin>;
-
+        
         local_cleanup                   m_LocalCleanup      {};
         local_storage                   m_LocalStorage      {};
         log::logger&                    m_MainLogger;

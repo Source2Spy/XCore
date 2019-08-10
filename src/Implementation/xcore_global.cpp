@@ -39,7 +39,8 @@ void xcore::global::local_storage::setRaw( void* pPtr ) noexcept
 //-----------------------------------------------------------------------------------------------
 
 xcore::global::state::state( const char* pAppName ) noexcept
-    :   m_pAppName      { pAppName }
+    :   state_core_vars {}
+    ,   m_pAppName      { pAppName }
     ,   m_MainLogger    { *new log::logger }
     ,   m_Scheduler     { *new scheduler::system }
 {

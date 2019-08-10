@@ -69,6 +69,7 @@
     <ClInclude Include="..\..\src\xcore_scheduler_trigger.h" />
     <ClInclude Include="..\..\src\xcore_span.h" />
     <ClInclude Include="..\..\src\xcore_string.h" />
+    <ClInclude Include="..\..\src\xcore_system_reg.h" />
     <ClInclude Include="..\..\src\xcore_target.h" />
     <ClInclude Include="..\..\src\xcore_textfile.h" />
     <ClInclude Include="..\..\src\xcore_textfile2.h" />

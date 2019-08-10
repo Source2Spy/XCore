@@ -102,7 +102,7 @@ namespace xcore::scheduler
     //--------------------------------------------------------------------------------------
 
     system::system( void ) noexcept
-       // : xsystem_reg{ *this, X_STR("xBase/Scheduler") }
+        : xcore::system::registration{ nullptr, *this, xconst_universal_str("xBase/Scheduler") }
     {}
 
     //--------------------------------------------------------------------------------------
@@ -117,6 +117,11 @@ namespace xcore::scheduler
 
     void system::Init( int nWorkers ) noexcept
     {
+        //
+        // Register the system officially
+        //
+        RegisterSystem();
+
         //
         // Create the channel
         //
@@ -797,52 +802,32 @@ namespace xcore::scheduler
         Scheduler.m_nWorkersActive--;
         XLOG_CHANNEL_INFO( *Scheduler.m_LogChannel, "Worker[%d] Destroyed Number of workers active [%d]", system::getWorkerUID(Scheduler).m_Value, Scheduler.m_nWorkersActive.load() );
     }
-
-    //--------------------------------------------------------------------------------------
-/*
-    system::prop_table& system::onPropertyTable ( void ) const noexcept
-    {
-        static const xproperty_v2::table E( this, this, X_STR("Scheduler"), [&](xproperty_v2::table& E)
-        {
-            E.AddProperty<int>
-            ( 
-                X_STR("nWorkers")
-                , X_STATIC_LAMBDA_BEGIN (system& Class, int& Data, const xproperty_v2::info::s32& Details, bool isSend)
-                {
-                    if (isSend) Data = Class.m_nWorkersActive;
-                    else x_assert( false );
-                }
-                X_STATIC_LAMBDA_END
-                , xproperty_v2::flags::MASK_READ_ONLY | xproperty_v2::flags::MASK_DONT_SAVE
-                , X_STR("Number of workers ready to work") 
-            );
-
-    #if _X_LOGGING
-            E.AddProperty<bool>
-            ( 
-                X_STR("DebugLog")
-                , X_STATIC_LAMBDA_BEGIN (system& Class, bool& Data, const xproperty_v2::info::boolean& Details, bool isSend)
-                {
-                    if (isSend)
-                    {
-                        Data = g_context::get().m_Scheduler_LogChannel.isPrint();
-                    }
-                    else
-                    {
-                        if( Data ) g_context::get().m_Scheduler_LogChannel.TurnOn();
-                        else       g_context::get().m_Scheduler_LogChannel.TurnOff();
-                    }
-                }
-                X_STATIC_LAMBDA_END
-                , xproperty_v2::flags::MASK_DONT_SAVE
-                , X_STR("Enable or disable the logging system for the scheduler") 
-            );
-    #endif
-
-        });
-
-        return E;
-    }
-    */
 }
 
+//--------------------------------------------------------------------------------------
+// Properties
+//--------------------------------------------------------------------------------------
+property_begin( xcore::scheduler::system )
+{
+    property_var_fnbegin( "nWorkers", int )
+    { 
+        if (isRead) InOut = Self.m_nWorkersActive;
+    } property_var_fnend()
+        .Help("Number of workers active")
+        .Flags( property::flags::SHOW_READONLY )
+
+    , property_var_fnbegin( "DebugLog", bool )
+    { 
+        if (isRead)
+        {
+            InOut = Self.m_LogChannel->isPrint();
+        }
+        else
+        {
+            if( InOut ) Self.m_LogChannel->TurnOn();
+            else        Self.m_LogChannel->TurnOff();
+        }
+    } property_var_fnend()
+        .Help("Enable or disable the logging system for the scheduler")
+
+} property_vend_cpp( xcore::scheduler::system )
