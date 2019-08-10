@@ -39,39 +39,39 @@
     void* operator new(std::size_t size) 
     {
         auto ptr = malloc(size);
-        XCORE_PROF_ALLOC_S( ptr, size, 10 );
+        XCORE_PERF_ALLOC_S( ptr, size, 10 );
         return ptr ? ptr : throw std::bad_alloc{};
     }
 
     void operator delete(void* ptr, std::size_t size) 
     {
         free(ptr);
-        XCORE_PROF_FREE_S( ptr, 10 );
+        XCORE_PERF_FREE_S( ptr, 10 );
     }
 
     void operator delete(void* ptr) 
     {
         free(ptr);
-        XCORE_PROF_FREE_S( ptr, 10 );
+        XCORE_PERF_FREE_S( ptr, 10 );
     }
 
     // "new" over-aligned overloads
     void* operator new(std::size_t size, std::align_val_t align) 
     {
         auto ptr = _aligned_malloc(size, static_cast<std::size_t>(align));
-        XCORE_PROF_ALLOC_S( ptr, size, 10 );
+        XCORE_PERF_ALLOC_S( ptr, size, 10 );
         return ptr ? ptr : throw std::bad_alloc{};
     }
 
     void operator delete(void* ptr, std::size_t size, std::align_val_t align) 
     {
         _aligned_free(ptr);
-        XCORE_PROF_FREE_S( ptr, 10 );
+        XCORE_PERF_FREE_S( ptr, 10 );
     }
 
     void operator delete(void* ptr, std::align_val_t align) 
     {
         _aligned_free(ptr);
-        XCORE_PROF_FREE_S( ptr, 10 );
+        XCORE_PERF_FREE_S( ptr, 10 );
     }
 #endif

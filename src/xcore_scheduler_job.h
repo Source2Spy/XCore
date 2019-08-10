@@ -88,7 +88,7 @@ namespace xcore::scheduler
         inline      job_base&       setupLifeTime           ( lifetime LifeTime )                   noexcept;
         inline      job_base&       setupPriority           ( priority Priority )                   noexcept;
         inline      job_base&       setupAffinity           ( affinity Affinity )                   noexcept { m_Definition.m_Affinity = Affinity; return *this; }
- //       inline      job_base&       setupName               ( const xwstring::const_str Name )      noexcept { X_CMD_JOB_PROFILER_ON( m_JobName = Name ); return *this; }
+        inline      job_base&       setupName               ( const string::const_universal Name )  noexcept { XCORE_CMD_PROFILER( m_JobName = Name ); return *this; }
         constexpr   bool            isDeletedWhenDone       ( void )                        const   noexcept { return m_Definition.m_LifeTime == lifetime::DELETE_WHEN_DONE; }
         constexpr   bool            isLightJob              ( void )                        const   noexcept { return m_Definition.m_JobType  == jobtype::LIGHT; }
         constexpr   priority        getPriority             ( void )                        const   noexcept { return m_Definition.m_Priority; }
@@ -110,7 +110,7 @@ namespace xcore::scheduler
     #endif
         definition                      m_Definition{ definition::Flags( lifetime::DONT_DELETE_WHEN_DONE, jobtype::NORMAL, affinity::NORMAL, priority::NORMAL ) };
 
-       // X_CMD_JOB_PROFILER_ON( xwstring::const_str             m_JobName          { X_WSTR("Job") } );
+        XCORE_CMD_PROFILER( string::const_universal  m_JobName{} );
 
     protected:
 

@@ -432,6 +432,9 @@ namespace xcore::scheduler
 
     void system::ProcessWorkPrimitive( job_base* pJob ) noexcept
     {
+        XCORE_PERF_ZONE_SCOPED();
+        XCORE_PERF_ZONE_NAME( pJob->m_JobName.m_Str.m_pValue, pJob->m_JobName.m_Str.m_Size.m_Value );
+
         xassert_quantum( m_Debug_LQ );
         xassume( pJob );
 
@@ -443,11 +446,13 @@ namespace xcore::scheduler
         // Do the job
         //
         //TA m_Stats_nWorkersWorking.inc();
+        //XCORE_PERF_PLOT(name, val)
 
         //TA XLOG_CHANNEL_INFO( *m_LogChannel, "Worker[%d] took a job, jobs left[%d] There are [%d] workers working", getWorkerUID(*this).m_Value, m_Stats_nJobs.get(), m_Stats_nWorkersWorking.get() );
 
         const bool bDeleteWhenDone = pJob->isDeletedWhenDone();
-    
+
+
         [&]
         { 
             __try 

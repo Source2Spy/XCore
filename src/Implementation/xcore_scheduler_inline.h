@@ -321,7 +321,7 @@ namespace xcore::scheduler
             // setup the callback
             pFreeJob->m_pJobBlock = this;
             pFreeJob->m_Function  = func;
-            //X_CMD_JOB_PROFILER_ON(pFreeJob->setupName(m_Name));
+            XCORE_CMD_PROFILER(pFreeJob->setupName(m_Name));
         }
         m_Scheduler.AddJobToQuantumWorld( *pFreeJob );
     }
