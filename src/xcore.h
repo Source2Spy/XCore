@@ -47,8 +47,7 @@ namespace xcore
 //---------------------------------------------------------------------------
 // including the profiler 
 //---------------------------------------------------------------------------
-#include "../dependencies/tracy/Tracy.hpp"
-#include "../dependencies/tracy/common/TracySystem.hpp"
+#include "xcore_profiler.h"
 
 //---------------------------------------------------------------------------
 // including span 

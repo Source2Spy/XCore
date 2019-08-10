@@ -180,16 +180,22 @@
     <ClInclude Include="..\..\src\Implementation\xcore_scheduler_inline.h">
       <Filter>xCore\Implementation</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\dependencies\tracy\Tracy.hpp">
+      <Filter>xCore\Dependencies</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\xcore_profiler.h">
+      <Filter>xCore</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\src\xcore.cpp">
       <Filter>xCore</Filter>
     </ClCompile>
     <ClCompile Include="..\..\src\Examples\main.cpp" />
-    <ClCompile Include="..\..\src\xcore_tracy_1.cpp">
+    <ClCompile Include="..\..\src\xcore_profiler_1.cpp">
       <Filter>xCore</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\src\xcore_tracy_2.cpp">
+    <ClCompile Include="..\..\src\xcore_profiler_2.cpp">
       <Filter>xCore</Filter>
     </ClCompile>
   </ItemGroup>

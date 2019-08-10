@@ -22,6 +22,7 @@
     <ClInclude Include="..\..\dependencies\meow_hash_cpp\meowhash_cpp\meow_hash.h" />
     <ClInclude Include="..\..\dependencies\properties\src\Properties.h" />
     <ClInclude Include="..\..\dependencies\span\include\tcb\span.hpp" />
+    <ClInclude Include="..\..\dependencies\tracy\Tracy.hpp" />
     <ClInclude Include="..\..\src\Examples\xcore_error_examples.h" />
     <ClInclude Include="..\..\src\Examples\xcore_examples.h" />
     <ClInclude Include="..\..\src\Examples\xcore_function_examples.h" />
@@ -58,6 +59,7 @@
     <ClInclude Include="..\..\src\xcore_lockless_pool.h" />
     <ClInclude Include="..\..\src\xcore_lockless_queues.h" />
     <ClInclude Include="..\..\src\xcore_log.h" />
+    <ClInclude Include="..\..\src\xcore_profiler.h" />
     <ClInclude Include="..\..\src\xcore_ptr.h" />
     <ClInclude Include="..\..\src\xcore_rtti.h" />
     <ClInclude Include="..\..\src\xcore_scheduler_channel.h" />
@@ -77,8 +79,8 @@
   <ItemGroup>
     <ClCompile Include="..\..\src\Examples\main.cpp" />
     <ClCompile Include="..\..\src\xcore.cpp" />
-    <ClCompile Include="..\..\src\xcore_tracy_1.cpp" />
-    <ClCompile Include="..\..\src\xcore_tracy_2.cpp" />
+    <ClCompile Include="..\..\src\xcore_profiler_1.cpp" />
+    <ClCompile Include="..\..\src\xcore_profiler_2.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\..\README.md" />
