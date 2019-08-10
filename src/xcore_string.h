@@ -99,7 +99,7 @@ namespace xcore::string
         constant<wchar_t>       m_WStr;
     };
 
-    #define xconst_universal_str(A)  const_universal{ A, L##A }
+    #define xconst_universal_str(A)  xcore::string::const_universal{ A, L##A }
 
     //------------------------------------------------------------------------------------
     // fixed - fixed size string class

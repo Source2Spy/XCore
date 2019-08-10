@@ -85,9 +85,9 @@ namespace xcore::scheduler
 
     //------------------------------------------------------------------------------
     constexpr
-    trigger_base::trigger_base( flags Flags ) noexcept 
+    trigger_base::trigger_base( lifetime Flags ) noexcept 
         : m_NotificationCounter{ 0 }
-        , m_bDeleteWhenDone{ Flags == flags::LIFETIME_DELETE_WHEN_DONE }
+        , m_bDeleteWhenDone{ Flags == lifetime::DELETE_WHEN_DONE }
     {
         xassert_linear( m_Debug_LQ );
     }
@@ -310,7 +310,7 @@ namespace xcore::scheduler
             // If we have not empty slots then help process work
             while( m_NotificationCounter.load( std::memory_order_relaxed ) >= m_nMaxJobs || (pFreeJob = m_Pool.pop()) == nullptr )
             {
-                auto& S = g_context::get().m_Scheduler;
+                auto& S = xcore::get().m_Scheduler;
                 job_base* pJob = S.getLightJob();
                 if( pJob ) S.ProcessWorkPrimitive( pJob );
             }

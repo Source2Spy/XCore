@@ -11,6 +11,7 @@
 #include "xcore_properties.h"
 #include "xcore_lockless_q.h"
 #include "xcore_unique_span.h"
+#include "xcore_scheduler_examples.h"
 
 
 namespace xcore::examples
@@ -30,9 +31,10 @@ namespace xcore::examples
             xcore::textfile::examples::Test();
             xcore::property::examples::Test();
             xcore::allocator::examples::Test();
+            xcore::containers::vector::examples::Test();
+            xcore::lockless::queues::examples::Test();
         }
 
-        xcore::containers::vector::examples::Test();
-        xcore::lockless::queues::examples::Test();
+        xcore::scheduler::examples::Test();
     }
 }

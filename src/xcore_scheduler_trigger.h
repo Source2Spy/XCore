@@ -13,16 +13,10 @@ namespace xcore::scheduler
     public:
         xcore_rtti_start( trigger_base )
 
-        enum class flags : std::uint8_t
-        {
-            LIFETIME_DONT_DELETE_WHEN_DONE,
-            LIFETIME_DELETE_WHEN_DONE
-        };
-
     public:
     
                                         trigger_base                ( void )                                        noexcept = default;
-        constexpr                       trigger_base                ( flags Flags )                                 noexcept;
+        constexpr                       trigger_base                ( lifetime LifeTime )                           noexcept;
         virtual                        ~trigger_base                ( void )                                        noexcept { xassume( m_NotificationCounter == 0 ); }
         constexpr       bool            isGoingToBeDeletedWhenDone  ( void )                                const   noexcept;
         inline          void            join                        ( void )                                        noexcept;
@@ -69,7 +63,7 @@ namespace xcore::scheduler
     public:
 
         constexpr               trigger                 ( void )                    noexcept = default;
-        constexpr               trigger                 ( flags Flags )             noexcept : trigger_base{ Flags } {}
+        constexpr               trigger                 ( lifetime LifeTime )       noexcept : trigger_base{ LifeTime } {}
         inline                 ~trigger                 ( void )                    noexcept;
         inline      void        AddJobToBeTrigger       ( job_base& Job )           noexcept;
         virtual     int         getJobCount             ( void )            const   noexcept override { return m_nJobsToTrigger; }
