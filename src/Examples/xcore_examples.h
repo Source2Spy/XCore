@@ -18,6 +18,7 @@ namespace xcore::examples
 {
     void Test( void )
     {
+        XCORE_PERF_ZONE_SCOPED()
         if(0)
         {
             xcore::string::examples::Tests();

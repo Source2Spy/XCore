@@ -54,13 +54,14 @@ namespace xcore::scheduler
         static constexpr definition Flags( T_ARGS&&...Args ) noexcept
         {
             definition D;
-            xcore::types::visit( [&]( auto&& V ) constexpr
+            xcore::types::visit( [&]( auto&& V ) noexcept
             {
-                using t = decltype( V );
-                     if constexpr ( std::is_same_v<t,lifetime> )    D.m_LifeTime = V;
-                else if constexpr ( std::is_same_v<t,jobtype>  )    D.m_JobType  = V;
-                else if constexpr ( std::is_same_v<t,affinity> )    D.m_Affinity = V;
-                else if constexpr ( std::is_same_v<t,priority> )    D.m_Priority = V;
+                using T = std::decay_t<decltype( V )>;
+                     if constexpr ( std::is_same_v<T,xcore::scheduler::lifetime> )    D.m_LifeTime = V;
+                else if constexpr ( std::is_same_v<T,xcore::scheduler::jobtype>  )    D.m_JobType  = V;
+                else if constexpr ( std::is_same_v<T,xcore::scheduler::affinity> )    D.m_Affinity = V;
+                else if constexpr ( std::is_same_v<T,xcore::scheduler::priority> )    D.m_Priority = V;
+                else static_assert( always_false_v<T>, "You pass a type that is not recognize!" );
             }, std::tuple{ std::forward<T_ARGS>(Args)... } );
             return D;
         }

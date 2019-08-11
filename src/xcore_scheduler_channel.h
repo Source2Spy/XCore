@@ -23,6 +23,7 @@ namespace xcore::scheduler
         template< typename T >
         inline      void        SubmitJob       ( T&& func )                                noexcept;
         inline      void        join            ( void )                                    noexcept;
+        inline      auto&       getScheduler    ( void )                                    noexcept { return m_Scheduler; }
 
         template< typename T_CONTAINER, typename T_LAMBDA > inline
         std::enable_if_t

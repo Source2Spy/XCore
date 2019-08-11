@@ -437,8 +437,15 @@ namespace xcore::scheduler
 
     void system::ProcessWorkPrimitive( job_base* pJob ) noexcept
     {
+        const tracy::SourceLocationData TracyConcat(__tracy_source_location,__LINE__) { nullptr, __FUNCTION__,  __FILE__, (uint32_t)__LINE__, 0 }; tracy::ScopedZone varname( &TracyConcat(__tracy_source_location,__LINE__), true );
+        varname.Name( pJob->m_JobName.m_Str.m_pValue, pJob->m_JobName.m_Str.m_Size.m_Value );
+
+        /*
+        const tracy::SourceLocationData TracyConcat(__tracy_source_location,__LINE__) { pJob->m_JobName.m_Str.m_pValue, __FUNCTION__,  __FILE__, (uint32_t)__LINE__, 0 }; tracy::ScopedZone varname( &TracyConcat(__tracy_source_location,__LINE__), active );
+
         XCORE_PERF_ZONE_SCOPED();
         XCORE_PERF_ZONE_NAME( pJob->m_JobName.m_Str.m_pValue, pJob->m_JobName.m_Str.m_Size.m_Value );
+        */
 
         xassert_quantum( m_Debug_LQ );
         xassume( pJob );
@@ -565,6 +572,7 @@ namespace xcore::scheduler
 
     void system::ProcessWhileWait( trigger_base& Trigger ) noexcept
     {
+        XCORE_PERF_ZONE_SCOPED()
         xassert_quantum( xcore::get().m_Scheduler.m_Debug_LQ );
         std::atomic<bool> Bool;
     
@@ -575,7 +583,10 @@ namespace xcore::scheduler
         {
             auto& S = xcore::get().m_Scheduler;
             job_base* pJob = S.getLightJob();
-            if( pJob ) S.ProcessWorkPrimitive( pJob );
+            if( pJob ) 
+            {
+                S.ProcessWorkPrimitive( pJob );
+            }
         }
         ////////////
         // 

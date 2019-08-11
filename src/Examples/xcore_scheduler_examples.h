@@ -23,6 +23,7 @@ namespace xcore::scheduler::examples
             
             void qt_onRun( void ) noexcept override 
             {
+                XCORE_PERF_ZONE_SCOPED_N("Job Type 1");
                 for( int x = 0; x < 10; x++ )
                 {
                     XLOG_CHANNEL_INFO( *s_pChannel, "WORKING IN BANANAS %c \n", char( 'A' + x ) );
@@ -38,9 +39,9 @@ namespace xcore::scheduler::examples
         {
             XCORE_PERF_ZONE_SCOPED();
             XLOG_CHANNEL_INFO( *s_pChannel, "----------------------------TEST1-----------------------------\n" );
-            const int   Count = 8;
-            
-            auto& S = xcore::get().m_Scheduler;
+
+            constexpr static int    Count = 8;
+            auto&                   S = xcore::get().m_Scheduler;
 
             for( int i = 0; i < Count; ++i )
             {
@@ -75,6 +76,7 @@ namespace xcore::scheduler::examples
 
             void qt_onRun( void ) noexcept override
             {
+                XCORE_PERF_ZONE_SCOPED_N("Job Type 2");
                 for( int x = 0; x < 10; x++ )
                 {
                     XLOG_CHANNEL_INFO( *s_pChannel, "WORKING IN APPLES %c \n", char( 'A' + x ) );
@@ -95,11 +97,11 @@ namespace xcore::scheduler::examples
         {
             XCORE_PERF_ZONE_SCOPED();
             XLOG_CHANNEL_INFO( *s_pChannel, "----------------------------TEST2-----------------------------\n" );
-            const int           Count = 4;
-            count               Jobs1[Count];
-            count               Jobs2[Count];
-            trigger<4>          Trigger;
-            trigger<4>          WaitingTrigger;
+            constexpr static int    Count = 16;
+            count                   Jobs1[Count]{ definition::Flags( scheduler::jobtype::LIGHT ) };
+            count                   Jobs2[Count]{ definition::Flags( scheduler::jobtype::LIGHT ) };
+            trigger<Count>          Trigger;
+            trigger<Count>          WaitingTrigger;
             
             WaitingTrigger.DontTriggerUntilReady();
 
@@ -122,7 +124,7 @@ namespace xcore::scheduler::examples
                 S.AddJobToQuantumWorld( Jobs1[i] );
             
             // Wait untill the last trigger is done as ask the the main thread to help
-            WaitingTrigger.join();
+            S.ProcessWhileWait( WaitingTrigger );
             XLOG_CHANNEL_INFO( *s_pChannel, "----------------------------TEST2 DONE-----------------------------\n" );
         }
     };
@@ -138,6 +140,7 @@ namespace xcore::scheduler::examples
             count( definition D ) : job<1>{D} {}
             void qt_onRun( void ) noexcept override
             {
+                XCORE_PERF_ZONE_SCOPED_N("Job Type 3");
                 for( int x = 0; x < 10; x++ )
                 {
                     XLOG_CHANNEL_INFO( *s_pChannel, "WORKING IN APPLES %c \n", char( 'A' + x ) );
@@ -154,11 +157,11 @@ namespace xcore::scheduler::examples
             XCORE_PERF_ZONE_SCOPED();
             XLOG_CHANNEL_INFO( *s_pChannel, "----------------------------TEST3-----------------------------\n" );
 
-            using mytrigger = trigger<4>;
-            const int       Count           = 4;
-            auto            pTrigger        = new mytrigger { lifetime::DELETE_WHEN_DONE };
-            auto            pWaitingTrigger = new mytrigger { lifetime::DELETE_WHEN_DONE };
-            auto&           S               = xcore::get().m_Scheduler;
+            constexpr static int    Count           = 16;
+            using                   mytrigger       = trigger<Count>;
+            auto                    pTrigger        = new mytrigger { lifetime::DELETE_WHEN_DONE };
+            auto                    pWaitingTrigger = new mytrigger { lifetime::DELETE_WHEN_DONE };
+            auto&                   S               = xcore::get().m_Scheduler;
             
             pWaitingTrigger->DontTriggerUntilReady();
             pTrigger->DontTriggerUntilReady();
@@ -166,10 +169,10 @@ namespace xcore::scheduler::examples
             // Create part of the graph
             for( int i = 0; i < Count; ++i )
             {
-                count* pJob1 = new count{ definition::Flags( lifetime::DELETE_WHEN_DONE ) };
+                count* pJob1 = new count{ definition::Flags( lifetime::DELETE_WHEN_DONE, jobtype::LIGHT ) };
                 XCORE_CMD_PROFILER( pJob1->setupName( xconst_universal_str("Example 3, Job 1") ) );
 
-                count* pJob2 = new count{ definition::Flags( lifetime::DELETE_WHEN_DONE ) };
+                count* pJob2 = new count{ definition::Flags( lifetime::DELETE_WHEN_DONE, jobtype::LIGHT ) };
                 XCORE_CMD_PROFILER( pJob2->setupName( xconst_universal_str("Example 3, Job 2") ) );
 
                 pTrigger->AddJobToBeTrigger( *pJob2 );
@@ -186,8 +189,8 @@ namespace xcore::scheduler::examples
             
             // After this function returns all pointers may be gone
             // Note that we need to use DontTriggerUntilReady for pWaitingTrigger if not the line above may
-            // end up killing this trigger. By calling join we tell the trigger that we are ready.
-            pWaitingTrigger->join();
+            // end up killing this trigger. By calling ProcessWhileWait we tell the trigger that we are ready.
+            S.ProcessWhileWait( *pWaitingTrigger );
             
             XLOG_CHANNEL_INFO( *s_pChannel, "----------------------------TEST3 DONE-----------------------------\n" );
         }
@@ -204,14 +207,16 @@ namespace xcore::scheduler::examples
         {
             XCORE_PERF_ZONE_SCOPED();
             XLOG_CHANNEL_INFO( *s_pChannel, "----------------------------TEST4-----------------------------\n" );
-            const int           Count = 16;
-            scheduler::channel  JobChannel(xconst_universal_str("Test4"));
+
+            constexpr static int    Count = 16;
+            scheduler::channel      JobChannel(xconst_universal_str("Test4"));
             
             for( int i = 0; i < Count; ++i )
             {
                 auto& S = xcore::get().m_Scheduler;
                 JobChannel.SubmitJob( []()
                 {
+                    XCORE_PERF_ZONE_SCOPED_N("Job Type 4");
                     auto& S = xcore::get().m_Scheduler;
                     for( int x = 0; x < 5; x++ )
                     {
@@ -237,7 +242,8 @@ namespace xcore::scheduler::examples
         {
             XCORE_PERF_ZONE_SCOPED();
             XLOG_CHANNEL_INFO( *s_pChannel, "----------------------------TEST5-----------------------------\n" );
-            const int               Count = 16;
+            
+            constexpr static int    Count = 16;
             scheduler::channel      JobChannel1(xconst_universal_str("Test5-Steam0"));
             scheduler::channel      JobChannel2(xconst_universal_str("Test5-Steam1"));
             
@@ -246,6 +252,7 @@ namespace xcore::scheduler::examples
             {
                 JobChannel1.SubmitJob( []()
                 {
+                    XCORE_PERF_ZONE_SCOPED_N("Job Type 5");
                     auto& S = xcore::get().m_Scheduler;
                     for( int x = 0; x < 5; x++ )
                     {
@@ -260,6 +267,7 @@ namespace xcore::scheduler::examples
             {
                 JobChannel2.SubmitJob( []()
                 {
+                    XCORE_PERF_ZONE_SCOPED_N("Job Type 6");
                     for( int x = 0; x < 5; x++ )
                     {
                         XLOG_CHANNEL_INFO( *s_pChannel, "WORKING IN APPLES %c \n", char( 'A' + x ) );
@@ -275,6 +283,7 @@ namespace xcore::scheduler::examples
             {
                 JobChannel1.SubmitJob( []()
                 {
+                    XCORE_PERF_ZONE_SCOPED_N("Job Type 7");
                     for( int x = 0; x < 5; x++ )
                     {
                         XLOG_CHANNEL_INFO( *s_pChannel, "WORKING IN ORANGES %c \n", char( 'A' + x ) );
@@ -294,7 +303,7 @@ namespace xcore::scheduler::examples
     {
         log::channel Channel("Scheduler Examples");
         s_pChannel = &Channel;
-        job1::Test();
+    //    job1::Test();
         job2::Test();
         job3::Test();
         job4::Test();
