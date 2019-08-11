@@ -5,9 +5,9 @@ namespace xcore::scheduler::examples
     log::channel*   s_pChannel;
 
     //--------------------------------------------------------------------------------------
-    // Test job 1 - basic jobs
+    // Test test 1 - basic jobs
     //--------------------------------------------------------------------------------------
-    namespace job1
+    namespace test1
     {
         static std::atomic<int> s_Count;
         class count : public job<0>
@@ -62,9 +62,9 @@ namespace xcore::scheduler::examples
     };
     
     //--------------------------------------------------------------------------------------
-    // Test job 2 - basic triggers
+    // Test test 2 - basic triggers
     //--------------------------------------------------------------------------------------
-    namespace job2
+    namespace test2
     {
         class count : public job<1>
         {
@@ -130,9 +130,9 @@ namespace xcore::scheduler::examples
     };
     
     //--------------------------------------------------------------------------------------
-    // Test job 3 - basic triggers with dynamic memory allocation
+    // Test test 3 - basic triggers with dynamic memory allocation
     //--------------------------------------------------------------------------------------
-    namespace job3
+    namespace test3
     {
         class count : public job<1>
         {
@@ -197,9 +197,9 @@ namespace xcore::scheduler::examples
     };
     
     //--------------------------------------------------------------------------------------
-    // Test job 4 - basic job block
+    // Test test 4 - basic job block
     //--------------------------------------------------------------------------------------
-    namespace job4
+    namespace test4
     {
         //--------------------------------------------------------------------------------------
         
@@ -232,9 +232,9 @@ namespace xcore::scheduler::examples
     };
     
     //--------------------------------------------------------------------------------------
-    // Test job 5 - multiple job blocks
+    // Test test 5 - multiple job blocks
     //--------------------------------------------------------------------------------------
-    namespace job5
+    namespace test5
     {
         //--------------------------------------------------------------------------------------
         
@@ -303,10 +303,10 @@ namespace xcore::scheduler::examples
     {
         log::channel Channel("Scheduler Examples");
         s_pChannel = &Channel;
-    //    job1::Test();
-        job2::Test();
-        job3::Test();
-        job4::Test();
-        job5::Test();
+        test1::Test();
+        test2::Test();
+        test3::Test();
+        test4::Test();
+        test5::Test();
     }
 }

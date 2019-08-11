@@ -12,5 +12,6 @@ int main(void)
     xcore::Init("TestApp");
     xcore::examples::Test();
 
+    xcore::Kill();
     return 0;
 }

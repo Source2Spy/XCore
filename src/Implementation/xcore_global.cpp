@@ -127,5 +127,6 @@ void xcore::Init( const char* pAppName ) noexcept
 
 void xcore::Kill( void ) noexcept
 {
+    get().m_Scheduler.Shutdown();
     xcore::global::state::ms_Instance = nullptr;
 }
