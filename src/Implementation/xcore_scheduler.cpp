@@ -572,26 +572,62 @@ namespace xcore::scheduler
 
     void system::ProcessWhileWait( trigger_base& Trigger ) noexcept
     {
-        XCORE_PERF_ZONE_SCOPED();//tracy::Color::ColorType::DarkSlateGray)
+        XCORE_PERF_ZONE_SCOPED_C(tracy::Color::ColorType::DarkGoldenrod); 
         xassert_quantum( xcore::get().m_Scheduler.m_Debug_LQ );
-        std::atomic<bool> Bool;
+        std::atomic<bool> Bool { true };
     
-        Bool = true;
         Trigger.DoTriggerWhenReady( &Bool );
     
         auto& S = xcore::get().m_Scheduler;
-        while( Bool )
+
+        // This version may be better for low end devices since it tries to save power
+        // But there is more overhead and the system would need to be notifies on light jobs as well...
+        // Left for reference
+        #if 0
+            std::unique_lock<std::mutex> Lock( S.m_SleepWorkerMutex, std::defer_lock );
+            while( Bool )
+            {
+                job_base* pJob = S.getLightJob();
+
+                if( pJob == nullptr ) 
+                {
+                    XCORE_PERF_ZONE_SCOPED_NC( "Sleeping", 0x4f2f2f );
+                    Lock.lock();
+                    S.m_SleepWorkerCV.wait( Lock, [ &pJob, &S, &Bool ]()
+                    { 
+                        pJob = S.getLightJob();
+                        return Bool == false || pJob;
+                    });
+                    Lock.unlock();
+                    if( pJob == nullptr ) 
+                    {
+                        xassert( Bool == false );
+                        break;
+                    }
+                }
+            
+                S.ProcessWorkPrimitive( pJob );
+            }
+        #endif
+
+        //
+        // Actively consume work if we can
+        //
+        do 
         {
             job_base* pJob;
 
+            // Get me a job!
             {
-                XCORE_PERF_ZONE_SCOPED_NC( "Sleeping", 0x4f2f2f );//tracy::Color::ColorType::DarkSlateGray)
-                for( pJob = S.getLightJob(); Bool && pJob == nullptr; pJob = S.getLightJob() );
+                XCORE_PERF_ZONE_SCOPED_NC( "Actively Sleeping", 0x4f2f2f );
+                do { pJob = S.getLightJob(); } while( Bool.load( std::memory_order_relaxed ) && pJob == nullptr );
+                if( pJob == nullptr && Bool.load( std::memory_order_relaxed ) == false ) break;
             }
             
-            if( Bool == false ) break;
             S.ProcessWorkPrimitive( pJob );
-        }
+
+        } while( Bool.load( std::memory_order_relaxed ) );
+        
 /*
         while( Bool )
         {
