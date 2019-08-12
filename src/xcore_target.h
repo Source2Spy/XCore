@@ -210,6 +210,48 @@ constexpr xcore::target::compiler   xcore::target::getCompiler      ( void ) noe
 //------------------------------------------------------------------------------
 #if _XCORE_SSE4
     #include <smmintrin.h>     //SSE4
+
+    namespace xcore
+    {
+        using floatx4     = __m128;
+
+        namespace sse
+        {
+            template<unsigned i> constexpr
+            float getElementByIndex( floatx4 V ) noexcept
+            {
+                static_assert( i>=0 && i<=4, "Index out of range" );
+                #if defined __SSE4_1__ || defined __SSE4_2__ 
+                    return _mm_extract_epi32(V, i);
+                #else
+                    // shuffle V so that the element that you want is moved to the least-
+                    // significant element of the vector (V[0])
+                    // return the value in V[0]
+                    return _mm_cvtss_f32( _mm_shuffle_ps(V, V, _MM_SHUFFLE(i, i, i, i)) );
+                #endif
+            }
+        }
+    }
+
+#else
+    namespace sse
+    {
+        union floatx4
+        {
+            struct { float x, y, z, w; };
+            float m[4];
+        };
+
+        namespace sse
+        {
+            template<unsigned i> constexpr
+            float getElementByIndex( floatx4 V ) noexcept
+            {
+                static_assert( i>=0 && i<=4, "Index out of range" );
+                return V.m[i];
+            }
+        }
+    }
 #endif
 
 //------------------------------------------------------------------------------

@@ -60,6 +60,13 @@
     <ClInclude Include="..\..\src\xcore_lockless_pool.h" />
     <ClInclude Include="..\..\src\xcore_lockless_queues.h" />
     <ClInclude Include="..\..\src\xcore_log.h" />
+    <ClInclude Include="..\..\src\xcore_math.h" />
+    <ClInclude Include="..\..\src\xcore_math_matrix4.h" />
+    <ClInclude Include="..\..\src\xcore_math_quaternion.h" />
+    <ClInclude Include="..\..\src\xcore_math_radian3.h" />
+    <ClInclude Include="..\..\src\xcore_math_vector2.h" />
+    <ClInclude Include="..\..\src\xcore_math_vector3.h" />
+    <ClInclude Include="..\..\src\xcore_math_vector4.h" />
     <ClInclude Include="..\..\src\xcore_profiler.h" />
     <ClInclude Include="..\..\src\xcore_ptr.h" />
     <ClInclude Include="..\..\src\xcore_rtti.h" />

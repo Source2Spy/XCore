@@ -111,6 +111,14 @@ namespace xcore::property{ using namespace ::property; }
 #include "xcore_scheduler_channel.h"
 #include "xcore_scheduler_system.h"
 
+// Math
+#include "xcore_math.h"
+#include "xcore_math_radian3.h"
+#include "xcore_math_vector2.h"
+#include "xcore_math_vector3.h"
+#include "xcore_math_vector4.h"
+#include "xcore_math_matrix4.h"
+#include "xcore_math_quaternion.h"
 
 //---------------------------------------------------------------------------
 // Inline functions
