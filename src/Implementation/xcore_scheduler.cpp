@@ -572,22 +572,36 @@ namespace xcore::scheduler
 
     void system::ProcessWhileWait( trigger_base& Trigger ) noexcept
     {
-        XCORE_PERF_ZONE_SCOPED_C( 0x4f2f2f );//tracy::Color::ColorType::DarkSlateGray)
+        XCORE_PERF_ZONE_SCOPED();//tracy::Color::ColorType::DarkSlateGray)
         xassert_quantum( xcore::get().m_Scheduler.m_Debug_LQ );
         std::atomic<bool> Bool;
     
         Bool = true;
         Trigger.DoTriggerWhenReady( &Bool );
     
+        auto& S = xcore::get().m_Scheduler;
         while( Bool )
         {
-            auto& S = xcore::get().m_Scheduler;
+            job_base* pJob;
+
+            {
+                XCORE_PERF_ZONE_SCOPED_NC( "Sleeping", 0x4f2f2f );//tracy::Color::ColorType::DarkSlateGray)
+                for( pJob = S.getLightJob(); Bool && pJob == nullptr; pJob = S.getLightJob() );
+            }
+            
+            if( Bool == false ) break;
+            S.ProcessWorkPrimitive( pJob );
+        }
+/*
+        while( Bool )
+        {
             job_base* pJob = S.getLightJob();
             if( pJob ) 
             {
                 S.ProcessWorkPrimitive( pJob );
             }
         }
+*/
         ////////////
         // 
         // At this point the trigger could be freed
@@ -645,6 +659,7 @@ namespace xcore::scheduler
             pJob = getJob();
             if( pJob == false )
             {
+                XCORE_PERF_ZONE_SCOPED_NC("Sleeping",0x4f2f2f)
                 XLOG_CHANNEL_INFO( *m_LogChannel, "Worker[%d] Sleeping", getWorkerUID(*this).m_Value );
                 Lock.lock();
                 m_SleepWorkerCV.wait( Lock, [ &pJob, this ]()
