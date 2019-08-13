@@ -169,8 +169,8 @@ namespace xcore::textfile::version_2::details
         }
         else
         {
-            const std::int64_t L           = string::Length(Buffer).m_Value;
-            const std::int64_t TotalData   = L>Buffer.size()?Buffer.size():L;
+            const std::uint64_t L           = string::Length(Buffer).m_Value;
+            const std::uint64_t TotalData   = L>Buffer.size()?Buffer.size():L;
             if( TotalData != std::fwrite( Buffer.data(), 1, TotalData, m_pFP ) )
                 return xerr_failure_s( "Fail 'fwrite' writing the required data" );
         }
@@ -670,11 +670,11 @@ namespace xcore::textfile::version_2
                 }
 
                 // Write the name 
-                if( m_File.WriteStr( { UserType.m_Name.data(), UserType.m_NameLength+1 } ).isError(Error) )
+                if( m_File.WriteStr( { UserType.m_Name.data(), static_cast<string::details::size_t>(UserType.m_NameLength+1) } ).isError(Error) )
                     return Error;
 
                 // Write type/s
-                if( m_File.WriteStr( { UserType.m_SystemTypes.data(), UserType.m_nSystemTypes+1 } ).isError(Error) )
+                if( m_File.WriteStr( { UserType.m_SystemTypes.data(), static_cast<string::details::size_t>(UserType.m_nSystemTypes+1) } ).isError(Error) )
                     return Error;
             }
         }
@@ -1046,7 +1046,7 @@ namespace xcore::textfile::version_2
                 {
                     auto& Column = m_Columns[i];
 
-                    if( m_File.WriteStr( string::view{ Column.m_Name.data(), Column.m_NameLength } ).isError( Error ) )
+                    if( m_File.WriteStr( string::view{ Column.m_Name.data(), static_cast<string::details::size_t>(Column.m_NameLength) } ).isError( Error ) )
                         return Error;
 
                     if( Column.m_nTypes == -1 )
@@ -1070,7 +1070,7 @@ namespace xcore::textfile::version_2
                             if( m_File.WriteChar( ':' ).isError( Error ) )
                                 return Error;
 
-                            if( m_File.WriteStr( { Column.m_SystemTypes.data(), static_cast<int>(Column.m_nTypes + 1) } ).isError( Error ) )
+                            if( m_File.WriteStr( { Column.m_SystemTypes.data(), static_cast<string::details::size_t>(Column.m_nTypes + 1) } ).isError( Error ) )
                                 return Error;
                         }
                     }
@@ -1111,7 +1111,7 @@ namespace xcore::textfile::version_2
                             if( m_File.WriteChar( ':' ).isError(Error) )
                                 return Error;
 
-                            if( m_File.WriteStr( string::view{ DynamicFields.m_SystemTypes.data(), DynamicFields.m_nTypes + 1 } ).isError(Error) )
+                            if( m_File.WriteStr( string::view{ DynamicFields.m_SystemTypes.data(), static_cast<string::details::size_t>(DynamicFields.m_nTypes + 1) } ).isError(Error) )
                                 return Error;
                         }
 
@@ -1121,7 +1121,7 @@ namespace xcore::textfile::version_2
                         for( int n=0; n<DynamicFields.m_nTypes; ++n )
                         {
                             const auto& FieldInfo   = Column.m_FieldInfo[ DynamicFields.m_iField + n ];
-                            if( m_File.WriteData( string::view{ &m_Memory[ FieldInfo.m_iData ], FieldInfo.m_Width } ).isError(Error) )
+                            if( m_File.WriteData( string::view{ &m_Memory[ FieldInfo.m_iData ], static_cast<string::details::size_t>(FieldInfo.m_Width) } ).isError(Error) )
                                 return Error;
                         }
                     }
@@ -1131,7 +1131,7 @@ namespace xcore::textfile::version_2
                         {
                             const auto  Index       = l*Column.m_nTypes + n;
                             const auto& FieldInfo   = Column.m_FieldInfo[ Index ];
-                            if( m_File.WriteData( string::view{ &m_Memory[ FieldInfo.m_iData ], FieldInfo.m_Width } ).isError(Error) )
+                            if( m_File.WriteData( string::view{ &m_Memory[ FieldInfo.m_iData ], static_cast<string::details::size_t>(FieldInfo.m_Width) } ).isError(Error) )
                                 return Error;
                         }
                     }
@@ -1443,7 +1443,7 @@ namespace xcore::textfile::version_2
                         {
                             const auto& FieldInfo   = Column.m_FieldInfo[ DynamicFields.m_iField + n ];
                     
-                            if( m_File.WriteStr( string::view{ &m_Memory[ FieldInfo.m_iData ], FieldInfo.m_Width } ).isError(Error) )
+                            if( m_File.WriteStr( string::view{ &m_Memory[ FieldInfo.m_iData ], static_cast<string::details::size_t>(FieldInfo.m_Width) } ).isError(Error) )
                                 return Error;
                                 
                             // Get ready for the next type
@@ -1477,7 +1477,7 @@ namespace xcore::textfile::version_2
                                 if( m_File.WriteChar( ' ', SubColumn.m_FormatIntWidth - FieldInfo.m_IntWidth ).isError(Error) )
                                     return Error;
 
-                                if( m_File.WriteStr( string::view{ &m_Memory[ FieldInfo.m_iData ], FieldInfo.m_Width } ).isError(Error) )
+                                if( m_File.WriteStr( string::view{ &m_Memory[ FieldInfo.m_iData ], static_cast<string::details::size_t>(FieldInfo.m_Width) } ).isError(Error) )
                                     return Error;
 
                                 // Write spaces to reach the next sub-column
@@ -1487,7 +1487,7 @@ namespace xcore::textfile::version_2
                             else if( Column.m_SystemTypes[n] == 's' )
                             {
                                 // Left align
-                                if( m_File.WriteStr( string::view{ &m_Memory[ FieldInfo.m_iData ], FieldInfo.m_Width } ).isError(Error) )
+                                if( m_File.WriteStr( string::view{ &m_Memory[ FieldInfo.m_iData ], static_cast<string::details::size_t>(FieldInfo.m_Width) } ).isError(Error) )
                                     return Error;
 
                                 if( m_File.WriteChar( ' ', SubColumn.m_FormatWidth - FieldInfo.m_Width ).isError(Error) )
@@ -1499,7 +1499,7 @@ namespace xcore::textfile::version_2
                                 if( m_File.WriteChar( ' ', SubColumn.m_FormatWidth - FieldInfo.m_Width ).isError(Error) )
                                     return Error;
 
-                                if( m_File.WriteStr( string::view{ &m_Memory[ FieldInfo.m_iData ], FieldInfo.m_Width } ).isError(Error) )
+                                if( m_File.WriteStr( string::view{ &m_Memory[ FieldInfo.m_iData ], static_cast<string::details::size_t>(FieldInfo.m_Width) } ).isError(Error) )
                                     return Error;
                             }
 
@@ -1589,7 +1589,7 @@ namespace xcore::textfile::version_2
         //
         for( Column.m_NameLength=0; pFieldName[Column.m_NameLength] !=';' && pFieldName[Column.m_NameLength] !=':'; ++Column.m_NameLength )
         {
-            if( pFieldName[Column.m_NameLength]==0 || Column.m_NameLength >= Column.m_Name.size() ) 
+            if( pFieldName[Column.m_NameLength]==0 || Column.m_NameLength >= static_cast<int>(Column.m_Name.size()) ) 
                 return xerr_failure( Error, "Fail to read a column named, either string is too long or it has no types" );
 
             Column.m_Name[Column.m_NameLength] = pFieldName[Column.m_NameLength];
@@ -2458,7 +2458,7 @@ namespace xcore::textfile::version_2
                     {
                         UserType.m_Name[UserType.m_NameLength++] = static_cast<char>(c);
                         if( m_File.getC(c).isError(Failure) ) return Failure;
-                        if( UserType.m_NameLength >= UserType.m_Name.size() ) return xerr_failure( Failure, "Failed to find the termination character ':' for a user type");
+                        if( UserType.m_NameLength >= static_cast<int>(UserType.m_Name.size()) ) return xerr_failure( Failure, "Failed to find the termination character ':' for a user type");
                     }
                     UserType.m_Name[UserType.m_NameLength]=0;
                     UserType.m_CRC = crc::FromString<32>(UserType.m_Name);
@@ -2470,7 +2470,7 @@ namespace xcore::textfile::version_2
                         if( c == '>' || c == ' ' ) break;
                         if( isValidType(c) == false ) return xerr_failure( Failure, "Found a non-atomic type in user type definition" );
                         UserType.m_SystemTypes[UserType.m_nSystemTypes++] = static_cast<char>(c);
-                        if( UserType.m_nSystemTypes >= UserType.m_SystemTypes.size() ) return xerr_failure( Failure, "Failed to find the termination character '>' for a user type block");
+                        if( UserType.m_nSystemTypes >= static_cast<int>(UserType.m_SystemTypes.size()) ) return xerr_failure( Failure, "Failed to find the termination character '>' for a user type block");
                     } while( true );
                     UserType.m_SystemTypes[UserType.m_nSystemTypes]=0;
 

@@ -12,7 +12,7 @@ namespace xcore::string
             xassume( pStr );
             const T_CHAR* pEnd = pStr;
             if( pStr ) while( *pEnd++ ) {}
-            return string::units<T_CHAR>{ static_cast<int>( pEnd - pStr - 1 ) };
+            return string::units<T_CHAR>{ static_cast<details::size_t>( pEnd - pStr - 1 ) };
         }
     }
 
@@ -80,7 +80,7 @@ namespace xcore::string
             xassume( Dest.size() > 0 );
     
             const auto Max =  Dest.size() - 1;
-            int i;
+            details::size_t i;
             for( i=0; (Dest[i] = pSrc[i]) && (i < Max); i++ );
     
             xassert_block_medium()
@@ -207,7 +207,7 @@ namespace xcore::string
     template< typename... T_ARGS > inline
     units<char> sprintf ( view<char> Dest, const char* pFmt, T_ARGS... Args ) noexcept
     {
-        return units<char>{ details::vsprintf( Dest, pFmt, xcore::arglist::out{ std::forward<T_ARGS>(Args)...} ) };
+        return units<char>{ static_cast<string::details::size_t>(details::vsprintf( Dest, pFmt, xcore::arglist::out{ std::forward<T_ARGS>(Args)...} )) };
     }
 
     //------------------------------------------------------------------------------

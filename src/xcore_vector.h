@@ -60,10 +60,10 @@ namespace xcore::containers::vector
 
         inline      void                                        appendList                  ( const view View )                                 noexcept;
         
-        inline      auto                                        begin                       ( void )                                            noexcept { return xcore::span{ data(), static_cast<int>(m_Count) }.begin(); }
-        inline      auto                                        begin                       ( void )                                      const noexcept { return xcore::span{ data(), static_cast<int>(m_Count) }.begin(); }
-        inline      auto                                        end                         ( void )                                      const noexcept { return xcore::span{ data(), static_cast<int>(m_Count) }.end();   }
-        inline      auto                                        end                         ( void )                                            noexcept { return xcore::span{ data(), static_cast<int>(m_Count) }.end();   }
+        inline      auto                                        begin                       ( void )                                            noexcept { return xcore::span{ data(), m_Count }.begin(); }
+        inline      auto                                        begin                       ( void )                                      const noexcept { return xcore::span{ data(), m_Count }.begin(); }
+        inline      auto                                        end                         ( void )                                      const noexcept { return xcore::span{ data(), m_Count }.end();   }
+        inline      auto                                        end                         ( void )                                            noexcept { return xcore::span{ data(), m_Count }.end();   }
 
         // More of the interface is found here
         #include "Implementation/xcore_linear_buffers_hardness.h"

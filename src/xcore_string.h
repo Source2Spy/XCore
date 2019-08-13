@@ -9,11 +9,13 @@ namespace xcore::string
     //------------------------------------------------------------------------------
     namespace details
     {
+        using size_t = std::uint32_t;
+
         template< typename T >
-        struct units_imp : xcore::units::type<units_imp<T>, int>
+        struct units_imp : xcore::units::type<units_imp<T>, size_t>
         {
             static_assert( std::is_same_v<T,std::decay_t<T>> );
-            using parent = xcore::units::type<units_imp<T>, int>;
+            using parent = xcore::units::type<units_imp<T>, size_t>;
             using parent::type;
             using parent::operator =;
                                             operator xcore::units::bytes    ( void )        const   noexcept { return units::bytes{ parent::m_Value * sizeof(T) }; }
@@ -25,7 +27,7 @@ namespace xcore::string
     //------------------------------------------------------------------------------------
     // view - string view
     //------------------------------------------------------------------------------------
-    template< typename T_CHAR, std::ptrdiff_t T_SIZE_V = -1 >
+    template< typename T_CHAR, std::size_t T_SIZE_V = std::dynamic_extent >
     struct view : xcore::span<T_CHAR,T_SIZE_V>
     {
         using char_t = T_CHAR;
@@ -122,7 +124,7 @@ namespace xcore::string
         constexpr                   fixed                                       ( const char_t (&Str)[T_SIZE_V] )           noexcept { for(int i=0; i<T_SIZE_V; ++i) parent::at(i) = Str[i]; }
         template< std::size_t N >
         constexpr                   fixed                                       ( const char_t (&Str)[N] )                  noexcept { static_assert( N <= T_SIZE_V); for(int i=0; i<T_SIZE_V; ++i) parent::at(i) = Str[i]; }
-        constexpr                   fixed                                       ( const char_t* pStr )                      noexcept { int i=0; while(parent::at(i)=pStr[i]) ++i; xassert(i<ms_BufferSize.m_Value); }
+        constexpr                   fixed                                       ( const char_t* pStr )                      noexcept { details::size_t i=0; while(parent::at(i)=pStr[i]) ++i; xassert(i<ms_BufferSize.m_Value); }
 
         inline                      operator view<char_t,T_SIZE_V>              ( void )                                    noexcept { return { parent::data() }; }
         inline                      operator view<char_t>                       ( void )                                    noexcept { return { parent::data(), size() }; }
@@ -304,7 +306,7 @@ namespace xcore::string
             xassert(Characters.m_Value>0);
 
             // Size in number of buffer size "a" == Length/Characters == 1, == 'a/0' == Size == 2
-            const int Size = Characters.m_Value + 1;
+            const details::size_t Size = Characters.m_Value + 1;
 
             m_Ref.emplace<share_t>( new xcore::string::ref<char>{ units{Size} } );
             (*this)[0]=0;

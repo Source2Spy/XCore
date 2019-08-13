@@ -104,7 +104,7 @@ namespace xcore::string::details
         template< class T >
         const T get( void ) noexcept
         {
-            xassert( m_Index <= m_List.size() );
+            xassert( m_Index <= static_cast<int>(m_List.size()) );
             return xcore::arglist::get<T>( m_List[m_Index++] );
         }
 

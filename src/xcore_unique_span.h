@@ -57,7 +57,7 @@ namespace xcore::allocator
             auto p = new value_type[Count]{ std::forward<T_ARGS>(Args)... };
             if( p == nullptr ) 
             {
-                new( this ) xcore::span<value_type>( nullptr, static_cast<std::ptrdiff_t>( 0 ) );
+                new( this ) xcore::span<value_type>( nullptr, static_cast<std::size_t>( 0 ) );
                 return xerr_code( Error, error_state::OUT_OF_MEMORY, "Memory Allocation Failure" );
             }
             new( this ) xcore::span( p, Count );
@@ -174,7 +174,7 @@ namespace xcore::allocator
                 #endif
                 if( p == nullptr ) 
                 {
-                    new( this ) xcore::span<value_type>( nullptr, static_cast<std::ptrdiff_t>( 0 ) );
+                    new( this ) xcore::span<value_type>( nullptr, static_cast<std::size_t>( 0 ) );
                     return xerr_code( Error, error_state::OUT_OF_MEMORY, "Memory Allocation Failure" );
                 }
                 new( this ) xcore::span( p, Count );

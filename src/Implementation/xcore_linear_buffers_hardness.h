@@ -39,7 +39,7 @@ auto ViewFromTo( T iStart, T iEnd ) const noexcept
     xassert( iStart >= 0 );
     xassert( iEnd   <= size() );
     xassert( iStart <= iEnd );
-    return xcore::span{ &(*this)[ iStart ], iEnd - iStart };
+    return xcore::span{ &(*this)[ iStart ], static_cast<std::size_t>(iEnd - iStart) };
 }
 
 //------------------------------------------------------------------------------
@@ -59,7 +59,7 @@ auto ViewFrom( T iStart ) noexcept
     const auto s = size();
     xassert( iStart >= 0 );
     xassert( iStart <= s );
-    return xcore::span{ &(*this)[ iStart ], std::ptrdiff_t(s - static_cast<std::size_t>(iStart)) };
+    return xcore::span{ &(*this)[ iStart ], s - static_cast<std::size_t>(iStart) };
 }
 
 //------------------------------------------------------------------------------
@@ -75,7 +75,7 @@ public: inline
 auto View( void ) noexcept
 {
     xassert( size() );
-    return xcore::span{ data(), static_cast<std::ptrdiff_t>(size()) };
+    return xcore::span{ data(), size() };
 }
 
 //------------------------------------------------------------------------------

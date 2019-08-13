@@ -4,7 +4,7 @@
 
 namespace xcore
 {
-    template< typename T, std::ptrdiff_t T_SIZE = -1 >
+    template< typename T, std::size_t T_SIZE = std::dynamic_extent >
     struct span : std::span<T, T_SIZE>
     {
         using value_type = T;
@@ -17,12 +17,17 @@ namespace xcore
         using parent::data;
         using parent::size; 
 
-        template < typename C = size_type, typename = std::enable_if_t<T_SIZE!=-1> >  constexpr static auto     size            ( void )                noexcept
+        template < typename C = size_type, typename = std::enable_if_t<T_SIZE!=std::dynamic_extent> >  
+        constexpr static auto     size            ( void )                noexcept
         { 
             return T_SIZE; 
         }        
 
-        template < typename C,             typename = std::enable_if_t<T_SIZE==-1> >  constexpr static bool     isIndexValid    ( C i )                 noexcept    { return i >= 0 && i <= static_cast<decltype(i)>(T_SIZE);         }
+        template < typename C,             typename = std::enable_if_t<T_SIZE==std::dynamic_extent> >  
+        constexpr static bool     isIndexValid    ( C i )                 noexcept    
+        { 
+            return i >= 0 && i <= static_cast<decltype(i)>(T_SIZE);         
+        }
 
         // More of the interface is found here
         #include "Implementation/xcore_linear_buffers_hardness.h"
