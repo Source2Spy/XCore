@@ -65,12 +65,12 @@ namespace xcore::math
         inline              matrix4&                setScale                ( const vector3& Scale )                                                            noexcept;
                                                  
         inline              matrix4&                Rotate                  ( const radian3& R )                                                                noexcept;
-        inline              matrix4&                RotateX                 ( units::radian Rx )                                                                noexcept;
-        inline              matrix4&                RotateY                 ( units::radian Ry )                                                                noexcept;
-        inline              matrix4&                RotateZ                 ( units::radian Rz )                                                                noexcept;
-        inline              matrix4&                PreRotateX              ( units::radian Rx )                                                                noexcept;
-        inline              matrix4&                PreRotateY              ( units::radian Ry )                                                                noexcept;
-        inline              matrix4&                PreRotateZ              ( units::radian Rz )                                                                noexcept;
+        inline              matrix4&                RotateX                 ( radian Rx )                                                                       noexcept;
+        inline              matrix4&                RotateY                 ( radian Ry )                                                                       noexcept;
+        inline              matrix4&                RotateZ                 ( radian Rz )                                                                       noexcept;
+        inline              matrix4&                PreRotateX              ( radian Rx )                                                                       noexcept;
+        inline              matrix4&                PreRotateY              ( radian Ry )                                                                       noexcept;
+        inline              matrix4&                PreRotateZ              ( radian Rz )                                                                       noexcept;
         inline              matrix4&                PreRotate               ( const quaternion& Rotation )                                                      noexcept;
         inline              matrix4&                PreRotate               ( const radian3& Rotation )                                                         noexcept;
         inline              radian3                 getRotationR3           ( void )                                                                    const   noexcept;
@@ -114,8 +114,8 @@ namespace xcore::math
         inline              matrix4&                OrthographicProjection  ( float Left, float Right, float Bottom, float Top, float Near, float Far )         noexcept;
         inline              matrix4&                PerspectiveProjection   ( float Left, float Right, float Bottom, float Top, float Near, float Far)          noexcept;
 
-        inline              matrix4&                setup                   ( const vector3& Axis, units::radian Angle )                                        noexcept;
-        inline              matrix4&                setup                   ( const vector3& From, const vector3& To, units::radian Angle )                     noexcept;
+        inline              matrix4&                setup                   ( const vector3& Axis, radian Angle )                                               noexcept;
+        inline              matrix4&                setup                   ( const vector3& From, const vector3& To, radian Angle )                            noexcept;
         inline              matrix4&                setup                   ( const radian3& Rotation )                                                         noexcept;
         inline              matrix4&                setup                   ( const quaternion& Q )                                                             noexcept;
         inline              matrix4&                setup                   ( const vector3&    Scale,
@@ -129,8 +129,8 @@ namespace xcore::math
 
         inline              matrix4                 getAdjoint              ( void )                                                                    const   noexcept;
 
-        inline              float                   operator ()             ( const std::int32_t i, const std::int32_t j )                                                const   noexcept;
-        inline              float&                  operator ()             ( const std::int32_t i, const std::int32_t j )                                                        noexcept;
+        inline              float                   operator ()             ( const std::int32_t i, const std::int32_t j )                              const   noexcept;
+        inline              float&                  operator ()             ( const std::int32_t i, const std::int32_t j )                                      noexcept;
         inline              const matrix4&          operator +=             ( const matrix4& M )                                                                noexcept;
         inline              const matrix4&          operator -=             ( const matrix4& M )                                                                noexcept;
         inline              const matrix4&          operator *=             ( const matrix4& M )                                                                noexcept;

@@ -127,5 +127,7 @@ namespace xcore::property{ using namespace ::property; }
 #include "Implementation/xcore_vector_inline.h"
 #include "Implementation/xcore_textfile2_inline.h"
 #include "Implementation/xcore_scheduler_inline.h"
+#include "Implementation/xcore_math_radian3_inline.h"
+
 
 #endif

@@ -28,12 +28,12 @@ namespace xcore::math
         constexpr           vector2             getLerp                         ( float t, const vector2& V1 )              const   noexcept;
         inline              float               getLength                       ( void )                                    const   noexcept;
         constexpr           float               getLengthSquared                ( void )                                    const   noexcept;
-        inline              units::radian       getAngle                        ( void )                                    const   noexcept;
-        inline              units::radian       getAngleBetween                 ( const vector2& V )                        const   noexcept;
+        inline              radian              getAngle                        ( void )                                    const   noexcept;
+        inline              radian              getAngleBetween                 ( const vector2& V )                        const   noexcept;
         inline              float               getDistance                     ( const vector2& V )                        const   noexcept;
         constexpr           bool                isInrange                       ( float Min, float Max )                    const   noexcept;
         xforceinline        bool                isValid                         ( void )                                    const   noexcept; 
-        inline              vector2&            Rotate                          ( units::radian Angle )                             noexcept; 
+        inline              vector2&            Rotate                          ( radian Angle )                             noexcept; 
         inline              vector2&            Normalize                       ( void )                                            noexcept;
         inline              vector2&            NormalizeSafe                   ( void )                                            noexcept;
         constexpr           vector2             getMin                          ( const vector2& V )                        const   noexcept;

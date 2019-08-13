@@ -64,43 +64,6 @@ namespace xcore::units
     };
 
     //------------------------------------------------------------------------------
-    // degree
-    //------------------------------------------------------------------------------
-    struct degree : type<degree, float>
-    {
-        using type::type;
-        using type::operator =;
-        constexpr explicit                      degree                  ( const unsigned long long    X )       noexcept : type{ static_cast<float>(X) } {} 
-        constexpr explicit                      degree                  ( const double X )                      noexcept : type{ static_cast<float>(X) } {} 
-    };
-
-    //------------------------------------------------------------------------------
-    // radian
-    //------------------------------------------------------------------------------
-    struct radian : type<radian, float>
-    {
-        using type::type;
-        using type::operator =;
-        constexpr explicit                      radian                  ( const int X )                 noexcept : type{ static_cast<float>(X) }                      {} 
-        constexpr explicit                      radian                  ( const long double X )         noexcept : type{ static_cast<float>(X) }                      {} 
-        constexpr                               radian                  ( const degree X )              noexcept : type{ X.m_Value * 0.017453292519943295769f }       {} 
-        constexpr degree                        getDegrees              ( void )                const   noexcept { return degree{ m_Value * 57.29577951308232087685f }; }
-    };
-
-    struct radian64 : type<radian, double>
-    {
-        using type::type;
-        using type::operator =;
-        constexpr explicit                      radian64                ( const int X )                 noexcept : type{ static_cast<double>(X) }                     {} 
-        constexpr explicit                      radian64                ( const long double X )         noexcept : type{ static_cast<double>(X) }                     {} 
-        constexpr                               radian64                ( const degree X )              noexcept : type{ X.m_Value * 0.017453292519943295769 }        {} 
-        constexpr degree                        getDegrees              ( void )                const   noexcept { return degree{ m_Value * 57.29577951308232087685 }; }
-    };
-
-    constexpr degree   operator "" _deg    ( long double deg )          noexcept { return degree{ static_cast<float>(                    deg  ) }; }
-    constexpr degree   operator "" _deg    ( unsigned long long deg )   noexcept { return degree{ static_cast<float>(static_cast<double>(deg) ) }; }
-
-    //------------------------------------------------------------------------------
     // binary number constants support
     // int a = 101101_bin;
     //------------------------------------------------------------------------------

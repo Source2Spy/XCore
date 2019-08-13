@@ -14,27 +14,27 @@ namespace xcore::math
     //<P>  The class is not hardware accelerated and works only with floats. There
     //     is not need for special alignments except for the atomic types.
     // See Also:
-    //     units::radian xquaternion matrix4
+    //     radian xquaternion matrix4
     //------------------------------------------------------------------------------
     class radian3 
     {
     public:
     
         constexpr                               radian3                 ( void )                                                                        noexcept = default; 
-        constexpr                               radian3                 ( const units::radian Angles )                                                  noexcept : m_Pitch(Angles), m_Yaw(Angles), m_Roll(Angles) {}
-        constexpr                               radian3                 ( units::radian Pitch, units::radian Yaw, units::radian Roll )                  noexcept : m_Pitch(Pitch), m_Yaw(Yaw), m_Roll(Roll) {}
+        constexpr                               radian3                 ( const radian Angles )                                                         noexcept : m_Pitch(Angles), m_Yaw(Angles), m_Roll(Angles) {}
+        constexpr                               radian3                 ( radian Pitch, radian Yaw, radian Roll )                                       noexcept : m_Pitch(Pitch), m_Yaw(Yaw), m_Roll(Roll) {}
         inline                                  radian3                 ( const quaternion& Q )                                                         noexcept;
         inline                                  radian3                 ( const matrix4& M )                                                            noexcept;
 
         inline              void                setZero                 ( void )                                                                        noexcept;
-        inline              radian3&            setup                   ( units::radian Pitch, units::radian Yaw, units::radian Roll )                  noexcept;
+        inline              radian3&            setup                   ( radian Pitch, radian Yaw, radian Roll )                                       noexcept;
 
         inline              radian3&            ModAngle                ( void )                                                                        noexcept;
         inline              radian3&            ModAngle2               ( void )                                                                        noexcept;
         inline              radian3             getMinAngleDiff         ( const radian3& R )                                                    const   noexcept;
 
-        constexpr           units::radian       Difference              ( const radian3& R )                                                    const   noexcept;
-        constexpr           bool                isInrange               ( units::radian Min, units::radian Max )                                const   noexcept;
+        constexpr           radian              Difference              ( const radian3& R )                                                    const   noexcept;
+        constexpr           bool                isInrange               ( radian Min, radian Max )                                              const   noexcept;
         xforceinline        bool                isValid                 ( void )                                                                const   noexcept;
 
         constexpr           bool                operator ==             ( const radian3& R )                                                    const   noexcept;
@@ -52,9 +52,9 @@ namespace xcore::math
 
     public:
 
-        units::radian     m_Pitch;
-        units::radian     m_Yaw;
-        units::radian     m_Roll;
+        radian     m_Pitch;
+        radian     m_Yaw;
+        radian     m_Roll;
     };
 }
 #endif
