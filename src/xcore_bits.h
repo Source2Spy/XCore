@@ -78,7 +78,7 @@ namespace xcore::bits
     bool isAlign( T Addr, const int AlignTo ) noexcept
     {
         static_assert( std::is_pointer<T>::value || std::is_integral<T>::value,"" );
-        using unsigned_t = typename xcore::types::to_uint_t<T>::type; 
+        using unsigned_t = xcore::types::to_uint_t<T>; 
         return ( unsigned_t(Addr) & (static_cast<unsigned_t>(AlignTo)-1) ) == 0;
     }
 

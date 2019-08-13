@@ -40,24 +40,24 @@ public:
     inline              vector4&            Normalize                       ( void )                                                                noexcept;
     inline              vector4&            NormalizeSafe                   ( void )                                                                noexcept;
     inline              vector4&            Abs                             ( void )                                                                noexcept;
-    inline              bool                isInrange                       ( const float Min, const float Max )                            const   noexcept;
+    inline              bool                isInRange                       ( const float Min, const float Max )                            const   noexcept;
     inline              vector4             getMax                          ( const vector4& V )                                            const   noexcept;
     inline              vector4             getMin                          ( const vector4& V )                                            const   noexcept;
     inline              vector4&            Homogeneous                     ( void )                                                                noexcept;
     inline              vector4             OneOver                         ( void )                                                        const   noexcept;
     constexpr           bool                operator ==                     ( const vector4& V )                                            const   noexcept;
 
-    inline friend       vector4            operator +                      ( const vector4& V1, const vector4& V2 )                                 noexcept;
-    inline friend       vector4            operator -                      ( const vector4& V1, const vector4& V2 )                                 noexcept;
-    inline friend       vector4            operator *                      ( const vector4& V1, const vector4& V2 )                                 noexcept;
-    inline friend       vector4            operator -                      ( const vector4& V )                                                     noexcept;
-    inline friend       vector4            operator /                      ( const vector4& V,        float     S  )                                noexcept;
-    inline friend       vector4            operator *                      ( const vector4& V,        float     S  )                                noexcept;
-    inline friend       vector4            operator *                      (    float       S,  const vector4&  V  )                                noexcept;
-    inline friend       vector4            operator +                      ( const vector4& V,        float     S  )                                noexcept;
-    inline friend       vector4            operator +                      (    float       S,  const vector4&  V  )                                noexcept;
-    inline friend       vector4            operator -                      ( const vector4& V,        float     S  )                                noexcept;
-    inline friend       vector4            operator -                      (    float       S,  const vector4&  V  )                                noexcept;
+    inline friend       vector4             operator +                      ( const vector4& V1, const vector4& V2 )                                noexcept;
+    inline friend       vector4             operator -                      ( const vector4& V1, const vector4& V2 )                                noexcept;
+    inline friend       vector4             operator *                      ( const vector4& V1, const vector4& V2 )                                noexcept;
+    inline friend       vector4             operator -                      ( const vector4& V )                                                    noexcept;
+    inline friend       vector4             operator /                      ( const vector4& V,        float     S  )                               noexcept;
+    inline friend       vector4             operator *                      ( const vector4& V,        float     S  )                               noexcept;
+    inline friend       vector4             operator *                      (    float       S,  const vector4&  V  )                               noexcept;
+    inline friend       vector4             operator +                      ( const vector4& V,        float     S  )                               noexcept;
+    inline friend       vector4             operator +                      (    float       S,  const vector4&  V  )                               noexcept;
+    inline friend       vector4             operator -                      ( const vector4& V,        float     S  )                               noexcept;
+    inline friend       vector4             operator -                      (    float       S,  const vector4&  V  )                               noexcept;
 
 public:
 

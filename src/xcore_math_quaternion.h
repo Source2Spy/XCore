@@ -83,6 +83,9 @@ namespace xcore::math
 
     public:
 
+
+    public:
+
         union
         {
             floatx4       m_XYZW  {};

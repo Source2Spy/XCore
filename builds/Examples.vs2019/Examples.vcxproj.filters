@@ -216,6 +216,21 @@
     <ClInclude Include="..\..\src\Implementation\xcore_math_radian3_inline.h">
       <Filter>xCore\Implementation</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\src\Implementation\xcore_math_vector3_inline.h">
+      <Filter>xCore\Implementation</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\Implementation\xcore_math_vector4_inline.h">
+      <Filter>xCore\Implementation</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\Implementation\xcore_math_vector3d_inline.h">
+      <Filter>xCore\Implementation</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\Implementation\xcore_math_quaternion_inline.h">
+      <Filter>xCore\Implementation</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\Implementation\xcore_math_matrix4_inline.h">
+      <Filter>xCore\Implementation</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\src\xcore.cpp">

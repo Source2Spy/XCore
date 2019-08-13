@@ -31,7 +31,7 @@ namespace xcore::math
         inline              radian              getAngle                        ( void )                                    const   noexcept;
         inline              radian              getAngleBetween                 ( const vector2& V )                        const   noexcept;
         inline              float               getDistance                     ( const vector2& V )                        const   noexcept;
-        constexpr           bool                isInrange                       ( float Min, float Max )                    const   noexcept;
+        constexpr           bool                isInRange                       ( float Min, float Max )                    const   noexcept;
         xforceinline        bool                isValid                         ( void )                                    const   noexcept; 
         inline              vector2&            Rotate                          ( radian Angle )                             noexcept; 
         inline              vector2&            Normalize                       ( void )                                            noexcept;

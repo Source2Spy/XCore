@@ -157,7 +157,7 @@ namespace xcore::math
 
     protected:
 
-        float     acof( std::int32_t r0, std::int32_t r1, std::int32_t r2, std::int32_t c0, std::int32_t c1, std::int32_t c2 ) const;
+        float     acof( std::int32_t r0, std::int32_t r1, std::int32_t r2, std::int32_t c0, std::int32_t c1, std::int32_t c2 ) const noexcept;
 
         union
         {
@@ -176,7 +176,7 @@ namespace xcore::math
         };
 
         friend class quaternion;
-        friend void m4_Multiply( matrix4& dst, const matrix4& src2, const matrix4& src1 );
+        friend void m4_Multiply( matrix4& dst, const matrix4& src2, const matrix4& src1 ) noexcept;
     };
 }
 #endif

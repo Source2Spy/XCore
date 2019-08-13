@@ -162,7 +162,7 @@ namespace xcore::math
     template< class T > 
     constexpr                       bool                    Sign                    ( const T x )                                                               noexcept;
     template< class T > 
-    constexpr                       bool                    isInrange               ( const T X, const T Min, const T Max )                                     noexcept;
+    constexpr                       bool                    isInRange               ( const T X, const T Min, const T Max )                                     noexcept;
     template< class T > 
     constexpr                       T                       Range                   ( const T X, const T Min, const T Max )                                     noexcept;
     template< class T > 

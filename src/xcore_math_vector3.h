@@ -57,7 +57,7 @@ namespace xcore::math
         inline              void                setIdentity                     ( void )                                            noexcept;
         inline              void                setZero                         ( void )                                            noexcept;
         xforceinline        bool                isValid                         ( void )                                    const   noexcept;
-        constexpr           bool                isInrange                       ( const float Min, const float Max )        const   noexcept;
+        constexpr           bool                isInRange                       ( const float Min, const float Max )        const   noexcept;
 
         constexpr           vector3             getOneOver                      ( void )                                    const   noexcept;
         inline              float               getLength                       ( void )                                    const   noexcept;
@@ -133,7 +133,7 @@ namespace xcore::math
         inline              vector3&            GridSnap                        ( float GridX, float GridY, float GridZ )           noexcept;
 
 
-        inline              bool                isInrange                       ( const float Min, const float Max )        const   noexcept;
+        inline              bool                isInRange                       ( const float Min, const float Max )        const   noexcept;
         xforceinline        bool                isValid                         ( void )                                    const   noexcept;
         constexpr           bool                isRightHanded                   ( const vector3& P1, const vector3& P2 )    const   noexcept;
                                 
