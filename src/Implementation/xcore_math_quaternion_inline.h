@@ -41,7 +41,7 @@ namespace xcore::math
     inline
     void quaternion::setZero( void ) noexcept
     {
-    #ifdef XCORE_SSE4_SUPPORT
+    #ifdef _XCORE_SSE4
         m_XYZW = _mm_setzero_ps();
     #else
         m_X = 0.0f;
@@ -55,7 +55,7 @@ namespace xcore::math
     inline static
     void q_Multiply( quaternion& Dest, const quaternion& Q1, const quaternion& Q2 ) noexcept
     {
-    #ifdef XCORE_SSE4_SUPPORT
+    #ifdef _XCORE_SSE4
 
         const floatx4 w = _mm_mul_ps( Q1.m_XYZW, Q2.m_XYZW );
 
@@ -174,7 +174,7 @@ namespace xcore::math
     inline
     quaternion& quaternion::Conjugate( void ) noexcept
     {
-    #ifdef XCORE_SSE4_SUPPORT
+    #ifdef _XCORE_SSE4
         m_XYZW     = _mm_sub_ps( _mm_setzero_ps(), m_XYZW);
         m_W        = -m_W;
     #else
@@ -253,7 +253,7 @@ namespace xcore::math
     inline 
     const quaternion& quaternion::operator += ( const quaternion& Q ) noexcept
     {
-    #ifdef XCORE_SSE4_SUPPORT
+    #ifdef _XCORE_SSE4
         m_XYZW = _mm_add_ps( m_XYZW, Q.m_XYZW );
     #else
         m_X += Q.m_X;
@@ -268,7 +268,7 @@ namespace xcore::math
     inline 
     const quaternion& quaternion::operator -= ( const quaternion& Q ) noexcept
     {
-    #ifdef XCORE_SSE4_SUPPORT
+    #ifdef _XCORE_SSE4
         m_XYZW = _mm_sub_ps( m_XYZW, Q.m_XYZW );
     #else
         m_X -= Q.m_X;
@@ -283,7 +283,7 @@ namespace xcore::math
     inline 
     const quaternion& quaternion::operator *= ( const quaternion& Q ) noexcept
     {
-    #ifdef XCORE_SSE4_SUPPORT
+    #ifdef _XCORE_SSE4
         q_Multiply( *this, *this, Q );
     #else
         m_X *= Q.m_X;
@@ -298,7 +298,7 @@ namespace xcore::math
     inline 
     const quaternion& quaternion::operator *= ( float Scalar ) noexcept
     {
-    #ifdef XCORE_SSE4_SUPPORT
+    #ifdef _XCORE_SSE4
         m_XYZW = _mm_mul_ps( m_XYZW, _mm_set1_ps( Scalar ) );
     #else
         m_X *= Scalar;
@@ -313,7 +313,7 @@ namespace xcore::math
     inline 
     const quaternion& quaternion::operator /= ( float Scalar ) noexcept
     {
-    #ifdef XCORE_SSE4_SUPPORT
+    #ifdef _XCORE_SSE4
         m_XYZW = _mm_div_ps( m_XYZW, _mm_set1_ps( Scalar ) );
     #else
         m_X /= Scalar;
@@ -338,7 +338,7 @@ namespace xcore::math
     inline 
     quaternion operator + ( const quaternion& Q1, const quaternion& Q2 ) noexcept
     {
-    #ifdef XCORE_SSE4_SUPPORT
+    #ifdef _XCORE_SSE4
         return quaternion{ _mm_add_ps( Q1.m_XYZW, Q2.m_XYZW ) };
     #else
         return quaternion{ Q1.m_X + Q2.m_X,
@@ -352,7 +352,7 @@ namespace xcore::math
     inline 
     quaternion operator - ( const quaternion& Q1, const quaternion& Q2 ) noexcept
     {
-    #ifdef XCORE_SSE4_SUPPORT
+    #ifdef _XCORE_SSE4
         return quaternion{ _mm_sub_ps( Q1.m_XYZW, Q2.m_XYZW ) };
     #else
         return quaternion{ Q1.m_X -  Q2.m_X,
@@ -366,7 +366,7 @@ namespace xcore::math
     inline 
     quaternion operator - ( const quaternion& Q ) noexcept
     {
-    #ifdef XCORE_SSE4_SUPPORT
+    #ifdef _XCORE_SSE4
         return quaternion{ _mm_sub_ps( _mm_setzero_ps(), Q.m_XYZW ) };
     #else
         return quaternion( -  Q.m_X,
@@ -380,7 +380,7 @@ namespace xcore::math
     inline 
     quaternion operator * ( const quaternion& Q, float Scalar ) noexcept
     {
-    #ifdef XCORE_SSE4_SUPPORT
+    #ifdef _XCORE_SSE4
         return quaternion{ _mm_mul_ps( Q.m_XYZW, _mm_set1_ps( Scalar ) ) };
     #else
         return quaternion{ Q.m_X * Scalar,
@@ -394,7 +394,7 @@ namespace xcore::math
     inline 
     quaternion operator * ( float Scalar, const quaternion& Q ) noexcept
     {
-    #ifdef XCORE_SSE4_SUPPORT
+    #ifdef _XCORE_SSE4
         return quaternion{ _mm_mul_ps( Q.m_XYZW, _mm_set1_ps( Scalar ) ) };
     #else
         return quaternion{ Q.m_X * Scalar,
@@ -408,61 +408,6 @@ namespace xcore::math
     inline
     vector3 operator * ( const quaternion& Q, const vector3& V ) noexcept
     {
-    #ifdef TARGET_PC_32BIT
-        vector3 Result;
-        __asm
-        {
-            mov         ecx, V                     
-            mov         edx, Q
-
-            // First cross product
-            movaps      xmm0, dword ptr [edx]
-            movaps      xmm2, xmm0
-            shufps      xmm0, xmm0, _MM_SHUFFLE(3,0,2,1)    // xmm0: W, X, Z, Y
-            shufps      xmm2, xmm2, _MM_SHUFFLE(3,1,0,2)    // xmm2: W, Y, X, Z
-
-            movaps      xmm1, dword ptr [ecx]
-            movaps      xmm3, xmm1
-            shufps      xmm1, xmm1, _MM_SHUFFLE(3,1,0,2)    // xmm1: W, Y, X, Z
-            shufps      xmm3, xmm3, _MM_SHUFFLE(3,0,2,1)    // xmm3: W, X, Z, Y
-
-            mulps       xmm1, xmm0
-            mulps       xmm3, xmm2
-            subps       xmm1, xmm3 
-
-            // back up v1 for later
-            movaps      xmm4, xmm1                          // v1
-
-            // second cross product
-            movaps      xmm3, xmm1
-            shufps      xmm1, xmm1, _MM_SHUFFLE(3,1,0,2)    // xmm1: W, Y, X, Z
-            shufps      xmm3, xmm3, _MM_SHUFFLE(3,0,2,1)    // xmm3: W, X, Z, Y
-
-            mulps       xmm0, xmm1
-            mulps       xmm2, xmm3
-            subps       xmm0, xmm2                          // v2
-
-            // do mults
-            addps       xmm0, xmm0                          // 2 * v2
-            addps       xmm4, xmm4                          // 2 * v1
-
-            // mul w
-            movss       xmm2, [edx+3*4]
-            shufps      xmm2, xmm2, _MM_SHUFFLE(0,0,0,0)  
-            mulps       xmm4, xmm2                          // v1 * w
-
-            // final add
-            movaps      xmm2, dword ptr [ecx]
-            addps       xmm4, xmm2
-            addps       xmm0, xmm4
-
-            // get the value out of here
-            movaps      xmmword ptr [Result], xmm0
-        }
-
-        return Result;
-    #else
-
     // Two methods for v to q mul
     /*
         vector3 Result;
@@ -483,7 +428,6 @@ namespace xcore::math
         return 2.0f * u.Dot( V ) * u + 
               ( s*s - u.Dot(u) ) * V +
               2.0f * s * u.Cross(V);
-    #endif
     }
 
     //------------------------------------------------------------------------------
@@ -497,40 +441,12 @@ namespace xcore::math
     inline
     float quaternion::Length( void ) const noexcept
     {
-    #ifdef TARGET_PC_32BIT
-        float Result;
-        __asm 
-        {
-            //
-            // Length square
-            //
-            mov         ecx, this
-            movaps      xmm0, dword ptr [ecx]
-            mulps       xmm0, xmm0
-            movaps      xmm1, xmm0                        
-            shufps      xmm1, xmm1, _MM_SHUFFLE(0,3,2,1)
-            addss       xmm0, xmm1                        
-            shufps      xmm1, xmm1, _MM_SHUFFLE(0,3,2,1)  
-            addss       xmm0, xmm1                        
-            shufps      xmm1, xmm1, _MM_SHUFFLE(0,3,2,1)
-            addss       xmm1, xmm0                        
-
-            // Find the sqrt  of x
-            sqrtss     xmm1, xmm1
-
-            // done
-            movss      xmmword ptr [Result], xmm1
-        }
-
-        return Result;
-
-    #elif defined XCORE_SSE4_SUPPORT
-
+    #ifdef _XCORE_SSE4
         floatx4 a = _mm_mul_ps( m_XYZW, m_XYZW );
         a = _mm_add_ss( _mm_add_ss( _mm_shuffle_ps(a, a, 1),_mm_add_ps( _mm_movehl_ps(a, a), a)),_mm_shuffle_ps(a, a, 3) );
         a = _mm_sqrt_ss(a);
 
-        return math::getfloatx4ElementByIndex<0>(a);
+        return sse::getElementByIndex<0>(a);
 
     #else
         return math::Sqrt( m_X*m_X + m_Y*m_Y + m_Z*m_Z + m_W*m_W );
@@ -625,35 +541,14 @@ namespace xcore::math
     inline
     float quaternion::Dot( const quaternion& Q ) const noexcept
     {
-    #ifdef TARGET_PC_32BIT
-        float Dest;
-        __asm 
-        {
-            mov         ecx, this
-            mov         eax, Q
-            movaps      xmm0, dword ptr [ecx]
-            mulps       xmm0, dword ptr [eax]      
-            movaps      xmm1, xmm0                        
-            shufps      xmm1, xmm1, _MM_SHUFFLE(0,3,2,1)
-            addss       xmm0, xmm1                        
-            shufps      xmm1, xmm1, _MM_SHUFFLE(0,3,2,1)  
-            addss       xmm0, xmm1                        
-            shufps      xmm1, xmm1, _MM_SHUFFLE(0,3,2,1)
-            addss       xmm1, xmm0                        
-            movss       xmmword ptr [Dest], xmm1
-        }
-        return Dest;
-
-    #elif XCORE_SSE4_SUPPORT
-
+    #ifdef _XCORE_SSE4
         const floatx4       A = _mm_mul_ps( m_XYZW, Q.m_XYZW );
         const floatx4       B = _mm_add_ss( _mm_shuffle_ps( A, A, _MM_SHUFFLE(3,3,3,3)), 
                               _mm_add_ss( _mm_shuffle_ps( A, A, _MM_SHUFFLE(0,0,0,0)),
                               _mm_add_ss( _mm_shuffle_ps( A, A, _MM_SHUFFLE(1,1,1,1)), 
                                           _mm_shuffle_ps( A, A, _MM_SHUFFLE(2,2,2,2)))));
 
-        return math::getfloatx4ElementByIndex<0>(B);
-
+        return sse::getElementByIndex<0>(B);
     #else
         return  m_X*Q.m_X +
                 m_Y*Q.m_Y +
@@ -666,7 +561,7 @@ namespace xcore::math
     inline 
     quaternion& quaternion::Normalize( void ) noexcept
     {
-    #ifdef XCORE_SSE4_SUPPORT
+    #ifdef _XCORE_SSE4
         floatx4 a = _mm_mul_ps( m_XYZW, m_XYZW );
               a = _mm_add_ss( _mm_add_ss( _mm_shuffle_ps(a, a, 1),_mm_add_ps( _mm_movehl_ps(a, a), a)),_mm_shuffle_ps(a, a, 3) );
               a = _mm_rsqrt_ss(a);
@@ -692,11 +587,11 @@ namespace xcore::math
     {
         const float   Tof  = 0.00001f;
 
-    #ifdef XCORE_SSE4_SUPPORT
+    #ifdef _XCORE_SSE4
         floatx4 a = _mm_mul_ps( m_XYZW, m_XYZW );
               a = _mm_add_ss( _mm_add_ss( _mm_shuffle_ps(a, a, 1),_mm_add_ps( _mm_movehl_ps(a, a), a)),_mm_shuffle_ps(a, a, 3) );
 
-        if( math::getfloatx4ElementByIndex<0>(a) < Tof )
+        if( sse::getElementByIndex<0>(a) < Tof )
         {
             setup( 1, 0, 0, 0 );
             return *this;
@@ -730,80 +625,6 @@ namespace xcore::math
     inline
     quaternion quaternion::BlendFast( float T, const quaternion& End ) const noexcept
     {
-    #ifdef TARGET_PC_32BIT
-        register quaternion Dest;
-        __asm 
-        {
-            mov         ecx, this
-            mov         eax, End
-
-            //
-            // Determine if quats are further than 90 degrees
-            // If dot is negative flip one of the quaternions
-            //
-            movaps      xmm0, dword ptr [ecx]
-            movaps      xmm2, xmm0
-
-            // find the dot product
-            mulps       xmm0, dword ptr [eax]
-            movaps      xmm1, xmm0                        
-            shufps      xmm1, xmm1, _MM_SHUFFLE(0,3,2,1)
-            addss       xmm0, xmm1                        
-            shufps      xmm1, xmm1, _MM_SHUFFLE(0,3,2,1)  
-            addss       xmm0, xmm1                        
-            shufps      xmm1, xmm1, _MM_SHUFFLE(0,3,2,1)
-            addss       xmm0, xmm1
-
-            // now lets compare to see if we have to invert the quaternion
-            xorps       xmm1, xmm1
-            comiss      xmm1, xmm0      // compare (b,a)
-            jbe         DONT_INVERT     // branch if a>=b
-
-            // Do inversion
-            subps       xmm1, xmm2
-            movaps      xmm2, xmm1
-            DONT_INVERT:
-
-            //
-            // Compute interpolated values in a linear fashion
-            //
-            movaps      xmm0, dword ptr [eax]
-            subps       xmm0, xmm2
-            movss       xmm1, T                        
-            shufps      xmm1, xmm1, _MM_SHUFFLE(0,0,0,0)
-            mulps       xmm0, xmm1
-            addps       xmm2, xmm0
-
-            //
-            // Normalize new quaternion
-            //
-
-            // find the distance square
-            movaps      xmm0, xmm2
-            mulps       xmm0, xmm0      
-            movaps      xmm1, xmm0                        
-            shufps      xmm1, xmm1, _MM_SHUFFLE(0,3,2,1)
-            addss       xmm0, xmm1                        
-            shufps      xmm1, xmm1, _MM_SHUFFLE(0,3,2,1)  
-            addss       xmm0, xmm1                        
-            shufps      xmm1, xmm1, _MM_SHUFFLE(0,3,2,1)
-            addss       xmm0, xmm1
-
-            // find the rsqrt x
-            rsqrtss     xmm0, xmm0
-
-            // now do final normalize step
-            shufps      xmm0, xmm0, _MM_SHUFFLE(0,0,0,0)
-            mulps       xmm0, xmm2
-
-            //
-            // Done
-            //
-            movaps      xmmword ptr [Dest], xmm0
-        }
-
-        return Dest;
-    #else
         float Dot;
         float LenSquared;
         float OneOverL;
@@ -848,8 +669,6 @@ namespace xcore::math
 
         // Renormalize and return quaternion
         return quaternion( x0*OneOverL, y0*OneOverL, z0*OneOverL, w0*OneOverL );
-
-    #endif
     }
 
     //------------------------------------------------------------------------------

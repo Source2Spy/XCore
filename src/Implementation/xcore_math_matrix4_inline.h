@@ -84,7 +84,7 @@ namespace xcore::math
     { 
         xassert( bits::isAlign( this, 16 ) ); 
 
-    #ifdef XCORE_SSE4_SUPPORT
+    #ifdef _XCORE_SSE4
 
         m_Column1 = _mm_set_ps( m41, m31, m21, m11 );
         m_Column2 = _mm_set_ps( m42, m32, m22, m12 );
@@ -137,7 +137,7 @@ namespace xcore::math
     { 
         xassert( bits::isAlign( this, 16 ) ); 
 
-    #ifdef XCORE_SSE4_SUPPORT
+    #ifdef _XCORE_SSE4
 
         m_Column1 = _mm_set_ps( m41, m31, m21, m11 );
         m_Column2 = _mm_set_ps( m42, m32, m22, m12 );
@@ -196,7 +196,7 @@ namespace xcore::math
     inline
     matrix4& matrix4::setTranslation( const vector3& Translation ) noexcept
     {
-    #ifdef XCORE_SSE4_SUPPORT
+    #ifdef _XCORE_SSE4
 
         const float W = reinterpret_cast<float*>(&m_Column4)[3];
         m_Column4 = Translation.m_XYZW;
@@ -394,7 +394,7 @@ namespace xcore::math
             movaps      xmmword ptr [edx+48], xmm0
         }
 
-    #elif defined XCORE_SSE4_SUPPORT
+    #elif defined _XCORE_SSE4
 
         m_Column4 = _mm_add_ps( _mm_mul_ps( m_Column1, _mm_set_ps1( T.m_X ) ),
                     _mm_add_ps( _mm_mul_ps( m_Column2, _mm_set_ps1( T.m_Y ) ),
@@ -504,7 +504,7 @@ namespace xcore::math
             addps xmm2, xmm7
             movaps xmmword ptr [eax+30h], xmm2
         }
-    #elif defined XCORE_SSE4_SUPPORT
+    #elif defined _XCORE_SSE4
 
         dst.m_Column1 = _mm_add_ps(_mm_add_ps(_mm_add_ps(_mm_mul_ps(_mm_shuffle_ps(src1.m_Column1, src1.m_Column1, _MM_SHUFFLE(0,0,0,0)), src2.m_Column1), _mm_mul_ps(_mm_shuffle_ps(src1.m_Column1, src1.m_Column1, _MM_SHUFFLE(1,1,1,1)), src2.m_Column2)), _mm_mul_ps(_mm_shuffle_ps(src1.m_Column1, src1.m_Column1, _MM_SHUFFLE(2,2,2,2)), src2.m_Column3)), _mm_mul_ps(_mm_shuffle_ps(src1.m_Column1, src1.m_Column1, _MM_SHUFFLE(3,3,3,3)), src2.m_Column4));
         dst.m_Column2 = _mm_add_ps(_mm_add_ps(_mm_add_ps(_mm_mul_ps(_mm_shuffle_ps(src1.m_Column2, src1.m_Column2, _MM_SHUFFLE(0,0,0,0)), src2.m_Column1), _mm_mul_ps(_mm_shuffle_ps(src1.m_Column2, src1.m_Column2, _MM_SHUFFLE(1,1,1,1)), src2.m_Column2)), _mm_mul_ps(_mm_shuffle_ps(src1.m_Column2, src1.m_Column2, _MM_SHUFFLE(2,2,2,2)), src2.m_Column3)), _mm_mul_ps(_mm_shuffle_ps(src1.m_Column2, src1.m_Column2, _MM_SHUFFLE(3,3,3,3)), src2.m_Column4));
@@ -570,7 +570,7 @@ namespace xcore::math
             movaps      xmmword ptr Vdest, xmm0
         }
         return Vdest;
-    #elif defined XCORE_SSE4_SUPPORT
+    #elif defined _XCORE_SSE4
         const floatx4 V1 = V.m_XYZW;
         return vector3( _mm_add_ps( _mm_add_ps( _mm_add_ps(
                             _mm_mul_ps(M.m_Column1, _mm_shuffle_ps(V1, V1, _MM_SHUFFLE(0,0,0,0))), 
@@ -631,7 +631,7 @@ namespace xcore::math
         }
         return Vdest;
 
-    #elif defined XCORE_SSE4_SUPPORT
+    #elif defined _XCORE_SSE4
         const floatx4& V1 = V.m_XYZW;
         return vector4( _mm_add_ps( _mm_add_ps( _mm_add_ps(
                          _mm_mul_ps( M.m_Column1, _mm_shuffle_ps(V1, V1, _MM_SHUFFLE(0,0,0,0))), 
@@ -652,7 +652,7 @@ namespace xcore::math
     inline
     matrix4& matrix4::Transpose( void ) noexcept
     {
-    #ifdef XCORE_SSE4_SUPPORT
+    #ifdef _XCORE_SSE4
         _MM_TRANSPOSE4_PS( m_Column1, m_Column2, m_Column3, m_Column4 );
     #else
         float     T;    
@@ -689,7 +689,7 @@ namespace xcore::math
     inline
     matrix4& matrix4::FullInvert( void ) noexcept
     {
-    #ifdef XCORE_SSE4_SUPPORT
+    #ifdef _XCORE_SSE4
         float* src = &(m_Cell[0][0]);
 
         floatx4 minor0, minor1, minor2, minor3;
@@ -1026,7 +1026,7 @@ namespace xcore::math
             mov         dword ptr [eax].m_Column4+12, 3F800000h // set Dest.m_Column4.W equal to 1
         }
 
-    #elif defined XCORE_SSE4_SUPPORT
+    #elif defined _XCORE_SSE4
 
         //
         // transpose a matrix3x3 
@@ -1110,7 +1110,7 @@ namespace xcore::math
     inline
     bool matrix4::isIdentity( void ) const noexcept
     {
-    #ifdef XCORE_SSE4_SUPPORT
+    #ifdef _XCORE_SSE4
 
         const floatx4 T4 = _mm_cmpneq_ps( m_Column1, m4_Identity.m_Column1 );
         const floatx4 T3 = _mm_cmpneq_ps( m_Column2, m4_Identity.m_Column2 );
@@ -1295,7 +1295,7 @@ namespace xcore::math
     inline 
     matrix4& matrix4::PreScale( float Scale ) noexcept
     {
-    #ifdef XCORE_SSE4_SUPPORT
+    #ifdef _XCORE_SSE4
     
         const floatx4 GlobalScale = _mm_set_ps1( Scale );
         m_Column1 = _mm_mul_ps( m_Column1, GlobalScale );
@@ -1318,7 +1318,7 @@ namespace xcore::math
     inline 
     matrix4& matrix4::PreScale( const vector3& Scale ) noexcept
     {
-    #ifdef XCORE_SSE4_SUPPORT
+    #ifdef _XCORE_SSE4
     
         const floatx4 WZYX = Scale.m_XYZW;
         m_Column1 = _mm_mul_ps( m_Column1, _mm_shuffle_ps( WZYX, WZYX, _MM_SHUFFLE(0,0,0,0))  );
@@ -1367,7 +1367,7 @@ namespace xcore::math
     inline 
     matrix4& matrix4::Scale( float Scale ) noexcept
     {
-    #ifdef XCORE_SSE4_SUPPORT
+    #ifdef _XCORE_SSE4
 
         const floatx4 GlobalScale = _mm_set_ps1( Scale );
 
@@ -1405,7 +1405,7 @@ namespace xcore::math
     inline 
     matrix4& matrix4::Scale( const vector3d& Scale ) noexcept
     {
-    #ifdef XCORE_SSE4_SUPPORT
+    #ifdef _XCORE_SSE4
 
         // If we ever hit this we may need to have an if statement to make sure not to scale
         // anything in m_ColumnX.m128_float[3]
@@ -1438,7 +1438,7 @@ namespace xcore::math
     inline 
     matrix4& matrix4::ClearTranslation( void ) noexcept
     {
-    #ifdef XCORE_SSE4_SUPPORT
+    #ifdef _XCORE_SSE4
 
         reinterpret_cast<float*>(&m_Column4)[0] = 
         reinterpret_cast<float*>(&m_Column4)[1] = 
@@ -1493,7 +1493,7 @@ namespace xcore::math
         }
         return Vdest;
 
-    #elif defined XCORE_SSE4_SUPPORT
+    #elif defined _XCORE_SSE4
 
         const floatx4 V1 = V.m_XYZW;
         return vector3( _mm_add_ps( _mm_add_ps(
@@ -1514,7 +1514,7 @@ namespace xcore::math
     inline 
     vector3 matrix4::InvRotateVector( const vector3& V ) const noexcept
     {
-    #ifdef XCORE_SSE4_SUPPORT
+    #ifdef _XCORE_SSE4
 
         const floatx4 WZYX = V.m_XYZW;
         return vector3( _mm_add_ps( _mm_add_ps( 
@@ -1576,7 +1576,7 @@ namespace xcore::math
     inline 
     const matrix4& matrix4::operator += ( const matrix4& M ) noexcept
     {
-    #ifdef XCORE_SSE4_SUPPORT
+    #ifdef _XCORE_SSE4
 
         m_Column1 = _mm_add_ps( m_Column1, M.m_Column1 );
         m_Column2 = _mm_add_ps( m_Column2, M.m_Column2 );
@@ -1601,7 +1601,7 @@ namespace xcore::math
     inline 
     const matrix4& matrix4::operator -= ( const matrix4& M ) noexcept
     {
-    #ifdef XCORE_SSE4_SUPPORT
+    #ifdef _XCORE_SSE4
 
         m_Column1 = _mm_sub_ps( m_Column1, M.m_Column1 );
         m_Column2 = _mm_sub_ps( m_Column2, M.m_Column2 );
@@ -1635,7 +1635,7 @@ namespace xcore::math
     inline 
     matrix4 operator + ( const matrix4& M1, const matrix4& M2 ) noexcept
     {
-    #ifdef XCORE_SSE4_SUPPORT
+    #ifdef _XCORE_SSE4
 
         return matrix4( _mm_add_ps( M1.m_Column1, M2.m_Column1 ),
                          _mm_add_ps( M1.m_Column2, M2.m_Column2 ),
@@ -1659,7 +1659,7 @@ namespace xcore::math
     inline 
     matrix4 operator - ( const matrix4& M1, const matrix4& M2 ) noexcept
     {
-    #ifdef XCORE_SSE4_SUPPORT
+    #ifdef _XCORE_SSE4
 
         return matrix4( _mm_sub_ps( M1.m_Column1, M2.m_Column1 ),
                          _mm_sub_ps( M1.m_Column2, M2.m_Column2 ),
@@ -1683,7 +1683,7 @@ namespace xcore::math
     inline
     vector3 matrix4::Transform3D( const vector3& V ) const noexcept
     {
-    #ifdef XCORE_SSE4_SUPPORT
+    #ifdef _XCORE_SSE4
 
         const float D = 1.0f / (  reinterpret_cast<const float*>(&m_Column1)[3] * V.m_X +
                                 reinterpret_cast<const float*>(&m_Column2)[3] * V.m_Y +
@@ -1720,7 +1720,7 @@ namespace xcore::math
         vector3 X( Up.Cross( Z ).Normalize() );
         vector3 Y( Z.Cross( X ) );
 
-    #if 0 //def XCORE_SSE4_SUPPORT
+    #if 0 //def _XCORE_SSE4
         // reinterpret_cast<float*>(&m_Column1)[0] =  X.m_X;
         // reinterpret_cast<float*>(&m_Column1)[1] =  Y.m_X;
         // reinterpret_cast<float*>(&m_Column1)[2] =  Z.m_X;
@@ -1807,7 +1807,7 @@ namespace xcore::math
         m_Column3 = Z.m_XYZW;
         m_Column4 = From.m_XYZW;
 
-    #ifdef XCORE_SSE4_SUPPORT
+    #ifdef _XCORE_SSE4
 
         reinterpret_cast<float*>(&m_Column1)[3] = 0;
         reinterpret_cast<float*>(&m_Column2)[3] = 0;
@@ -1829,7 +1829,7 @@ namespace xcore::math
     inline
     matrix4& matrix4::OrthographicProjection( float Width, float Height, float Near, float Far ) noexcept
     {
-    #ifdef XCORE_SSE4_SUPPORT
+    #ifdef _XCORE_SSE4
 
         // reinterpret_cast<float*>(&m_Column1)[0] =  2.0f/Width;
         // reinterpret_cast<float*>(&m_Column1)[1] =  0;
@@ -1924,7 +1924,7 @@ namespace xcore::math
     inline
     matrix4& matrix4::OrthographicProjection( float Left, float Right, float Bottom, float Top, float Near, float Far ) noexcept
     {
-    #ifdef XCORE_SSE4_SUPPORT
+    #ifdef _XCORE_SSE4
 
         const float Temp1 = 1.0f / ( Right - Left   );
         const float Temp2 = 1.0f / ( Top   - Bottom );
@@ -2029,7 +2029,7 @@ namespace xcore::math
     inline
     matrix4& matrix4::PerspectiveProjection( float Left, float Right, float Bottom, float Top, float Near, float Far) noexcept
     {
-    #if XCORE_SSE4_SUPPORT
+    #if _XCORE_SSE4
 
         // m_Column1.m128_float[0] =  2.0f*Near / (Right - Left);
         // m_Column1.m128_float[1] =  0;
@@ -2120,7 +2120,7 @@ namespace xcore::math
         const float zy = V.m_Z * V.m_Y;
         const float xy = V.m_X * V.m_Y;
 
-    #ifdef XCORE_SSE4_SUPPORT
+    #ifdef _XCORE_SSE4
 
         //  reinterpret_cast<float*>(&m_Column1)[0] = ca * V.m_X * V.m_X;
         //  reinterpret_cast<float*>(&m_Column1)[1] = cb * xy - sz;
@@ -2273,7 +2273,7 @@ namespace xcore::math
         m_Cell[2][3] = 0.0f;
         m_Cell[3][3] = 1.0f;
 
-    #ifdef XCORE_SSE4_SUPPORT
+    #ifdef _XCORE_SSE4
         const floatx4 Scale_WZYX = Scale.m_XYZW;
         m_Column1 = _mm_mul_ps( m_Column1, _mm_shuffle_ps(Scale_WZYX, Scale_WZYX, _MM_SHUFFLE(0,0,0,0)) );
         m_Column2 = _mm_mul_ps( m_Column2, _mm_shuffle_ps(Scale_WZYX, Scale_WZYX, _MM_SHUFFLE(1,1,1,1)) );
@@ -2305,7 +2305,7 @@ namespace xcore::math
         m_Cell[2][3] = 0.0f;
         m_Cell[3][3] = 1.0f;
 
-    #ifdef XCORE_SSE4_SUPPORT
+    #ifdef _XCORE_SSE4
 
         const floatx4 Scale_WZYX = Scale.m_XYZW;
         m_Column1 = _mm_mul_ps( m_Column1, _mm_shuffle_ps(Scale_WZYX, Scale_WZYX, _MM_SHUFFLE(0,0,0,0)) );
@@ -2432,7 +2432,7 @@ namespace xcore::math
 
         Dest.m_Column4 = m4_Identity.m_Column4;
 
-    #elif defined XCORE_SSE4_SUPPORT
+    #elif defined _XCORE_SSE4
         matrix4 dest;
 
         const floatx4 t0 = _mm_shuffle_ps(m_Column1, m_Column1, _MM_SHUFFLE(3, 1, 0, 2));

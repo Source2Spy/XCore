@@ -28,7 +28,7 @@ namespace xcore::math
     inline 
     void vector3::setZero( void ) noexcept
     {
-    #ifdef XCORE_SSE4_SUPPORT
+    #ifdef _XCORE_SSE4
         m_XYZW = _mm_setzero_ps();
     #else
         m_X = m_Y = m_Z = m_W = 0;
@@ -39,7 +39,7 @@ namespace xcore::math
     inline
     void vector3::setIdentity( void ) noexcept
     {
-    #ifdef XCORE_SSE4_SUPPORT
+    #ifdef _XCORE_SSE4
         m_XYZW = _mm_setzero_ps();
     #else
         m_X = m_Y = m_Z = m_W = 0;
@@ -50,7 +50,7 @@ namespace xcore::math
     inline 
     vector3& vector3::setup( float X, float Y, float Z ) noexcept
     {
-    #ifdef XCORE_SSE4_SUPPORT
+    #ifdef _XCORE_SSE4
         m_XYZW = _mm_set_ps( 1, Z, Y, X );
     #else
         m_X = X;
@@ -79,7 +79,7 @@ namespace xcore::math
     inline 
     vector3& vector3::setup( const float n ) noexcept
     {
-    #ifdef XCORE_SSE4_SUPPORT
+    #ifdef _XCORE_SSE4
         m_XYZW =_mm_set_ps( 1, n, n, n );
     #else
         m_X = m_Y = m_Z = n;
@@ -100,12 +100,12 @@ namespace xcore::math
     inline 
     float vector3::getLength( void ) const noexcept
     {
-    #ifdef XCORE_SSE4_SUPPORT
+    #ifdef _XCORE_SSE4
         floatx4 a = _mm_mul_ps( m_XYZW, m_XYZW );
               a = _mm_add_ss( _mm_shuffle_ps(a, a, 1),_mm_add_ps( _mm_movehl_ps(a, a), a));
               a = _mm_sqrt_ss(a);
 
-        return math::getfloatx4ElementByIndex<0>(a);
+        return sse::getElementByIndex<0>(a);
     #else
         return math::Sqrt( Dot( *this ) );
     #endif
@@ -204,7 +204,7 @@ namespace xcore::math
     inline 
     vector3& vector3::Normalize( void ) noexcept
     {
-    #ifdef XCORE_SSE4_SUPPORT
+    #ifdef _XCORE_SSE4
         // get len
         /*
         floatx4 a = _mm_mul_ps( m_XYZW, m_XYZW );
@@ -230,12 +230,12 @@ namespace xcore::math
     vector3& vector3::NormalizeSafe( void ) noexcept
     {
         const float   Tof  = 0.00001f;
-    #ifdef XCORE_SSE4_SUPPORT
+    #ifdef _XCORE_SSE4
         // get len
         floatx4 a = _mm_mul_ps( m_XYZW, m_XYZW );
               a = _mm_add_ss( _mm_shuffle_ps(a, a, 1),_mm_add_ps( _mm_movehl_ps(a, a), a));
 
-        if( math::getfloatx4ElementByIndex<0>(a) < Tof )
+        if( sse::getElementByIndex<0>(a) < Tof )
         {
             setup( 1, 0, 0 );
             return *this;
@@ -266,7 +266,7 @@ namespace xcore::math
     inline 
     const vector3& vector3::operator += ( const vector3& V ) noexcept
     {
-    #ifdef XCORE_SSE4_SUPPORT
+    #ifdef _XCORE_SSE4
         m_XYZW = _mm_add_ps( m_XYZW, V.m_XYZW );
     #else
         m_X += V.m_X;
@@ -280,7 +280,7 @@ namespace xcore::math
     inline 
     const vector3& vector3::operator -= ( const vector3& V ) noexcept
     {
-    #ifdef XCORE_SSE4_SUPPORT
+    #ifdef _XCORE_SSE4
         m_XYZW = _mm_sub_ps( m_XYZW, V.m_XYZW );
     #else
         m_X -= V.m_X;
@@ -294,7 +294,7 @@ namespace xcore::math
     inline 
     const vector3& vector3::operator *= ( const vector3& V ) noexcept
     {
-    #ifdef XCORE_SSE4_SUPPORT
+    #ifdef _XCORE_SSE4
         m_XYZW = _mm_mul_ps( m_XYZW, V.m_XYZW );
     #else
         m_X *= V.m_X;
@@ -308,7 +308,7 @@ namespace xcore::math
     inline 
     const vector3& vector3::operator *= ( float Scalar ) noexcept
     {
-    #ifdef XCORE_SSE4_SUPPORT
+    #ifdef _XCORE_SSE4
         m_XYZW = _mm_mul_ps( m_XYZW, _mm_set1_ps( Scalar ) );
     #else
         m_X *= Scalar;
@@ -322,7 +322,7 @@ namespace xcore::math
     inline 
     const vector3& vector3::operator /= ( float Div ) noexcept
     {
-    #ifdef XCORE_SSE4_SUPPORT
+    #ifdef _XCORE_SSE4
         m_XYZW = _mm_div_ps( m_XYZW, _mm_set1_ps( Div ) );
     #else
         const float Scalar = 1.0f/Div;
@@ -338,7 +338,7 @@ namespace xcore::math
     inline
     vector3 operator / ( const vector3& V, float Div ) noexcept
     {
-    #ifdef XCORE_SSE4_SUPPORT
+    #ifdef _XCORE_SSE4
         return vector3{ _mm_div_ps( V.m_XYZW, _mm_set1_ps( Div ) ) };
     #else
         const float Scalar = 1.0f/Div;
@@ -352,7 +352,7 @@ namespace xcore::math
     inline 
     vector3 operator * ( const vector3& V, float Scalar ) noexcept
     {
-    #ifdef XCORE_SSE4_SUPPORT
+    #ifdef _XCORE_SSE4
         return vector3{ _mm_mul_ps( V.m_XYZW, _mm_set1_ps( Scalar ) ) };
     #else
         return vector3{    V.m_X * Scalar, 
@@ -365,7 +365,7 @@ namespace xcore::math
     inline 
     vector3 operator * ( float Scale, const vector3& V ) noexcept
     {
-    #ifdef XCORE_SSE4_SUPPORT
+    #ifdef _XCORE_SSE4
         return vector3{ _mm_mul_ps( V.m_XYZW, _mm_set1_ps( Scale ) ) };
     #else
         return vector3{    V.m_X * Scale, 
@@ -379,7 +379,7 @@ namespace xcore::math
     inline
     vector3 operator + ( float Scalar, const vector3& V ) noexcept
     {
-    #ifdef XCORE_SSE4_SUPPORT
+    #ifdef _XCORE_SSE4
         return vector3{ _mm_add_ps( V.m_XYZW, _mm_set1_ps( Scalar ) ) };
     #else
         return vector3{    V.m_X + Scalar, 
@@ -392,7 +392,7 @@ namespace xcore::math
     inline
     vector3 operator + ( const vector3& V, float Scalar ) noexcept
     {
-    #ifdef XCORE_SSE4_SUPPORT
+    #ifdef _XCORE_SSE4
         return vector3{ _mm_add_ps( V.m_XYZW, _mm_set1_ps( Scalar ) ) };
     #else
         return vector3{    V.m_X + Scalar, 
@@ -405,7 +405,7 @@ namespace xcore::math
     inline
     vector3 operator - ( float Scalar, const vector3& V ) noexcept
     {
-    #ifdef XCORE_SSE4_SUPPORT
+    #ifdef _XCORE_SSE4
         return vector3{ _mm_sub_ps( _mm_set1_ps( Scalar ), V.m_XYZW ) };
     #else
         return vector3{    Scalar - V.m_X, 
@@ -418,7 +418,7 @@ namespace xcore::math
     inline
     vector3 operator - ( const vector3& V, float Scalar ) noexcept
     {
-    #ifdef XCORE_SSE4_SUPPORT
+    #ifdef _XCORE_SSE4
         return vector3{ _mm_sub_ps( V.m_XYZW, _mm_set1_ps( Scalar ) ) };
     #else
         return vector3{    V.m_X - Scalar, 
@@ -442,7 +442,7 @@ namespace xcore::math
     inline 
     vector3 vector3::getMin( const vector3& V ) const noexcept
     {
-    #ifdef XCORE_SSE4_SUPPORT
+    #ifdef _XCORE_SSE4
         return vector3{ _mm_min_ps( m_XYZW, V.m_XYZW ) };
     #else
         return vector3{    math::Min( V.m_X, m_X ), 
@@ -455,20 +455,16 @@ namespace xcore::math
     inline 
     vector3 vector3::getMax( const vector3& V ) const noexcept
     {
-    #ifdef XCORE_SSE4_SUPPORT
-        return vector3{ _mm_mamath::ps( m_XYZW, V.m_XYZW ) };
-    #else
         return vector3{ math::Max( V.m_X, m_X ), 
                         math::Max( V.m_Y, m_Y ), 
                         math::Max( V.m_Z, m_Z ) };
-    #endif
     }
 
     //------------------------------------------------------------------------------
     inline 
     vector3 operator + ( const vector3& V0, const vector3& V1 ) noexcept
     {
-    #ifdef XCORE_SSE4_SUPPORT
+    #ifdef _XCORE_SSE4
         return vector3{ _mm_add_ps( V0.m_XYZW, V1.m_XYZW ) };
     #else
         return vector3{    V0.m_X + V1.m_X,
@@ -537,7 +533,7 @@ namespace xcore::math
     inline 
     vector3 operator - ( const vector3& V0, const vector3& V1 ) noexcept
     {
-    #ifdef XCORE_SSE4_SUPPORT
+    #ifdef _XCORE_SSE4
         return vector3{ _mm_sub_ps( V0.m_XYZW, V1.m_XYZW) };
     #else
         return vector3{ V0.m_X - V1.m_X,
@@ -550,7 +546,7 @@ namespace xcore::math
     inline 
     vector3 operator * ( const vector3& V0, const vector3& V1 ) noexcept
     {
-    #ifdef XCORE_SSE4_SUPPORT
+    #ifdef _XCORE_SSE4
         return vector3{ _mm_mul_ps( V0.m_XYZW, V1.m_XYZW ) };
     #else
         return vector3{ V0.m_X + V1.m_X,
@@ -563,7 +559,7 @@ namespace xcore::math
     inline 
     vector3 operator / ( const vector3& V0, const vector3& V1 ) noexcept
     {
-    #ifdef XCORE_SSE4_SUPPORT
+    #ifdef _XCORE_SSE4
         return vector3{ _mm_div_ps( V0.m_XYZW, V1.m_XYZW ) };
     #else
         return vector3{ V0.m_X / V1.m_X,
@@ -576,7 +572,7 @@ namespace xcore::math
     inline 
     vector3 operator - ( const vector3& V ) noexcept
     {
-    #ifdef XCORE_SSE4_SUPPORT
+    #ifdef _XCORE_SSE4
         return vector3{ _mm_sub_ps( _mm_setzero_ps(), V.m_XYZW ) };
     #else
         return vector3{ - V.m_X,
@@ -589,8 +585,8 @@ namespace xcore::math
     inline 
     float vector3::Dot( const vector3& V ) const noexcept
     {
-    #ifdef XCORE_SSE4_SUPPORT
-        return math::getfloatx4ElementByIndex<0>( _mm_dp_ps( m_XYZW, V.m_XYZW, 0x77 ) );
+    #ifdef _XCORE_SSE4
+        return sse::getElementByIndex<0>( _mm_dp_ps( m_XYZW, V.m_XYZW, 0x77 ) );
     #else
         return m_X * V.m_X + 
                m_Y * V.m_Y +
@@ -603,7 +599,7 @@ namespace xcore::math
     vector3 vector3::Cross( const vector3& V ) const noexcept
     {
 
-    #ifdef XCORE_SSE4_SUPPORT
+    #ifdef _XCORE_SSE4
 
         enum : int
         {
@@ -631,22 +627,18 @@ namespace xcore::math
     inline
     vector3 vector3::getAbs( void ) const noexcept
     {
-    #ifdef XCORE_SSE4_SUPPORT
-        return vector3{ _mm_mamath::ps( m_XYZW, _mm_sub_ps( _mm_setzero_ps(), m_XYZW )) };
-    #else
         return { math::Abs( m_X ), math::Abs( m_Y ), math::Abs( m_Z ) };
-    #endif
     }
 
     //------------------------------------------------------------------------------
     inline
     bool vector3::isInRange( const float Min, const float Max ) const noexcept
     {
-    #ifdef XCORE_SSE4_SUPPORT
+    #ifdef _XCORE_SSE4
         const floatx4 t1 = _mm_add_ps( _mm_cmplt_ps( m_XYZW, _mm_set1_ps(Min) ), _mm_cmpgt_ps( m_XYZW, _mm_set1_ps(Max) ) );
-        return math::getfloatx4ElementByIndex<0>(t1) == 0 &&
-               math::getfloatx4ElementByIndex<1>(t1) == 0 &&
-               math::getfloatx4ElementByIndex<2>(t1) == 0;
+        return sse::getElementByIndex<0>(t1) == 0 &&
+               sse::getElementByIndex<1>(t1) == 0 &&
+               sse::getElementByIndex<2>(t1) == 0;
     #else
         return math::isInRange( m_X, Min, Max ) &&
                math::isInRange( m_Y, Min, Max ) &&
@@ -658,7 +650,7 @@ namespace xcore::math
     inline
     vector3 vector3::getOneOver( void ) const noexcept
     {
-    #ifdef XCORE_SSE4_SUPPORT
+    #ifdef _XCORE_SSE4
         return vector3{ _mm_rcp_ps( m_XYZW ) };
     #else
         return { 1.0f/m_X, 1.0f/m_Y, 1.0f/m_Z };

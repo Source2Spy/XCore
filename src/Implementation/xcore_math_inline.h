@@ -247,7 +247,7 @@ namespace xcore::math
     inline
     std::int32_t LRound( const float x ) noexcept
     {
-    #if _SSE4_SUPPORT
+    #if _XCORE_SSE4
         return static_cast<std::int32_t>(_mm_cvtss_si32(_mm_set_ss(x)));
     #else
         return static_cast<std::int32_t>(x + 0.5f);
