@@ -231,6 +231,9 @@
     <ClInclude Include="..\..\src\Implementation\xcore_math_matrix4_inline.h">
       <Filter>xCore\Implementation</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\src\Implementation\xcore_math_inline.h">
+      <Filter>xCore\Implementation</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\src\xcore.cpp">

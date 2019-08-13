@@ -128,6 +128,8 @@ namespace xcore::property{ using namespace ::property; }
 #include "Implementation/xcore_textfile2_inline.h"
 #include "Implementation/xcore_scheduler_inline.h"
 
+// Math
+#include "Implementation/xcore_math_inline.h"
 #include "Implementation/xcore_math_radian3_inline.h"
 #include "Implementation/xcore_math_vector2_inline.h"
 #include "Implementation/xcore_math_vector3_inline.h"
@@ -136,4 +138,7 @@ namespace xcore::property{ using namespace ::property; }
 #include "Implementation/xcore_math_quaternion_inline.h"
 #include "Implementation/xcore_math_matrix4_inline.h"
 
+//---------------------------------------------------------------------------
+// END
+//---------------------------------------------------------------------------
 #endif

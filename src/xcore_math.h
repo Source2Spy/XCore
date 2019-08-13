@@ -116,29 +116,29 @@ namespace xcore::math
     inline                          void                    SinCos                  ( const radian Angle, float& S, float& C )                                  noexcept;
     inline                          float                   Sin                     ( const radian x )                                                          noexcept;
     inline                          float                   Cos                     ( const radian x )                                                          noexcept; 
-    inline                          double                  Sindouble               ( const radian64 x )                                                        noexcept;
-    inline                          double                  Cosdouble               ( const radian64 x )                                                        noexcept;
+    inline                          double                  SinDouble               ( const radian64 x )                                                        noexcept;
+    inline                          double                  CosDouble               ( const radian64 x )                                                        noexcept;
     inline                          radian                  ASin                    ( const float x )                                                           noexcept;
     inline                          radian                  ACos                    ( const float x )                                                           noexcept;
     inline                          float                   Tan                     ( const radian x )                                                          noexcept;
-    inline                          double                  Tandouble               ( const radian64 x )                                                        noexcept;
+    inline                          double                  TanDouble               ( const radian64 x )                                                        noexcept;
     inline                          radian                  ATan2                   ( const float x, const float y )                                            noexcept; 
     inline                          radian                  ATan                    ( const float x )                                                           noexcept; 
 
     template< class T > 
     constexpr                       T                       Sqr                     ( const T   x )                                                             noexcept;
-    inline                          float                   Sqrt                    ( const float x )                                                           noexcept;	
-    inline                          double                  Sqrtdouble              ( const double x )                                                          noexcept;
-    inline                          float                   InvSqrt                 ( const float x );
+    xforceinline                    float                   Sqrt                    ( const float x )                                                           noexcept;	
+    xforceinline                    double                  SqrtDouble              ( const double x )                                                          noexcept;
+    inline                          float                   InvSqrt                 ( const float x )                                                           noexcept;
     inline                          bool                    SolvedQuadraticRoots    ( float& Root1, float& Root2, const float a, const float b, const float c ) noexcept;
     inline                          float                   Exp                     ( const float x )                                                           noexcept;
-    inline                          double                  Expdouble               ( const double x )                                                          noexcept;
+    inline                          double                  ExpDouble               ( const double x )                                                          noexcept;
     inline                          float                   Pow                     ( const float a, const float b )                                            noexcept;
-    inline                          double                  Powdouble               ( const double a, const double b )                                          noexcept;
+    inline                          double                  PowDouble               ( const double a, const double b )                                          noexcept;
     inline                          float                   FMod                    ( const float x, const float y )                                            noexcept;
     inline                          float                   ModF                    ( const float x, float& y )                                                 noexcept;
     inline                          float                   Log                     ( const float x )                                                           noexcept;
-    inline                          double                  Logdouble               ( const double x )                                                          noexcept;
+    inline                          double                  LogDouble               ( const double x )                                                          noexcept;
     inline                          float                   Log2                    ( const float x )                                                           noexcept; 
     inline                          float                   Log10                   ( const float x )                                                           noexcept;
     inline                          float                   LPR                     ( const float a, const float b )                                            noexcept;
