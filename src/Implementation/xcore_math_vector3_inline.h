@@ -113,7 +113,7 @@ namespace xcore::math
     }
 
     //------------------------------------------------------------------------------
-    inline
+    constexpr
     float vector3::getLengthSquared( void ) const noexcept
     {
         return Dot( *this );
@@ -179,7 +179,7 @@ namespace xcore::math
     }
 
     //------------------------------------------------------------------------------
-    inline
+    constexpr
     float vector3::getDistanceSquare( const vector3& V ) const noexcept
     {
         return ((*this) - V).getLengthSquared();
@@ -189,7 +189,7 @@ namespace xcore::math
     inline
     float vector3::getDistance( const vector3& V ) const noexcept
     {
-        return ((*this) - V).getLength();
+        return math::Sqrt(getDistanceSquare(V));
     }
 
     //------------------------------------------------------------------------------
@@ -336,7 +336,7 @@ namespace xcore::math
     }
 
     //------------------------------------------------------------------------------
-    inline
+    constexpr
     vector3 operator / ( const vector3& V, float Div ) noexcept
     {
     #ifdef _XCORE_SSE4
@@ -350,7 +350,7 @@ namespace xcore::math
     }
 
     //------------------------------------------------------------------------------
-    inline 
+    constexpr 
     vector3 operator * ( const vector3& V, float Scalar ) noexcept
     {
     #ifdef _XCORE_SSE4
@@ -363,7 +363,7 @@ namespace xcore::math
     }
 
     //------------------------------------------------------------------------------
-    inline 
+    constexpr 
     vector3 operator * ( float Scale, const vector3& V ) noexcept
     {
     #ifdef _XCORE_SSE4
@@ -377,7 +377,7 @@ namespace xcore::math
 
 
     //------------------------------------------------------------------------------
-    inline
+    constexpr
     vector3 operator + ( float Scalar, const vector3& V ) noexcept
     {
     #ifdef _XCORE_SSE4
@@ -390,7 +390,7 @@ namespace xcore::math
     }
 
     //------------------------------------------------------------------------------
-    inline
+    constexpr
     vector3 operator + ( const vector3& V, float Scalar ) noexcept
     {
     #ifdef _XCORE_SSE4
@@ -403,7 +403,7 @@ namespace xcore::math
     }
 
     //------------------------------------------------------------------------------
-    inline
+    constexpr
     vector3 operator - ( float Scalar, const vector3& V ) noexcept
     {
     #ifdef _XCORE_SSE4
@@ -416,7 +416,7 @@ namespace xcore::math
     }
 
     //------------------------------------------------------------------------------
-    inline
+    constexpr
     vector3 operator - ( const vector3& V, float Scalar ) noexcept
     {
     #ifdef _XCORE_SSE4
@@ -440,7 +440,7 @@ namespace xcore::math
     }
 
     //------------------------------------------------------------------------------
-    inline 
+    constexpr 
     vector3 vector3::getMin( const vector3& V ) const noexcept
     {
     #ifdef _XCORE_SSE4
@@ -453,7 +453,7 @@ namespace xcore::math
     }
 
     //------------------------------------------------------------------------------
-    inline 
+    constexpr 
     vector3 vector3::getMax( const vector3& V ) const noexcept
     {
         return vector3{ math::Max( V.m_X, m_X ), 
@@ -462,7 +462,7 @@ namespace xcore::math
     }
 
     //------------------------------------------------------------------------------
-    inline 
+    constexpr 
     vector3 operator + ( const vector3& V0, const vector3& V1 ) noexcept
     {
     #ifdef _XCORE_SSE4
@@ -475,63 +475,63 @@ namespace xcore::math
     }
 
     //------------------------------------------------------------------------------
-    inline 
+    constexpr 
     vector3 operator + ( const vector3d& V0, const vector3& V1 ) noexcept
     {
         return V1 + vector3( V0 );
     }
 
     //------------------------------------------------------------------------------
-    inline 
+    constexpr 
     vector3 operator + ( const vector3& V0, const vector3d&  V1 ) noexcept
     {
         return V0 + vector3( V1 );
     }
 
     //------------------------------------------------------------------------------
-    inline 
+    constexpr 
     vector3 operator - ( const vector3d&  V0, const vector3& V1 ) noexcept
     {
         return vector3( V0 ) - V1 ;
     }
 
     //------------------------------------------------------------------------------
-    inline 
+    constexpr 
     vector3 operator - ( const vector3& V0, const vector3d&  V1 ) noexcept
     {
         return V0 - vector3( V1 );
     }
 
     //------------------------------------------------------------------------------
-    inline 
+    constexpr 
     vector3 operator * ( const vector3d&  V0, const vector3& V1 ) noexcept
     {
         return V1 * vector3( V0 );
     }
 
     //------------------------------------------------------------------------------
-    inline 
+    constexpr 
     vector3 operator * ( const vector3& V0, const vector3d&  V1 ) noexcept
     {
         return V0 * vector3( V1 );
     }
 
     //------------------------------------------------------------------------------
-    inline 
+    constexpr 
     vector3 operator / ( const vector3d&  V0, const vector3& V1 ) noexcept
     {
         return vector3( V0 ) / V1 ;
     }
 
     //------------------------------------------------------------------------------
-    inline 
+    constexpr 
     vector3 operator / ( const vector3& V0, const vector3d&  V1 ) noexcept
     {
         return V0 / vector3( V1 );
     }
 
     //------------------------------------------------------------------------------
-    inline 
+    constexpr 
     vector3 operator - ( const vector3& V0, const vector3& V1 ) noexcept
     {
     #ifdef _XCORE_SSE4
@@ -544,7 +544,7 @@ namespace xcore::math
     }
 
     //------------------------------------------------------------------------------
-    inline 
+    constexpr 
     vector3 operator * ( const vector3& V0, const vector3& V1 ) noexcept
     {
     #ifdef _XCORE_SSE4
@@ -557,7 +557,7 @@ namespace xcore::math
     }
 
     //------------------------------------------------------------------------------
-    inline 
+    constexpr 
     vector3 operator / ( const vector3& V0, const vector3& V1 ) noexcept
     {
     #ifdef _XCORE_SSE4
@@ -570,7 +570,7 @@ namespace xcore::math
     }
 
     //------------------------------------------------------------------------------
-    inline 
+    constexpr 
     vector3 operator - ( const vector3& V ) noexcept
     {
     #ifdef _XCORE_SSE4
@@ -583,7 +583,7 @@ namespace xcore::math
     }
 
     //------------------------------------------------------------------------------
-    inline 
+    constexpr 
     float vector3::Dot( const vector3& V ) const noexcept
     {
     #ifdef _XCORE_SSE4
@@ -625,7 +625,7 @@ namespace xcore::math
     }
 
     //------------------------------------------------------------------------------
-    inline
+    constexpr
     vector3 vector3::getAbs( void ) const noexcept
     {
         return { math::Abs( m_X ), math::Abs( m_Y ), math::Abs( m_Z ) };
@@ -648,7 +648,7 @@ namespace xcore::math
     }
 
     //------------------------------------------------------------------------------
-    inline
+    constexpr
     vector3 vector3::getOneOver( void ) const noexcept
     {
     #ifdef _XCORE_SSE4
@@ -727,14 +727,14 @@ namespace xcore::math
     }
 
     //------------------------------------------------------------------------------
-    inline
+    constexpr
     vector3 vector3::getLerp( const float T, const vector3& End ) const noexcept
     {
         return (*this) + T * ( End - (*this) );
     }
 
     //------------------------------------------------------------------------------
-    inline
+    constexpr
     vector3 vector3::getReflection( const vector3& V ) const noexcept
     {
         return V - (2 * Dot(V)) * (*this);

@@ -64,8 +64,8 @@ namespace xcore::math
         constexpr           float               getLengthSquared                ( void )                                    const   noexcept;
         constexpr           float               getDistanceSquare               ( const vector3d& V )                       const   noexcept;
         inline              float               getDistance                     ( const vector3d& V )                       const   noexcept;
-        inline              vector3             getMax                          ( const vector3d& V )                       const   noexcept;
-        inline              vector3             getMin                          ( const vector3d& V )                       const   noexcept;
+        constexpr           vector3             getMax                          ( const vector3d& V )                       const   noexcept;
+        constexpr           vector3             getMin                          ( const vector3d& V )                       const   noexcept;
         inline              vector3d&           Abs                             ( void )                                            noexcept;
         inline              vector3d&           Normalize                       ( void )                                            noexcept;
         inline              vector3d&           NormalizeSafe                   ( void )                                            noexcept;
@@ -113,7 +113,7 @@ namespace xcore::math
         constexpr explicit                      vector3                         ( const floatx4& Register )                         noexcept : m_XYZW( Register ) {}
 
         // Exceptions to the Get/Set rule
-        inline              float               Dot                             ( const vector3& V )                        const   noexcept;
+        constexpr           float               Dot                             ( const vector3& V )                        const   noexcept;
         inline              vector3             Cross                           ( const vector3& V )                        const   noexcept;
 
         // Setup functions
@@ -137,19 +137,19 @@ namespace xcore::math
         xforceinline        bool                isValid                         ( void )                                    const   noexcept;
         constexpr           bool                isRightHanded                   ( const vector3& P1, const vector3& P2 )    const   noexcept;
                                 
-        inline              vector3             getReflection                   ( const vector3& V )                        const   noexcept;
-        inline              vector3             getOneOver                      ( void )                                    const   noexcept;
+        constexpr           vector3             getReflection                   ( const vector3& V )                        const   noexcept;
+        constexpr           vector3             getOneOver                      ( void )                                    const   noexcept;
         inline              float               getLength                       ( void )                                    const   noexcept;
-        inline              float               getLengthSquared                ( void )                                    const   noexcept;
-        inline              float               getDistanceSquare               ( const vector3& V )                        const   noexcept;
+        constexpr           float               getLengthSquared                ( void )                                    const   noexcept;
+        constexpr           float               getDistanceSquare               ( const vector3& V )                        const   noexcept;
         inline              float               getDistance                     ( const vector3& V )                        const   noexcept;
-        inline              vector3             getMax                          ( const vector3& V )                        const   noexcept;
-        inline              vector3             getMin                          ( const vector3& V )                        const   noexcept;
-        inline              vector3             getAbs                          ( void )                                    const   noexcept;
-        inline              vector3             getLerp                         ( const float T, const vector3& End )       const   noexcept;
+        constexpr           vector3             getMax                          ( const vector3& V )                        const   noexcept;
+        constexpr           vector3             getMin                          ( const vector3& V )                        const   noexcept;
+        constexpr           vector3             getAbs                          ( void )                                    const   noexcept;
+        constexpr           vector3             getLerp                         ( const float T, const vector3& End )       const   noexcept;
         inline              radian              getPitch                        ( void )                                    const   noexcept;
         inline              radian              getYaw                          ( void )                                    const   noexcept;
-        inline              void                getPitchYaw                     ( radian& Pitch, radian& Yaw )              const  noexcept;
+        inline              void                getPitchYaw                     ( radian& Pitch, radian& Yaw )              const   noexcept;
         inline              radian              getAngleBetween                 ( const vector3& V )                        const   noexcept;
         inline              void                getRotationTowards              ( const vector3&    DestV,
                                                                                   vector3&          RotAxis,
@@ -179,28 +179,28 @@ namespace xcore::math
         inline              const vector3&      operator /=                     ( float Div )                                       noexcept;
         inline              const vector3&      operator *=                     ( float Scalar )                                    noexcept;
                                         
-        inline friend       vector3             operator /                      ( const vector3& V, float Div )                     noexcept;
-        inline friend       vector3             operator *                      ( float Scale, const vector3& V )                   noexcept;
-        inline friend       vector3             operator *                      ( const vector3& V, float Scale )                   noexcept;
-        inline friend       vector3             operator +                      ( float Scale, const vector3& V )                   noexcept;
-        inline friend       vector3             operator +                      ( const vector3& V, float Scale )                   noexcept;
-        inline friend       vector3             operator -                      ( float Scale, const vector3& V )                   noexcept;
-        inline friend       vector3             operator -                      ( const vector3& V, float Scale )                   noexcept;
+        constexpr friend    vector3             operator /                      ( const vector3& V, float Div )                     noexcept;
+        constexpr friend    vector3             operator *                      ( float Scale, const vector3& V )                   noexcept;
+        constexpr friend    vector3             operator *                      ( const vector3& V, float Scale )                   noexcept;
+        constexpr friend    vector3             operator +                      ( float Scale, const vector3& V )                   noexcept;
+        constexpr friend    vector3             operator +                      ( const vector3& V, float Scale )                   noexcept;
+        constexpr friend    vector3             operator -                      ( float Scale, const vector3& V )                   noexcept;
+        constexpr friend    vector3             operator -                      ( const vector3& V, float Scale )                   noexcept;
     
-        inline friend       vector3             operator -                      ( const vector3& V )                                noexcept;
-        inline friend       vector3             operator *                      ( const vector3& V0, const vector3& V1 )            noexcept;
-        inline friend       vector3             operator -                      ( const vector3& V0, const vector3& V1 )            noexcept;
-        inline friend       vector3             operator +                      ( const vector3& V0, const vector3& V1 )            noexcept;
-        inline friend       vector3             operator /                      ( const vector3& V0, const vector3& V1 )            noexcept;
+        constexpr friend    vector3             operator -                      ( const vector3& V )                                noexcept;
+        constexpr friend    vector3             operator *                      ( const vector3& V0, const vector3& V1 )            noexcept;
+        constexpr friend    vector3             operator -                      ( const vector3& V0, const vector3& V1 )            noexcept;
+        constexpr friend    vector3             operator +                      ( const vector3& V0, const vector3& V1 )            noexcept;
+        constexpr friend    vector3             operator /                      ( const vector3& V0, const vector3& V1 )            noexcept;
 
-        inline friend       vector3             operator +                      ( const vector3d& V0, const vector3&  V1 )          noexcept;
-        inline friend       vector3             operator +                      ( const vector3&  V0, const vector3d& V1 )          noexcept;
-        inline friend       vector3             operator -                      ( const vector3d& V0, const vector3&  V1 )          noexcept;
-        inline friend       vector3             operator -                      ( const vector3&  V0, const vector3d& V1 )          noexcept;
-        inline friend       vector3             operator *                      ( const vector3d& V0, const vector3&  V1 )          noexcept;
-        inline friend       vector3             operator *                      ( const vector3&  V0, const vector3d& V1 )          noexcept;
-        inline friend       vector3             operator /                      ( const vector3d& V0, const vector3&  V1 )          noexcept;
-        inline friend       vector3             operator /                      ( const vector3&  V0, const vector3d& V1 )          noexcept;
+        constexpr friend    vector3             operator +                      ( const vector3d& V0, const vector3&  V1 )          noexcept;
+        constexpr friend    vector3             operator +                      ( const vector3&  V0, const vector3d& V1 )          noexcept;
+        constexpr friend    vector3             operator -                      ( const vector3d& V0, const vector3&  V1 )          noexcept;
+        constexpr friend    vector3             operator -                      ( const vector3&  V0, const vector3d& V1 )          noexcept;
+        constexpr friend    vector3             operator *                      ( const vector3d& V0, const vector3&  V1 )          noexcept;
+        constexpr friend    vector3             operator *                      ( const vector3&  V0, const vector3d& V1 )          noexcept;
+        constexpr friend    vector3             operator /                      ( const vector3d& V0, const vector3&  V1 )          noexcept;
+        constexpr friend    vector3             operator /                      ( const vector3&  V0, const vector3d& V1 )          noexcept;
     
     public:
 

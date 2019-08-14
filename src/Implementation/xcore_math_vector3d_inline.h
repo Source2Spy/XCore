@@ -219,14 +219,14 @@ namespace xcore::math
     }
 
     //------------------------------------------------------------------------------
-    inline 
+    constexpr 
     vector3 vector3d::getMin( const vector3d& V ) const noexcept
     {
         return { math::Min( V.m_X, m_X ), math::Min( V.m_Y, m_Y ), math::Min( V.m_Z, m_Z ) };
     }
 
     //------------------------------------------------------------------------------
-    inline 
+    constexpr 
     vector3 vector3d::getMax( const vector3d& V ) const noexcept
     {
         return { math::Max( V.m_X, m_X ), math::Max( V.m_Y, m_Y ), math::Max( V.m_Z, m_Z ) };
