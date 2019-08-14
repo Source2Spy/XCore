@@ -52,43 +52,11 @@ namespace xcore::math
     }
 
     //------------------------------------------------------------------------------
-    inline 
+    constexpr 
     float vector4::Dot( const vector4& V ) const noexcept
     {
-    #ifdef TARGET_PC_32BIT
-        float Dest;
-        __asm 
-        {
-            mov         ebx, this
-            mov         eax, V
-            movaps      xmm0, dword ptr [ebx]
-            mulps       xmm0, dword ptr [eax]      
-            movaps      xmm1, xmm0                        
-            shufps      xmm1, xmm1, _MM_SHUFFLE(0,3,2,1)
-            addss       xmm0, xmm1                        
-            shufps      xmm1, xmm1, _MM_SHUFFLE(0,3,2,1)  
-            addss       xmm0, xmm1                        
-            shufps      xmm1, xmm1, _MM_SHUFFLE(0,3,2,1)
-            addss       xmm1, xmm0                        
-            movss       xmmword ptr [Dest], xmm1
-        }
-        return Dest;
-
-    #elif defined _XCORE_SSE4
-
-        const floatx4&      V1_WZYX = *((floatx4*)this);
-        const floatx4&      V2_WZYX = *((const floatx4*)&V);
-
-        const floatx4       A = _mm_mul_ps( V1_WZYX, V2_WZYX );
-        const floatx4       B = _mm_add_ss( _mm_shuffle_ps( A, A, _MM_SHUFFLE(3,3,3,3)), _mm_add_ss(_mm_shuffle_ps( A, A, _MM_SHUFFLE(0,0,0,0)), _mm_add_ss(_mm_shuffle_ps(A, A, _MM_SHUFFLE(1,1,1,1)), _mm_shuffle_ps(A, A, _MM_SHUFFLE(2,2,2,2)))));
-
-        return ((float*)&B)[0];
-
-    #elif defined(TARGET_360)
-		    floatx4 res = XMVector4Dot( m_XYZW, V.m_XYZW );
-
-		    // can return any element, they all contain the result
-		    return res.x;
+    #ifdef _XCORE_SSE4
+        return sse::getElementByIndex<0>( _mm_dp_ps( m_XYZW, V.m_XYZW, 0xff ) );
     #else
         return m_X * V.m_X + 
                m_Y * V.m_Y +
@@ -98,7 +66,7 @@ namespace xcore::math
     }
 
     //------------------------------------------------------------------------------
-    inline 
+    constexpr 
     float vector4::getLengthSquared( void ) const noexcept
     {
         return Dot( *this );
@@ -109,22 +77,19 @@ namespace xcore::math
     float vector4::getLength( void ) const noexcept
     {
     #ifdef _XCORE_SSE4
+        /*
         floatx4 a = _mm_mul_ps( m_XYZW, m_XYZW );
                 a = _mm_add_ss( _mm_add_ss( _mm_shuffle_ps(a, a, 1),_mm_add_ps( _mm_movehl_ps(a, a), a)),_mm_shuffle_ps(a, a, 3) );
                 a = _mm_sqrt_ss(a);
-
-        return ((float*)&a)[0];
-
-    #elif defined(TARGET_360)
-		    floatx4 res = XMVector4LengthSq( m_XYZW );
-		    return res.x;
+        */
+        return _mm_cvtss_f32(_mm_sqrt_ss(_mm_dp_ps(m_XYZW, m_XYZW, 0xFF)));
     #else
-            return math::Sqrt(m_X*m_X + m_Y*m_Y + m_Z*m_Z + m_W*m_W);
+        return math::Sqrt(m_X*m_X + m_Y*m_Y + m_Z*m_Z + m_W*m_W);
     #endif
     }
 
     //------------------------------------------------------------------------------
-    inline 
+    xforceinline 
     bool vector4::isValid( void ) const noexcept
     {
         return math::isValid(m_X) && math::isValid(m_Y) && math::isValid(m_Z) && math::isValid(m_W);
@@ -144,8 +109,6 @@ namespace xcore::math
         m_XYZW = _mm_mul_ps( m_XYZW, oneDivLen );
         return *this;
 
-    #elif defined(TARGET_360)
-	    return XMVector4Normalize( m_XYZW );
     #else
         float Div = math::InvSqrt(m_X*m_X + m_Y*m_Y + m_Z*m_Z+ m_W*m_W );
         m_X *= Div;
@@ -177,17 +140,6 @@ namespace xcore::math
     
         m_XYZW = _mm_mul_ps( m_XYZW, oneDivLen );
         return *this;
-
-    #elif defined(TARGET_360)
-	    // boils down to 1 instruction, so not much waste, really
-	    floatx4 len_sq = XMVector4LengthSq( m_XYZW );		
-
-	    if( len_sq.x < Tof ) 
-        {		
-            setup( 1, 0, 0 );
-            return *this;
-        }
-	    WZYX = XMVector4Normalize( m_XYZW );
     #else
         float dsq = m_X*m_X + m_Y*m_Y + m_Z*m_Z+ m_W*m_W;
 	    if( dsq < Tof ) 
@@ -211,8 +163,6 @@ namespace xcore::math
     {
     #ifdef _XCORE_SSE4
         m_XYZW = _mm_add_ps( m_XYZW, V.m_XYZW );
-    #elif defined(TARGET_360)
-	    m_XYZW = XMVectorAdd( m_XYZW, V.m_XYZW );
     #else
         m_X += V.m_X;
         m_Y += V.m_Y;
@@ -230,8 +180,6 @@ namespace xcore::math
     {
     #ifdef _XCORE_SSE4
         m_XYZW = _mm_sub_ps( m_XYZW, V.m_XYZW );
-    #elif defined(TARGET_360)
-	    m_XYZW = XMVectorSub( m_XYZW, V.m_XYZW );
     #else
         m_X -= V.m_X;
         m_Y -= V.m_Y;
@@ -249,8 +197,6 @@ namespace xcore::math
     {
     #ifdef _XCORE_SSE4
         m_XYZW = _mm_mul_ps( m_XYZW, V.m_XYZW );
-    #elif defined(TARGET_360)
-	    m_XYZW = XMVectorMul( m_XYZW, V.m_XYZW );
     #else
         m_X *= V.m_X;
         m_Y *= V.m_Y;
@@ -268,8 +214,6 @@ namespace xcore::math
     {
     #ifdef _XCORE_SSE4
         m_XYZW = _mm_mul_ps( m_XYZW, _mm_set1_ps( Scalar ) );
-    #elif defined(TARGET_360)
-	    m_XYZW = XMVectorScale( m_XYZW, Scalar);
     #else
         m_X *= Scalar;
         m_Y *= Scalar;
@@ -287,8 +231,6 @@ namespace xcore::math
     {
     #ifdef _XCORE_SSE4
         m_XYZW = _mm_div_ps( m_XYZW, _mm_set1_ps( Div ) );
-    #elif defined(TARGET_360)
-	    m_XYZW = XMVectorScale( m_XYZW, 1.0f/Div);
     #else
         float Scalar = 1.0f/Div;
         m_X *= Scalar;
@@ -313,7 +255,7 @@ namespace xcore::math
     }
 
     //------------------------------------------------------------------------------
-    inline
+    constexpr
     vector4 operator + ( const vector4& V1, const vector4& V2 ) noexcept
     {
     #ifdef _XCORE_SSE4
@@ -327,7 +269,7 @@ namespace xcore::math
     }
 
     //------------------------------------------------------------------------------
-    inline 
+    constexpr 
     vector4 operator - ( const vector4& V1, const vector4& V2 ) noexcept
     {
     #ifdef _XCORE_SSE4
@@ -341,7 +283,7 @@ namespace xcore::math
     }
 
     //------------------------------------------------------------------------------
-    inline 
+    constexpr 
     vector4 operator * ( const vector4& V1, const vector4& V2 ) noexcept
     {
     #ifdef _XCORE_SSE4
@@ -355,7 +297,7 @@ namespace xcore::math
     }
 
     //------------------------------------------------------------------------------
-    inline 
+    constexpr 
     vector4 operator - ( const vector4& V ) noexcept
     {
     #ifdef _XCORE_SSE4
@@ -369,7 +311,7 @@ namespace xcore::math
     }
 
     //------------------------------------------------------------------------------
-    inline 
+    constexpr 
     vector4 operator * ( const vector4& V, float Scalar ) noexcept
     {
     #ifdef _XCORE_SSE4
@@ -383,7 +325,7 @@ namespace xcore::math
     }
 
     //------------------------------------------------------------------------------
-    inline 
+    constexpr 
     vector4 operator * ( float Scalar, const vector4& V ) noexcept
     {
     #ifdef _XCORE_SSE4
@@ -397,7 +339,7 @@ namespace xcore::math
     }
 
     //------------------------------------------------------------------------------
-    inline
+    constexpr
     vector4 operator + ( float Scalar, const vector4& V ) noexcept
     {
     #ifdef _XCORE_SSE4
@@ -411,7 +353,7 @@ namespace xcore::math
     }
 
     //------------------------------------------------------------------------------
-    inline
+    constexpr
     vector4 operator + ( const vector4& V, float Scalar ) noexcept
     {
     #ifdef _XCORE_SSE4
@@ -425,7 +367,7 @@ namespace xcore::math
     }
 
     //------------------------------------------------------------------------------
-    inline
+    constexpr
     vector4 operator - ( float Scalar, const vector4& V ) noexcept
     {
     #ifdef _XCORE_SSE4
@@ -439,7 +381,7 @@ namespace xcore::math
     }
 
     //------------------------------------------------------------------------------
-    inline
+    constexpr
     vector4 operator - ( const vector4& V, float Scalar ) noexcept
     {
     #ifdef _XCORE_SSE4
@@ -454,7 +396,7 @@ namespace xcore::math
 
 
     //------------------------------------------------------------------------------
-    inline 
+    constexpr 
     vector4 vector4::getMin( const vector4& V ) const noexcept
     {
     #ifdef _XCORE_SSE4
@@ -468,7 +410,7 @@ namespace xcore::math
     }
  
     //------------------------------------------------------------------------------
-    inline 
+    constexpr 
     vector4 vector4::getMax( const vector4& V ) const noexcept
     {
         return vector4{ math::Max( V.m_X,m_X),
@@ -497,7 +439,7 @@ namespace xcore::math
     }
 
     //------------------------------------------------------------------------------
-    inline
+    xforceinline
     bool vector4::isInRange( const float Min, const float Max ) const noexcept
     {
     #ifdef _XCORE_SSE4
@@ -515,7 +457,7 @@ namespace xcore::math
     }
 
     //------------------------------------------------------------------------------
-    inline
+    constexpr
     vector4 vector4::OneOver( void ) const noexcept
     {
     #ifdef _XCORE_SSE4

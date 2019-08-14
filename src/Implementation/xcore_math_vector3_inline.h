@@ -101,11 +101,12 @@ namespace xcore::math
     float vector3::getLength( void ) const noexcept
     {
     #ifdef _XCORE_SSE4
+        /*
         floatx4 a = _mm_mul_ps( m_XYZW, m_XYZW );
               a = _mm_add_ss( _mm_shuffle_ps(a, a, 1),_mm_add_ps( _mm_movehl_ps(a, a), a));
               a = _mm_sqrt_ss(a);
-
-        return sse::getElementByIndex<0>(a);
+        */
+        return _mm_cvtss_f32(_mm_sqrt_ss(_mm_dp_ps(m_XYZW, m_XYZW, 0x71)));
     #else
         return math::Sqrt( Dot( *this ) );
     #endif

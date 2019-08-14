@@ -38,10 +38,13 @@
     <ClInclude Include="..\..\src\Examples\xcore_unique_span.h" />
     <ClInclude Include="..\..\src\Examples\xcore_vector_examples.h" />
     <ClInclude Include="..\..\src\Implementation\xcore_linear_buffers_hardness.h" />
+    <ClInclude Include="..\..\src\Implementation\xcore_math_bbox_inline.h" />
     <ClInclude Include="..\..\src\Implementation\xcore_math_inline.h" />
     <ClInclude Include="..\..\src\Implementation\xcore_math_matrix4_inline.h" />
+    <ClInclude Include="..\..\src\Implementation\xcore_math_plane_inline.h" />
     <ClInclude Include="..\..\src\Implementation\xcore_math_quaternion_inline.h" />
     <ClInclude Include="..\..\src\Implementation\xcore_math_radian3_inline.h" />
+    <ClInclude Include="..\..\src\Implementation\xcore_math_rect_inline.h" />
     <ClInclude Include="..\..\src\Implementation\xcore_math_vector3d_inline.h" />
     <ClInclude Include="..\..\src\Implementation\xcore_math_vector3_inline.h" />
     <ClInclude Include="..\..\src\Implementation\xcore_math_vector4_inline.h" />
@@ -71,6 +74,8 @@
     <ClInclude Include="..\..\src\xcore_math_matrix4.h" />
     <ClInclude Include="..\..\src\xcore_math_quaternion.h" />
     <ClInclude Include="..\..\src\xcore_math_radian3.h" />
+    <ClInclude Include="..\..\src\xcore_math_shapes.h" />
+    <ClInclude Include="..\..\src\xcore_math_transform.h" />
     <ClInclude Include="..\..\src\xcore_math_vector2.h" />
     <ClInclude Include="..\..\src\xcore_math_vector3.h" />
     <ClInclude Include="..\..\src\xcore_math_vector4.h" />

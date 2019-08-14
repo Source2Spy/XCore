@@ -120,6 +120,10 @@ namespace xcore::property{ using namespace ::property; }
 #include "xcore_math_matrix4.h"
 #include "xcore_math_quaternion.h"
 
+#include "xcore_math_transform.h"
+#include "xcore_math_shapes.h"
+namespace xcore { using namespace xcore::math; }
+
 //---------------------------------------------------------------------------
 // Inline functions
 //---------------------------------------------------------------------------
@@ -137,6 +141,8 @@ namespace xcore::property{ using namespace ::property; }
 #include "Implementation/xcore_math_vector4_inline.h"
 #include "Implementation/xcore_math_quaternion_inline.h"
 #include "Implementation/xcore_math_matrix4_inline.h"
+
+#include "Implementation/xcore_math_rect_inline.h"
 
 //---------------------------------------------------------------------------
 // END

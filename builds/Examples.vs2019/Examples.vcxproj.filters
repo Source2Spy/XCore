@@ -234,6 +234,21 @@
     <ClInclude Include="..\..\src\Implementation\xcore_math_inline.h">
       <Filter>xCore\Implementation</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\src\xcore_math_shapes.h">
+      <Filter>xCore</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\xcore_math_transform.h">
+      <Filter>xCore</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\Implementation\xcore_math_rect_inline.h">
+      <Filter>xCore\Implementation</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\Implementation\xcore_math_bbox_inline.h">
+      <Filter>xCore\Implementation</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\Implementation\xcore_math_plane_inline.h">
+      <Filter>xCore\Implementation</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\src\xcore.cpp">
