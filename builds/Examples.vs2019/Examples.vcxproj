@@ -45,6 +45,7 @@
     <ClInclude Include="..\..\src\Implementation\xcore_math_quaternion_inline.h" />
     <ClInclude Include="..\..\src\Implementation\xcore_math_radian3_inline.h" />
     <ClInclude Include="..\..\src\Implementation\xcore_math_rect_inline.h" />
+    <ClInclude Include="..\..\src\Implementation\xcore_math_sphere_inline.h" />
     <ClInclude Include="..\..\src\Implementation\xcore_math_vector3d_inline.h" />
     <ClInclude Include="..\..\src\Implementation\xcore_math_vector3_inline.h" />
     <ClInclude Include="..\..\src\Implementation\xcore_math_vector4_inline.h" />

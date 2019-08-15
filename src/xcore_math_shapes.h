@@ -19,47 +19,47 @@ namespace xcore::math
     {
     public:
 
-                                plane                   ( void )                                                    noexcept = default;
-                                plane                   ( const vector3& P1,
-                                                          const vector3& P2,
-                                                          const vector3& P3 )                                       noexcept;
-                                plane                   ( const vector3d& Normal, float Distance )                  noexcept;
-                                plane                   ( float A, float B, float C, float D )                      noexcept;
-                                plane                   ( const vector3d& Normal, const vector3d& Point )           noexcept;
+        constexpr                   plane                   ( void )                                                    noexcept = default;
+        constexpr                   plane                   ( const vector3& P1,
+                                                              const vector3& P2,
+                                                              const vector3& P3 )                                       noexcept;
+        constexpr                   plane                   ( const vector3d& Normal, float Distance )                  noexcept;
+        constexpr                   plane                   ( float A, float B, float C, float D )                      noexcept;
+        inline                      plane                   ( const vector3d& Normal, const vector3d& Point )           noexcept;
 
-        bool                    isValid                 ( void )                                            const   noexcept;
-        float                   Dot                     ( const vector3d& P )                               const   noexcept;
-        float                   getDistance             ( const vector3d& P )                               const   noexcept;
-        std::int32_t            getWhichSide            ( const vector3d& P )                               const   noexcept;
-        void                    ComputeD                ( const vector3d& P )                                       noexcept;
+        inline          bool        isValid                 ( void )                                            const   noexcept;
+        constexpr       float       Dot                     ( const vector3d& P )                               const   noexcept;
+        constexpr       float       getDistance             ( const vector3d& P )                               const   noexcept;
+        constexpr  std::int32_t     getWhichSide            ( const vector3d& P )                               const   noexcept;
+        constexpr       void        ComputeD                ( const vector3d& P )                                       noexcept;
 
-        inline void             setup                   ( const vector3& P1,
-                                                          const vector3& P2,
-                                                          const vector3& P3 )                                       noexcept;
-        inline void             setup                   ( const vector3d& Normal, float Distance );
-        inline void             setup                   ( const vector3d& Normal, const vector3d& Point )           noexcept;
-        void                    setup                   ( float A, float B, float C, float D )                      noexcept;
-        bool                    IntersectLine           ( float& T, 
-                                                          const vector3d& Start, 
-                                                          const vector3d& Direction )                       const   noexcept;
-        bool                    IntersectLineSegment    ( float&           t,
-                                                          const vector3d& P0, 
-                                                          const vector3d& P1 )                              const   noexcept;
+        inline          plane&      setup                   ( const vector3& P1,
+                                                              const vector3& P2,
+                                                              const vector3& P3 )                                       noexcept;
+        inline          plane&      setup                   ( const vector3d& Normal, float Distance )                  noexcept;
+        inline          plane&      setup                   ( const vector3d& Normal, const vector3d& Point )           noexcept;
+        inline          plane&      setup                   ( float A, float B, float C, float D )                      noexcept;
+        constexpr       bool        IntersectLine           ( float& T, 
+                                                              const vector3d& Start, 
+                                                              const vector3d& Direction )                       const   noexcept;
+        constexpr       bool        IntersectLineSegment    ( float&           t,
+                                                              const vector3d& P0, 
+                                                              const vector3d& P1 )                              const   noexcept;
 
-        void                    getComponents           ( const vector3d& V,
-                                                                vector3d& Parallel,
-                                                                vector3d& Perpendicular )                   const   noexcept; 
-        void                    getOrthovectors         ( vector3d& AxisA,
-                                                          vector3d& AxisB )                                 const   noexcept;
-        vector3                 getReflection           ( const vector3& V )                                const   noexcept;
+        constexpr       void        getComponents           ( const vector3d& V,
+                                                                    vector3d& Parallel,
+                                                                    vector3d& Perpendicular )                   const   noexcept; 
+        inline          void        getOrthovectors         ( vector3d& AxisA,
+                                                              vector3d& AxisB )                                 const   noexcept;
+        constexpr       vector3     getReflection           ( const vector3& V )                                const   noexcept;
 
-        bool                    ClipNGon                ( vector3d* pDst, std::int32_t& NDstVerts, 
-                                                          const vector3d* pSrc, std::int32_t  NSrcVerts )   const   noexcept;
-        bool                    ClipNGon                ( vector3* pDst, std::int32_t& NDstVerts, 
-                                                          const vector3* pSrc, std::int32_t  NSrcVerts )    const   noexcept;
+        inline          bool        ClipNGon                ( vector3d* pDst, std::int32_t& NDstVerts, 
+                                                              const vector3d* pSrc, std::int32_t  NSrcVerts )   const   noexcept;
+        inline          bool        ClipNGon                ( vector3* pDst, std::int32_t& NDstVerts, 
+                                                              const vector3* pSrc, std::int32_t  NSrcVerts )    const   noexcept;
 
-        plane&                 operator -               ( void )                                                    noexcept;
-        friend plane           operator *               ( const matrix4& M, const plane& plane )                    noexcept;
+        constexpr       plane&      operator -              ( void )                                                    noexcept;
+        inline   friend plane       operator *              ( const matrix4& M, const plane& plane )                    noexcept;
 
     public:
 
@@ -79,56 +79,56 @@ namespace xcore::math
     class bbox 
     {
     public:
-                                bbox                    ( void )                                                        noexcept;
-                                bbox                    ( const vector3d& P1 )                                          noexcept;
-                                bbox                    ( const vector3d& P1, const vector3d& P2 )                      noexcept;
-                                bbox                    ( const vector3d* pVerts, const std::int32_t nVerts )           noexcept;
-                                bbox                    ( const vector3d& Center, const float Radius )                  noexcept;
+        constexpr                   bbox                    ( void )                                                        noexcept;
+        constexpr                   bbox                    ( const vector3d& P1 )                                          noexcept;
+        constexpr                   bbox                    ( const vector3d& P1, const vector3d& P2 )                      noexcept;
+        inline                      bbox                    ( const vector3d* pVerts, const std::int32_t nVerts )           noexcept;
+        constexpr                   bbox                    ( const vector3d& Center, const float Radius )                  noexcept;
 
-        inline bbox&            setup                   ( const vector3d& Center, const float Radius )                  noexcept;
-        inline bbox&            setup                   ( const vector3d& P1, const vector3d& P2 )                      noexcept; 
+        inline          bbox&       setup                   ( const vector3d& Center, const float Radius )                  noexcept;
+        inline          bbox&       setup                   ( const vector3d& P1, const vector3d& P2 )                      noexcept; 
 
-        void                    setZero                 ( void )                                                        noexcept;
-        inline void             setIdentity             ( void )                                                        noexcept;
-        bool                    isValid                 ( void )                                                const   noexcept;
+        inline          void        setZero                 ( void )                                                        noexcept;
+        inline          void        setIdentity             ( void )                                                        noexcept;
+        inline          bool        isValid                 ( void )                                                const   noexcept;
 
-        vector3                 getSize                 ( void )                                                const   noexcept;
-        vector3                 getCenter               ( void )                                                const   noexcept;
-        float                   getRadius               ( void )                                                const   noexcept;
-        float                   getRadiusSquared        ( void )                                                const   noexcept;
-        float                   getSurfaceArea          ( void )                                                const   noexcept;
+        constexpr       vector3     getSize                 ( void )                                                const   noexcept;
+        constexpr       vector3     getCenter               ( void )                                                const   noexcept;
+        inline          float       getRadius               ( void )                                                const   noexcept;
+        constexpr       float       getRadiusSquared        ( void )                                                const   noexcept;
+        constexpr       float       getSurfaceArea          ( void )                                                const   noexcept;
 
-        bool                    InRange                 ( float Min, float Max )                                const   noexcept;
-        bbox&                   Inflate                 ( const vector3d& S )                                           noexcept;
-        bbox&                   Deflate                 ( const vector3d& S )                                           noexcept;
-        bbox&                   Transform               ( const matrix4& M )                                            noexcept;
+        constexpr       bool        isInRange               ( float Min, float Max )                                const   noexcept;
+        inline          bbox&       Inflate                 ( const vector3d& S )                                           noexcept;
+        inline          bbox&       Deflate                 ( const vector3d& S )                                           noexcept;
+        inline          bbox&       Transform               ( const matrix4& M )                                            noexcept;
 
-        inline bool             Intersect               ( const vector3d&  Point )                              const   noexcept;
-        bool                    Intersect               ( const bbox&      BBox  )                              const   noexcept;
-        bool                    Intersect               ( const plane&     Plane )                              const   noexcept;
-        bool                    Intersect               ( float&           t,
-                                                          const vector3d&  P0, 
-                                                          const vector3d&  P1 )                                 const   noexcept;
-        bool                    Intersect               ( const vector3d*  pVert,
-                                                          std::int32_t     nVerts )                             const   noexcept;
-        bool                    IntersectTriangleBBox   ( const vector3d& P0,
-                                                          const vector3d& P1,
-                                                          const vector3d& P2 )                                  const   noexcept;
+        constexpr       bool        Intersect               ( const vector3d&  Point )                              const   noexcept;
+        constexpr       bool        Intersect               ( const bbox&      BBox  )                              const   noexcept;
+        constexpr       bool        Intersect               ( const plane&     Plane )                              const   noexcept;
+        inline          bool        Intersect               ( float&           t,
+                                                              const vector3d&  P0, 
+                                                              const vector3d&  P1 )                                 const   noexcept;
+        constexpr       bool        Intersect               ( const vector3d*  pVert,
+                                                              std::int32_t     nVerts )                             const   noexcept;
+        constexpr       bool        IntersectTriangleBBox   ( const vector3d& P0,
+                                                              const vector3d& P1,
+                                                              const vector3d& P2 )                                  const   noexcept;
 
-        float                   getClosestVertex        ( vector3d& ClosestPoint, const vector3d& Point )       const   noexcept;
+        inline          float       getClosestVertex        ( vector3d& ClosestPoint, const vector3d& Point )       const   noexcept;
 
-        void                    getVerts                ( vector3d* pVerts, std::int32_t nVerts )               const   noexcept;
-        bool                    Contains                ( const bbox&     BBox  )                               const   noexcept;
-        bbox&                   AddVerts                ( const vector3d* pVerts, std::int32_t NVerts )                 noexcept;
-        bbox&                   AddVerts                ( const vector3*  pVerts, std::int32_t NVerts )                 noexcept;
-        bbox&                   Translate               ( const vector3d& Delta )                                       noexcept;
+        inline          void        getVerts                ( vector3d* pVerts, std::int32_t nVerts )               const   noexcept;
+        constexpr       bool        Contains                ( const bbox&     BBox  )                               const   noexcept;
+        inline          bbox&       AddVerts                ( const vector3d* pVerts, std::int32_t NVerts )                 noexcept;
+        inline          bbox&       AddVerts                ( const vector3*  pVerts, std::int32_t NVerts )                 noexcept;
+        inline          bbox&       Translate               ( const vector3d& Delta )                                       noexcept;
 
-        inline const bbox&      operator +=             ( const bbox&     BBox  )                                       noexcept;
-        inline const bbox&      operator +=             ( const vector3d& Point )                                       noexcept;
+        inline      const bbox&     operator +=             ( const bbox&     BBox  )                                       noexcept;
+        inline      const bbox&     operator +=             ( const vector3d& Point )                                       noexcept;
                                
-        friend  bbox            operator +              ( const bbox&     bbox1, const bbox&     bbox2 )                noexcept;
-        friend  bbox            operator +              ( const bbox&     bbox1, const vector3d& Point )                noexcept;
-        friend  bbox            operator +              ( const vector3d& Point, const bbox&     bbox1 )                noexcept;
+        inline friend  bbox         operator +              ( const bbox&     bbox1, const bbox&     bbox2 )                noexcept;
+        inline friend  bbox         operator +              ( const bbox&     bbox1, const vector3d& Point )                noexcept;
+        inline friend  bbox         operator +              ( const vector3d& Point, const bbox&     bbox1 )                noexcept;
 
     public:
 
