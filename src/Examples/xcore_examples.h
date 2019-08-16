@@ -34,9 +34,9 @@ namespace xcore::examples
             xcore::allocator::examples::Test();
             xcore::containers::vector::examples::Test();
             xcore::lockless::queues::examples::Test();
+            xcore::math::examples::vector3s::Test();
         }
 
         xcore::scheduler::examples::Test();
-        xcore::math::examples::vector3s::Test();
     }
 }

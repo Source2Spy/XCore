@@ -1,17 +1,18 @@
 
 namespace xcore::math::examples::vector3s
 {
+    //-------------------------------------------------------------------------
+    // VECTOR3D
+    //-------------------------------------------------------------------------
+    constexpr static auto max_rnd_v = static_cast<float>( RAND_MAX );
+    float frand( float min, float max )
+    {
+        float D = max - min;
+        return ((std::rand() / max_rnd_v) * D) - min;
+    }
+
     namespace v3d
     {
-        //-------------------------------------------------------------------------
-        // VECTOR3D
-        //-------------------------------------------------------------------------
-        constexpr static auto max_rnd_v = static_cast<float>( RAND_MAX );
-        float frand( float min, float max )
-        {
-            float D = max - min;
-            return ((std::rand() / max_rnd_v) * D) - min;
-        }
 
         //-------------------------------------------------------------------------
 
@@ -106,9 +107,79 @@ namespace xcore::math::examples::vector3s
     //-------------------------------------------------------------------------
     namespace v3
     {
+        //-------------------------------------------------------------------------
+
+        void GetLength( void )
+        {
+            vector3 A( 0, 100, 0 );
+            float dis = A.getLength();
+            xassert( math::FEqual( 100.0f, dis ) );
+        }
+
+        //-------------------------------------------------------------------------
+
+        void Normalize( void )
+        {
+            int i;
+    
+            for( i=0; i<1000; i++ )
+            {
+               vector3 A( frand(-100000.0f, 1000000.0), frand(-100000.0f, 1000000.0), frand(-100000.0f, 1000000.0) );
+        
+                A.Normalize();
+                xassert( math::FEqual( A.getLength(), 1.0f ) );
+            }
+        }
+
+        //-------------------------------------------------------------------------
+
+        void NormalizeSafe( void )
+        {
+            int i;
+            for( i=0; i<1000; i++ )
+            {
+                vector3 A( frand(-100000.0f, 1000000.0), frand(-100000.0f, 1000000.0), frand(-100000.0f, 1000000.0) );
+        
+                A.NormalizeSafe();
+                xassert( math::FEqual( A.getLength(), 1.0f ) );
+            }
+        }
+
+        //-------------------------------------------------------------------------
+
+        void LengthSquared( void )
+        {
+            vector3 A( 100, 0, 0), B(1,1,1), C;
+    
+            B = (B+B) / vector3( 2 );
+            C = A * B;
+            C *= C;
+            B -= B;
+            C += B;
+    
+            // x_Math::xvector3.+-*etc OKAY
+            xassert( math::FEqual( C.getLength(), A.getLengthSquared() ) );
+        }
+
+        //-------------------------------------------------------------------------
+
+        void Dot( void )
+        {
+            vector3 A( 100, 0, 0 );
+            float dis = math::Sqrt( A.Dot(A) );
+            xassert( math::FEqual( 100.0f, dis ) );
+        }
+
+
+        //-------------------------------------------------------------------------
 
         void Test( void )
         {
+            LengthSquared();
+            NormalizeSafe();
+            Normalize();
+            Dot();
+            GetLength();
         }
     }
 
