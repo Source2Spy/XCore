@@ -145,6 +145,7 @@ namespace xcore { using namespace xcore::math; }
 #include "Implementation/xcore_math_rect_inline.h"
 #include "Implementation/xcore_math_bbox_inline.h"
 #include "Implementation/xcore_math_plane_inline.h"
+#include "Implementation/xcore_math_irect_inline.h"
 
 //---------------------------------------------------------------------------
 // END

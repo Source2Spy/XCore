@@ -40,6 +40,7 @@
     <ClInclude Include="..\..\src\Implementation\xcore_linear_buffers_hardness.h" />
     <ClInclude Include="..\..\src\Implementation\xcore_math_bbox_inline.h" />
     <ClInclude Include="..\..\src\Implementation\xcore_math_inline.h" />
+    <ClInclude Include="..\..\src\Implementation\xcore_math_irect_inline.h" />
     <ClInclude Include="..\..\src\Implementation\xcore_math_matrix4_inline.h" />
     <ClInclude Include="..\..\src\Implementation\xcore_math_plane_inline.h" />
     <ClInclude Include="..\..\src\Implementation\xcore_math_quaternion_inline.h" />

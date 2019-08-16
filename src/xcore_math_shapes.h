@@ -250,41 +250,41 @@ namespace xcore::math
     class irect
     {
     public:
-                                irect                   ( void )                                                        noexcept = default;
-                                irect                   ( std::int32_t l, std::int32_t t
-                                                        , std::int32_t r, std::int32_t b )                              noexcept;
+        constexpr                               irect                   ( void )                                                        noexcept = default;
+        constexpr                               irect                   ( std::int32_t l, std::int32_t t
+                                                                        , std::int32_t r, std::int32_t b )                              noexcept;
 
-        void                    setMax                  ( void )                                                        noexcept;
-        void                    setZero                 ( void )                                                        noexcept;
-        inline irect&           setup                   ( std::int32_t l, std::int32_t t
-                                                        , std::int32_t r, std::int32_t b )                              noexcept;
+        inline          void                    setMax                  ( void )                                                        noexcept;
+        inline          void                    setZero                 ( void )                                                        noexcept;
+        inline          irect&                  setup                   ( std::int32_t l, std::int32_t t
+                                                                        , std::int32_t r, std::int32_t b )                              noexcept;
 
-        bool                    Intersect               ( const irect& Rect )                                           noexcept;
-        bool                    Intersect               ( irect& R, const irect& Rect )                                 noexcept;
+        constexpr       bool                    Intersect               ( const irect& Rect )                                   const   noexcept;
+        constexpr       bool                    Intersect               ( irect& R, const irect& Rect )                         const   noexcept;
 
-        bool                    PointInRect             ( std::int32_t X, std::int32_t Y )                      const   noexcept;
-        irect&                  AddPoint                ( std::int32_t X, std::int32_t Y )                              noexcept;
-        irect&                  AddRect                 ( const irect& Rect  )                                          noexcept;
+        constexpr       bool                    PointInRect             ( std::int32_t X, std::int32_t Y )                      const   noexcept;
+        inline          irect&                  AddPoint                ( std::int32_t X, std::int32_t Y )                              noexcept;
+        inline          irect&                  AddRect                 ( const irect& Rect  )                                          noexcept;
 
-        std::int32_t            getWidth                ( void )                                                const   noexcept;
-        std::int32_t            getHeight               ( void )                                                const   noexcept;
-        vector2                 getSize                 ( void )                                                const   noexcept;
-        vector2                 getCenter               ( void )                                                const   noexcept;
+        constexpr       std::int32_t            getWidth                ( void )                                                const   noexcept;
+        constexpr       std::int32_t            getHeight               ( void )                                                const   noexcept;
+        constexpr       vector2                 getSize                 ( void )                                                const   noexcept;
+        constexpr       vector2                 getCenter               ( void )                                                const   noexcept;
 
-        irect&                  setWidth                ( std::int32_t W )                                              noexcept;
-        irect&                  setHeight               ( std::int32_t H )                                              noexcept;
-        irect&                  setSize                 ( std::int32_t W, std::int32_t H )                              noexcept;
+        inline          irect&                  setWidth                ( std::int32_t W )                                              noexcept;
+        inline          irect&                  setHeight               ( std::int32_t H )                                              noexcept;
+        inline          irect&                  setSize                 ( std::int32_t W, std::int32_t H )                              noexcept;
 
-        irect&                  Translate               ( std::int32_t X, std::int32_t Y )                              noexcept;
-        irect&                  Inflate                 ( std::int32_t X, std::int32_t Y )                              noexcept;
-        irect&                  Deflate                 ( std::int32_t X, std::int32_t Y )                              noexcept;
+        inline          irect&                  Translate               ( std::int32_t X, std::int32_t Y )                              noexcept;
+        inline          irect&                  Inflate                 ( std::int32_t X, std::int32_t Y )                              noexcept;
+        inline          irect&                  Deflate                 ( std::int32_t X, std::int32_t Y )                              noexcept;
 
-        float                   Difference              ( const irect& R )                                      const   noexcept;
-        bool                    InRange                 ( std::int32_t Min, std::int32_t Max )                  const   noexcept;
-        bool                    isEmpty                 ( void )                                                const   noexcept;
+        constexpr       float                   Difference              ( const irect& R )                                      const   noexcept;
+        constexpr       bool                    isInRange               ( std::int32_t Min, std::int32_t Max )                  const   noexcept;
+        constexpr       bool                    isEmpty                 ( void )                                                const   noexcept;
 
-        bool                    operator ==             ( const irect& R )                                      const   noexcept;
-        bool                    operator !=             ( const irect& R )                                      const   noexcept;
+        constexpr       bool                    operator ==             ( const irect& R )                                      const   noexcept;
+        constexpr       bool                    operator !=             ( const irect& R )                                      const   noexcept;
 
     public:
 

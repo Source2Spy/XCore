@@ -252,6 +252,9 @@
     <ClInclude Include="..\..\src\Implementation\xcore_math_sphere_inline.h">
       <Filter>xCore\Implementation</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\src\Implementation\xcore_math_irect_inline.h">
+      <Filter>xCore\Implementation</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\src\xcore.cpp">
