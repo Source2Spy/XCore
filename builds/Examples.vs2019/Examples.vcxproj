@@ -30,6 +30,7 @@
     <ClInclude Include="..\..\src\Examples\xcore_lockless_pool_examples.h" />
     <ClInclude Include="..\..\src\Examples\xcore_lockless_q.h" />
     <ClInclude Include="..\..\src\Examples\xcore_log_examples.h" />
+    <ClInclude Include="..\..\src\Examples\xcore_math_vector3d_examples.h" />
     <ClInclude Include="..\..\src\Examples\xcore_properties.h" />
     <ClInclude Include="..\..\src\Examples\xcore_rtti_examples.h" />
     <ClInclude Include="..\..\src\Examples\xcore_scheduler_examples.h" />

@@ -12,6 +12,7 @@
 #include "xcore_lockless_q.h"
 #include "xcore_unique_span.h"
 #include "xcore_scheduler_examples.h"
+#include "xcore_math_vector3d_examples.h"
 
 
 namespace xcore::examples
@@ -33,8 +34,9 @@ namespace xcore::examples
             xcore::allocator::examples::Test();
             xcore::containers::vector::examples::Test();
             xcore::lockless::queues::examples::Test();
+            xcore::scheduler::examples::Test();
         }
 
-        xcore::scheduler::examples::Test();
+        xcore::math::examples::vector3s::Test();
     }
 }
