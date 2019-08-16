@@ -114,9 +114,9 @@ namespace xcore::lockless::queues
 
         protected:
 
-            std::array< cell_t, capacity_v >                                    m_Buffer;
             alignas(xcore::target::getCacheLineSize()) std::atomic<size_t>      m_EnqueuePos{ 0 };
             alignas(xcore::target::getCacheLineSize()) std::atomic<size_t>      m_DequeuePos{ 0 };
+            std::array< cell_t, capacity_v >                                    m_Buffer;
         };
     }
 
@@ -256,11 +256,10 @@ namespace xcore::lockless::queues
 
         protected:
       
-            std::array< slot, T_CAPACITY >                                  m_Slots;
-
             // Align to avoid false sharing
             alignas(xcore::target::getCacheLineSize()) std::atomic<size_t>  m_Head{ 0 };
             alignas(xcore::target::getCacheLineSize()) std::atomic<size_t>  m_Tail{ 0 };
+            std::array< slot, T_CAPACITY >                                  m_Slots;
         };
     }
 
