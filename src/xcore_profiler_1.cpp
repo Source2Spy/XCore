@@ -20,6 +20,7 @@
 #include "../dependencies/tracy/client/tracy_rpmalloc.cpp"
 #include "../dependencies/tracy/client/tracySysTime.cpp"
 #include "../dependencies/tracy/client/tracyCallstack.cpp"
+#include "../dependencies/tracy/client/tracySysTrace.cpp"
 #include "../dependencies/tracy/common/tracySystem.cpp"
 
 //--------------------------------------------------------------------------------
