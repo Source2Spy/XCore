@@ -258,6 +258,9 @@
     <ClInclude Include="..\..\src\Examples\xcore_math_vector3d_examples.h">
       <Filter>Examples</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\src\xcore_cmdline.h">
+      <Filter>xCore</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\src\xcore.cpp">

@@ -42,8 +42,12 @@ namespace xcore::string
         constexpr                   operator       std::string_view ( void )                            noexcept { xassume(parent::empty()==false); return { parent::data(), std::strlen(parent::data()) }; }
         constexpr                   operator const std::string_view ( void )                    const   noexcept { xassume(parent::empty()==false); return { parent::data(), std::strlen(parent::data()) }; }
         constexpr   bool            empty                           ( void )                    const   noexcept { return parent::data() == nullptr || parent::data()[0] == 0; }
+        constexpr   auto            ViewFrom                        ( int Start )               const   noexcept { return static_cast<view&&>(parent::ViewFrom(Start)); }
+        constexpr   auto            ViewFrom                        ( int Start )                       noexcept { return static_cast<view&&>(parent::ViewFrom(Start)); }
+        constexpr   auto            ViewFromTo                      ( int Start, int To )       const   noexcept { return static_cast<view&&>(parent::ViewFromTo(Start,To)); }
+        constexpr   auto            ViewFromTo                      ( int Start, int To )               noexcept { return static_cast<view&&>(parent::ViewFromTo(Start,To)); }
     };
-
+     
     // Deduction Guides
     template <class T, size_t N>
     view(T (&)[N])->view<T, N>;
@@ -62,7 +66,7 @@ namespace xcore::string
 
     template <class Container>
     view(const Container&)->view<const typename Container::value_type>;
-
+    
     //------------------------------------------------------------------------------------
     // constant - string can not be modified
     //------------------------------------------------------------------------------------
@@ -102,6 +106,19 @@ namespace xcore::string
     };
 
     #define xconst_universal_str(A)  xcore::string::const_universal{ A, L##A }
+
+    //------------------------------------------------------------------------------------
+
+    template< typename T_CHAR >
+    struct const_crc
+    {
+        template< std::size_t T_LENGTH >
+        constexpr const_crc( T_CHAR(&Str)[T_LENGTH] )   noexcept : m_Str{Str}, m_CRC{ crc::FromString<32>(Str) } {}
+        constexpr const_crc( void )                     noexcept = default;
+
+        constant<char>      m_Str;
+        crc::units<32>      m_CRC;
+    };
 
     //------------------------------------------------------------------------------------
     // fixed - fixed size string class
@@ -455,10 +472,8 @@ namespace xcore::string
             return p;
         }
 
-        constexpr auto getView( void )          const   noexcept { return static_cast<const view<char>>(*this); }
-        constexpr auto getView( void )                  noexcept { return static_cast<view<char>>(*this); }
-        constexpr auto getViewFrom( int Start ) const   noexcept { return string::view{ &(*this)[Start], static_cast<int>(size()-Start) }; }
-        constexpr auto getViewFrom( int Start )         noexcept { return string::view{ &(*this)[Start], static_cast<int>(size()-Start) }; }
+        constexpr auto getView( void )          const   noexcept { return static_cast<const string::view<const char>>(*this); }
+        constexpr auto getView( void )                  noexcept { return static_cast<string::view<char>>(*this); }
 
         constexpr                   operator const char_t*              ( void )                    const   noexcept { return data(); }
                                     operator       char_t*              ( void )                            noexcept { return data(); }

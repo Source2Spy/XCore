@@ -61,6 +61,7 @@
     <ClInclude Include="..\..\src\xcore_array.h" />
     <ClInclude Include="..\..\src\xcore_assert.h" />
     <ClInclude Include="..\..\src\xcore_bits.h" />
+    <ClInclude Include="..\..\src\xcore_cmdline.h" />
     <ClInclude Include="..\..\src\xcore_context.h" />
     <ClInclude Include="..\..\src\xcore_crc.h" />
     <ClInclude Include="..\..\src\xcore_endian.h" />

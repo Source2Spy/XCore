@@ -53,7 +53,7 @@ namespace xcore::string
     auto CopyN( T1& Dest, const T2& Src, units<decltype(Src[0])> Count ) noexcept 
     { 
         // Make sure Destination is ready to get the right data
-        if constexpr(is_ref_v<T1>) Dest.ResetToSize( Count );
+        if constexpr(is_ref_v<T1>) Dest.ResetToSize( units<T1::char_t>{ Count.m_Value } );
 
         if constexpr(is_obj_v<T2>)  return details::CopyN<T1::char_t,T2::char_t>(Dest,Src,Count); 
         else                        return details::CopyN<T1::char_t>(Dest,Src,Count); 

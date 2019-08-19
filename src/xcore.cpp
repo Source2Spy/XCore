@@ -18,4 +18,5 @@
 #include "Implementation/xcore_sprintf.cpp"
 #include "Implementation/xcore_scheduler.cpp"
 
+#include "Implementation/xcore_cmdline.cpp"
 

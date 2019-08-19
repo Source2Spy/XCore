@@ -43,6 +43,9 @@ namespace xcore
     template <class T, size_t N>
     span(const std::array<T, N>&)->span<const T, N>;
 
+    template <class T>
+    span(T*,int)->span<T>;
+
     template <class Container>
     span(Container&)->span<typename Container::value_type>;
 

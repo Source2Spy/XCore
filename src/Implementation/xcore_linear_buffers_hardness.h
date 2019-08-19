@@ -29,7 +29,7 @@ auto ViewFromTo( T iStart, T iEnd ) noexcept
     xassert( iStart >= 0 );
     xassert( iEnd   <= size() );
     xassert( iStart <= iEnd );
-    return xcore::span{ &(*this)[ iStart ], iEnd - iStart };
+    return xcore::span{ &(*this)[ iStart ], static_cast<std::size_t>(iEnd - iStart) };
 }
 
         //------------------------------------------------------------------------------
