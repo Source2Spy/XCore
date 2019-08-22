@@ -34,15 +34,18 @@ namespace xcore::string
         {
             xassume( Dest  );
             xassume( pSrc  );
-            xassume( Count.m_Value >= 0 );
+            xassume( Count.m_Value > 0 );
             xassume( Dest.size() > Count.m_Value );
 
-            Dest[Count.m_Value--] = 0;
-            while( Count.m_Value >= 0 )
-            {
-                Dest[Count.m_Value] = pSrc[Count.m_Value];
-                Count.m_Value--;
-            }
+			if(Count.m_Value)
+			{
+				Dest[Count.m_Value] = 0;
+				do
+				{
+					Count.m_Value--;
+					Dest[Count.m_Value] = pSrc[Count.m_Value];
+				} while (Count.m_Value);
+			}
     
             return units<T_C1>{ Count.m_Value };
         }
@@ -53,7 +56,7 @@ namespace xcore::string
     auto CopyN( T1& Dest, const T2& Src, units<decltype(Src[0])> Count ) noexcept 
     { 
         // Make sure Destination is ready to get the right data
-        if constexpr(is_ref_v<T1>) Dest.ResetToSize( units<T1::char_t>{ Count.m_Value } );
+        if constexpr(is_ref_v<T1>) Dest.ResetToSize( units<T1::char_t>{ Count.m_Value + 1 } );
 
         if constexpr(is_obj_v<T2>)  return details::CopyN<T1::char_t,T2::char_t>(Dest,Src,Count); 
         else                        return details::CopyN<T1::char_t>(Dest,Src,Count); 

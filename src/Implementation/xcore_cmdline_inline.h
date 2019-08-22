@@ -12,15 +12,15 @@ namespace xcore::cmdline
     //------------------------------------------------------------------------------------
     inline
     cmd::handle parser::AddCmdSwitch(
-        string::const_crc<char>     Name,
-        std::int32_t                MinArgCount,
-        std::int32_t                MaxArgCount,
-        std::int32_t                nMinTimes,
-        std::int32_t                nMaxTimes,
-        bool                        MustFallowOrder,
-        type                        Type,
-        bool                        bMainSwitch,
-        std::int32_t                iParentID ) noexcept
+        string::const_crc<char>		        Name,
+        std::int32_t						MinArgCount,
+        std::int32_t						MaxArgCount,
+        std::int32_t						nMinTimes,
+        std::int32_t						nMaxTimes,
+        bool								MustFallowOrder,
+        type								Type,
+        bool								bMainSwitch,
+        std::int32_t						iParentID ) noexcept
     {
         cmd_def& CmdDef         = m_CmdDef.append();
 

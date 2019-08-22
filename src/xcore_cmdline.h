@@ -134,7 +134,7 @@ namespace xcore::cmdline
     {
     public:
 
-        xforceinline   cmd::handle       AddCmdSwitch        (   string::const_crc<char>                 Name,
+        xforceinline   cmd::handle       AddCmdSwitch        (  string::const_crc<char>					Name,
                                                                 std::int32_t                            MinArgCount     =  0, 
                                                                 std::int32_t                            MaxArgCount     = -1, 
                                                                 std::int32_t                            nMinTimes       =  0, 
@@ -156,7 +156,7 @@ namespace xcore::cmdline
 
         struct cmd_def
         {
-            string::const_crc<char>     m_NameInfo      {}; // switch name
+            string::const_crc<char>		m_NameInfo      {}; // switch name
             std::int32_t                m_MinArgCount   {}; // Minimum number of arguments that this switch can have
             std::int32_t                m_MaxArgCount   {}; // Max number of arguments that this switch can have    
             std::int32_t                m_nMaxTimes     {}; // MAximun of times that this switch can exits (-1) infinite

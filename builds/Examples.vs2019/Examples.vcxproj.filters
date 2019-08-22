@@ -261,6 +261,9 @@
     <ClInclude Include="..\..\src\xcore_cmdline.h">
       <Filter>xCore</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\src\Examples\xcore_cmdline_example.h">
+      <Filter>Examples</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\src\xcore.cpp">

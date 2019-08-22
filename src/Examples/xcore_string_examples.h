@@ -156,13 +156,13 @@ namespace xcore::string::examples
         //----------------------------------------------------------------------
         // Passing constant strings to a function
         PassingToConstantFunction( F );
-        PassingToConstantFunction( R );
+    //    PassingToConstantFunction( R );    // will assert because it gets it as a data()
         PassingToConstantFunction( C );
 
         //----------------------------------------------------------------------
         // Passing mutable strings to a function
         PassingToMutableFunction( F );
-        PassingToMutableFunction( R );
+    //    PassingToMutableFunction( R );	// will assert because it gets it as a data()	
         // PassingToMutableFunction( C );   // This won't work because is a read only data
 
         //----------------------------------------------------------------------
