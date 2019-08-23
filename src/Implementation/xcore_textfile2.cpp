@@ -1748,7 +1748,7 @@ namespace xcore::textfile::version_2
         if( m_iLine == 1 )
         {
             // If we have a mapping then lets see if we can determine the types
-            if( m_DataMapping[m_iColumn] != - 1 )
+            if( m_DataMapping[m_iColumn] == - 1 )
             {
                 auto& Column = m_Columns[m_DataMapping[m_iColumn]];
                 if( Column.m_nTypes >= Args.size() )

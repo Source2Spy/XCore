@@ -185,7 +185,7 @@ namespace xcore::lockless::queues::examples
 
     void Test(void)
     {
-        for (int i = 0; i < 300; ++i)
+        for (int i = 0; i < 5; ++i)
         {
             printf("--- Run %d ---\n", i);
             testQueue<xcore::lockless::queues::v1::mpmc_bounded >("V1");
