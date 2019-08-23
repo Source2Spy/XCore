@@ -9,12 +9,11 @@
 #include "xcore_rtti_examples.h"
 #include "xcore_vector_examples.h"
 #include "xcore_properties.h"
-#include "xcore_lockless_q.h"
+#include "xcore_lockless_queue.h"
 #include "xcore_unique_span.h"
 #include "xcore_scheduler_examples.h"
 #include "xcore_math_vector3d_examples.h"
 #include "xcore_cmdline_example.h"
-
 
 namespace xcore::examples
 {

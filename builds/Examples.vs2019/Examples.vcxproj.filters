@@ -153,9 +153,6 @@
     <ClInclude Include="..\..\src\xcore_lockless_queues.h">
       <Filter>xCore</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\src\Examples\xcore_lockless_q.h">
-      <Filter>Examples</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\src\Examples\xcore_unique_span.h">
       <Filter>Examples</Filter>
     </ClInclude>
@@ -262,6 +259,9 @@
       <Filter>xCore</Filter>
     </ClInclude>
     <ClInclude Include="..\..\src\Examples\xcore_cmdline_example.h">
+      <Filter>Examples</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\Examples\xcore_lockless_queue.h">
       <Filter>Examples</Filter>
     </ClInclude>
   </ItemGroup>
