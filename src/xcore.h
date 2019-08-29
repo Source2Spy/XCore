@@ -43,6 +43,7 @@ namespace xcore
     namespace context   { struct base;   }
     namespace scheduler { struct local_storage_data { std::uint32_t m_ThreadID; constexpr local_storage_data(std::nullptr_t) : m_ThreadID{~0u}{} }; }
     namespace system    { class registration; }
+    namespace file      { class device_i;  void InitSystem(std::vector<device_i*>&) noexcept; }
 }
 
 //---------------------------------------------------------------------------
@@ -127,6 +128,10 @@ namespace xcore { using namespace xcore::math; }
 // Cmdline
 #include "xcore_cmdline.h"
 
+// file
+#include "xcore_file.h"
+
+
 //---------------------------------------------------------------------------
 // Inline functions
 //---------------------------------------------------------------------------
@@ -151,6 +156,7 @@ namespace xcore { using namespace xcore::math; }
 #include "Implementation/xcore_math_irect_inline.h"
 
 #include "Implementation/xcore_cmdline_inline.h"
+#include "Implementation/xcore_file_inline.h"
 
 //---------------------------------------------------------------------------
 // END

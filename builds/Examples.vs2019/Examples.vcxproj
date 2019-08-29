@@ -26,6 +26,7 @@
     <ClInclude Include="..\..\src\Examples\xcore_cmdline_example.h" />
     <ClInclude Include="..\..\src\Examples\xcore_error_examples.h" />
     <ClInclude Include="..\..\src\Examples\xcore_examples.h" />
+    <ClInclude Include="..\..\src\Examples\xcore_file_example.h" />
     <ClInclude Include="..\..\src\Examples\xcore_function_examples.h" />
     <ClInclude Include="..\..\src\Examples\xcore_guid_examples.h" />
     <ClInclude Include="..\..\src\Examples\xcore_lockless_pool_examples.h" />
@@ -39,6 +40,7 @@
     <ClInclude Include="..\..\src\Examples\xcore_textfile_examples.h" />
     <ClInclude Include="..\..\src\Examples\xcore_unique_span.h" />
     <ClInclude Include="..\..\src\Examples\xcore_vector_examples.h" />
+    <ClInclude Include="..\..\src\Implementation\xcore_file_inline.h" />
     <ClInclude Include="..\..\src\Implementation\xcore_linear_buffers_hardness.h" />
     <ClInclude Include="..\..\src\Implementation\xcore_math_bbox_inline.h" />
     <ClInclude Include="..\..\src\Implementation\xcore_math_inline.h" />
@@ -68,6 +70,7 @@
     <ClInclude Include="..\..\src\xcore_endian.h" />
     <ClInclude Include="..\..\src\xcore_error.h" />
     <ClInclude Include="..\..\src\xcore_event.h" />
+    <ClInclude Include="..\..\src\xcore_file.h" />
     <ClInclude Include="..\..\src\xcore_function.h" />
     <ClInclude Include="..\..\src\xcore_global.h" />
     <ClInclude Include="..\..\src\xcore_guid.h" />

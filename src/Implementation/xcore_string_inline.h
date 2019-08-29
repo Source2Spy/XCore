@@ -84,7 +84,7 @@ namespace xcore::string
     
             const auto Max =  Dest.size() - 1;
             details::size_t i;
-            for( i=0; (Dest[i] = pSrc[i]) && (i < Max); i++ );
+            for( i=0; (Dest[i] = static_cast<std::decay_t<decltype(Dest[i])>>(pSrc[i])) && (i < Max); i++ );
     
             xassert_block_medium()
             {
@@ -136,6 +136,24 @@ namespace xcore::string
     {
         static_assert( is_view_v<T1> );
         return Copy(Dest,Src);
+    }
+
+    //------------------------------------------------------------------------------
+    // CompareN
+    //------------------------------------------------------------------------------
+
+    template< typename T1, typename T2 > constexpr   
+    int CompareN( const T1& Dest, const T2& Src, int Count ) noexcept
+    {
+        for (int i = 0; i < Count; i++)
+        {
+            std::uint16_t A = Dest[i];
+            std::uint16_t B = Src[i];
+            if (A < B) return -1;
+            if (A > B) return 1;
+            if (A == 0) return 0;
+        }
+        return 0;
     }
 
     //------------------------------------------------------------------------------

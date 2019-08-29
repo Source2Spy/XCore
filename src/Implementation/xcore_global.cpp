@@ -44,6 +44,7 @@ xcore::global::state::state( const char* pAppName ) noexcept
     ,   m_MainLogger    { *new log::logger }
     ,   m_Scheduler     { *new scheduler::system }
 {
+    xcore::file::InitSystem(m_lFileDevice);
     xassert(m_pAppName);
 }
 

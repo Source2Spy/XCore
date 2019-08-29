@@ -159,12 +159,15 @@ namespace xcore::lockless::pool
                 unique_span<bool>   Checks;
 
                 // Alloc and clear the memory to mark what it has been freed so far
-                Checks.New( Count, false );
-        
+                auto Error = Checks.New( Count, false );
+                xassert(Error == false);
+
                 // Mark all nodes that have been free so far
-                for( head Next = m_Head; Next.load(std::memory_order_relaxed); Next.store( Next.load(std::memory_order_relaxed)->m_Next, std::memory_order_relaxed ) )
+                for(next* pNext = m_Head.load(std::memory_order_relaxed)
+                     ; pNext
+                     ; pNext = pNext->m_Next.load(std::memory_order_relaxed) )
                 {
-                    const auto Index = static_cast<int>( reinterpret_cast<value_type*>(Next.load(std::memory_order_relaxed)) - reinterpret_cast<value_type*>( &m_Allocator[0] ) );
+                    const auto Index = static_cast<int>( reinterpret_cast<value_type*>(pNext) - reinterpret_cast<value_type*>( &m_Allocator[0] ) );
             
                     // make sure there is not strange situations
                     xassert( Checks[ Index ] == false );

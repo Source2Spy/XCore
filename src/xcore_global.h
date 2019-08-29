@@ -68,11 +68,12 @@ namespace xcore::global
         using local_cleanup  = xcore::lock::object<std::vector<std::unique_ptr<details::local_storage_data>>,xcore::lock::spin>;
         using system_reg     = xcore::lock::object< std::unordered_map<std::uint64_t, xcore::system::registration*>, lock::spin >;
         
-        system_reg                      m_SystemReg         {};
-        local_cleanup                   m_LocalCleanup      {};
-        local_storage                   m_LocalStorage      {};
-        log::logger&                    m_MainLogger;
-        scheduler::system&              m_Scheduler;
+        system_reg                                  m_SystemReg         {};
+        local_cleanup                               m_LocalCleanup      {};
+        local_storage                               m_LocalStorage      {};
+        log::logger&                                m_MainLogger;
+        scheduler::system&                          m_Scheduler;
+        std::vector<xcore::file::device_i*>         m_lFileDevice       {};
 
         const char* const               m_pAppName          { nullptr };
         inline static state_ptr_type    ms_Instance         { nullptr };

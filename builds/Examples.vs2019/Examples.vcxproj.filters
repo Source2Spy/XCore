@@ -264,6 +264,15 @@
     <ClInclude Include="..\..\src\Examples\xcore_lockless_queue.h">
       <Filter>Examples</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\src\xcore_file.h">
+      <Filter>xCore</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\Implementation\xcore_file_inline.h">
+      <Filter>xCore\Implementation</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\Examples\xcore_file_example.h">
+      <Filter>Examples</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\src\xcore.cpp">

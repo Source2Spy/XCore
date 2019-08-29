@@ -33,7 +33,7 @@ namespace xcore::string
         using char_t = T_CHAR;
         using units  = units<char_t>;
         constexpr static auto size_v = T_SIZE_V;
-        using parent = xcore::span<char_t,T_SIZE_V>;
+        using parent = xcore::span<char_t,size_v>;
         using parent::operator =;
         using parent::span;
 
@@ -46,6 +46,8 @@ namespace xcore::string
         constexpr   auto            ViewFrom                        ( int Start )                       noexcept { return static_cast<view&&>(parent::ViewFrom(Start)); }
         constexpr   auto            ViewFromTo                      ( int Start, int To )       const   noexcept { return static_cast<view&&>(parent::ViewFromTo(Start,To)); }
         constexpr   auto            ViewFromTo                      ( int Start, int To )               noexcept { return static_cast<view&&>(parent::ViewFromTo(Start,To)); }
+        constexpr   auto            ViewTo                          ( int To )                  const   noexcept { return static_cast<view&&>(parent::ViewFromTo(0, To)); }
+        constexpr   auto            ViewTo                          ( int To )                          noexcept { return static_cast<view&&>(parent::ViewFromTo(0, To)); }
     };
      
     // Deduction Guides
@@ -155,8 +157,8 @@ namespace xcore::string
         constexpr static    auto    size                                        ( void )                                    noexcept { return ms_BufferSize.m_Value; }
         inline              auto    get                                         ( void )                                    noexcept { return parent::data(); }
         constexpr           auto    get                                         ( void )                            const   noexcept { return parent::data(); }
-        inline              auto    getView                                     ( void )                                    noexcept { return static_cast<view<char>>(*this); }
-        constexpr           auto    getView                                     ( void )                            const   noexcept { return static_cast<const view<char>>(*this); }
+        inline              auto    getView                                     ( void )                                    noexcept { return static_cast<view<char_t>>(*this); }
+        constexpr           auto    getView                                     ( void )                            const   noexcept { return static_cast<const view<char_t>>(*this); }
         inline              auto    getViewFrom                                 ( int Start )                               noexcept { return string::view{ &(*this)[Start], static_cast<int>(size()-Start) }; }
         constexpr           auto    getViewFrom                                 ( int Start )                       const   noexcept { return string::view{ &(*this)[Start], static_cast<int>(size()-Start) }; }
         constexpr           bool    empty                                       ( void )                            const   noexcept { return parent::data()[0] == 0; }
@@ -276,7 +278,7 @@ namespace xcore::string
             return Size;
         }
 
-        void clean( void ) noexcept
+        void clear( void ) noexcept
         {
             m_Ref.emplace<cache_t>();
             (*this)[0] = 0;
@@ -329,7 +331,7 @@ namespace xcore::string
             // Size in number of buffer size "a" == Length/Characters == 1, == 'a/0' == Size == 2
             const details::size_t Size = Characters.m_Value + 1;
 
-            m_Ref.emplace<share_t>( new xcore::string::ref<char>{ units{Size} } );
+            m_Ref.emplace<share_t>(new xcore::string::ref<char_t>{ units{Size} });
             (*this)[0]=0;
             return *this;
         }
@@ -599,6 +601,7 @@ namespace xcore::string
     template< typename T1, typename T2 >    constexpr   auto            CopyN           ( T1& Dest, const T2& Src,  units<decltype(Src[0])> Count )                 noexcept;
     template< typename T1, typename T2 >    constexpr   auto            Copy            ( T1& Dest, const T2& Src )                                                 noexcept;
     template< typename T1, typename T2 >    constexpr   auto            Append          ( T1& Dest, const T2& Src )                                                 noexcept;
+    template< typename T1, typename T2 >    constexpr   int             CompareN        ( const T1& Dest, const T2& Src, int Count )                 noexcept;
 
     //                                        inline      units<char>     sprintf         ( view<char> Dest, const char*, ... )                                       noexcept;
     

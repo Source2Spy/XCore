@@ -57,7 +57,7 @@ namespace xcore::units
         constexpr               auto            operator /  ( const T_PARENT X )    const   noexcept { return T_PARENT{ m_Value / X.m_Value };       }
     };
 
-    struct bytes : type<bytes, int>
+    struct bytes : type<bytes, std::int64_t>
     {
         using type::type;
         using type::operator =;

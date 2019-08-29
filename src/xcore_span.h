@@ -18,13 +18,13 @@ namespace xcore
         using parent::size; 
 
         template < typename C = size_type, typename = std::enable_if_t<T_SIZE!=std::dynamic_extent> >  
-        constexpr static auto     size            ( void )                noexcept
+        constexpr static auto size ( void ) noexcept
         { 
             return T_SIZE; 
         }        
 
-        template < typename C,             typename = std::enable_if_t<T_SIZE==std::dynamic_extent> >  
-        constexpr static bool     isIndexValid    ( C i )                 noexcept    
+        template < typename C, typename = std::enable_if_t<T_SIZE==std::dynamic_extent> >  
+        constexpr static bool isIndexValid ( C i ) noexcept    
         { 
             return i >= 0 && i <= static_cast<decltype(i)>(T_SIZE);         
         }
