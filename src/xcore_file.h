@@ -111,7 +111,7 @@ namespace xcore::file
     //         "a" or "a+"    Reading and Writing       - the file must exists, and it will do an automatic SeekEnd(0). 
     //  
     //         "@"            Asynchronous Mode         - Allows you to use async features.
-    //         "c"            Enable File Compression   - This must be use with 'w'. It will compress at file close.
+    //         "c"            Enable File Compression   - (No Supported) This must be use with 'w'. It will compress at file close.
     //  
     //         "b"            Binary files Mode         - This is the default so you don't need to put it really. 
     //         "t"            Text file Mode            - For writing or Reading text files. If you don't add this assumes you are doing binary files.             
@@ -136,14 +136,14 @@ namespace xcore::file
     //<TABLE>
     //     Known devices      Description
     //     =================  ----------------------------------------------------------------------------------------
-    //          ram:          To use ram as a file device
-    //          dvd:          To use the dvd system of the console
-    //          net:          To access across the network
-    //          temp:         To the temporary folder/drive for the machine
-    //          memcard:      To access memory card file system
-    //          localhd:      To access local hard-drives such the ones found in the XBOX
-    //          buffer:       User provided buffer data
-    //          c: d: e:      ...etc local devices such PC drives
+    //          ram:\          (No Supported) To use ram as a file device
+    //          dvd:\          (No Supported) To use the dvd system of the console
+    //          net:\          (No Supported) To access across the network
+    //          temp:\         To the temporary folder/drive for the machine
+    //          memcard:\      (No Supported) To access memory card file system
+    //          localhd:\      (No Supported) To access local hard-drives such the ones found in the XBOX
+    //          buffer:\       (No Supported) User provided buffer data
+    //          c:\ d:\ e:\    ...etc local devices such PC drives
     //</TABLE>
     //
     //     Example of open strings:
