@@ -54,6 +54,7 @@ xcore::global::state::~state( void ) noexcept
 {
     delete(&m_MainLogger);
     delete(&m_Scheduler);
+    for (auto& pE : m_lFileDevice) delete pE;
 }
 
 //-----------------------------------------------------------------------------------------------

@@ -6,8 +6,13 @@ namespace xcore::file::examples
 
     xcore::err syncModeTest( string::view<wchar_t> FileName, bool bCloseFile )
     {
-        file::stream   File;
-        xcore::err     Error;
+        file::stream            File;
+        xcore::err              Error;
+        xcore::error::scope     Scope(Error, [&]
+        {
+            int x = 22;
+            XCORE_BREAK;
+        });
 
         //
         // Write file
@@ -56,8 +61,14 @@ namespace xcore::file::examples
         //
         // Read file
         //
-        if (bCloseFile) if (File.open(FileName, "r").isError(Error)) return Error;
-        else            if (File.SeekOrigin(units::bytes{ 0 }).isError(Error)) return Error;
+        if (bCloseFile)
+        {
+            if (File.open(FileName, "r").isError(Error)) return Error;
+        }
+        else
+        {
+            if (File.SeekOrigin(units::bytes{ 0 }).isError(Error)) return Error;
+        }
 
         if (File.getFileLength(FileSize).isError(Error)) return Error;
         RealSize = units::bytes{ string::Length( Header ).m_Value } +units::bytes{ 1 };
@@ -102,6 +113,10 @@ namespace xcore::file::examples
         std::array<xcore::unique_span<std::int32_t>, 2> Buffer;
         file::stream                                    File;
         xcore::err                                      Error;
+        xcore::error::scope                             Scope(Error, [&]
+            {
+                XCORE_BREAK;
+            });
 
         if (Buffer[0].New(DataSize).isError(Error)) return Error;
         if (Buffer[1].New(DataSize).isError(Error)) return Error;
@@ -131,7 +146,11 @@ namespace xcore::file::examples
                     }
 
                     if (File.Synchronize(true).isError(Error)) return Error;
-                    if (File.WriteView(Buffer[i & 1]).isError(Error)) return Error;
+                    if (File.WriteView(Buffer[i & 1]).isError(Error))
+                    {
+                        if (Error.getCode().getState<file::error>() == file::error::INCOMPLETE) Error.clear();
+                        else return Error;
+                    }
                 }
 
                 if (File.Synchronize(true).isError(Error)) return Error;
@@ -160,12 +179,20 @@ namespace xcore::file::examples
                 int     k = 0;
 
                 // Read the first entry
-                if (File.ReadView(Buffer[0]).isError(Error)) return Error;
+                if (File.ReadView(Buffer[0]).isError(Error))
+                {
+                    if (Error.getCode().getState<file::error>() == file::error::INCOMPLETE) Error.clear();
+                    else return Error;
+                }
 
                 // Start reading 
                 for (int i = 1; i < Steps; i++)
                 {
-                    if (File.ReadView(Buffer[i & 1]).isError(Error)) return Error;
+                    if (File.ReadView(Buffer[i & 1]).isError(Error))
+                    {
+                        if (Error.getCode().getState<file::error>() == file::error::INCOMPLETE) Error.clear();
+                        else return Error;
+                    }
 
                     // this is overlap/running in parallel with actual reading of the file
                     for (auto& E : Buffer[(i ^ 1) & 1])
@@ -193,10 +220,15 @@ namespace xcore::file::examples
 
     void Tests(void)
     {
-        auto E = syncModeTest( string::constant(L"temp:/test.dat"), true);
-        E = asyncModeTest(string::constant(L"temp:/asyncMode.dat"), true);
+        for (int i = 0; i < 2; ++i)
+        {
+           (void)syncModeTest(string::constant(L"temp:/test.dat"), i);
+           (void)asyncModeTest(string::constant(L"temp:/asyncMode.dat"), i);
+        }
 
-        E = syncModeTest(string::constant(L"ram:/test.dat"), false);
-        E = asyncModeTest(string::constant(L"ram:/asyncMode.dat"), false);
+        //E = syncModeTest(string::constant(L"ram:/test.dat"), false);
+        //E = asyncModeTest(string::constant(L"ram:/asyncMode.dat"), false);
+
+        int a = 22;
     }
 }

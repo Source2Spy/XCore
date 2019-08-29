@@ -10,8 +10,9 @@ namespace xcore::error
     template< typename T_CLASS, typename T >
     struct scope
     {
-        constexpr   scope (T_CLASS& Error, T&& Callback)  noexcept : m_Error{ Error }, m_Callback{ Callback } {}
-        inline     ~scope (void)                          noexcept { if (m_Error) m_Callback(); }
+        constexpr   scope (T_CLASS& Error, T&& Callback)    noexcept : m_Error{ Error }, m_Callback{ Callback } {}
+        inline     ~scope (void)                            noexcept { if ( m_Error ) m_Callback(); }
+
         T           m_Callback;
         T_CLASS&    m_Error;
     };
@@ -96,19 +97,19 @@ namespace xcore::error
 
     public:
 
-        constexpr                       err                ( void )                                 noexcept = default;
-        constexpr                       err                ( const code& Code )                     noexcept : m_pCode{ &Code } {}
-        constexpr                       err                ( const err&  Error )                    noexcept = delete;
-        constexpr                       err                (       err&& Error )                    noexcept : m_pCode{ Error.m_pCode } { Error.m_pCode = nullptr; }
-        inline                         ~err                ( void )                                 noexcept { xassert(!m_pCode); }
-        inline       err&              operator =          ( err&& Error )                          noexcept { xassert(m_pCode==nullptr); m_pCode = Error.m_pCode; Error.m_pCode = nullptr; return *this; }
-        inline       err&              operator =          ( const code&& Code )                    noexcept { xassert(m_pCode==nullptr); m_pCode = &Code; return *this; }
+        constexpr                       err                 ( void )                                noexcept = default;
+        constexpr                       err                 ( const code& Code )                    noexcept : m_pCode{ &Code } {}
+        constexpr                       err                 ( const err&  Error )                   noexcept = delete;
+        constexpr                       err                 (       err&& Error )                   noexcept : m_pCode{ Error.m_pCode } {}
+        inline                         ~err                 ( void )                                noexcept {}
+        inline       err&              operator =           ( err&& Error )                         noexcept { xassert(m_pCode==nullptr); m_pCode = Error.m_pCode; return *this; }
+        inline       err&              operator =           ( const code&& Code )                   noexcept { xassert(m_pCode==nullptr); m_pCode = &Code; return *this; }
 
         constexpr   const auto&         getCode             ( void )                    const       noexcept { xassert(m_pCode); return *m_pCode; }
         inline      const auto&         getCodeAndClear     ( void )                                noexcept { auto& Code = getCode(); clear(); return Code; }
         constexpr                       operator bool       ( void )                    const       noexcept { return m_pCode; }
-        inline      bool                isError             ( err& F )                              noexcept { xassert(F.m_pCode==nullptr); F.m_pCode = m_pCode; m_pCode = nullptr; return  F.m_pCode; }
-        inline      bool                isOK                ( err& F )                              noexcept { xassert(F.m_pCode==nullptr); F.m_pCode = m_pCode; m_pCode = nullptr; return !F.m_pCode; }
+        inline      bool                isError             ( err& F )                              noexcept { xassert(F.m_pCode==nullptr); F.m_pCode = m_pCode; return  F.m_pCode; }
+        inline      bool                isOK                ( err& F )                              noexcept { xassert(F.m_pCode==nullptr); F.m_pCode = m_pCode; return !F.m_pCode; }
         inline      void                clear               ( void )                                noexcept { m_pCode = nullptr; }
         inline      void                CheckError          ( void )                                noexcept { xassert(m_pCode==nullptr); m_pCode = nullptr; }
 
@@ -126,7 +127,7 @@ namespace xcore::error
     public:
 
         constexpr               optional    ( T Value )                                         noexcept : err{}, m_OptValue{ Value } {}
-        constexpr               optional    ( err&& Err )                                      noexcept : err{ std::move(Err) }, m_OptValue{} {}
+        constexpr               optional    ( err&& Err )                                       noexcept : err{ std::move(Err) }, m_OptValue{} {}
         constexpr               optional    ( optional&& Op )                                   noexcept : err{ std::move(Op) },  m_OptValue{std::move(Op.m_OptValue)} {}
         constexpr    auto&      getValue    ( void )                                            noexcept { xassert( m_pCode == nullptr ); return m_OptValue; }
 

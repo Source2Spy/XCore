@@ -39,6 +39,7 @@ namespace xcore::file::driver
             HANDLE          m_Handle{};
             OVERLAPPED      m_Overlapped{};
             access_types    m_AccessTypes{};
+            bool            m_bIOPending{ false };
         };
 
         xcore::lockless::pool::mpmc_bounded_jitc<small_file, 128>   m_qtlFileHPool;
@@ -82,7 +83,7 @@ namespace xcore::file::driver
             {
                 auto L = string::Copy(FinalFileName, details::s_TempPath.m_Path);
                 xassert( FileName[5] == '/' );
-                string::Copy(FinalFileName.getView().ViewFrom(L.m_Value), &FinalFileName[5]);
+                string::Copy(FinalFileName.getView().ViewFrom(L.m_Value), &FileName[6]);
             }
             else
             {
@@ -207,6 +208,7 @@ namespace xcore::file::driver
 
                 case ERROR_IO_PENDING:
                 {
+                    File.m_bIOPending = true;
                     return xerr_code(Error, error::INCOMPLETE, "Still reading");
                 }
 
@@ -265,6 +267,7 @@ namespace xcore::file::driver
 
                 case ERROR_IO_PENDING:
                 {
+                    File.m_bIOPending = true;
                     return xerr_code(Error, error::INCOMPLETE, "Still writting");
                 }
 
@@ -284,18 +287,20 @@ namespace xcore::file::driver
         {
             xcore::err  Error;
             auto&       File            = *static_cast<small_file*>(pFile);
-            auto        HardwareMode    = FILE_BEGIN;
-            switch( Mode )
+            auto        HardwareMode = [](seek_mode Mode)
             {
-            case SKM_ORIGIN:                                break;
-            case SKM_CURENT: HardwareMode = FILE_CURRENT;   break;
-            case SKM_END:    HardwareMode = FILE_END;       break;
-            default:         xassert(0);                    break;
-            }
+                switch (Mode)
+                {
+                    case SKM_CURENT: return FILE_CURRENT;  
+                    case SKM_END:    return FILE_END;
+                }
+                xassert(Mode == SKM_ORIGIN);
+                return FILE_BEGIN;
+            }(Mode);
 
             // We will make sure we are sync here
             // WARNING: Potential time wasted here
-            if (File.m_AccessTypes.m_bASync )
+            if( File.m_AccessTypes.m_bASync )
             {
                 if (Synchronize(pFile, true).isError(Error)) return Error;
             }
@@ -333,7 +338,7 @@ namespace xcore::file::driver
             LARGE_INTEGER   Position;
             LARGE_INTEGER   NewFilePointer;
 
-            Position.LowPart = 0;
+            Position.LowPart  = 0;
             Position.HighPart = 0;
 
             if( FALSE == SetFilePointerEx(File.m_Handle, Position, &NewFilePointer, FILE_CURRENT) )
@@ -423,8 +428,12 @@ namespace xcore::file::driver
             xcore::err    Error;
             auto& File = *static_cast<small_file*>(pFile);
 
-            if (HasOverlappedIoCompleted(&File.m_Overlapped))
-                return Error; // xfile::sync_state::COMPLETED;
+            if( File.m_bIOPending )
+                if (HasOverlappedIoCompleted(&File.m_Overlapped))
+                {
+                    File.m_bIOPending = false;
+                    return Error; // xfile::sync_state::COMPLETED;
+                }
 
             // Get the current status.
             DWORD nBytesTransfer = 0;
@@ -437,6 +446,7 @@ namespace xcore::file::driver
                 // VERIFY( ResetEvent( File.m_Overlapped.hEvent ) == TRUE );
 
                 // The operation is complete.
+                File.m_bIOPending = false;
                 return Error; // xfile::sync_state::COMPLETED;
             }
 
@@ -455,7 +465,8 @@ namespace xcore::file::driver
 
             if (dwError == ERROR_IO_INCOMPLETE)
             {
-                return xerr_code(Error, error::INCOMPLETE, "Incompleate"); // xfile::sync_state::INCOMPLETE;
+                File.m_bIOPending = true;
+                return xerr_code(Error, error::INCOMPLETE, "Incomplete"); // xfile::sync_state::INCOMPLETE;
             }
 
             if (dwError == ERROR_OPERATION_ABORTED)
