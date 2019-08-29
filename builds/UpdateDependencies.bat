@@ -19,9 +19,12 @@ git clone https://github.com/RedSpah/meow_hash_cpp "../dependencies/meow_hash_cp
 
 rmdir "../dependencies/tracy" /S /Q
 git clone https://bitbucket.org/wolfpld/tracy/src/master/ "../dependencies/tracy"
+cd "../dependencies/tracy"
+git checkout 5e8b2a0
+cd %0/..
+
 
 rmdir "../dependencies/freetype" /S /Q
 git clone https://github.com/ubawurinna/freetype-windows-binaries.git "../dependencies/freetype"
-
 
 pause
