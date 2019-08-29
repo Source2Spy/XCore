@@ -273,6 +273,9 @@
     <ClInclude Include="..\..\src\Examples\xcore_file_example.h">
       <Filter>Examples</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\src\Implementation\windows\xcore_file_driver_pc.h">
+      <Filter>xCore\Implementation</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\src\xcore.cpp">

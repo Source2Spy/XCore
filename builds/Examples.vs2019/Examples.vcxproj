@@ -40,6 +40,7 @@
     <ClInclude Include="..\..\src\Examples\xcore_textfile_examples.h" />
     <ClInclude Include="..\..\src\Examples\xcore_unique_span.h" />
     <ClInclude Include="..\..\src\Examples\xcore_vector_examples.h" />
+    <ClInclude Include="..\..\src\Implementation\windows\xcore_file_driver_pc.h" />
     <ClInclude Include="..\..\src\Implementation\xcore_file_inline.h" />
     <ClInclude Include="..\..\src\Implementation\xcore_linear_buffers_hardness.h" />
     <ClInclude Include="..\..\src\Implementation\xcore_math_bbox_inline.h" />
