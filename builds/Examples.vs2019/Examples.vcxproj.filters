@@ -283,10 +283,10 @@
     </ClCompile>
     <ClCompile Include="..\..\src\Examples\main.cpp" />
     <ClCompile Include="..\..\src\xcore_profiler_1.cpp">
-      <Filter>xCore</Filter>
+      <Filter>xCore\Implementation</Filter>
     </ClCompile>
     <ClCompile Include="..\..\src\xcore_profiler_2.cpp">
-      <Filter>xCore</Filter>
+      <Filter>xCore\Implementation</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
