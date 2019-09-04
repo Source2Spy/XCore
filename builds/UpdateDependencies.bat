@@ -23,8 +23,15 @@ cd "../dependencies/tracy"
 git checkout 5e8b2a0
 cd %0/..
 
-
 rmdir "../dependencies/freetype" /S /Q
 git clone https://github.com/ubawurinna/freetype-windows-binaries.git "../dependencies/freetype"
+
+rem This may be needed at some point but right now we are not looking for too high speed of Compression.
+rem A better ratio with still fast decompression is prefer.
+rem rmdir "../dependencies/lz4" /S /Q
+rem git clone https://github.com/lz4/lz4.git "../dependencies/lz4"
+
+rmdir "../dependencies/zstd" /S /Q
+git clone https://github.com/facebook/zstd.git "../dependencies/zstd"
 
 pause

@@ -21,3 +21,8 @@
 #include "Implementation/xcore_cmdline.cpp"
 
 #include "Implementation/xcore_file.cpp"
+
+//--------------
+#include "../../dependencies/zstd/lib/common/zstd_common.c"
+
+
