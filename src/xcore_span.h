@@ -51,6 +51,16 @@ namespace xcore
 
     template <class Container>
     span(const Container&)->span<const typename Container::value_type>;
+
+    //------------------------------------------------------------------------------
+    // Copy data from one span to another
+    //------------------------------------------------------------------------------
+    template <typename T>
+    void MemCopy( std::span<T> dest, const std::span<T> src ) 
+    {
+        xassert( src.size() <= dest.size() );
+        std::memcpy( dest.data(), src.data(), src.size()*sizeof(T) );
+    }
 }
 
 #endif

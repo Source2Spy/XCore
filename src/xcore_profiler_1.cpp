@@ -21,7 +21,7 @@
 #include "../dependencies/tracy/client/tracySysTime.cpp"
 #include "../dependencies/tracy/client/tracyCallstack.cpp"
 #ifdef min
-    #undef min
+#   undef min
 #endif
 
 #include "../dependencies/tracy/client/tracySysTrace.cpp"
@@ -31,7 +31,7 @@
 // Adding memory profiling
 //--------------------------------------------------------------------------------
 #ifdef max
-    #undef max
+#   undef max
 #endif
 #include "xcore_profiler.h"
 
