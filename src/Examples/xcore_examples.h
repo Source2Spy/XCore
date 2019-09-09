@@ -15,6 +15,7 @@
 #include "xcore_math_vector3d_examples.h"
 #include "xcore_cmdline_example.h"
 #include "xcore_file_example.h"
+#include "xcore_compression_examples.h"
 
 namespace xcore::examples
 {
@@ -38,8 +39,10 @@ namespace xcore::examples
             xcore::math::examples::vector3s::Test();
             xcore::scheduler::examples::Test();
             xcore::cmdline::examples::Test();
+            xcore::file::examples::Tests();
         }
 
-        xcore::file::examples::Tests();
+        xcore::compression::examples::Test();
+
     }
 }

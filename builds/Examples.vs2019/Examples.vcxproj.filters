@@ -285,6 +285,9 @@
     <ClInclude Include="..\..\dependencies\zstd\lib\zstd.h">
       <Filter>xCore\Dependencies</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\src\Examples\xcore_compression_examples.h">
+      <Filter>Examples</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\src\xcore.cpp">

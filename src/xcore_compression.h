@@ -23,7 +23,6 @@ namespace xcore::compression
             xcore::err                      Pack          ( std::uint32_t& CompressedSize, std::span<std::byte> DestinationCompress ) noexcept;
 
             void*                       m_pCCTX{ nullptr };
-            void*                       m_pDCTX{ nullptr };
             std::uint64_t               m_Position{ 0 };
             std::span<const std::byte>  m_Src;
             std::uint32_t               m_BlockSize;
@@ -31,9 +30,11 @@ namespace xcore::compression
 
         struct decompression
         {
-            xcore::err                      Init          (void);
-            void                            Unpack        (std::span<std::byte> DestinationUncompress, const std::span<std::byte> SourceCompressed) noexcept;
-            xcore::unique_span<std::byte>   m_Dictionary;
+            xcore::err                      Init          (std::uint32_t BlockSize) noexcept;
+            xcore::err                      Unpack        (std::uint32_t& DecompressSize, std::span<std::byte> DestinationUncompress, const std::span<const std::byte> SourceCompressed) noexcept;
+            void*                       m_pDCTX{ nullptr };
+            std::span<const std::byte>  m_Src;
+            std::uint32_t               m_BlockSize;
         };
     }
 }

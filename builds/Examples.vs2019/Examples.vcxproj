@@ -25,6 +25,7 @@
     <ClInclude Include="..\..\dependencies\tracy\Tracy.hpp" />
     <ClInclude Include="..\..\dependencies\zstd\lib\zstd.h" />
     <ClInclude Include="..\..\src\Examples\xcore_cmdline_example.h" />
+    <ClInclude Include="..\..\src\Examples\xcore_compression_examples.h" />
     <ClInclude Include="..\..\src\Examples\xcore_error_examples.h" />
     <ClInclude Include="..\..\src\Examples\xcore_examples.h" />
     <ClInclude Include="..\..\src\Examples\xcore_file_example.h" />

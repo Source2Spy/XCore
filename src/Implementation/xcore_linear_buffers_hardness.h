@@ -71,6 +71,14 @@ auto ViewTo( T iEnd )
 }
 
 //------------------------------------------------------------------------------
+public: template< typename T > inline
+auto ViewTo(T iEnd) const
+{
+    xassert(iEnd <= size());
+    return xcore::span{ data(), iEnd };
+}
+
+//------------------------------------------------------------------------------
 public: inline
 auto View( void ) noexcept
 {
