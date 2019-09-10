@@ -276,6 +276,18 @@
     <ClInclude Include="..\..\src\Implementation\windows\xcore_file_driver_pc.h">
       <Filter>xCore\Implementation</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\src\xcore_serialicer.h">
+      <Filter>xCore</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\xcore_compression.h">
+      <Filter>xCore</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\dependencies\zstd\lib\zstd.h">
+      <Filter>xCore\Dependencies</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\Examples\xcore_compression_examples.h">
+      <Filter>Examples</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\src\xcore.cpp">

@@ -23,7 +23,9 @@
     <ClInclude Include="..\..\dependencies\properties\src\Properties.h" />
     <ClInclude Include="..\..\dependencies\span\include\tcb\span.hpp" />
     <ClInclude Include="..\..\dependencies\tracy\Tracy.hpp" />
+    <ClInclude Include="..\..\dependencies\zstd\lib\zstd.h" />
     <ClInclude Include="..\..\src\Examples\xcore_cmdline_example.h" />
+    <ClInclude Include="..\..\src\Examples\xcore_compression_examples.h" />
     <ClInclude Include="..\..\src\Examples\xcore_error_examples.h" />
     <ClInclude Include="..\..\src\Examples\xcore_examples.h" />
     <ClInclude Include="..\..\src\Examples\xcore_file_example.h" />
@@ -66,6 +68,7 @@
     <ClInclude Include="..\..\src\xcore_assert.h" />
     <ClInclude Include="..\..\src\xcore_bits.h" />
     <ClInclude Include="..\..\src\xcore_cmdline.h" />
+    <ClInclude Include="..\..\src\xcore_compression.h" />
     <ClInclude Include="..\..\src\xcore_context.h" />
     <ClInclude Include="..\..\src\xcore_crc.h" />
     <ClInclude Include="..\..\src\xcore_endian.h" />
@@ -95,6 +98,7 @@
     <ClInclude Include="..\..\src\xcore_scheduler_job.h" />
     <ClInclude Include="..\..\src\xcore_scheduler_system.h" />
     <ClInclude Include="..\..\src\xcore_scheduler_trigger.h" />
+    <ClInclude Include="..\..\src\xcore_serialicer.h" />
     <ClInclude Include="..\..\src\xcore_span.h" />
     <ClInclude Include="..\..\src\xcore_string.h" />
     <ClInclude Include="..\..\src\xcore_system_reg.h" />

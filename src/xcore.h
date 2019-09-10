@@ -131,6 +131,8 @@ namespace xcore { using namespace xcore::math; }
 // file
 #include "xcore_file.h"
 
+// Compression
+#include "xcore_compression.h"
 
 //---------------------------------------------------------------------------
 // Inline functions

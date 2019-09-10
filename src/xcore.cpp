@@ -21,3 +21,6 @@
 #include "Implementation/xcore_cmdline.cpp"
 
 #include "Implementation/xcore_file.cpp"
+
+#include "Implementation/xcore_compression.cpp"
+
