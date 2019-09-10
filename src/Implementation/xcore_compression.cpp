@@ -2,11 +2,11 @@
 #define ZSTD_STATIC_LINKING_ONLY
 #include "../../dependencies/zstd/lib/zstd.h"
 
-namespace xcore::compression::dictionary
+namespace xcore::compression
 {
     //-------------------------------------------------------------------------------------------------------
 
-    xcore::err compress::Init(std::uint32_t BlockSize, const std::span<std::byte> SourceUncompress) noexcept
+    xcore::err compress::Init(std::uint32_t BlockSize, const std::span<std::byte> SourceUncompress, level CompressionLevel) noexcept
     {
         xassert(!m_pCCTX);
         xcore::err Error;
@@ -15,7 +15,12 @@ namespace xcore::compression::dictionary
         if (!pCCTX)  return xerr_failure(Error, "Error ZSTD_createCCtx");
 
         ZSTD_CCtx_setParameter(pCCTX, ZSTD_c_targetCBlockSize, BlockSize);
-        ZSTD_CCtx_setParameter(pCCTX, ZSTD_c_compressionLevel, ZSTD_maxCLevel());
+        switch (CompressionLevel)
+        {
+        case level::FAST:           ZSTD_CCtx_setParameter(pCCTX, ZSTD_c_compressionLevel, 1 );                     break;
+        case level::MEDIUM:         ZSTD_CCtx_setParameter(pCCTX, ZSTD_c_compressionLevel, ZSTD_CLEVEL_DEFAULT );   break;
+        case level::HIGH:           ZSTD_CCtx_setParameter(pCCTX, ZSTD_c_compressionLevel, ZSTD_maxCLevel() );      break;
+        }
         ZSTD_CCtx_setParameter(pCCTX, ZSTD_c_srcSizeHint, (int)BlockSize);
 
         m_pCCTX     = (void*)pCCTX;
@@ -26,6 +31,7 @@ namespace xcore::compression::dictionary
     }
 
     //-------------------------------------------------------------------------------------------------------
+
     xcore::err compress::Pack(std::uint32_t& CompressedSize, std::span<std::byte> Destination) noexcept
     {
         xassert(m_Position <= m_Src.size());
@@ -80,7 +86,7 @@ namespace xcore::compression::dictionary
 
     //-------------------------------------------------------------------------------------------------------
 
-    xcore::err decompression::Init(std::uint32_t BlockSize) noexcept
+    xcore::err decompress::Init(std::uint32_t BlockSize) noexcept
     {
         xassert(!m_pDCTX);
         xcore::err Error;
@@ -90,7 +96,7 @@ namespace xcore::compression::dictionary
 
         ZSTD_DCtx_setParameter(pDCTX, ZSTD_d_windowLogMax, bits::Log2IntRoundUp(BlockSize) );
 
-        m_pDCTX = (void*)pDCTX;
+        m_pDCTX     = (void*)pDCTX;
         m_BlockSize = BlockSize;
 
         return Error;
@@ -98,7 +104,7 @@ namespace xcore::compression::dictionary
 
     //-------------------------------------------------------------------------------------------------------
 
-    xcore::err decompression::Unpack(std::uint32_t& DecompressSize, std::span<std::byte> DestinationUncompress, const std::span<const std::byte> SourceCompressed ) noexcept
+    xcore::err decompress::Unpack( std::uint32_t& DecompressSize, std::span<std::byte> DestinationUncompress, const std::span<const std::byte> SourceCompressed ) noexcept
     {
         xcore::err Error;
         
@@ -111,11 +117,14 @@ namespace xcore::compression::dictionary
             return xerr_failure(Error, "Error while compressing");
         }
 
-        DecompressSize = rtOut.pos;
+        DecompressSize = static_cast<std::uint32_t>(rtOut.pos);
         return Error;
     }
 }
 
+//-------------------------------------------------------------------------------------------------------
+// Add libz libraries
+//-------------------------------------------------------------------------------------------------------
 #if _XCORE_DEBUG
 #   pragma comment(lib, "../../dependencies/zstd/build/VS2010/bin/x64_Debug/libzstd_static.lib")
 #else

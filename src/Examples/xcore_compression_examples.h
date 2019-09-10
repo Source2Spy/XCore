@@ -4,141 +4,167 @@ namespace xcore::compression::examples
 {
     // Some random data
     constexpr static xcore::string::constant s_Buffer{ R"(
-    //------------------------------------------------------------------------------
-    // Description:
-    //     The command line class is used to help process command line options. These
-    //     options usually come from the CLI but they can also come from any other source.
-    //     The command handling is very verbose the help handle any time of commands. 
-    //
-    //<P>  There is two steps needed for the use of the class. First is to define valid commands.
-    //     This is done with the AddCmdSwitch switch. These will define all valid switches that the
-    //     program can understand. Each switch in turn can be of different types. The list can 
-    //     be found here xcore::cmdline::parser::type.  The class supports response files. This means that if the your 
-    //     enters @FileName it will  read command switches from that file. This is very handy to create 
-    //     scripts and very large command line lists. Inside the file the user can also enter other 
-    //     response file switches.
-    //
-    //<P>  One of the key commands which by default is supported is the questions mark '?'.
-    //     This will indicate to the class that the user needs help. This can be detected by
-    //     calling DoesUserNeedsHelp right after the Parse function.
-    //
-    //<P>  The second step is to call the appropriate Parse function. This function will start the  
-    //     process of parsing. The function GetCommandCount will allow you to loop throw all the switches.
-    //     Each switch will return any parameters as an xstring. You are responsible for converting 
-    //     those arguments to the actual type. Via x_atof32 or what ever other function you may need.
-    //     The class is design to allow reprocessing of the command line. Simply call ClearArguments
-    //     and ask the class to Parse some more.
-    //
-    //<P>  Explaining AddCmdSwitch(         // * The return value of the AddCmdSwitch is the ID of the switch
-    //          pName,                      // First is the name of the switch
-    //          MinArgCount,                // The switch itself may contain arguments so this is min count of them
-    //          MaxArgCount                 // This is MAX count of the arguments. Note -1 is infinity
-    //          nMinTimes                   // Number of times this switch can appear in the arguments
-    //          nMaxTimes                   // This how the maximum of times... and again -1 == infinity
-    //          MustFallowOrder             // This indicate if the switch must follow the order of its declaration via (AddCmdSwitch)
-    //          Type                        // The type that the arguments will be in
-    //          bMainSwitch                 // There is only 1 main switch allowed at a time. So in a way it to make the switch exclusive.
-    //                                      // Main switches may have children switches that are not main switches.
-    //          iParentID );                // Switches can be hierarchical so one switch may have other children switches
-    //
-    // Example:
-    //<CODE>
-    //  void BasicTest( void )
-    //  {
-    //      xcore::cmdline::parser  CmdLine;
-    //      const char*             pString = "-FileName SomeFile.txt -Res 640 480";
-    //  
-    //      // Add the command switches
-    //      CmdLine.AddCmdSwitch( X_STR_CRCSTR("FileName"), 1, 1, 1, 1, false, xcore::cmdline::parser::type::STRING );
-    //      CmdLine.AddCmdSwitch( X_STR_CRCSTR("Res"), 2, 2, 1, 1, false, xcore::cmdline::parser::type::INT );
-    //  
-    //      // Parse the command line
-    //      CmdLine.Parse( pString );
-    //      if( CmdLine.DoesUserNeedsHelp() )
-    //      {
-    //          log::Output( "-FileName <filename> -Res <xres> <yres> \n" );
-    //          return;
-    //      }
-    //  
-    //      // Handle commands
-    //      for( std::int32_t i=0; i<CmdLine.getCommandCount(); i++ )
-    //      {
-    //          const auto  Cmd     = CmdLine.getCommand(i);
-    // 
-    //          switch( Cmd.getCmdCRC() )
-    //          {
-    //              case crc::FromString<32>( "FileName" ):
-    //              {
-    //                  xassert( Cmd.getArgumentCount() == 1 );
-    //                  const xstring&  String = Cmd.getArgument( 0 );
-    //                  xassert( x_strcmp( "SomeFile.txt", &String[0] ) == 0 );
-    //                  break;
-    //              }
-    //              case crc::FromString<32>( "Res" ):
-    //              {
-    //                  xassert( Cmd.getArgumentCount() == 2 );
-    //                  const std::int32_t XRes   = x_atoi32<xchar>( Cmd.getArgument( 0 ) );
-    //                  const std::int32_t YRes   = x_atoi32<xchar>( Cmd.getArgument( 1 ) );
-    //                  xassert( XRes == 640 );
-    //                  xassert( YRes == 480 );
-    //                  break;
-    //              }
-    //              default: 
-    //                  xassert( false );
-    //          }
-    //     }
-    // }
-    //<CODE>  
-    //------------------------------------------------------------------------------
+            Hermia and Lysander were lovers; but Hermia's father wished her to marry another man, named Demetrius.
+            Now, in Athens, where they lived, there was a wicked law, by which any girl who refused to marry according to her father's wishes, 
+            might be put to death. Hermia's father was so angry with her for refusing to do as he wished, that he actually brought her before the 
+            Duke of Athens to ask that she might be killed, if she still refused to obey him. The Duke gave her four days to think about it, and, 
+            at the end of that time, if she still refused to marry Demetrius, she would have to die.
+            Lysander of course was nearly mad with grief, and the best thing to do seemed to him for Hermia to run away to his aunt's house 
+            at a place beyond the reach of that cruel law; and there he would come to her and marry her. But before she started, she told her 
+            friend, Helena, what she was going to do.
+            Helena had been Demetrius' sweetheart long before his marriage with Hermia had been thought of, and being very silly, like all 
+            jealous people, she could not see that it was not poor Hermia's fault that Demetrius wished to marry her instead of his own lady, 
+            Helena. She knew that if she told Demetrius that Hermia was going, as she was, to the wood outside Athens, he would follow her, 
+            'and I can follow him, and at least I shall see him,' she said to herself. So she went to him, and betrayed her friend's secret.
+            Now this wood where Lysander was to meet Hermia, and where the other two had decided to follow them, was full of fairies, as most 
+            woods are, if one only had the eyes to see them, and in this wood on this night were the King and Queen of the fairies, Oberon and Titania. 
+            Now fairies are very wise people, but now and then they can be quite as foolish as mortal folk. Oberon and Titania, who might have been 
+            as happy as the days were long, had thrown away all their joy in a foolish quarrel. They never met without saying disagreeable things to 
+            each other, and scolded each other so dreadfully that all their little fairy followers, for fear, would creep into acorn cups and hide them there.
+            So, instead of keeping one happy Court and dancing all night through in the moonlight as is fairies' use, the King with his attendants 
+            wandered through one part of the wood, while the Queen with hers kept state in another. And the cause of all this trouble was a little 
+            Indian boy whom Titania had taken to be one of her followers. Oberon wanted the child to follow him and be one of his fairy knights; but 
+            the Queen would not give him up.
+            On this night, in a mossy moonlit glade, the King and Queen of the fairies met.
+            'Ill met by moonlight, proud Titania,' said the King.
+            'What! jealous, Oberon?' answered the Queen. 'You spoil everything with your quarreling. Come, fairies, let us leave him. I am not friends with him now.'
+            'It rests with you to make up the quarrel,' said the King.
+            'Give me that little Indian boy, and I will again be your humble servant and suitor.'
+            'Set your mind at rest,' said the Queen. 'Your whole fairy kingdom buys not that boy from me. Come, fairies.'
+            And she and her train rode off down the moonbeams.
+            'Well, go your ways,' said Oberon. 'But I'll be even with you before you leave this wood.'
+            Then Oberon called his favorite fairy, Puck. Puck was the spirit of mischief. He used to slip into the dairies and take the cream away, and get into 
+            the churn so that the butter would not come, and turn the beer sour, and lead people out of their way on dark nights and then laugh at them, and 
+            tumble people's stools from under them when they were going to sit down, and upset their hot ale over their chins when they were going to drink.
+            'Now,' said Oberon to this little sprite, 'fetch me the flower called Love-in-idleness. The juice of that little purple flower laid on the eyes of 
+            those who sleep will make them, when they wake, to love the first thing they see. I will put some of the juice of that flower on my Titania's eyes, 
+            and when she wakes she will love the first thing she sees, were it lion, bear, or wolf, or bull, or meddling monkey, or a busy ape.'
+            While Puck was gone, Demetrius passed through the glade followed by poor Helena, and still she told him how she loved him and reminded him of all his 
+            promises, and still he told her that he did not and could not love her, and that his promises were nothing. Oberon was sorry for poor Helena, and 
+            when Puck returned with the flower, he bade him follow Demetrius and put some of the juice on his eyes, so that he might love Helena when he woke 
+            and looked on her, as much as she loved him. So Puck set off, and wandering through the wood found, not Demetrius, but Lysander, on whose eyes he put 
+            the juice; but when Lysander woke, he saw not his own Hermia, but Helena, who was walking through the wood looking for the cruel Demetrius; and directly 
+            lie saw her he loved her and left his own lady, under the spell of the purple flower.
+            When Hermia woke she found Lysander gone, and wandered about the wood trying to find him. Puck went back and told Oberon what lie had done, and Oberon 
+            soon found that he had made a mistake, and set about looking for Demetrius, and having found him, put some of the juice on his eyes. And the first thing 
+            Demetrius saw when he woke was also Helena. So now Demetrius and Lysander were both following her through the wood, and it was Hermia's turn to follow 
+            her lover as Helena had done before. The end of it was that Helena and Hermia began to quarrel, and Demetrius and Lysander went off to fight. Oberon 
+            was very sorry to see his kind scheme to help these lovers turn out so badly. So he said to Puck--
+            'These two young men are going to fight. You must overhang the night with drooping fog, and lead them so astray, that one will never find the 
+            other. When they are tired out, they will fall asleep. Then drop this other herb on Lysander's eyes. That will give him his old sight and his old 
+            love. Then each man will have the lady who loves him, and they will all think that this has been only a Midsummer Night's Dream. Then when this is done, 
+            all will be well with them.'
+            So Puck went and did as he was told, and when the two had fallen asleep without meeting each other, Puck poured the juice on Lysander's eyes, and said:--
+            'When thou wakest,
+            Thou takest
+            True delight
+            In the sight
+            Of thy former lady's eye:
+            Jack shall have Jill;
+            Nought shall go ill.'
+            Meanwhile Oberon found Titania asleep on a bank where grew wild thyme, oxlips, and violets, and woodbine, musk-roses and eglantine. There Titania always 
+            slept a part of the night, wrapped in the enameled skin of a snake. Oberon stooped over her and laid the juice on her eyes, saying:--
+            'What thou seest when thou wake,
+            Do it for thy true love take.'
+            Now, it happened that when Titania woke the first thing she saw was a stupid clown, one of a party of players who had come out into the wood to rehearse their 
+            play. This clown had met with Puck, who had clapped an ass's head on his shoulders so that it looked as if it grew there. Directly Titania woke and saw this 
+            dreadful monster, she said, 'What angel is this? Are you as wise as you are beautiful?'
+            'If I am wise enough to find my way out of this wood, that's enough for me,' said the foolish clown.
+            'Do not desire to go out of the wood,' said Titania. The spell of the love-juice was on her, and to her the clown seemed the most beautiful and 
+            delightful creature on all the earth. 'I love you,' she went on. 'Come with me, and I will give you fairies to attend on you.'
+            So she called four fairies, whose names were Peaseblossom, Cobweb, Moth, and Mustardseed.
+            'You must attend this gentleman,' said the Queen. 'Feed him with apricots and dewberries, purple grapes, green figs, and mulberries. Steal honey-bags 
+            for him from the bumble-bees, and with the wings of painted butterflies fan the moonbeams from his sleeping eyes.'
+            'I will,' said one of the fairies, and all the others said, 'I will.'
+            'Now, sit down with me,' said the Queen to the clown, 'and let me stroke your dear cheeks, and stick musk-roses in your smooth, sleek head, and kiss your 
+            fair large ears, my gentle joy.'
+            'Where's Peaseblossom?' asked the clown with the ass's head. He did not care much about the Queen's affection, but he was very proud of having fairies 
+            to wait on him. 'Ready,' said Peaseblossom.
+            'Scratch my head, Peaseblossom,' said the clown. 'Where's Cobweb?' 'Ready,' said Cobweb.
+            'Kill me,' said the clown, 'the red bumble-bee on the top of the thistle yonder, and bring me the honey-bag. Where's Mustardseed?'
+            'Ready,' said Mustardseed.
+            'Oh, I want nothing,' said the clown. 'Only just help Cobweb to scratch. I must go to the barber's, for methinks I am marvelous hairy about the face.'
+            'Would you like anything to eat?' said the fairy Queen.
+            'I should like some good dry oats,' said the clown--for his donkey's head made him desire donkey's food--'and some hay to follow.'
+            'Shall some of my fairies fetch you new nuts from the squirrel's house?' asked the Queen.
+            'I'd rather have a handful or two of good dried peas,' said the clown. 'But please don't let any of your people disturb me; I am going to sleep.'
+            Then said the Queen, 'And I will wind thee in my arms.'
+            And so when Oberon came along he found his beautiful Queen lavishing kisses and endearments on a clown with a donkey's head.
+            And before he released her from the enchantment, he persuaded her to give him the little Indian boy he so much desired to have. Then he took pity on her, 
+            and threw some juice of the disenchanting flower on her pretty eyes; and then in a moment she saw plainly the donkey-headed clown she had been loving, 
+            and knew how foolish she had been.
+            Oberon took off the ass's head from the clown, and left him to finish his sleep with his own silly head lying on the thyme and violets.
+            Thus all was made plain and straight again. Oberon and Titania loved each other more than ever. Demetrius thought of no one but Helena, and Helena 
+            had never had any thought of anyone but Demetrius.
+            As for Hermia and Lysander, they were as loving a couple as you could meet in a day's march, even through a fairy wood.
+            So the four mortal lovers went back to Athens and were married; and the fairy King and Queen live happily together in that very wood at this very day.
     )" };
+
+    //----------------------------------------------------------------------------------------
 
     void DictionaryCompression( const std::uint32_t BlockSize = 64 )
     {
-        xcore::compression::dictionary::compress Compress;
-        xcore::err Error;
+        xcore::err                                                              Error;
+        xcore::vector<std::pair<std::uint32_t, xcore::unique_span<std::byte>>>  Vec;
+        std::uint32_t                                                           TotalCompressSize = 0;
 
-        Compress.Init(BlockSize, { (std::byte*)s_Buffer.get(), s_Buffer.size() }).CheckError();
-
-        xcore::vector<std::pair<std::uint32_t,xcore::unique_span<std::byte>>> Vec;
-        std::uint32_t TotalCompressSize = 0;
-        while (true)
+        //
+        // Compress data
+        //
         {
-            Vec.append().second.New(BlockSize *2).CheckError();
-            if (Compress.Pack( Vec.last().first, Vec.last().second ).isError(Error))
+            xcore::compression::compress Compress;
+            Compress.Init(BlockSize, { (std::byte*)s_Buffer.get(), s_Buffer.size() }).CheckError();
+
+            while (true)
             {
-                TotalCompressSize += Vec.last().first;
-                if (Error.getCode().getState<xcore::compression::dictionary::error_state>() != xcore::compression::dictionary::error_state::NOT_DONE)
+                Vec.append().second.New(BlockSize * 2).CheckError();
+                if (Compress.Pack(Vec.last().first, Vec.last().second).isError(Error))
                 {
-                    xassert(false);
+                    TotalCompressSize += Vec.last().first;
+                    if (Error.getCode().getState<xcore::compression::compress::error_state>() != xcore::compression::compress::error_state::NOT_DONE)
+                    {
+                        xassert(false);
+                    }
+                    Error.clear();
                 }
-                Error.clear();
-            }
-            else
-            {
-                TotalCompressSize += Vec.last().first;
-                break;
+                else
+                {
+                    TotalCompressSize += Vec.last().first;
+                    break;
+                }
             }
         }
 
-        xcore::compression::dictionary::decompression Decompress;
-
-        Decompress.Init(BlockSize).CheckError();
+        //
+        // Decompress data
+        //
         xcore::unique_span<std::byte> Final;
         Final.New(s_Buffer.size()).CheckError();
 
-        std::uint32_t Pos = 0;
-        for (const auto& [Size, Data] : Vec )
         {
-            std::uint32_t DecompressSize = 0;
-            Decompress.Unpack(DecompressSize, { &Final[Pos], Final.size() - Pos }, Data.ViewTo( Size ) ).CheckError();
-            Pos += DecompressSize;
+            xcore::compression::decompress Decompress;
+            Decompress.Init(BlockSize).CheckError();
+
+            std::uint32_t Pos = 0;
+            for (const auto& [Size, Data] : Vec )
+            {
+                std::uint32_t DecompressSize = 0;
+                Decompress.Unpack(DecompressSize, { &Final[Pos], Final.size() - Pos }, Data.ViewTo( Size ) ).CheckError();
+                Pos += DecompressSize;
+            }
+
+            xassert(Pos == s_Buffer.size());
         }
 
-        xassert(Pos == s_Buffer.size());
+        //
+        // Check to make sure everything worked out
+        //
         xassert( std::memcmp(Final.data(), s_Buffer.get(), Final.size()) == 0 );
 
         int a = 22;
     }
+
+    //----------------------------------------------------------------------------------------
 
     void Test(void)
     {
