@@ -31,6 +31,12 @@ namespace xcore::compression
     }
 
     //-------------------------------------------------------------------------------------------------------
+    compress::~compress(void) noexcept
+    {
+        if(m_pCCTX) ZSTD_freeCCtx((ZSTD_CCtx*)m_pCCTX);
+    }
+
+    //-------------------------------------------------------------------------------------------------------
 
     xcore::err compress::Pack(std::uint32_t& CompressedSize, std::span<std::byte> Destination) noexcept
     {
@@ -100,6 +106,12 @@ namespace xcore::compression
         m_BlockSize = BlockSize;
 
         return Error;
+    }
+
+    //-------------------------------------------------------------------------------------------------------
+    decompress::~decompress(void) noexcept
+    {
+        if (m_pDCTX) ZSTD_freeDCtx((ZSTD_DCtx*)m_pDCTX);
     }
 
     //-------------------------------------------------------------------------------------------------------

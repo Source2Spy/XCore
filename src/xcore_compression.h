@@ -24,8 +24,9 @@ namespace xcore::compression
         };
 
     public:
-        xcore::err                      Init          ( std::uint32_t BlockSize, const std::span<std::byte> SourceUncompress, level CompressionLevel = level::HIGH ) noexcept;
-        xcore::err                      Pack          ( std::uint32_t& CompressedSize, std::span<std::byte> DestinationCompress ) noexcept;
+                                       ~compress    ( void )                                                                                                        noexcept;
+        xcore::err                      Init        ( std::uint32_t BlockSize, const std::span<std::byte> SourceUncompress, level CompressionLevel = level::HIGH )  noexcept;
+        xcore::err                      Pack        ( std::uint32_t& CompressedSize, std::span<std::byte> DestinationCompress )                                     noexcept;
 
     protected:
         void*                       m_pCCTX     { nullptr };
@@ -38,7 +39,8 @@ namespace xcore::compression
     class decompress
     {
     public:
-        xcore::err                      Init          (std::uint32_t BlockSize) noexcept;
+                                       ~decompress    (void)                                                                                                                        noexcept;
+        xcore::err                      Init          (std::uint32_t BlockSize)                                                                                                      noexcept;
         xcore::err                      Unpack        (std::uint32_t& DecompressSize, std::span<std::byte> DestinationUncompress, const std::span<const std::byte> SourceCompressed) noexcept;
 
     protected:
