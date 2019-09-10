@@ -21,13 +21,12 @@ namespace xcore::examples
 {
     void Test( void )
     {
-        if(0)
+        //if(0)
         {
             xcore::string::examples::Tests();
             xcore::error::examples::Tests();
             xcore::log::examples::Tests();
             xcore::function::examples::Tests();
-            xcore::arglist::out Arg( 123, 1.5, "hello" );
             xcore::rtti::examples::Test();
             xcore::guid::examples::Test();
             xcore::containers::vector::examples::Test();
@@ -40,9 +39,9 @@ namespace xcore::examples
             xcore::scheduler::examples::Test();
             xcore::cmdline::examples::Test();
             xcore::file::examples::Tests();
+            xcore::compression::examples::Test();
         }
 
-        xcore::compression::examples::Test();
 
     }
 }

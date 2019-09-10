@@ -102,7 +102,7 @@ namespace xcore::compression::examples
 
     //----------------------------------------------------------------------------------------
 
-    void DictionaryCompression( const std::uint32_t BlockSize = 64 )
+    void SimpleStringCompression( const std::uint32_t BlockSize = 64 )
     {
         xcore::err                                                              Error;
         xcore::vector<std::pair<std::uint32_t, xcore::unique_span<std::byte>>>  Vec;
@@ -153,7 +153,7 @@ namespace xcore::compression::examples
                 Pos += DecompressSize;
             }
 
-            xassert(Pos == s_Buffer.size());
+            xassert(Pos == Final.size());
         }
 
         //
@@ -168,7 +168,7 @@ namespace xcore::compression::examples
 
     void Test(void)
     {
-        DictionaryCompression();
+        SimpleStringCompression();
 
     }
 }
