@@ -16,12 +16,13 @@
 #include "xcore_cmdline_example.h"
 #include "xcore_file_example.h"
 #include "xcore_compression_examples.h"
+#include "xcore_serializer_examples.h"
 
 namespace xcore::examples
 {
     void Test( void )
     {
-        //if(0)
+        if(0)
         {
             xcore::string::examples::Tests();
             xcore::error::examples::Tests();
@@ -42,6 +43,6 @@ namespace xcore::examples
             xcore::compression::examples::Test();
         }
 
-
+        xcore::serializer::examples::Test();
     }
 }

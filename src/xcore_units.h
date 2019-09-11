@@ -88,9 +88,9 @@ namespace xcore::units
             constexpr static std::size_t value = (T_HIGH - '0');
         };
     };
-
-    //------------------------------------------------------------------------------
-    template< char... T_DIGITS > constexpr int operator "" _bin() { return details::conv2bin< T_DIGITS ... >::value; }
 }
+
+//------------------------------------------------------------------------------
+template< char... T_DIGITS > constexpr int operator "" _xbin() { return xcore::units::details::conv2bin< T_DIGITS ... >::value; }
 
 #endif

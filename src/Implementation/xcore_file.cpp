@@ -60,7 +60,7 @@ namespace xcore::file
 
     //------------------------------------------------------------------------------
 
-    xcore::err stream::open( const string::view<wchar_t> Path, const char* pMode) noexcept
+    xcore::err stream::open( const string::view<const wchar_t> Path, const char* pMode) noexcept
     {
         xassert(pMode);
 

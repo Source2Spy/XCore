@@ -2,12 +2,13 @@
 
 namespace xcore::serializer
 {
+    /*
     namespace details
     {
         template<typename, typename T>
         struct has_serialize 
         {
-            static_assert( std::integral_constant_v<T, false>, "Second template parameter needs to be of function type." );
+            static_assert( std::integral_constant<T, false>::value, "Second template parameter needs to be of function type." );
         };
 
         // specialization that does the checking
@@ -16,12 +17,14 @@ namespace xcore::serializer
         struct has_serialize<C, Ret(Args...)> 
         {
         private:
+
             template<typename T>
             static constexpr auto check(T*) -> typename 
-                std::is_same< decltype(std::declval<T>().SerializeIO( file::stream& )),
+                std::is_same< decltype( std::declval<T>().SerializeIO( xcore::file::stream& ) ),
                              Ret    // ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
                             >::type;  // attempt to call it and see if the return type is correct
-            template<typename>
+            
+			template<typename>
             static constexpr std::false_type check(...);
 
             using type = decltype(check<C>(0));
@@ -30,6 +33,17 @@ namespace xcore::serializer
             static constexpr bool value = type::value;
         };
     }
+    */
+
+    namespace details
+    {
+        template<class T>
+        using has_serialization = decltype(std::declval<T&>().SerializeIO(std::declval<xcore::file::stream>()));
+
+        template<class T>
+        constexpr static bool has_serialization_v = xcore::types::is_detected_exact_v<xcore::err, has_serialization, T>;
+    }
+
     //------------------------------------------------------------------------------
 
     constexpr
@@ -42,7 +56,7 @@ namespace xcore::serializer
     //------------------------------------------------------------------------------
 
     constexpr
-    bool stream::isLocalVariable( std::byte* pRange ) const noexcept
+    bool stream::isLocalVariable( const std::byte* pRange ) const noexcept
     {
         return (pRange >= m_pClass) && (pRange < (m_pClass + m_ClassSize));
     }
@@ -50,7 +64,7 @@ namespace xcore::serializer
     //------------------------------------------------------------------------------
 
     constexpr
-    std::int32_t stream::ComputeLocalOffset( std::byte* pItem ) const noexcept
+    std::int32_t stream::ComputeLocalOffset( const std::byte* pItem ) const noexcept
     {
         xassert(isLocalVariable(pItem));
         return static_cast<std::int32_t>(pItem - m_pClass);
@@ -62,17 +76,17 @@ namespace xcore::serializer
     xcore::err stream::Save( const string::view<const wchar_t> FileName, const T& Object, mem_type ObjectFlags, bool bEndianSwap ) noexcept
     {
         // Open the file to make sure we are okay
-        err     Error;
-        file    File;
+        xcore::err              Error;
+        xcore::file::stream     File;
 
         // 
-        if( File.Open(FileName, "wb").isError(Error) ) return Error;
+        if( File.open(FileName, "wb").isError(Error) ) return Error;
 
         // Call the actual save
         if( Save(File, Object, ObjectFlags, bEndianSwap).isError(Error) ) return Error;
 
         // done with the file
-        File.Close();
+        File.close();
 
         return Error;
     }
@@ -80,7 +94,7 @@ namespace xcore::serializer
     //------------------------------------------------------------------------------
 
     template< class T > inline
-    xcore::err stream::Save( xcore::file& File, const T& Object, mem_type ObjectFlags, bool bSwapEndian ) noexcept
+    xcore::err stream::Save( xcore::file::stream& File, const T& Object, mem_type ObjectFlags, bool bSwapEndian ) noexcept
     {
         xcore::err Error;
 
@@ -134,19 +148,19 @@ namespace xcore::serializer
                     || std::is_floating_point_v<T>
                     || std::is_enum_v<T> )
         {
-            if(Handle({&const_cast<std::byte&>(reinterpret_cast<const std::byte&>(A)), sizeof(T)}).isError(Error)) return Error;
+            if(Handle(std::span<const std::byte>{&reinterpret_cast<const std::byte&>(A), sizeof(T)}).isError(Error)) return Error;
         }
         else if constexpr (std::is_array_v<T>)
         {
             // Handle C arrays
             for (int i = 0; i < std::extent_v<T>; ++i) if (Serialize(A[i]).isError(Error)) return Error;
         }
-        else if constexpr (xcore::is_array_v<T> || xcore::is_span_v<T> )
+        else if constexpr (types::is_array_v<T> || types::is_span_v<T> )
         {
             static_assert(std::is_object_v<T>);
             for (auto& X : A) if (Serialize(X).isError(Error)) return Error;
         }
-        else if constexpr (details::has_serialize<T, xcore::err(stream&)>::value)
+        else if constexpr (details::has_serialization_v<T>)
         {
             static_assert(std::is_object_v<T>);
             static_assert(false == std::is_polymorphic_v<T>);
@@ -177,7 +191,7 @@ namespace xcore::serializer
             || std::is_same<T, vector4>
             || std::is_same<T, quaternion>
             */
-            if (Handle({ &const_cast<std::byte&>(reinterpret_cast<const std::byte&>(A)), sizeof(T) }).isError(Error)) return Error;
+            if (Handle(std::span<const std::byte>{ &reinterpret_cast<const std::byte&>(A), sizeof(T) }).isError(Error)) return Error;
         }
         else
         {
@@ -192,12 +206,12 @@ namespace xcore::serializer
     template< class T > inline
     xcore::err stream::Serialize(const std::span<const T> View, mem_type MemoryFlags) noexcept
     {
-        xcore       Error;
+        xcore::err  Error;
         const auto  BackupPackIndex = m_iPack;
         auto        pA = reinterpret_cast<const std::byte*>(View.data());
 
         // Handle pointer details
-        HandlePtrDetails(pA, sizeof(T), View.size(), MemoryFlags);
+        if (HandlePtrDetails(pA, sizeof(T), View.size(), MemoryFlags).isError(Error)) return Error;
 
         //
         // Loop throw all the items
@@ -207,7 +221,12 @@ namespace xcore::serializer
         for (std::size_t i = 0; i < View.size(); i++)
         {
             if (Serialize(pA[i]).isError(Error)) return Error;
-            xassert(getW().Tell() >= i * sizeof(pA[0]));
+            xassert_block_basic()
+            {
+                units::bytes X;
+                getW().Tell(X).CheckError();
+                xassert((std::uint64_t)X.m_Value >= i * sizeof(pA[0]) );
+            }
         }
 
         //
@@ -223,8 +242,8 @@ namespace xcore::serializer
     template< class T > inline
     xcore::err stream::Handle( const std::span<const T> View ) noexcept
     {
-        xcore   Error;
-        auto    pA = reinterpret_cast<const std::byte*>(View.data());////(u8*)((void*)A);
+        xcore::err  Error;
+        auto		pA = reinterpret_cast<const std::byte*>(View.data());
 
         xassert(View.size() >= 0);
         
@@ -232,14 +251,15 @@ namespace xcore::serializer
         xassert(isLocalVariable(pA));
 
         // Make sure that we are at the right offset
-        getW().SeekOrigin(m_ClassPos + ComputeLocalOffset(pA));
+        
+        if( getW().SeekOrigin( units::bytes{m_ClassPos + ComputeLocalOffset(pA)} ).isError(Error))return Error;
 
         // Is an array of structures of items so we want to preallocate the space
         // Since it is an array we don't need to put the "* Count"
-        getW().putC(' ', sizeof(A), false);
+        if (getW().putC(' ', sizeof(T), false).isError(Error)) return Error;
 
         // Loop throw all the items
-        for (std::size_t i = 0; i < View.size(); i++)
+        for(std::size_t i = 0; i < View.size(); i++)
         {
             if (Handle(pA[i]).isError(Error)) return Error;
         }
@@ -248,66 +268,66 @@ namespace xcore::serializer
 
     //------------------------------------------------------------------------------
 
-    template< class T >
-    void xserialfile::ResolveObject(T*& pObject) noexcept
+    template< class T > inline
+    void stream::ResolveObject(T*& pObject) noexcept
     {
         // Initialize all
-        (void)x_construct(T, pObject, { *this });
+		(void)new(pObject) T{ *this };
 
         // deal with temp data
         if (m_bFreeTempData && m_pTempBlockData)
-            x_delete((xbyte*)m_pTempBlockData);
+            m_pTempBlockData->~T();
     }
 
 
     //------------------------------------------------------------------------------
 
     template< class T > inline
-        xfile::err xserialfile::Load(xfile& File, T*& pObject) noexcept
+	xcore::err stream::Load(file::stream& File, T*& pObject) noexcept
     {
-        auto Err = LoadHeader(File, sizeof(*pObject));
+		xcore::err   Error;
+		if (LoadHeader(File, sizeof(*pObject)).isError(Error)) return Error;
         pObject = (T*)LoadObject(File);
         ResolveObject(pObject);
-        return Err;
+        return Error;
     }
 
     //------------------------------------------------------------------------------
 
     template< class T > inline
-        xfile::err xserialfile::Load(const xwstring& FileName, T*& pObject) noexcept
+	xcore::err stream::Load(const string::view<wchar_t> FileName, T*& pObject) noexcept
     {
-        // Open the file
-        xfile File;
+		xcore::err   Error;
+        file::stream File;
 
-        auto Err = File.Open(FileName, "rb");
-        if (Err) return Err;
+        if (File.open(FileName, "rb").isError(Error)) return Error;
 
         // Load the object
         Load(File, pObject);
 
         // Close the file
-        File.Close();
+        File.close();
 
-        return Err;
+        return Error;
     }
 
     //------------------------------------------------------------------------------
     inline
-        void xserialfile::setResourceVersion(u16 ResourceVersion) noexcept
+    void stream::setResourceVersion(std::uint16_t ResourceVersion) noexcept
     {
         m_Header.m_ResourceVersion = ResourceVersion;
     }
 
     //------------------------------------------------------------------------------
-    inline
-        u16 xserialfile::getResourceVersion(void) const noexcept
+    constexpr
+    std::uint16_t stream::getResourceVersion(void) const noexcept
     {
         return m_Header.m_ResourceVersion;
     }
 
     //------------------------------------------------------------------------------
-    inline
-        bool xserialfile::SwapEndian(void) const noexcept
+    constexpr
+    bool stream::SwapEndian(void) const noexcept
     {
         return m_pWrite->m_bEndian;
     }

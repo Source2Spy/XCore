@@ -135,7 +135,7 @@ namespace xcore { using namespace xcore::math; }
 #include "xcore_compression.h"
 
 // Serializer
-#include "xcore_serialicer.h"
+#include "xcore_serializer.h"
 
 //---------------------------------------------------------------------------
 // Inline functions

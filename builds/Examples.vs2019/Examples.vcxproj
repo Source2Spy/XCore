@@ -38,6 +38,7 @@
     <ClInclude Include="..\..\src\Examples\xcore_properties.h" />
     <ClInclude Include="..\..\src\Examples\xcore_rtti_examples.h" />
     <ClInclude Include="..\..\src\Examples\xcore_scheduler_examples.h" />
+    <ClInclude Include="..\..\src\Examples\xcore_serializer_examples.h" />
     <ClInclude Include="..\..\src\Examples\xcore_string_examples.h" />
     <ClInclude Include="..\..\src\Examples\xcore_textfile_examples.h" />
     <ClInclude Include="..\..\src\Examples\xcore_unique_span.h" />

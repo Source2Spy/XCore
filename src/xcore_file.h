@@ -73,7 +73,7 @@ namespace xcore::file
                                             device_i        (void)                                                                  noexcept = delete;
         constexpr                           device_i        ( string::constant<char> DeviceName)                                    noexcept : m_DeviceName{ DeviceName } {}
         virtual                            ~device_i        (void)                                                                  noexcept {}
-        virtual         void*               open            (const string::view<wchar_t> FileName, access_types Flags)              noexcept = 0;
+        virtual         void*               open            (const string::view<const wchar_t> FileName, access_types Flags)        noexcept = 0;
         virtual         void                close           (void* pFile)                                                           noexcept = 0;
         virtual         xcore::err          Read            (void* pFile, std::span<std::byte> View )                               noexcept = 0;
         virtual         xcore::err          Write           (void* pFile, std::span<std::byte> View )                               noexcept = 0;
@@ -161,7 +161,7 @@ namespace xcore::file
     public:
         constexpr                               stream          ( void )                                                            noexcept = default;
         inline                                 ~stream          ( void )                                                            noexcept { close(); }
-                        xcore::err              open            ( const string::view<wchar_t> FileName, const char* pMode)          noexcept;
+                        xcore::err              open            ( const string::view<const wchar_t> FileName, const char* pMode)    noexcept;
                         void                    close           ( void )                                                            noexcept;
         inline          xcore::err              ToFile          ( stream& File )                                                    noexcept;
         inline          xcore::err              ToMemory        ( std::span<std::byte> View )                                       noexcept;

@@ -192,9 +192,15 @@ namespace xcore::serializer
     //</CODE>
     //------------------------------------------------------------------------------
     
+    template< typename T >
+    struct alignas(std::uint64_t) data_ptr
+    {
+        T* m_pValue;
+    };
+
     union mem_type
     {
-        std::uint8_t    m_Value;
+        std::uint8_t    m_Value{ 0 };
         struct
         {
             bool    m_bUnique:1;        // -> On  - Unique is memory is that allocated by it self and there for could be free
@@ -207,6 +213,34 @@ namespace xcore::serializer
             bool    m_bVRam:1;          // -> On  - This memory is to be allocated in vram if the hardware has it.
                                         //    Off - Main system memory.
         };
+
+        enum class flags : std::uint8_t
+        {
+              UNIQUE        = (1<<0)
+            , TEMP_MEMORY   = (1<<1)
+            , VRAM          = (1<<2)
+        };
+
+        template< typename...T_ARGS >
+        static constexpr mem_type Flags(T_ARGS... Args) noexcept
+        {
+            mem_type D;
+            if constexpr (sizeof...(T_ARGS) > 0)
+            {
+                xcore::types::visit([&](auto&& V) noexcept
+                {
+                    switch (V)
+                    {
+                    case flags::UNIQUE:         D.m_bUnique = true; break;
+                    case flags::TEMP_MEMORY:    D.m_bTempMemory = true; break;
+                    case flags::VRAM:           D.m_bVRam = true; break;
+                    default: xassert(false);
+                    }
+
+                }, std::tuple{ std::forward<T_ARGS>(Args)... });
+            }
+            return D;
+        }
     };
 
     using   allocate_memory_fn =  void* (std::size_t Size, mem_type MemType);
@@ -219,11 +253,11 @@ namespace xcore::serializer
         template< class T >
         inline      xcore::err      Serialize                   (const T& A)                                                                                noexcept;
         template< class T >
-        inline      xcore::err      Serialize                   (const std::span<const T>   View, mem_type MemoryFlags)                                     noexcept;
+        inline      xcore::err      Serialize                   (const std::span<const T> View, mem_type MemoryFlags)                                     noexcept;
 
         template< class T >
         inline      err             Save                        ( const string::view<const wchar_t> FileName
-                                                                , const T& Object, mem_type ObjectFlags = { 0 }, bool bSwapEndian = false)                  noexcept;
+                                                                , const T& Object, mem_type ObjectFlags={}, bool bSwapEndian = false)                  noexcept;
         
         template< class T >
         inline      err             Save                        ( file::stream& File, const T& Object, mem_type ObjectFlags, bool bSwapEndian = false)      noexcept;
@@ -241,8 +275,8 @@ namespace xcore::serializer
         void                        setResourceVersion          (std::uint16_t ResourceVersion)                                                             noexcept;
         void                        setSwapEndian               (bool SwapEndian)                                                                           noexcept;
 
-        bool                        SwapEndian                  (void)                                                                              const   noexcept;
-        u16                         getResourceVersion          (void)                                                                              const   noexcept;
+        constexpr   bool            SwapEndian                  (void)                                                                              const   noexcept;
+        constexpr   std::uint16_t   getResourceVersion          (void)                                                                              const   noexcept;
 
         void                        setAllocateMemoryCallBack   (allocate_memory_fn Function)                                                               noexcept;
 
@@ -251,7 +285,7 @@ namespace xcore::serializer
 
     protected:
 
-        static constexpr std::uint32_t  version_id_v        = 00010111_bin;
+        static constexpr std::uint32_t  version_id_v        = 00010111_xbin;
         static constexpr std::uint32_t  max_block_size_v    = 1024 * 127;
 
         // This structure wont save to file
@@ -280,7 +314,7 @@ namespace xcore::serializer
         // This structure wont save to file
         struct pack_writting : public pack
         {
-            xcore::file                         m_Data              {}; // raw Data for this block
+            xcore::file::stream                 m_Data              {}; // raw Data for this block
             std::uint32_t                       m_BlockSize         {}; // size of the block for compressing this pack
             std::uint32_t                       m_CompressSize      {}; // How big is this pack compress
             xcore::unique_span<std::byte>       m_CompressData      {}; // Data in compress form
@@ -293,8 +327,8 @@ namespace xcore::serializer
 
             xcore::unique_span<std::uint32_t>   m_CSizeStream       {}; // a in order List of compress sizes for packs and blocks
             xcore::unique_span<ref>             m_PointerTable      {}; // Table of all the pointer written
-            xcore::unique_span<pack_writting>   m_Packs             {}; // Freeable memory + VRam/Core
-            xcore::file*                        m_pFile             {};
+            xcore::unique_span<pack_writting>   m_Packs             {}; // Free-able memory + VRam/Core
+            xcore::file::stream*                m_pFile             {};
             bool                                m_bEndian           {};
         };
 
@@ -317,9 +351,12 @@ namespace xcore::serializer
         inline      xcore::err      SaveFile            (void)                                                                                              noexcept;
         constexpr   file::stream&   getW                (void)                                                                                      const   noexcept;
         file::stream&               getTable            (void)                                                                                      const   noexcept;
-        constexpr   bool            isLocalVariable     (std::byte* pRange)                                                                         const   noexcept;
-        constexpr   std::int32_t    ComputeLocalOffset  (std::byte* pItem)                                                                          const   noexcept;
-        xcore::err                  HandlePtrDetails    (std::byte* pA, std::int32_t SizeofA, std::int32_t Count, mem_type MemoryFlags)                     noexcept;
+        constexpr   bool            isLocalVariable     (const std::byte* pRange)                                                                   const   noexcept;
+        constexpr   std::int32_t    ComputeLocalOffset  (const std::byte* pItem)                                                                    const   noexcept;
+        xcore::err                  HandlePtrDetails    (const std::byte* pA, std::size_t SizeofA, std::size_t Count, mem_type MemoryFlags)                 noexcept;
+        template< class T > inline
+        xcore::err                  Handle              (const std::span<const T> View)                                                                     noexcept;
+
 
     protected:
 
@@ -329,7 +366,7 @@ namespace xcore::serializer
         // Stack base variables for writing
         std::uint32_t           m_iPack             {};
         std::uint32_t           m_ClassPos          {};
-        std::byte*              m_pClass            {};
+        mutable std::byte*      m_pClass            {};
         std::uint32_t           m_ClassSize         {};
 
         // Loading data

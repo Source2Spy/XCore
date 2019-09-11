@@ -69,7 +69,7 @@ namespace xcore::file::driver
 
         //----------------------------------------------------------------------------------------
 
-        virtual void* open ( const string::view<wchar_t> FileName, access_types AccessTypes ) noexcept override
+        virtual void* open ( const string::view<const wchar_t> FileName, access_types AccessTypes ) noexcept override
         {
             std::uint32_t FileMode      = 0;
             std::uint32_t Disposition   = 0;
