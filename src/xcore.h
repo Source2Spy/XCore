@@ -134,6 +134,9 @@ namespace xcore { using namespace xcore::math; }
 // Compression
 #include "xcore_compression.h"
 
+// Serializer
+#include "xcore_serialicer.h"
+
 //---------------------------------------------------------------------------
 // Inline functions
 //---------------------------------------------------------------------------
@@ -159,6 +162,8 @@ namespace xcore { using namespace xcore::math; }
 
 #include "Implementation/xcore_cmdline_inline.h"
 #include "Implementation/xcore_file_inline.h"
+
+#include "Implementation/xcore_serializer_inline.h"
 
 //---------------------------------------------------------------------------
 // END

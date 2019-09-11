@@ -146,6 +146,49 @@ namespace xcore::types
     {
         details::visit( std::forward<T_LAMBDA>(Lambda), std::forward<T_TUPLE>(Tuple), std::make_index_sequence<std::tuple_size_v<std::decay_t<T_TUPLE>>>());
     }
+
+    //--------------------------------------------------------------------------------------------
+    // Determine if a type is an array will return true if it is a C array or an object of type array 
+    //--------------------------------------------------------------------------------------------
+    namespace details
+    {
+        template<class T>
+        struct is_array :std::is_array<T> {};
+
+        template<class T, std::size_t N>
+        struct is_array<std::array<T, N>> :std::true_type {};
+
+        template<class T, std::size_t N>
+        struct is_array<xcore::array<T, N>> :std::true_type {};
+
+        template<class T> struct is_array<T const>          : is_array<T> {};
+        template<class T> struct is_array<T volatile>       : is_array<T> {};
+        template<class T> struct is_array<T volatile const> : is_array<T> {};
+    }
+    template< typename T >
+    constexpr static bool is_array_v = details::is_array<T>::value;
+
+    //--------------------------------------------------------------------------------------------
+    // Determine if a type is span object
+    //--------------------------------------------------------------------------------------------
+    namespace details
+    {
+        template<class T, std::size_t N>
+        struct is_span : std::false_type {};
+
+        template<class T, std::size_t N>
+        struct is_span<std::span<T, N>>     : std::true_type {};
+
+        template<class T, std::size_t N>
+        struct is_span<xcore::span<T, N>>   : std::true_type {};
+
+
+        template<class T> struct is_span<T const> : is_span<T> {};
+        template<class T> struct is_span<T volatile> : is_span<T> {};
+        template<class T> struct is_span<T volatile const> : is_span<T> {};
+    }
+    template< typename T >
+    constexpr static bool is_span_v = details::is_span<T>::value;
 }
 
 #endif
