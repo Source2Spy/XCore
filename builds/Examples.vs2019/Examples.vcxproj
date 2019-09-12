@@ -93,6 +93,7 @@
     <ClInclude Include="..\..\src\xcore_math_vector2.h" />
     <ClInclude Include="..\..\src\xcore_math_vector3.h" />
     <ClInclude Include="..\..\src\xcore_math_vector4.h" />
+    <ClInclude Include="..\..\src\xcore_memory.h" />
     <ClInclude Include="..\..\src\xcore_profiler.h" />
     <ClInclude Include="..\..\src\xcore_ptr.h" />
     <ClInclude Include="..\..\src\xcore_rtti.h" />

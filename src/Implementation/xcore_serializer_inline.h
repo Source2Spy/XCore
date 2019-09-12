@@ -46,8 +46,8 @@ namespace xcore::serializer
 
     //------------------------------------------------------------------------------
 
-    constexpr
-    file::stream& stream::getW(void) const noexcept
+    inline
+    file::stream& stream::getW(void) noexcept
     {
         xassert(m_pWrite);
         return m_pWrite->m_Packs[m_iPack].m_Data;
@@ -105,7 +105,7 @@ namespace xcore::serializer
 
         // Assign it so it is accessible for other functions
         // but we keep the owner
-        m_pWrite = Write;
+        m_pWrite = Write.get();
 
         // back up the pointer
         Write->m_pFile = &File;
@@ -120,10 +120,10 @@ namespace xcore::serializer
         Write->m_bEndian    = bSwapEndian;
 
         // Save the initial class
-        getW().putC( ' ', m_ClassSize, true );
+        if (getW().putC(' ', m_ClassSize, true).isError(Error)) return Error;
 
         // Start the saving 
-        Object.SerializeIO( *this );
+        if (xcore::serializer::io_functions::SerializeIO(*this, Object).isError(Error)) return Error;
 
         // Save the file
         if (SaveFile().isError(Error)) return Error;
@@ -168,11 +168,12 @@ namespace xcore::serializer
             // Copy most of the data
             stream File(*this);
 
-            File.m_iPack = m_iPack;
-            File.m_ClassPos = static_cast<std::uint32_t>(getW().Tell());
-            File.m_pClass = &const_cast<std::byte&>(reinterpret_cast<const std::byte&>(A));
-            File.m_ClassSize = sizeof(A);
-            A.SerializeIO(File);
+            File.m_iPack        = m_iPack;
+            File.m_ClassPos     = static_cast<std::uint32_t>(getW().Tell());
+            File.m_pClass       = &const_cast<std::byte&>(reinterpret_cast<const std::byte&>(A));
+            File.m_ClassSize    = sizeof(A);
+
+            if (xcore::serializer::io_functions::SerializeIO(File, A).isError(Error)) return Error;
 
             // Something very strange happen. We allocated more memory space than we expected
             //xassert( getW().Tell() <= (File.m_ClassPos + sizeof( A )) );
@@ -236,34 +237,20 @@ namespace xcore::serializer
         return Error;
     }
 
-
     //------------------------------------------------------------------------------
 
-    template< class T > inline
-    xcore::err stream::Handle( const std::span<const T> View ) noexcept
+    xcore::err stream::Handle( const std::span<const std::byte> View ) noexcept
     {
-        xcore::err  Error;
-        auto		pA = reinterpret_cast<const std::byte*>(View.data());
-
         xassert(View.size() >= 0);
         
         // If it is not a local variable then you must pass the memory type
-        xassert(isLocalVariable(pA));
+        xassert(isLocalVariable(View.data()));
 
         // Make sure that we are at the right offset
-        
-        if( getW().SeekOrigin( units::bytes{m_ClassPos + ComputeLocalOffset(pA)} ).isError(Error))return Error;
+        if (auto Error = getW().SeekOrigin(units::bytes{ m_ClassPos + ComputeLocalOffset(View.data()) }); Error ) return Error;
 
-        // Is an array of structures of items so we want to preallocate the space
-        // Since it is an array we don't need to put the "* Count"
-        if (getW().putC(' ', sizeof(T), false).isError(Error)) return Error;
-
-        // Loop throw all the items
-        for(std::size_t i = 0; i < View.size(); i++)
-        {
-            if (Handle(pA[i]).isError(Error)) return Error;
-        }
-        return Error;
+        // Write the data
+        return getW().WriteView(View);
     }
 
     //------------------------------------------------------------------------------

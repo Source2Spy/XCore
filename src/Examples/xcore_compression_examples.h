@@ -120,11 +120,10 @@ namespace xcore::compression::examples
                 Vec.append().second.New(BlockSize * 2).CheckError();
                 if (Compress.Pack(Vec.last().first, Vec.last().second).isError(Error))
                 {
-                    TotalCompressSize += Vec.last().first;
                     if (Error.getCode().getState<xcore::compression::compress::error_state>() != xcore::compression::compress::error_state::NOT_DONE)
-                    {
-                        xassert(false);
-                    }
+                    { xassert(false); }
+
+                    TotalCompressSize += Vec.last().first;
                     Error.clear();
                 }
                 else

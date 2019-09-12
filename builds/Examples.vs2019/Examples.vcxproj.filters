@@ -294,6 +294,9 @@
     <ClInclude Include="..\..\src\Examples\xcore_serializer_examples.h">
       <Filter>Examples</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\src\xcore_memory.h">
+      <Filter>xCore</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\src\xcore.cpp">

@@ -4,12 +4,14 @@
     #include "windows.h"
     #undef ERROR
     #undef max
+    #undef min
 #endif
 
 #include <iostream>
 #include <stdarg.h>
 #include <algorithm>
 #include <iterator>
+#include <malloc.h>
 
 #include "Implementation/xcore_global.cpp"
 #include "Implementation/xcore_log.cpp"
@@ -17,10 +19,9 @@
 #include "Implementation/xcore_textfile2.cpp"
 #include "Implementation/xcore_sprintf.cpp"
 #include "Implementation/xcore_scheduler.cpp"
-
 #include "Implementation/xcore_cmdline.cpp"
-
 #include "Implementation/xcore_file.cpp"
-
+#include "Implementation/xcore_memory.cpp"
 #include "Implementation/xcore_compression.cpp"
+#include "Implementation/xcore_serializer.cpp"
 

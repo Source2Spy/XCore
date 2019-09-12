@@ -22,11 +22,37 @@ namespace xcore::types
     template< typename T >
     using to_uint_t = byte_size_uint_t<sizeof(T)>; 
 
-    //------------------------------------------------------------------------------------------
-    // Safe cast
-    //------------------------------------------------------------------------------------------
-    // template< typename T_TYPEA, typename T_TYPEB > constexpr
-    // std::enable_if_t< std::is_integral_v<T_TYPEA>, T_TYPEA > safe_cast( T_TYPEB B ) noexcept { xassert( static_cast<T_TYPEB>(static_cast<T_TYPEA>(B)) == B ); return static_cast<T_TYPEA>(B); }
+    //------------------------------------------------------------------------------
+    // Description:
+    //      Static casting with safe ranges 
+    //------------------------------------------------------------------------------
+    template< typename T_TO, typename T_FROM > constexpr
+    T_TO static_cast_safe( const T_FROM& a ) noexcept
+    {
+        xassert_block_basic()
+        {
+            using max_type = typename byte_size_uint_t< int(sizeof(T_TO) > sizeof(T_FROM) ? sizeof(T_TO) : sizeof(T_FROM)) >::type;
+            using min_type = typename byte_size_int_t < int(sizeof(T_TO) > sizeof(T_FROM) ? sizeof(T_TO) : sizeof(T_FROM)) >::type;
+            xassert(static_cast<min_type>(a) >= static_cast<min_type>(std::numeric_limits<T_TO>::lowest()) &&
+                    static_cast<max_type>(a) <= static_cast<max_type>(std::numeric_limits<typename byte_size_uint_t<sizeof(T_TO)>::type>::max()));
+        }
+
+        return static_cast<T_TO>(a);
+    }
+
+    //------------------------------------------------------------------------------
+    template< typename T_TO, typename T_FROM > constexpr
+    T_TO static_cast_safe( const T_FROM&& a ) noexcept
+    {
+        xassert_block_basic()
+        {
+            using max_type = typename byte_size_uint_t< int(sizeof(T_TO) > sizeof(T_FROM) ? sizeof(T_TO) : sizeof(T_FROM)) >::type;
+            using min_type = typename byte_size_int_t < int(sizeof(T_TO) > sizeof(T_FROM) ? sizeof(T_TO) : sizeof(T_FROM)) >::type;
+            xassert(static_cast<min_type>(a) >= static_cast<min_type>(std::numeric_limits<T_TO>::lowest()) &&
+                    static_cast<max_type>(a) <= static_cast<max_type>(std::numeric_limits<typename byte_size_uint_t<sizeof(T_TO)>::type>::max()));
+        }
+        return static_cast<T_TO>(a);
+    }
 
     //------------------------------------------------------------------------------
     // Description:

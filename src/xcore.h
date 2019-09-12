@@ -86,6 +86,7 @@ namespace xcore
 #include "xcore_arglist.h"
 #include "xcore_guid.h"
 #include "xcore_log.h"
+#include "xcore_memory.h"
 
 // Text file
 namespace xcore::textfile { namespace version_1{} namespace version_2{} using namespace version_2; }

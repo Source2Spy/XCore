@@ -243,7 +243,7 @@ namespace xcore::serializer
         }
     };
 
-    using   allocate_memory_fn =  void* (std::size_t Size, mem_type MemType);
+    using   allocate_memory_fn =  void* (units::bytes Size, mem_type MemType);
 
     class stream
     {
@@ -325,9 +325,9 @@ namespace xcore::serializer
         {
             std::uint32_t                     AllocatePack            (mem_type DefaultPackFlags) noexcept;
 
-            xcore::unique_span<std::uint32_t>   m_CSizeStream       {}; // a in order List of compress sizes for packs and blocks
-            xcore::unique_span<ref>             m_PointerTable      {}; // Table of all the pointer written
-            xcore::unique_span<pack_writting>   m_Packs             {}; // Free-able memory + VRam/Core
+            xcore::vector<std::uint32_t>        m_CSizeStream       {}; // a in order List of compress sizes for packs and blocks
+            xcore::vector<ref>                  m_PointerTable      {}; // Table of all the pointer written
+            xcore::vector<pack_writting>        m_Packs             {}; // Free-able memory + VRam/Core
             xcore::file::stream*                m_pFile             {};
             bool                                m_bEndian           {};
         };
@@ -349,14 +349,12 @@ namespace xcore::serializer
     protected:
 
         inline      xcore::err      SaveFile            (void)                                                                                              noexcept;
-        constexpr   file::stream&   getW                (void)                                                                                      const   noexcept;
+        inline      file::stream&   getW                (void)                                                                                              noexcept;
         file::stream&               getTable            (void)                                                                                      const   noexcept;
         constexpr   bool            isLocalVariable     (const std::byte* pRange)                                                                   const   noexcept;
         constexpr   std::int32_t    ComputeLocalOffset  (const std::byte* pItem)                                                                    const   noexcept;
         xcore::err                  HandlePtrDetails    (const std::byte* pA, std::size_t SizeofA, std::size_t Count, mem_type MemoryFlags)                 noexcept;
-        template< class T > inline
-        xcore::err                  Handle              (const std::span<const T> View)                                                                     noexcept;
-
+        xcore::err                  Handle              (const std::span<const std::byte> View)                                                             noexcept;
 
     protected:
 
