@@ -4,7 +4,7 @@ namespace xcore::file
     //------------------------------------------------------------------------------
 
     template<class T> inline
-    xcore::err stream::Write( const T& Val ) noexcept
+    xcore::err stream::Write( const T&& Val ) noexcept
     {
         static_assert(std::is_enum<T>::value || std::is_fundamental<T>::value, "std::is_enum<T>::value || std::is_fundamental<T>::value");
         xassert( m_pFile );
@@ -13,8 +13,16 @@ namespace xcore::file
 
     //------------------------------------------------------------------------------
 
+    template<class T> inline
+    xcore::err stream::Write(const T& Val) noexcept
+    {
+        return Write(std::move(Val));
+    }
+
+    //------------------------------------------------------------------------------
+
     template<typename T> inline
-    xcore::err stream::WriteView( const T& A ) noexcept
+    xcore::err stream::WriteView( const T&& A ) noexcept
     {
         const std::span View{ A };
         xassert(m_pFile);
@@ -23,8 +31,16 @@ namespace xcore::file
 
     //------------------------------------------------------------------------------
 
+    template<typename T> inline
+    xcore::err stream::WriteView(const T& Val) noexcept
+    {
+        return WriteView(std::move(Val));
+    }
+
+    //------------------------------------------------------------------------------
+
     template<class T> inline
-    xcore::err stream::Read( T& Val ) noexcept
+    xcore::err stream::Read( T&& Val ) noexcept
     {
         static_assert(std::is_enum<T>::value || std::is_fundamental<T>::value, "std::is_enum<T>::value || std::is_fundamental<T>::value");
         xassert(m_pFile);
@@ -33,8 +49,16 @@ namespace xcore::file
 
     //------------------------------------------------------------------------------
 
+    template<class T> inline
+    xcore::err stream::Read(T& Val) noexcept
+    {
+        return Read(std::move(Val));
+    }
+
+    //------------------------------------------------------------------------------
+
     template<typename T> inline
-    xcore::err stream::ReadView( T& A ) noexcept
+    xcore::err stream::ReadView( T&& A ) noexcept
     {
         xassert(m_pFile);
         std::span       View = { A };
@@ -44,6 +68,14 @@ namespace xcore::file
                 (std::byte*)View.data()
                 , sizeof(t) * View.size() 
             });
+    }
+
+    //------------------------------------------------------------------------------
+
+    template<typename T> inline
+    xcore::err stream::ReadView(T& Val) noexcept
+    {
+        return ReadView(std::move(Val));
     }
 
     //------------------------------------------------------------------------------

@@ -382,10 +382,12 @@ namespace xcore::serializer
 
     xcore::err stream::LoadHeader( file::stream& File, std::size_t SizeOfT) noexcept
     {
+        xcore::err Error;
+
         //
         // Check signature (version is encoded in signature)
         //
-        if (File.ReadView(std::span{ reinterpret_cast<std::byte*>(&m_Header), sizeof(m_Header) }).isError(Error))
+        if (File.ReadView(std::span<std::byte>{ reinterpret_cast<std::byte*>(&m_Header), sizeof(m_Header) }).isError(Error))
             return Error;
 
         File.Synchronize(true).CheckError();

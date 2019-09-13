@@ -183,7 +183,13 @@ namespace xcore::file
         template<class T>
         inline          xcore::err              ReadString      ( string::view<T> Val )                                             noexcept;
         template<typename T>
-        inline          xcore::err              Write           ( const T& Val )                                                    noexcept;
+        inline          xcore::err              Write           ( const T&& Val )                                                   noexcept;
+
+        template<typename T>
+        inline          xcore::err              Write           ( const T&  Val )                                                   noexcept;
+
+        template<typename T>
+        inline          xcore::err              WriteView       ( const T&& A )                                                     noexcept;
 
         template<typename T>
         inline          xcore::err              WriteView       ( const T& A )                                                      noexcept;
@@ -192,7 +198,13 @@ namespace xcore::file
         inline          xcore::err              WriteString     ( const string::view<T> View )                                      noexcept;
 
         template<class T>
+        inline          xcore::err              Read            ( T&& Val )                                                         noexcept;
+
+        template<class T>
         inline          xcore::err              Read            ( T& Val )                                                          noexcept;
+
+        template<class T>
+        inline          xcore::err              ReadView        ( T&& View )                                                        noexcept;
 
         template<class T>
         inline          xcore::err              ReadView        ( T& View )                                                         noexcept;

@@ -27,7 +27,7 @@ namespace xcore::types
     //      Static casting with safe ranges 
     //------------------------------------------------------------------------------
     template< typename T_TO, typename T_FROM > constexpr
-    T_TO static_cast_safe( const T_FROM& a ) noexcept
+    T_TO static_cast_safe( const T_FROM a ) noexcept
     {
         xassert_block_basic()
         {
@@ -40,6 +40,7 @@ namespace xcore::types
         return static_cast<T_TO>(a);
     }
 
+    /*
     //------------------------------------------------------------------------------
     template< typename T_TO, typename T_FROM > constexpr
     T_TO static_cast_safe( const T_FROM&& a ) noexcept
@@ -53,6 +54,7 @@ namespace xcore::types
         }
         return static_cast<T_TO>(a);
     }
+    */
 
     //------------------------------------------------------------------------------
     // Description:
