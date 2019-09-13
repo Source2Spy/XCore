@@ -390,172 +390,205 @@ namespace xcore::serializer
         if (File.ReadView(std::span<std::byte>{ reinterpret_cast<std::byte*>(&m_Header), sizeof(m_Header) }).isError(Error))
             return Error;
 
-        File.Synchronize(true).CheckError();
+        if( File.Synchronize(true).isError(Error) ) return Error;
 
-        if (m_Header.m_SerialFileVersion != VERSION_ID)
+        if (m_Header.m_SerialFileVersion != version_id_v)
         {
-            if (x_EndianSwap(m_Header.m_SerialFileVersion) == VERSION_ID)
+            if (xcore::endian::Convert(m_Header.m_SerialFileVersion) == version_id_v)
             {
-                return { xfile::err::state::FAILURE, "File can not be read. Probably it has the wrong endian." };
+                return xerr_failure( Error, "File can not be read. Probably it has the wrong endian." );
             }
 
-            return { xfile::err::state::FAILURE, "Unknown file format (Could be an older version of the file format)" };
+            return xerr_failure(Error, "Unknown file format (Could be an older version of the file format)" );
         }
 
         if (m_Header.m_AutomaticVersion != SizeOfT)
         {
-            return { xfile::err::state::FAILURE, "The size of the structure that was used for writing this file is different from the one reading it" };
+            return xerr_failure(Error, "The size of the structure that was used for writing this file is different from the one reading it" );
         }
 
-        return Err;
+        return Error;
     }
 
     //------------------------------------------------------------------------------
 
-    void* xserialfile::LoadObject(xfile& File) noexcept
+    void* stream::LoadObject( file::stream& File ) noexcept
     {
-        xafptr<xbyte>             InfoData;                   // Buffer which contains all those arrays
-        xafptr<decompress_block>  ReadBuffer;
-        s32                       iCurrentBuffer = 0;
+        xcore::err                              Error;
+        xcore::unique_span<std::byte>           InfoData;                   // Buffer which contains all those arrays
+        xcore::unique_span<decompress_block>    ReadBuffer;
+        std::uint32_t                           iCurrentBuffer = 0;
 
         //
         // Allocate the read temp double buffer
         //
-        ReadBuffer.Alloc(2);
+        ReadBuffer.New(2).CheckError();
 
         //
         // Read the refs and packs
         //
         {
             // Create uncompress buffer for the packs and references
-            const s32 DecompressSize = m_Header.m_nPacks * sizeof(pack) +
-                m_Header.m_nPointers * sizeof(ref) +
-                m_Header.m_nBlockSizes * sizeof(s32);
+            const auto DecompressSize = m_Header.m_nPacks * sizeof(pack)
+                + m_Header.m_nPointers * sizeof(ref)
+                + m_Header.m_nBlockSizes * sizeof(std::uint32_t);
 
             // InfoData.Alloc( x_Max( (s32)m_Header.m_PackSize, DecompressSize ) + m_Header.m_nPacks * sizeof(xbyte**) );
 
-            x_assert(m_Header.m_PackSize <= DecompressSize);
-            InfoData.Alloc(DecompressSize + m_Header.m_nPacks * sizeof(xbyte * *));
+            xassert(m_Header.m_PackSize <= DecompressSize);
+            InfoData.New(DecompressSize + m_Header.m_nPacks * sizeof(std::byte * *)).CheckError();
 
             // Uncompress in place for packs and references
-            if (m_Header.m_PackSize < DecompressSize)
+            if ( m_Header.m_PackSize < DecompressSize )
             {
-                xafptr<char>  CompressData;
+                xcore::unique_span<std::byte>  CompressData;
 
-                CompressData.Alloc(m_Header.m_PackSize);
+                CompressData.New(m_Header.m_PackSize).CheckError();
 
-                if (auto Err = File.ReadList(CompressData); Err.isError())
+                if ( File.ReadView(CompressData).isError(Error) )
                 {
-                    X_LOG("ERROR:xserialfile::LoadObject (%s)", Err.getStringAndClear())
-                        return nullptr;
+                    xcore::log::Output("ERROR:Serializer Load (1) Error(%s)", Error.getCode().m_pString);
+                    Error.clear();
+                    return nullptr;
                 }
-                File.Synchronize(true);
+                File.Synchronize(true).CheckError();
 
-                x_DecompressMem(xbuffer_view<xbyte>(InfoData, DecompressSize), xbuffer_view<xbyte>(reinterpret_cast<xbyte*>(&CompressData[0]), m_Header.m_PackSize));
+                // Actual decompress the block
+                {
+                    std::uint32_t DecompressSize;
+                    xcore::compression::decompress Decompress;
+                    Decompress.Init(static_cast<uint32_t>(InfoData.size())).CheckError();
+                    Decompress.Unpack(DecompressSize, InfoData, CompressData).CheckError();
+                }
+                //x_DecompressMem(xbuffer_view<xbyte>(InfoData, DecompressSize), xbuffer_view<xbyte>(reinterpret_cast<xbyte*>(&CompressData[0]), m_Header.m_PackSize));
             }
             else
             {
-                if (auto Err = File.ReadView(xbuffer_view<xbyte>(&InfoData[0], m_Header.m_PackSize)); Err.isError())
+                if ( File.ReadView(std::span<std::byte>(&InfoData[0], m_Header.m_PackSize)).isError(Error) )
                 {
-                    X_LOG("ERROR:xserialfile::LoadObject 2.(%s)", Err.getStringAndClear())
-                        return nullptr;
+                    xcore::log::Output("ERROR:Serializer Load (2) Error(%s)", Error.getCode().m_pString);
+                    Error.clear();
+                    return nullptr;
                 }
-                File.Synchronize(true);
+                File.Synchronize(true).CheckError();
             }
         }
 
         //
         // Set up the all the pointers
         //
-        const pack* const           pPack = reinterpret_cast<const pack*>     (&InfoData[0]);
-        const ref* const           pRef = reinterpret_cast<const ref*>      (&pPack[m_Header.m_nPacks]);
-        const s32* const           pBlockSizes = reinterpret_cast<const s32*>      (&pRef[m_Header.m_nPointers]);
-        xbyte** const               pPackPointers = const_cast<xbyte * *>(reinterpret_cast<const xbyte * const*>(&pBlockSizes[m_Header.m_nBlockSizes]));
+        auto const   pPack           = reinterpret_cast<const pack*>            (&InfoData[0]);
+        auto const   pRef            = reinterpret_cast<const ref*>             (&pPack[m_Header.m_nPacks]);
+        auto const   pBlockSizes     = reinterpret_cast<const std::uint32_t*>   (&pRef[m_Header.m_nPointers]);
+        auto const   pPackPointers   = const_cast<std::byte**>(reinterpret_cast<const std::byte* const*>(&pBlockSizes[m_Header.m_nBlockSizes]));
 
         //
         // Start the reading and decompressing of the packs
         //
         {
-            s32 iBlock = 0;
+            std::uint32_t iBlock = 0;
 
-            for (s32 iPack = 0; iPack < m_Header.m_nPacks; iPack++)
+            for (std::uint32_t iPack = 0; iPack < m_Header.m_nPacks; iPack++)
             {
-                const pack& Pack = pPack[iPack];
-                s32             nBlocks = 0;
-                s32             ReadSoFar = 0;
+                const pack&     Pack        = pPack[iPack];
+                std::uint32_t   nBlocks     = 0;
+                std::uint32_t   ReadSoFar   = 0;
 
                 // Start reading block immediately
                 // Note that the rest of the first block of a pack is interleave with the last pack last block
                 // except for the very first one (this one)
                 if (iPack == 0)
                 {
-                    if (auto Err = File.ReadView(xbuffer_view<xbyte>(reinterpret_cast<xbyte*>(&ReadBuffer[iCurrentBuffer]), pBlockSizes[iBlock])); Err.isError())
+                    if (File.ReadView(std::span<std::byte>(reinterpret_cast<std::byte*>(&ReadBuffer[iCurrentBuffer]), pBlockSizes[iBlock])).isError(Error))
                     {
-                        X_LOG("ERROR:xserialfile::LoadObject 3.(%s)", Err.getStringAndClear())
-                            return nullptr;
+                        xcore::log::Output("ERROR:Serializer Load (3) Error(%s)", Error.getCode().m_pString);
+                        Error.clear();
+                        return nullptr;
                     }
                 }
 
                 // Allocate the size of this pack
-                pPackPointers[iPack] = (xbyte*)m_pMemoryCallback(Pack.m_UncompressSize, Pack.m_PackFlags);
+                pPackPointers[iPack] = reinterpret_cast<std::byte*>(m_pMemoryCallback( xcore::units::bytes{ Pack.m_UncompressSize }, Pack.m_PackFlags));
 
                 // Store a block that is mark as temp (can/should only be one)
-                if (Pack.m_PackFlags.m_TEMP_MEMORY)
+                if (Pack.m_PackFlags.m_bTempMemory )
                 {
-                    x_assert(m_pTempBlockData == nullptr);
+                    xassert(m_pTempBlockData == nullptr);
                     m_pTempBlockData = pPackPointers[iPack];
                 }
 
                 // Make sure that is just one that we need to read
-                if (Pack.m_UncompressSize > MAX_BLOCK_SIZE)
+                if( Pack.m_UncompressSize > max_block_size_v )
                 {
-                    nBlocks = (s32)(Pack.m_UncompressSize / MAX_BLOCK_SIZE);
-                    nBlocks += ((nBlocks * MAX_BLOCK_SIZE) == Pack.m_UncompressSize) ? 0 : 1;
+                    nBlocks  = Pack.m_UncompressSize / max_block_size_v;
+                    nBlocks += ((nBlocks * max_block_size_v) == Pack.m_UncompressSize) ? 0 : 1;
                 }
 
                 // Read each block
-                for (s32 i = 1; i < nBlocks; i++)
+                for (std::uint32_t i = 1; i < nBlocks; i++)
                 {
                     iCurrentBuffer = !iCurrentBuffer;
                     iBlock++;
 
                     // Start reading the next block
-                    File.Synchronize(true);
-                    if (auto Err = File.ReadView(xbuffer_view<xbyte>{ reinterpret_cast<xbyte*>(&ReadBuffer[iCurrentBuffer]), x_static_cast<xuptr>(pBlockSizes[iBlock]) }); Err.isError())
+                    File.Synchronize(true).CheckError();
+                    if (File.ReadView(std::span<std::byte>{ reinterpret_cast<std::byte*>(&ReadBuffer[iCurrentBuffer]), static_cast<std::size_t>(pBlockSizes[iBlock]) }).isError(Error))
                     {
-                        X_LOG("ERROR:xserialfile::LoadObject 4.(%s)", Err.getStringAndClear())
-                            return nullptr;
+                        xcore::log::Output("ERROR:Serializer Load (4) Error(%s)", Error.getCode().m_pString);
+                        Error.clear();
+                        return nullptr;
                     }
 
                     //
                     // Start the decompressing at the same time
                     //
-                    x_assume(pPackPointers[iPack]);
-                    x_DecompressMem(xbuffer_view<xbyte>(&pPackPointers[iPack][ReadSoFar], MAX_BLOCK_SIZE),
-                        xbuffer_view<xbyte>(reinterpret_cast<xbyte*>(&ReadBuffer[!iCurrentBuffer]), pBlockSizes[iBlock - 1]));
+                    xassume(pPackPointers[iPack]);
 
-                    ReadSoFar += MAX_BLOCK_SIZE;
+                    {
+                        std::uint32_t DecompressSize;
+                        xcore::compression::decompress Decompress;
+                        Decompress.Init(max_block_size_v).CheckError();
+
+                        Decompress.Unpack(DecompressSize
+                                        , std::span<std::byte>{&pPackPointers[iPack][ReadSoFar], max_block_size_v}
+                                        , std::span<const std::byte>{reinterpret_cast<const std::byte*>(&ReadBuffer[!iCurrentBuffer]), pBlockSizes[iBlock - 1]}).CheckError();
+                    }
+                    //x_DecompressMem(xbuffer_view<xbyte>(&pPackPointers[iPack][ReadSoFar], MAX_BLOCK_SIZE),
+                    //    xbuffer_view<xbyte>(reinterpret_cast<xbyte*>(&ReadBuffer[!iCurrentBuffer]), pBlockSizes[iBlock - 1]));
+
+                    ReadSoFar += max_block_size_v;
                 }
 
                 // Finish reading the block
-                File.Synchronize(true);
+                File.Synchronize(true).CheckError();
 
                 // Interleave next pack block with this last pack block
                 if ((iPack + 1) < m_Header.m_nPacks)
                 {
-                    if (auto Err = File.ReadView(xbuffer_view<xbyte>(reinterpret_cast<xbyte*>(&ReadBuffer[!iCurrentBuffer]), pBlockSizes[iBlock + 1])); Err.isError())
+                    if (File.ReadView(std::span<std::byte>(reinterpret_cast<std::byte*>(&ReadBuffer[!iCurrentBuffer]), pBlockSizes[iBlock + 1])).isError(Error))
                     {
-                        X_LOG("ERROR:xserialfile::LoadObject 5.(%s)", Err.getStringAndClear())
-                            return nullptr;
+                        xcore::log::Output("ERROR:Serializer Load (5) Error(%s)", Error.getCode().m_pString);
+                        Error.clear();
+                        return nullptr;
                     }
                 }
 
                 //
                 // Decompress last block for this pack
                 //
-                x_assume(pPackPointers[iPack]);
-                x_DecompressMem(xbuffer_view<xbyte>(&pPackPointers[iPack][ReadSoFar], Pack.m_UncompressSize - ReadSoFar),
-                    xbuffer_view<xbyte>(reinterpret_cast<xbyte*>(&ReadBuffer[iCurrentBuffer]), pBlockSizes[iBlock]));
+                xassume(pPackPointers[iPack]);
+                
+                // Actual decompress the block
+                {
+                    std::uint32_t DecompressSize;
+                    xcore::compression::decompress Decompress;
+                    Decompress.Init(max_block_size_v).CheckError();
+                    Decompress.Unpack(DecompressSize
+                                    , std::span<std::byte>{&pPackPointers[iPack][ReadSoFar], Pack.m_UncompressSize - ReadSoFar}
+                                    , std::span<std::byte>{reinterpret_cast<std::byte*>(&ReadBuffer[iCurrentBuffer]), pBlockSizes[iBlock]}).CheckError();
+                }
+                // x_DecompressMem(xbuffer_view<xbyte>(&pPackPointers[iPack][ReadSoFar], Pack.m_UncompressSize - ReadSoFar),
+                //    xbuffer_view<xbyte>(reinterpret_cast<xbyte*>(&ReadBuffer[iCurrentBuffer]), pBlockSizes[iBlock]));
 
                 // Get ready for next block
                 iCurrentBuffer = !iCurrentBuffer;
@@ -566,13 +599,13 @@ namespace xcore::serializer
         //
         // Resolve pointers
         //
-        for (s32 i = 0; i < m_Header.m_nPointers; i++)
+        for (std::uint32_t i = 0; i < m_Header.m_nPointers; i++)
         {
-            const ref& Ref = pRef[i];
-            void* const     pSrcData = &pPackPointers[Ref.m_PointingATPack][Ref.m_PointingAT];
-            xdataptr<void>* pDestData = reinterpret_cast<xdataptr<void>*>(&pPackPointers[Ref.m_OffsetPack][Ref.m_OffSet]);
+            const ref&                  Ref       = pRef[i];
+            void* const                 pSrcData  = &pPackPointers[Ref.m_PointingATPack][Ref.m_PointingAT];
+            serializer::data_ptr<void>* pDestData = reinterpret_cast<serializer::data_ptr<void>*>(&pPackPointers[Ref.m_OffsetPack][Ref.m_OffSet]);
 
-            pDestData->m_pPtr = pSrcData;
+            pDestData->m_pValue = pSrcData;
         }
 
         // Return the basic pack

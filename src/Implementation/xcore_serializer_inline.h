@@ -238,7 +238,7 @@ namespace xcore::serializer
     }
 
     //------------------------------------------------------------------------------
-
+    inline
     xcore::err stream::Handle( const std::span<const std::byte> View ) noexcept
     {
         xassert(View.size() >= 0);

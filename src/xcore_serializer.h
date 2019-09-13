@@ -348,13 +348,13 @@ namespace xcore::serializer
 
     protected:
 
-        inline      xcore::err      SaveFile            (void)                                                                                              noexcept;
+                    xcore::err      SaveFile            (void)                                                                                              noexcept;
         inline      file::stream&   getW                (void)                                                                                              noexcept;
-        file::stream&               getTable            (void)                                                                                      const   noexcept;
+//                    file::stream&   getTable            (void)                                                                                      const   noexcept;
         constexpr   bool            isLocalVariable     (const std::byte* pRange)                                                                   const   noexcept;
         constexpr   std::int32_t    ComputeLocalOffset  (const std::byte* pItem)                                                                    const   noexcept;
-        xcore::err                  HandlePtrDetails    (const std::byte* pA, std::size_t SizeofA, std::size_t Count, mem_type MemoryFlags)                 noexcept;
-        xcore::err                  Handle              (const std::span<const std::byte> View)                                                             noexcept;
+                    xcore::err      HandlePtrDetails    (const std::byte* pA, std::size_t SizeofA, std::size_t Count, mem_type MemoryFlags)                 noexcept;
+        inline      xcore::err      Handle              (const std::span<const std::byte> View)                                                             noexcept;
 
     protected:
 

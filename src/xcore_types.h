@@ -31,10 +31,10 @@ namespace xcore::types
     {
         xassert_block_basic()
         {
-            using max_type = typename byte_size_uint_t< int(sizeof(T_TO) > sizeof(T_FROM) ? sizeof(T_TO) : sizeof(T_FROM)) >::type;
-            using min_type = typename byte_size_int_t < int(sizeof(T_TO) > sizeof(T_FROM) ? sizeof(T_TO) : sizeof(T_FROM)) >::type;
+            using max_type = byte_size_uint_t< (sizeof(T_TO) > sizeof(T_FROM) ? sizeof(T_TO) : sizeof(T_FROM)) >;
+            using min_type = byte_size_int_t < (sizeof(T_TO) > sizeof(T_FROM) ? sizeof(T_TO) : sizeof(T_FROM)) >;
             xassert(static_cast<min_type>(a) >= static_cast<min_type>(std::numeric_limits<T_TO>::lowest()) &&
-                    static_cast<max_type>(a) <= static_cast<max_type>(std::numeric_limits<typename byte_size_uint_t<sizeof(T_TO)>::type>::max()));
+                    static_cast<max_type>(a) <= static_cast<max_type>(std::numeric_limits<byte_size_uint_t<sizeof(T_TO)>>::max()));
         }
 
         return static_cast<T_TO>(a);
