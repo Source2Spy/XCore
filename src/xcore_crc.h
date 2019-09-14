@@ -297,7 +297,7 @@ namespace xcore
             return *this = FromString(pIn);
         }
 
-        constexpr self FromBytes(std::span<std::byte> View, basic_t Value = basic_t{ 0 }) noexcept
+        constexpr self FromBytes(std::span<const std::byte> View, basic_t Value = basic_t{ 0 }) noexcept
         {
             assert(View.size());
             assert(View.data());
@@ -318,86 +318,11 @@ namespace xcore
             return self{ Value };
         }
 
-        xforceinline self& setupFromBytes( std::span<std::byte> View ) noexcept
+        xforceinline self& setupFromBytes( std::span<const std::byte> View ) noexcept
         {
             return *this = FromBytes(View);
         }
     };
-
-    /*
-    //-------------------------------------------------------------------------------------------------------
-    // Type for CRC
-    //-------------------------------------------------------------------------------------------------------
-    template< std::size_t T_BITS_V >
-    struct units : xcore::units::type< units<T_BITS_V>, details::to_t<T_BITS_V> >
-    {
-        using parent = xcore::units::type< units<T_BITS_V>, details::to_t<T_BITS_V> >;
-        using parent::type;
-    };
-
-    //-------------------------------------------------------------------------------------------------------
-    // Default CRC value
-    //-------------------------------------------------------------------------------------------------------
-    template< std::size_t T_BITS_V >
-    constexpr static units<T_BITS_V> g_Default = units<T_BITS_V>{ static_cast<details::to_t<T_BITS_V>>(~details::to_t<T_BITS_V>(0)) };
-
-    //-------------------------------------------------------------------------------------------------------
-    // Compute CRC from a string
-    //-------------------------------------------------------------------------------------------------------
-    template< std::size_t T_BITS_V > constexpr
-    units<T_BITS_V> FromString( const char* pIn, units<T_BITS_V> CRC = g_Default<T_BITS_V> ) noexcept
-    {
-        static_assert( T_BITS_V == 16 || T_BITS_V == 32 || T_BITS_V == 64, "" );
-        xassert(pIn);
-        for( auto i = 0u; auto c = pIn[i]; ++i ) CRC.m_Value = details::table<details::to_t<T_BITS_V>>::ms_Table[ (CRC.m_Value ^ c) & 0xFF] ^ (CRC.m_Value >> 8);
-        return units<T_BITS_V>{ ~CRC.m_Value };
-    }
-
-    //-------------------------------------------------------------------------------------------------------
-    template<> constexpr
-    units<8> FromString<8>( const char* pIn, units<8> CRC ) noexcept
-    {
-        xassert(pIn);
-        for( auto i = 0u; auto c = pIn[i]; ++i )
-        {
-            c = c^CRC.m_Value;
-            CRC.m_Value = details::table<std::uint8_t>::ms_Table[c & 0x0f] ^ details::table<std::uint8_t>::ms_Table[16l + ((c >> 4) & 0x0f)];
-        }
-
-        return units<8>{static_cast<std::uint8_t>(~CRC.m_Value)};
-    }
-    */
-
-    //-------------------------------------------------------------------------------------------------------
-    // Compute CRC from bytes
-    //-------------------------------------------------------------------------------------------------------
-    /*
-    template< std::size_t T_BITS_V > constexpr
-    units<T_BITS_V> FromBytes( const std::byte* pIn, std::size_t LengthInBytes, units<T_BITS_V> CRC = g_Default<T_BITS_V> ) noexcept
-    {
-        static_assert( T_BITS_V == 16 || T_BITS_V == 32 || T_BITS_V == 64, "" );
-        assert(LengthInBytes);
-        assert(pIn);
-        for( auto i = 0u; auto c = static_cast<details::to_t<T_BITS_V>>(pIn[i]); ++i ) 
-            CRC.m_Value = details::table<details::to_t<T_BITS_V>>::ms_Table[ (CRC.m_Value ^ c) & 0xFF] ^ (CRC.m_Value >> 8);
-        return units<T_BITS_V>{~CRC};
-    }
-    
-
-    //-------------------------------------------------------------------------------------------------------
-    template<> constexpr
-    units<8> FromBytes<8>( const std::byte* pIn, std::size_t LengthInBytes, units<8> CRC ) noexcept
-    {
-        assert(pIn);
-        assert(LengthInBytes);
-        for( auto i = 0u; auto c = static_cast<std::uint8_t>(pIn[i]); ++i )
-        {
-            c = c ^ CRC.m_Value;
-            CRC.m_Value = details::table<std::uint8_t>::ms_Table[c & 0x0f] ^ details::table<std::uint8_t>::ms_Table[16l + ((c >> 4) & 0x0f)];
-        }
-        return units<8>{static_cast<std::uint8_t>(~CRC.m_Value)};
-    }
-    */
 }
 
 //------------------------------------------------------------------------------
