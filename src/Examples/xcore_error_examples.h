@@ -3,7 +3,7 @@ namespace xcore::error::examples
 {
     enum class my_error
     {
-          GUID = xcore::crc::FromString<32>("xcore::err_unitests::examples").m_Value // GUID for this err err this is better been generated with a constexpr string to CRC32 or something like that
+          GUID = xcore::crc<32>::FromString("xcore::err_unitests::examples").m_Value // GUID for this err err this is better been generated with a constexpr string to CRC32 or something like that
         , OK   = 0                                                                   // Default OK required by the system
         , FAILURE                                                                    // Default FAILURE required by the system (generic failure)
         , SOMETHING                                                                  // Example of a unique error

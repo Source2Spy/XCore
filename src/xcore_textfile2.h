@@ -26,7 +26,7 @@ namespace xcore::textfile::version_2
     //-----------------------------------------------------------------------------------------------------
     enum class error_state : std::uint32_t
     {
-          GUID                      = xcore::crc::FromString<32>("xcore::textfile").m_Value
+          GUID                      = xcore::crc<32>::FromString("xcore::textfile").m_Value
         , OK                        = 0
         , FAILURE
         , FILE_NOT_FOUND
@@ -63,13 +63,13 @@ namespace xcore::textfile::version_2
         constexpr user_defined_types( const char* pName, const char* pTypes ) noexcept 
             : m_Name                    {pName}
             , m_SystemTypes             {pTypes}
-            , m_CRC                     { crc::FromString<32>(pName) }
+            , m_CRC                     { xcore::crc<32>::FromString(pName) }
             , m_NameLength              { []( const char* pName )  constexpr { int i=0; while( pName[++i] ); return i;}(pName) }
             , m_nSystemTypes            { []( const char* pTypes ) constexpr { int i=0; while( pTypes[++i]); return i;}(pTypes) } 
             {}
         string::fixed<char,32>  m_Name;
         string::fixed<char,32>  m_SystemTypes;
-        crc::units<32>          m_CRC;
+        xcore::crc<32>          m_CRC;
         int                     m_NameLength{};
         int                     m_nSystemTypes{};     // How many system types we are using, this is basically the length of the m_SystemType string
     };
@@ -133,7 +133,7 @@ namespace xcore::textfile::version_2
         struct field_type
         {
             int                                 m_nTypes;               // How many types does this dynamic field has
-            crc::units<32>                      m_UserType;             // if 0 then is not valid
+            xcore::crc<32>                      m_UserType;             // if 0 then is not valid
             string::fixed<char,16>              m_SystemTypes;          // System types
             int                                 m_iField;               // Index to the m_FieldInfo from the column 
 
@@ -189,14 +189,14 @@ namespace xcore::textfile::version_2
                         xcore::err      Open                ( bool isRead, std::string_view View, file_type FileType, flags Flags={} )  noexcept;
 
                         template< std::size_t N, typename... T_ARGS >
-        inline          xcore::err      Field               ( crc::units<32> UserType, const char(&pFieldName)[N], T_ARGS&... Args )    noexcept;
+        inline          xcore::err      Field               ( xcore::crc<32> UserType, const char(&pFieldName)[N], T_ARGS&... Args )    noexcept;
 
-                        xcore::err      ReadFieldUserType   ( crc::units<32>& UserType, const char* pFieldName )                        noexcept;
+                        xcore::err      ReadFieldUserType   ( xcore::crc<32>& UserType, const char* pFieldName )                        noexcept;
 
                         template< std::size_t N, typename... T_ARGS >
         inline          xcore::err      Field               ( const char(&pFieldName)[N], T_ARGS&... Args )                             noexcept;
 
-        inline          const auto*     getUserType         ( crc::units<32> UserType )                                         const   noexcept { if( auto I = m_UserTypeMap.find(UserType); I == m_UserTypeMap.end() ) return (details::user_types*)nullptr; else return &m_UserTypes[I->second]; }
+        inline          const auto*     getUserType         ( xcore::crc<32> UserType )                                         const   noexcept { if( auto I = m_UserTypeMap.find(UserType); I == m_UserTypeMap.end() ) return (details::user_types*)nullptr; else return &m_UserTypes[I->second]; }
 
                         template< std::size_t N, typename TT, typename T >
         inline          bool            Record              ( xcore::err& Error, const char (&Str)[N]
@@ -231,7 +231,7 @@ namespace xcore::textfile::version_2
                         xcore::err      ReadWhiteSpace      ( int& c )                                                                  noexcept;
                         xcore::err      ReadLine            ( void )                                                                    noexcept;
                         xcore::err      getC                ( int& c )                                                                  noexcept;
-                        xcore::err      ReadColumn          ( crc::units<32> UserType, const char* pFieldName, arglist::view Args )     noexcept;
+                        xcore::err      ReadColumn          ( xcore::crc<32> UserType, const char* pFieldName, arglist::view Args )     noexcept;
                         xcore::err      ReadFieldUserType   ( const char* pFieldName )                                                  noexcept;
 
                         template< typename T >
@@ -240,7 +240,7 @@ namespace xcore::textfile::version_2
                         xcore::err      WriteStr            ( string::view<const char> Buffer )                                         noexcept;
                         xcore::err      WriteFmtStr         ( const char* pFmt, ... )                                                   noexcept;
                         xcore::err      WriteChar           ( char C, int Count = 1 )                                                   noexcept;
-                        xcore::err      WriteColumn         ( crc::units<32> UserType, const char* pFieldName, arglist::view Args )     noexcept;
+                        xcore::err      WriteColumn         ( xcore::crc<32> UserType, const char* pFieldName, arglist::view Args )     noexcept;
                         xcore::err      WriteUserTypes      ( void )                                                                    noexcept;
 
                         xcore::err      HandleDynamicTable  ( int& Count )                                                              noexcept;
@@ -261,7 +261,7 @@ namespace xcore::textfile::version_2
         xcore::vector<char>                                 m_Memory                {};
         xcore::vector<details::user_types>                  m_UserTypes             {};
         xcore::vector<int>                                  m_DataMapping           {};
-        std::unordered_map<crc::units<32>, std::uint32_t>   m_UserTypeMap           {};     // First uint32 is the CRC32 of the err name
+        std::unordered_map<xcore::crc<32>, std::uint32_t>   m_UserTypeMap           {};     // First uint32 is the CRC32 of the err name
                                                                                             // Second uint32 is the index in the UserTypes vector which contains the actual data
         int                                                 m_nColumns              {};
         int                                                 m_iLine                 {};     // Which line we are in the current record

@@ -26,7 +26,7 @@ namespace xcore::textfile::version_2
     //------------------------------------------------------------------------------------------------
 
     template< std::size_t N, typename... T_ARGS > inline
-    xcore::err stream::Field( crc::units<32> UserType, const char(&pFieldName)[N], T_ARGS&... Args ) noexcept
+    xcore::err stream::Field( xcore::crc<32> UserType, const char(&pFieldName)[N], T_ARGS&... Args ) noexcept
     {
         static_assert( (details::is_valid_type_v<T_ARGS> || ... ) );
         arglist::out Out{ &Args... };
@@ -39,7 +39,7 @@ namespace xcore::textfile::version_2
     template< std::size_t N, typename... T_ARGS > inline
     xcore::err stream::Field( const char(&pFieldName)[N], T_ARGS&... Args ) noexcept
     {
-        crc::units<32> UserType = crc::units<32>{0};
+        xcore::crc<32> UserType = xcore::crc<32>{0};
         return Field( UserType, pFieldName, Args... );
     }
 

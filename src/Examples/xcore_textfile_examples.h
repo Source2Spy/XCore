@@ -256,7 +256,7 @@ namespace xcore::textfile::examples
                     if( TextFile.Field( "Name", String[i] ).isError(Error) ) return;
 
                     // Handle the data
-                    crc::units<32> Type;
+                    xcore::crc<32> Type;
                     if( isRead )
                     {
                         if( TextFile.ReadFieldUserType( Type, "Value:?" ).isError(Error) ) return;
@@ -269,9 +269,9 @@ namespace xcore::textfile::examples
 
                     switch(Type.m_Value)
                     {
-                    case crc::FromString<32>("V3").m_Value:     if( TextFile.Field( Type, "Value:?", Position[0], Position[1], Position[2]   ).isError(Error)    ) return; break;
-                    case crc::FromString<32>("BOOL").m_Value:   if( TextFile.Field( Type, "Value:?", isValid                                 ).isError(Error)    ) return; break;
-                    case crc::FromString<32>("STRING").m_Value: if( TextFile.Field( Type, "Value:?", types::lvalue(Name.getView())           ).isError(Error)    ) return; break;
+                    case xcore::crc<32>::FromString("V3").m_Value:     if (TextFile.Field(Type, "Value:?", Position[0], Position[1], Position[2]).isError(Error)) return; break;
+                    case xcore::crc<32>::FromString("BOOL").m_Value:   if (TextFile.Field(Type, "Value:?", isValid).isError(Error)) return; break;
+                    case xcore::crc<32>::FromString("STRING").m_Value: if (TextFile.Field( Type, "Value:?", types::lvalue(Name.getView())           ).isError(Error)    ) return; break;
                     }
                 }
             )) return Error;

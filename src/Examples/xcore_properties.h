@@ -27,7 +27,7 @@ namespace xcore::property::examples
 
     //-------------------------------------------------------------------------------
 
-    xcore::err HandleOperations( xcore::textfile::stream& TextFile, crc::units<32> Type, property::data& Data ) noexcept
+    xcore::err HandleOperations( xcore::textfile::stream& TextFile, xcore::crc<32> Type, property::data& Data ) noexcept
     {
         return std::visit( [&]( auto&& V )
         {
@@ -39,15 +39,15 @@ namespace xcore::property::examples
 
     //-------------------------------------------------------------------------------
 
-    void ConstructDataFromType( crc::units<32> Type, property::data& Data ) noexcept
+    void ConstructDataFromType( xcore::crc<32> Type, property::data& Data ) noexcept
     {
         switch(Type.m_Value)
         {
-            case crc::FromString<32>("OOBB").m_Value:   Data.emplace<oobb>();     break;
-            case crc::FromString<32>("S32").m_Value:    Data.emplace<int>();      break;
-            case crc::FromString<32>("F32").m_Value:    Data.emplace<float>();    break;
-            case crc::FromString<32>("STRING").m_Value: Data.emplace<string_t>(); break;
-            case crc::FromString<32>("BOOL").m_Value:   Data.emplace<bool>();     break;
+            case xcore::crc<32>::FromString("OOBB").m_Value:   Data.emplace<oobb>();     break;
+            case xcore::crc<32>::FromString("S32").m_Value:    Data.emplace<int>();      break;
+            case xcore::crc<32>::FromString("F32").m_Value:    Data.emplace<float>();    break;
+            case xcore::crc<32>::FromString("STRING").m_Value: Data.emplace<string_t>(); break;
+            case xcore::crc<32>::FromString("BOOL").m_Value:   Data.emplace<bool>();     break;
             default: xassert(false);
         }
     }
@@ -125,7 +125,7 @@ namespace xcore::property::examples
                         if( TextFile.Field( "Name", Var.m_Name ).isError(Error) ) return;
 
                         // Determine the data type
-                        crc::units<32> Type;
+                        xcore::crc<32> Type;
                         if( isRead )
                         {
                             if( TextFile.ReadFieldUserType( Type, "Value:?" ).isError(Error) ) return;
@@ -305,7 +305,7 @@ namespace xcore::property::examples
                         if( TextFile.Field( "nPopPaths",    Var.m_nPopPaths     ).isError(Error) ) return;
 
                         // Determine the data type
-                        crc::units<32> Type;
+                        xcore::crc<32> Type;
                         if( isRead )
                         {
                             if( TextFile.ReadFieldUserType( Type, "Value:?" ).isError(Error) ) return;

@@ -232,7 +232,7 @@ namespace xcore::cmdline
                 bool   Found = false;
 
                 // Remove leading '-' and find crc
-                auto CRC = crc::FromString<32>( &a[1] );
+                auto CRC = xcore::crc<32>::FromString( &a[1] );
 
                 // check for minimum rage of the previous switch
                 if( m_Command.size() )

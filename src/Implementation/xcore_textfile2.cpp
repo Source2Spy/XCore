@@ -710,7 +710,7 @@ namespace xcore::textfile::version_2
 
     //------------------------------------------------------------------------------
     
-    xcore::err stream::WriteColumn( crc::units<32> UserType, const char* pColumnName, arglist::view Args ) noexcept
+    xcore::err stream::WriteColumn( xcore::crc<32> UserType, const char* pColumnName, arglist::view Args ) noexcept
     {
         //
         // Make sure we always have enough memory
@@ -1600,7 +1600,7 @@ namespace xcore::textfile::version_2
 
         if( pFieldName[Column.m_NameLength] ==';' )
         {
-            Column.m_UserType = crc::FromString<32>( &pFieldName[Column.m_NameLength+1] );
+            Column.m_UserType = xcore::crc<32>::FromString( &pFieldName[Column.m_NameLength+1] );
             auto p = getUserType( Column.m_UserType );
             if( p == nullptr )
                 return xerr_failure( Error, "Fail to find the user type for a column" );
@@ -1684,7 +1684,7 @@ namespace xcore::textfile::version_2
 
     //------------------------------------------------------------------------------
 
-    xcore::err stream::ReadFieldUserType( crc::units<32>& UserType, const char* pColumnName ) noexcept
+    xcore::err stream::ReadFieldUserType( xcore::crc<32>& UserType, const char* pColumnName ) noexcept
     {
         xcore::err Error;
         error::scope Scope( Error, [&]
@@ -1725,7 +1725,7 @@ namespace xcore::textfile::version_2
 
     //------------------------------------------------------------------------------
 
-    xcore::err stream::ReadColumn( const crc::units<32> iUserRef, const char* pColumnName, arglist::view Args ) noexcept
+    xcore::err stream::ReadColumn( const xcore::crc<32> iUserRef, const char* pColumnName, arglist::view Args ) noexcept
     {
         xassert( m_iLine > 0 );
 
@@ -2289,7 +2289,7 @@ namespace xcore::textfile::version_2
 
                     if( c == ';' )
                     {
-                        D.m_UserType = crc::FromString<32>( Buffer.data() );
+                        D.m_UserType = xcore::crc<32>::FromString( Buffer.data() );
                         auto p = getUserType( D.m_UserType );
                         if( p == nullptr )
                             return xerr_failure( Error, "Fail to find the user type for a column" );
@@ -2461,7 +2461,7 @@ namespace xcore::textfile::version_2
                         if( UserType.m_NameLength >= static_cast<int>(UserType.m_Name.size()) ) return xerr_failure( Failure, "Failed to find the termination character ':' for a user type");
                     }
                     UserType.m_Name[UserType.m_NameLength]=0;
-                    UserType.m_CRC = crc::FromString<32>(UserType.m_Name);
+                    UserType.m_CRC = xcore::crc<32>::FromString(UserType.m_Name);
 
                     UserType.m_nSystemTypes=0;
                     do 

@@ -10,7 +10,7 @@ namespace xcore::compression
     public:
         enum class error_state : std::uint32_t
         {
-              GUID = xcore::crc::FromString<32>("xcore::compression::dictionary").m_Value
+              GUID = xcore::crc<32>::FromString("xcore::compression::dictionary").m_Value
             , OK   = 0
             , FAILURE
             , NOT_DONE

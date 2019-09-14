@@ -110,7 +110,7 @@ namespace xcore::cmdline
         xforceinline   std::int32_t                 getArgumentCount    ( void )            const noexcept;
         xforceinline   std::int32_t                 getArgumentOffset   ( void )            const noexcept;
         xforceinline   string::view<const char>     getArgument         ( int Index )       const noexcept;
-        xforceinline   crc::units<32>               getCRC              ( void )            const noexcept;
+        xforceinline   xcore::crc<32>               getCRC              ( void )            const noexcept;
         xforceinline   string::view<const char>     getName             ( void )            const noexcept;
 
     protected:
@@ -183,7 +183,7 @@ namespace xcore::cmdline
                         xcore::err                  Parse                   ( xcore::vector<string::ref<char>>& Arguments )             noexcept;
         inline          std::int32_t                getArgumentCount        ( void )                                            const   noexcept;
 
-        inline          crc::units<32>              getCmdCRC               ( cmd::handle CmdHandle )                           const   noexcept;
+        inline          xcore::crc<32>              getCmdCRC               ( cmd::handle CmdHandle )                           const   noexcept;
         inline          string::view<const char>    getCmdName              ( cmd::handle CmdHandle )                           const   noexcept;
         inline          std::int32_t                getCmdArgumentOffset    ( cmd::handle CmdHandle )                           const   noexcept;
         inline          std::int32_t                getCmdArgumentCount     ( cmd::handle CmdHandle )                           const   noexcept;

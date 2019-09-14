@@ -112,7 +112,7 @@ namespace xcore::textfile::version_1
         {
             string::fixed<char,256>                 m_UserType          {};     // Name of the user_types type
             string::fixed<char,256>                 m_SystemType        {};     // System types such: fff
-            crc::units<32>                          m_CRC32             {};     // CRC32 of the user_types type string
+            crc<32>                                 m_CRC32             {};     // CRC32 of the user_types type string
             bool                                    m_bSaved            {};     
             std::uint8_t                            m_nSystemTypes      {};     // How many system types we are using, this is basically the length of the m_SystemType string
             std::uint8_t                            m_UID               {};     // UID from the user_types. He may want to remap things.
@@ -190,7 +190,7 @@ namespace xcore::textfile::version_1
     //-----------------------------------------------------------------------------------------------------
     enum class error_state : std::uint32_t
     {
-          GUID      = xcore::crc::FromString<32>("xcore::textfile").m_Value
+          GUID      = xcore::crc<32>::FromString("xcore::textfile").m_Value
         , OK        = 0
         , FAILURE
         , FILE_NOT_FOUND
@@ -237,7 +237,7 @@ namespace xcore::textfile::version_1
                             xcore::err                  ReadNextRecord      ( void )                                                                                        noexcept;
         inline              int                         getRecordCount      ( void )                                                                                        noexcept { return m_Record.m_Count; }
         inline              const string::view<char>    getRecordName       ( void )                                                                                        noexcept { return m_Record.m_Name;  }
-                            std::uint32_t               AddUserType         ( const char* pSystemTypes, const char* pUserType, crc::units<32> CRC32UserType, std::uint8_t UID )  noexcept;
+                            std::uint32_t               AddUserType         ( const char* pSystemTypes, const char* pUserType, xcore::crc<32> CRC32UserType, std::uint8_t UID )  noexcept;
         static              bool                        isValidType         ( int Type )                                                                                    noexcept;
         constexpr           bool                        isReading           ( void )    const                                                                               noexcept { return m_File.m_States.m_isReading; }
         constexpr           bool                        isEOF               ( void )    const                                                                               noexcept { return m_File.m_States.m_isEOF; }
@@ -355,7 +355,7 @@ namespace xcore::textfile::version_1
 
         std::vector<details::user_types>                          m_User                  {}; // This is used only when reading
         std::vector<details::user_type>                     m_UserTypes             {}; // List of types created by the user_types
-        std::unordered_map<crc::units<32>, std::uint32_t>   m_UserTypeMap           {}; // First uint32 is the CRC32 of the err name
+        std::unordered_map<xcore::crc<32>, std::uint32_t>   m_UserTypeMap           {}; // First uint32 is the CRC32 of the err name
                                                                                         // Second uint32 is the index in the UserTypes vector which contains the actual data
     };
 }

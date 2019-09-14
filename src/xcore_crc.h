@@ -5,9 +5,9 @@
 // Not too sure which is faster to compile with
 #define XCORE_CRC_STATIC_TABLE true
 
-namespace xcore::crc
+namespace xcore
 {
-    namespace details
+    namespace crc_details
     {
         //-------------------------------------------------------------------------------------------------------
         template< typename T >
@@ -260,6 +260,72 @@ namespace xcore::crc
     }
 
     //-------------------------------------------------------------------------------------------------------
+    // Basic CRC type 
+    //-------------------------------------------------------------------------------------------------------
+    template< std::size_t T_BITS_V >
+    struct crc : xcore::units::type< crc<T_BITS_V>, crc_details::to_t<T_BITS_V> >
+    {
+        using parent  = xcore::units::type< crc<T_BITS_V>, crc_details::to_t<T_BITS_V> >;
+        using basic_t = typename parent::basic_t;
+        using self    = crc<T_BITS_V>;
+
+        using parent::parent;
+
+        static_assert(T_BITS_V == 8 || T_BITS_V == 16 || T_BITS_V == 32 || T_BITS_V == 64, "");
+
+        constexpr static self FromString(const char* pIn, basic_t Value = basic_t{ 0 }) noexcept
+        {
+            xassert(pIn);
+            for (auto i = 0u; auto c = static_cast<basic_t>(pIn[i]); ++i)
+            {
+                if constexpr (T_BITS_V == 8)
+                {
+                    c = c ^ Value;
+                    Value = crc_details::table<basic_t>::ms_Table[c & 0x0f] ^ crc_details::table<basic_t>::ms_Table[16l + ((c >> 4) & 0x0f)];
+                }
+                else
+                {
+                    Value = crc_details::table<basic_t>::ms_Table[(Value ^ c) & 0xFF] ^ (Value >> 8);
+                }
+            }
+
+            return self{ Value };
+        }
+
+        xforceinline self& setupFromString( const char* pIn ) noexcept
+        {
+            return *this = FromString(pIn);
+        }
+
+        constexpr self FromBytes(std::span<std::byte> View, basic_t Value = basic_t{ 0 }) noexcept
+        {
+            assert(View.size());
+            assert(View.data());
+
+            for(auto c : View )
+            {
+                if constexpr (T_BITS_V == 8)
+                {
+                    c = c ^ Value;
+                    Value = crc_details::table<basic_t>::ms_Table[c & 0x0f] ^ crc_details::table<basic_t>::ms_Table[16l + ((c >> 4) & 0x0f)];
+                }
+                else
+                {
+                    Value = crc_details::table<basic_t>::ms_Table[(Value ^ c) & 0xFF] ^ (Value >> 8);
+                }
+            }
+
+            return self{ Value };
+        }
+
+        xforceinline self& setupFromBytes( std::span<std::byte> View ) noexcept
+        {
+            return *this = FromBytes(View);
+        }
+    };
+
+    /*
+    //-------------------------------------------------------------------------------------------------------
     // Type for CRC
     //-------------------------------------------------------------------------------------------------------
     template< std::size_t T_BITS_V >
@@ -300,10 +366,12 @@ namespace xcore::crc
 
         return units<8>{static_cast<std::uint8_t>(~CRC.m_Value)};
     }
+    */
 
     //-------------------------------------------------------------------------------------------------------
     // Compute CRC from bytes
     //-------------------------------------------------------------------------------------------------------
+    /*
     template< std::size_t T_BITS_V > constexpr
     units<T_BITS_V> FromBytes( const std::byte* pIn, std::size_t LengthInBytes, units<T_BITS_V> CRC = g_Default<T_BITS_V> ) noexcept
     {
@@ -314,6 +382,7 @@ namespace xcore::crc
             CRC.m_Value = details::table<details::to_t<T_BITS_V>>::ms_Table[ (CRC.m_Value ^ c) & 0xFF] ^ (CRC.m_Value >> 8);
         return units<T_BITS_V>{~CRC};
     }
+    
 
     //-------------------------------------------------------------------------------------------------------
     template<> constexpr
@@ -328,15 +397,16 @@ namespace xcore::crc
         }
         return units<8>{static_cast<std::uint8_t>(~CRC.m_Value)};
     }
+    */
 }
 
 //------------------------------------------------------------------------------
 // Add as a potential hash 
 //------------------------------------------------------------------------------
 template< std::size_t S > 
-struct std::hash<xcore::crc::units<S>>
+struct std::hash<xcore::crc<S>>
 {
-    using argument_type = xcore::crc::units<S>;
+    using argument_type = xcore::crc<S>;
     using result_type   = std::size_t;
     result_type operator()(argument_type const& s) const noexcept
     {

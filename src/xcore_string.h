@@ -110,21 +110,21 @@ namespace xcore::string
     #define xconst_universal_str(A)  xcore::string::const_universal{ A, L##A }
 
     //------------------------------------------------------------------------------------
-	template< typename T_CHAR >
-	struct const_crc
-	{
-		template< std::size_t T_LENGTH >
-		constexpr const_crc(const T_CHAR(&Str)[T_LENGTH])   noexcept : m_Str{ Str }, m_CRC{ crc::FromString<32>(Str) } {}
-		constexpr const_crc(void)							noexcept = default;
-		constexpr const_crc(const const_crc&)				noexcept = default;
+    template< typename T_CHAR >
+    struct const_crc
+    {
+        template< std::size_t T_LENGTH >
+        constexpr const_crc(const T_CHAR(&Str)[T_LENGTH])   noexcept : m_Str{ Str }, m_CRC{ xcore::crc<32>::FromString(Str) } {}
+        constexpr const_crc(void)                           noexcept = default;
+        constexpr const_crc(const const_crc&)               noexcept = default;
 
-		constant<T_CHAR>    m_Str;
-		crc::units<32>      m_CRC;
-	};
+        constant<T_CHAR>    m_Str;
+        crc<32>             m_CRC;
+    };
 
-	// Deduction Guides
-	//template <class T, std::size_t N>
-	//const_crc(T (&)[N])->const_crc<T>;
+    // Deduction Guides
+    //template <class T, std::size_t N>
+    //const_crc(T (&)[N])->const_crc<T>;
 
     //------------------------------------------------------------------------------------
     // fixed - fixed size string class

@@ -6,7 +6,7 @@ namespace xcore::cmdline
     xforceinline   std::int32_t                 cmd::getArgumentCount    ( void )            const noexcept { return m_CmdLine.getCmdArgumentCount(m_CmdHandle);          }
     xforceinline   std::int32_t                 cmd::getArgumentOffset   ( void )            const noexcept { return m_CmdLine.getCmdArgumentOffset(m_CmdHandle);         }
     xforceinline   string::view<const char>     cmd::getArgument         ( int Index )       const noexcept { return m_CmdLine.getArgument( Index + m_CmdArgOffset );     }
-    xforceinline   crc::units<32>               cmd::getCRC              ( void )            const noexcept { return m_CmdLine.getCmdCRC(m_CmdHandle);                    }
+    xforceinline   xcore::crc<32>               cmd::getCRC              ( void )            const noexcept { return m_CmdLine.getCmdCRC(m_CmdHandle);                    }
     xforceinline   string::view<const char>     cmd::getName             ( void )            const noexcept { return m_CmdLine.getCmdName(m_CmdHandle);                   }
 
     //------------------------------------------------------------------------------------
@@ -54,7 +54,7 @@ namespace xcore::cmdline
 
     //------------------------------------------------------------------------------------
     inline
-    crc::units<32> parser::getCmdCRC( cmd::handle H ) const noexcept
+    xcore::crc<32> parser::getCmdCRC( cmd::handle H ) const noexcept
     {
         return m_CmdDef[ m_Command[H.m_Value].m_iCmdDef ].m_NameInfo.m_CRC;
     }

@@ -29,13 +29,15 @@ namespace xcore::units
     //------------------------------------------------------------------------------
     // type
     //------------------------------------------------------------------------------
-    template< typename T_PARENT, typename T >
+    template< typename T_PARENT, typename T_BASIC_TYPE >
     struct type
     {
-        T m_Value;
+        using basic_t = T_BASIC_TYPE;
+
+        T_BASIC_TYPE m_Value;
 
         constexpr                               type        ( void )                        noexcept = default;
-        constexpr explicit                      type        ( T Value )                     noexcept : m_Value{ Value } {}
+        constexpr explicit                      type        ( basic_t Value )               noexcept : m_Value{ Value } {}
         constexpr               bool            operator == ( const T_PARENT X )    const   noexcept { return m_Value == X.m_Value;              }
         constexpr               bool            operator >= ( const T_PARENT X )    const   noexcept { return m_Value >= X.m_Value;              }
         constexpr               bool            operator <= ( const T_PARENT X )    const   noexcept { return m_Value <= X.m_Value;              }
@@ -49,7 +51,7 @@ namespace xcore::units
                                 auto&           operator -= ( const T_PARENT X )            noexcept { m_Value -= X.m_Value; return *static_cast<T_PARENT*>(this);       }
                                 auto&           operator *= ( const T_PARENT X )            noexcept { m_Value *= X.m_Value; return *static_cast<T_PARENT*>(this);       }
                                 auto&           operator /= ( const T_PARENT X )            noexcept { m_Value /= X.m_Value; return *static_cast<T_PARENT*>(this);       }
-        template< typename = typename std::enable_if_t< std::is_signed<T>::value, type > >
+        template< typename = typename std::enable_if_t< std::is_signed<basic_t>::value, type > >
         constexpr               auto            operator -  ( void  )               const   noexcept { return T_PARENT{ -m_Value };                  }
         constexpr               auto            operator +  ( const T_PARENT X )    const   noexcept { return T_PARENT{ m_Value + X.m_Value };       }
         constexpr               auto            operator -  ( const T_PARENT X )    const   noexcept { return T_PARENT{ m_Value - X.m_Value };       }

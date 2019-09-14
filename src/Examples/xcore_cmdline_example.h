@@ -29,14 +29,14 @@ namespace xcore::cmdline::examples
 
 			switch( Cmd.getCRC().m_Value )
 			{
-			case crc::FromString<32>("FileName").m_Value:
+            case xcore::crc<32>::FromString("FileName").m_Value:
 			{
 				xassert(Cmd.getArgumentCount() == 1);
 				auto String = Cmd.getArgument(0);
 				xassert( string::constant("SomeFile.txt") == String );
 				break;
 			}
-			case crc::FromString<32>("Res").m_Value:
+            case xcore::crc<32>::FromString("Res").m_Value:
 			{
 				xassert( Cmd.getArgumentCount() == 2 );
 				const auto XRes = std::atoi( Cmd.getArgument(0) );

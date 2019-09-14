@@ -19,7 +19,7 @@ namespace xcore::file
 
     enum class error : std::uint32_t
     {
-          GUID              = crc::FromString<32>("xcore::file").m_Value        // GUID for this err err this is better been generated with a constexpr string to CRC32 or something like that
+          GUID              = xcore::crc<32>::FromString("xcore::file").m_Value // GUID for this err err this is better been generated with a constexpr string to CRC32 or something like that
         , OK                = 0                                                 // Default OK required by the system
         , FAILURE           = 1                                                 // Default FAILURE required by the system
         , DEVICE_FAILURE

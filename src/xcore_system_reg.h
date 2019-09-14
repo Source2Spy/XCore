@@ -15,13 +15,13 @@ namespace xcore::system
         constexpr       registration ( std::nullptr_t, xcore::property::base& Props, const string::const_universal VirtualName ) noexcept
             : m_Props       { Props }
             , m_Name        { VirtualName } 
-            , m_Guid        { xcore::crc::FromString<guid::bit_size_v>( VirtualName.m_Str.m_pValue ).m_Value }
+            , m_Guid        { xcore::crc<guid::bit_size_v>::FromString( VirtualName.m_Str.m_pValue ).m_Value }
         {}
 
         inline          registration ( xcore::property::base& Props, const string::const_universal VirtualName ) noexcept
             : m_Props       { Props }
             , m_Name        { VirtualName } 
-            , m_Guid        { xcore::crc::FromString<guid::bit_size_v>( VirtualName.m_Str.m_pValue ).m_Value }
+            , m_Guid        { xcore::crc<guid::bit_size_v>::FromString( VirtualName.m_Str.m_pValue ).m_Value }
         {
             RegisterSystem();
         }
