@@ -171,7 +171,7 @@ namespace xcore::scheduler
 
     protected:
 
-        virtual     void    onAppenTrigger  ( trigger_base& Trigger )           noexcept override { /*x_assert_linear( m_Debug_LQ );*/ xassume( false ); }
+        virtual     void    onAppenTrigger  ( trigger_base&        )           noexcept override { /*x_assert_linear( m_Debug_LQ );*/ xassume( false ); }
     };
 }
 #endif

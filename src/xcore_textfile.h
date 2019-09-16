@@ -76,14 +76,14 @@ namespace xcore::textfile::version_1
             constexpr static auto MAX_TYPES_PER_FIELD = 32;
 
             string::ref<char>                               m_Type              {};         // Field name such "jack:ff"
-            std::uint32_t                                   m_nTypes            = ~0;       // Number of types for this field
-            std::uint32_t                                   m_TypeOffset        = ~0;       // This is the offset to the string which gives the err ex:"fff"
+            std::uint32_t                                   m_nTypes            = ~0u;      // Number of types for this field
+            std::uint32_t                                   m_TypeOffset        = ~0u;      // This is the offset to the string which gives the err ex:"fff"
             std::array<std::uint32_t,MAX_TYPES_PER_FIELD>   m_iMemory;                      // The location in the memory buffer for each of these fields    
             int                                             m_iFieldDecl        = -999;     //  * When this is -1 means this is a normal field type
                                                                                             //  * When this is -2 this means is a declaration
                                                                                             //  * When is positive then it is a "pepe:<test>" and
                                                                                             //  this has an index to the field which contain the err declaration
-            std::uint32_t                                   m_Width             = ~0;       // What is the width in character for this field. This is only used when writing.
+            std::uint32_t                                   m_Width             = ~0u;      // What is the width in character for this field. This is only used when writing.
             std::uint16_t                                   m_TypesPreWidth     = ~0;
             std::uint16_t                                   m_TypesPostWidth    = ~0;
             std::array<std::uint8_t,MAX_TYPES_PER_FIELD>    m_TypeWidth;                    // This is the width that each column has per err
