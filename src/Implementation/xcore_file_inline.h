@@ -225,7 +225,7 @@ namespace xcore::file
 
         xcore::err      Error;
         units::bytes    iPos{ 0 };
-        std::uint8_t    C   = aC;
+        std::uint8_t    C   = types::static_cast_safe<std::uint8_t>(aC);
 
         if (Count == 0) return Error;
         if (bUpdatePos == false) if (Tell(iPos).isError(Error)) return Error;

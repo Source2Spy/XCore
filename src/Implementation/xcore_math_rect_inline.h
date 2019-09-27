@@ -261,11 +261,10 @@ namespace xcore::math
     constexpr
     rect rect::Interpolate( float T, const rect& Rect ) const noexcept
     {
-        const vector4 V1( m_Left, m_Top, m_Right, m_Bottom );
-        const vector4 V2( m_Left, m_Top, m_Right, m_Bottom );
+        const vector4 V1(m_Left,      m_Top,      m_Right,      m_Bottom      );
+        const vector4 V2(Rect.m_Left, Rect.m_Top, Rect.m_Right, Rect.m_Bottom );
+        const vector4 R( V1 + T * ( V2 - V1 ) );
     
-        vector4       Ret( V1 + T * ( V2 - V1 ) );
-    
-        return rect( Ret.m_X, Ret.m_Y, Ret.m_Z, Ret.m_W );
+        return rect( R.m_X, R.m_Y, R.m_Z, R.m_W );
     }
 }

@@ -6,12 +6,10 @@ namespace xcore::string::examples
     //---------------------------------------------------------------------------------------
     void CallLength( void )
     {
-        char x[32] = {'h','l','l','o',0};
-
         // Low level type of parameters
         {
-            char        x[32] = {'h','l','l','o',0};
-            char*       p = x;
+            const char  x[32] = {'h','l','l','o',0};
+            const char* p = x;
             const char* pp = p;
 
             xcore::string::Length( "asdsadasd" );
@@ -22,6 +20,7 @@ namespace xcore::string::examples
 
         // Complex classes
         {
+            const char  x[32] = { 'h','l','l','o',0 };
             xcore::string::view         V{ x, 32 };
             string::fixed<char,256>     F;
             string::constant            C("asdasd");
@@ -39,6 +38,8 @@ namespace xcore::string::examples
 
         // Complex classes with const
         {
+            const char x[32] = {'h','l','l','o',0};
+
             const xcore::string::view         V{ x, 32 };
             const string::fixed<char,256>     F{};
             const string::constant            C("asdasd");

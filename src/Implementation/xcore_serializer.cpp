@@ -165,12 +165,12 @@ namespace xcore::serializer
     xcore::err stream::SaveFile(void) noexcept
     {
         xcore::err      Error;
-        std::uint32_t   i;
+        //std::uint32_t   i;
 
         //
         // Go throw all the packs and compress them
         //
-        for( i = 0; i < m_pWrite->m_Packs.size(); i++ )
+        for(std::uint32_t i = 0; i < m_pWrite->m_Packs.size(); i++ )
         {
             xcore::unique_span<std::byte>   RawData;
             pack_writting&                  Pack = m_pWrite->m_Packs[i];

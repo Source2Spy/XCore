@@ -71,7 +71,7 @@ namespace xcore::textfile::examples
         //
         int Times = 128;
         if( TextFile.Record( Error, "TestTypes"
-            ,   [&]( std::size_t& C, xcore::err& Error )
+            ,   [&]( std::size_t& C, xcore::err& )
                 {
                     if( isRead )    xassert( C == StringBack.size() * Times );
                     else            C = StringBack.size() * Times;
@@ -164,7 +164,7 @@ namespace xcore::textfile::examples
         //
         int Times = 128;
         if( TextFile.Record( Error, "VariableTypes"
-            ,   [&]( std::size_t& C, xcore::err& Error )
+            ,   [&]( std::size_t& C, xcore::err& )
                 {
                     if( isRead ) xassert( C == StringBack.size() * Times );
                     else         C = StringBack.size() * Times;
@@ -245,7 +245,7 @@ namespace xcore::textfile::examples
         // Save/Load a record
         //
         if( TextFile.Record( Error, "Properties"
-            ,   [&]( std::size_t& C, xcore::err& Error )
+            ,   [&]( std::size_t& C, xcore::err& )
                 {
                     if( isRead ) xassert( C == 3 );
                     else         C = 3;
@@ -312,7 +312,7 @@ namespace xcore::textfile::examples
         // Save/Load a record
         //
         if( TextFile.Record( Error, "TestUserTypes"
-            ,   [&]( std::size_t i, xcore::err& Error )
+            ,   [&]( std::size_t, xcore::err& Error )
                 {
                     0
                     ||  TextFile.Field( Types[0].m_CRC, "Position", Position[0], Position[1], Position[2]   ).isError(Error)
@@ -326,7 +326,7 @@ namespace xcore::textfile::examples
         // Save/Load a record
         //
         if( TextFile.Record( Error, "VariableUserTypes"
-            ,   [&]( std::size_t& C, xcore::err& Error )
+            ,   [&]( std::size_t& C, xcore::err& )
                 {
                     if( isRead ) xassert( C == 3 );
                     else         C = 3;

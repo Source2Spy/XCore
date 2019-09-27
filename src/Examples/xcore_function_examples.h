@@ -12,11 +12,11 @@ namespace xcore::function::examples
         void Example03( void ) const                        { }
         void Example04( void ) const noexcept               { }
 
-        float Example06( int a, float b )                   { return 0;}
-        float Example07( int a, float b ) noexcept          { return 0;}
+        float Example06( int, float )                       { return 0;}
+        float Example07( int, float ) noexcept              { return 0;}
 
-        float Example08( int a, float b ) const             { return 0;}
-        float Example09( int a, float b ) const noexcept    { return 0;}
+        float Example08( int, float ) const                 { return 0;}
+        float Example09( int, float ) const noexcept        { return 0;}
     };
 
     static constexpr auto Example01_Args = xcore::function::traits<decltype(&test::Example01)>::arg_count_v;
@@ -42,8 +42,8 @@ namespace xcore::function::examples
     //---------------------------------------------------------------------------------------------------------
     void    Example10   ( void )                            { }
     void    Example11   ( void ) noexcept                   { }
-    float   Example12   ( int a, float b )                  { return 0; }
-    float   Example13   ( int a, float b ) noexcept         { return 0; }
+    float   Example12   ( int, float )                      { return 0; }
+    float   Example13   ( int, float ) noexcept             { return 0; }
 
     static constexpr auto Example10_Args  = xcore::function::traits<decltype(&Example10)>::arg_count_v;
     static constexpr auto Example11_Args  = xcore::function::traits<decltype(&Example11)>::arg_count_v;

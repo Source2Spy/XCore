@@ -3,7 +3,7 @@ namespace xcore::guid::examples
 {
     //---------------------------------------------------------------------------------------
 
-    void TestTimming( log::channel& Channel )
+    void TestTimming( log::channel&  )
     {
     
     }
