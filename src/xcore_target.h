@@ -255,6 +255,14 @@ constexpr xcore::target::compiler   xcore::target::getCompiler      ( void ) noe
 #endif
 
 //------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
+#if _XCORE_COMPILER_VISUAL_STUDIO
+    #pragma warning( disable : 4201) // nonstandard extension used : nameless struct / union
+#elif _XCORE_COMPILER_CLANG
+#else  
+#endif
+
+//------------------------------------------------------------------------------
 // The macro BREAK will cause a debugger breakpoint if possible on any given 
 // platform.  If a breakpoint cannot be caused, then a divide by zero will be 
 // forced.  Note that the BREAK macro is highly platform specific.  The 
