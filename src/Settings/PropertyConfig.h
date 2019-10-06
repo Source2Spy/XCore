@@ -1,7 +1,4 @@
 
-//--------------------------------------------------------------------------------------------
-// Define the type for the string
-//--------------------------------------------------------------------------------------------
 using string_t = xcore::string::ref<char>;
 
 //--------------------------------------------------------------------------------------------
@@ -54,7 +51,7 @@ namespace property
         };
 
         template<>
-        struct style_info<std::string> : style_info_base
+        struct style_info<string_t> : style_info_base
         {
             enum class style
             {
@@ -110,14 +107,14 @@ namespace property
     //-----------------------------------------------------------------------------------
 #ifndef PROPERTY_EDITOR
     template< typename T >
-    constexpr editor::style_info<T>             edstyle<T>::Default             (void)                                              noexcept { return {}; }
-    constexpr editor::style_info<int>           edstyle<int>::ScrollBar         (int, int, const char*)                             noexcept { return {}; }
-    constexpr editor::style_info<int>           edstyle<int>::Drag              (float, int, int, const char*)                      noexcept { return {}; }
-    constexpr editor::style_info<float>         edstyle<float>::ScrollBar       (float, float, const char*, float)                  noexcept { return {}; }
-    constexpr editor::style_info<float>         edstyle<float>::Drag            (float, float, float, const char*, float)           noexcept { return {}; }
+    constexpr editor::style_info<T>             edstyle<T>::Default     (void)                                              noexcept { return {}; }
+    constexpr editor::style_info<int>           edstyle<int>::ScrollBar   (int, int, const char*)                             noexcept { return {}; }
+    constexpr editor::style_info<int>           edstyle<int>::Drag        (float, int, int, const char*)                      noexcept { return {}; }
+    constexpr editor::style_info<float>         edstyle<float>::ScrollBar   (float, float, const char*, float)                  noexcept { return {}; }
+    constexpr editor::style_info<float>         edstyle<float>::Drag        (float, float, float, const char*, float)           noexcept { return {}; }
     template< std::size_t N >
-    constexpr editor::style_info<string_t>      edstyle<string_t>::Enumeration  (const std::array<std::pair<const char*, int>, N>&) noexcept { return {}; }
-    constexpr editor::style_info<string_t>      edstyle<string_t>::Default      (void)                                              noexcept { return {}; }
+    constexpr editor::style_info<string_t>      edstyle<string_t>::Enumeration (const std::array<std::pair<const char*, int>, N>&) noexcept { return {}; }
+    constexpr editor::style_info<string_t>      edstyle<string_t>::Default     (void)                                              noexcept { return {}; }
 #endif
 
     //--------------------------------------------------------------------------------------------
@@ -177,11 +174,11 @@ namespace property
 
             // Setting the editor display style (Look in imGuiPropertyExample for mode details)
             template< typename T = property::setup_entry >                                  // We use a template here to ask the compiler to resolve this function later
-            constexpr T EDStyle (const editor::styles_info_variant Style) const noexcept  // Thanks to that we can make this function a constexpr function
+            constexpr T EDStyle (const editor::styles_info_variant & Style) const noexcept // Thanks to that we can make this function a constexpr function
             {
                 T r = *static_cast<const T*>(this);
                 assert(r.m_FunctionTypeGetSet.index() == Style.index());                  // Make sure that the property type is the same type
-                r.m_EditStylesInfo = Style;
+                r.m_EditStylesInfo = Style;                                                 // Call using the constructor to make sure this function can stay constexpr
                 return r;
             }
         };

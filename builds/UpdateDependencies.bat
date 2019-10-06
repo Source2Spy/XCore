@@ -59,6 +59,14 @@ powershell write-host -fore White ----------------------------------------------
 powershell write-host -fore White DOWNLOADING DEPENDENCIES
 powershell write-host -fore White ------------------------------------------------------------------------------------------------------
 
+echo.
+rmdir "../dependencies/tracy" /S /Q
+git clone https://bitbucket.org/wolfpld/tracy/src/master/ "../dependencies/tracy"
+cd "../dependencies/tracy"
+git checkout 9e1935f --quiet
+cd %0/..
+
+echo.
 rmdir "../dependencies/freetype" /S /Q
 git clone https://github.com/ubawurinna/freetype-windows-binaries.git "../dependencies/freetype"
 
@@ -77,13 +85,6 @@ git clone https://github.com/tcbrindle/span.git "../dependencies/span"
 echo.
 rmdir "../dependencies/meow_hash_cpp" /S /Q
 git clone https://github.com/RedSpah/meow_hash_cpp "../dependencies/meow_hash_cpp"
-
-echo.
-rmdir "../dependencies/tracy" /S /Q
-git clone https://bitbucket.org/wolfpld/tracy/src/master/ "../dependencies/tracy"
-cd "../dependencies/tracy"
-git checkout 5e8b2a0 --quiet
-cd %0/..
 
 echo.
 rmdir "../dependencies/freetype" /S /Q
