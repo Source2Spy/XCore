@@ -226,7 +226,7 @@ namespace xcore::file::driver
 
         //----------------------------------------------------------------------------------------
 
-        virtual xcore::err Write( void* pFile, std::span<std::byte> View ) noexcept override
+        virtual xcore::err Write( void* pFile, const std::span<const std::byte> View ) noexcept override
         {
             xcore::err  Error;
             auto&       File = *static_cast<small_file*>(pFile);

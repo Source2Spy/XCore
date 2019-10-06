@@ -226,8 +226,8 @@ namespace xcore::file::examples
            (void)asyncModeTest(string::constant(L"temp:/asyncMode.dat"), i);
         }
 
-        //E = syncModeTest(string::constant(L"ram:/test.dat"), false);
-        //E = asyncModeTest(string::constant(L"ram:/asyncMode.dat"), false);
+        (void)syncModeTest(string::constant(L"ram:/test.dat"), false);
+        (void)asyncModeTest(string::constant(L"ram:/asyncMode.dat"), false);
 
         int a = 22;
     }

@@ -27,7 +27,6 @@ namespace xcore::file
         , OPENING_FILE
         , UNEXPECTED_EOF
         , INCOMPLETE
-        , COMPLETED
     };
 
     union access_types
@@ -76,7 +75,7 @@ namespace xcore::file
         virtual         void*               open            (const string::view<const wchar_t> FileName, access_types Flags)        noexcept = 0;
         virtual         void                close           (void* pFile)                                                           noexcept = 0;
         virtual         xcore::err          Read            (void* pFile, std::span<std::byte> View )                               noexcept = 0;
-        virtual         xcore::err          Write           (void* pFile, std::span<std::byte> View )                               noexcept = 0;
+        virtual         xcore::err          Write           (void* pFile, const std::span<const std::byte> View )                   noexcept = 0;
         virtual         xcore::err          Seek            (void* pFile, seek_mode Mode, units::bytes Pos)                         noexcept = 0;
         virtual         xcore::err          Tell            (void* pFile, units::bytes& Pos )                                       noexcept = 0;
         virtual         void                Flush           (void* pFile)                                                           noexcept = 0;

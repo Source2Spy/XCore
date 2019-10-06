@@ -1,6 +1,6 @@
 
 #include "Implementation/windows/xcore_file_driver_pc.h"
-//#include "Implementation/xore_file_driver_ram.cpp"
+#include "Implementation/xcore_file_driver_ram.cpp"
 
 namespace xcore::file
 {
@@ -9,7 +9,7 @@ namespace xcore::file
     void InitSystem( std::vector<device_i*>& List ) noexcept
     {
         List.emplace_back( new xcore::file::driver::system );
-       // List.push_back(std::unique_ptr<device_i*>{ new xcore::file::driver::ram{}     });
+        List.emplace_back( new xcore::file::driver::ram::device );
     }
 
     //------------------------------------------------------------------------------
