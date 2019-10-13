@@ -2,6 +2,16 @@
 #define ZSTD_STATIC_LINKING_ONLY
 #include "../../dependencies/zstd/lib/zstd.h"
 
+//-------------------------------------------------------------------------------------------------------
+// Add libz libraries
+//-------------------------------------------------------------------------------------------------------
+#if _XCORE_DEBUG
+#   pragma comment(lib, "dependencies/zstd/build/VS2010/bin/x64_Debug/libzstd_static.lib")
+#else
+#   pragma comment(lib, "dependencies/zstd/build/VS2010/bin/x64_Release/libzstd_static.lib")
+#endif
+
+
 namespace xcore::compression
 {
     //-------------------------------------------------------------------------------------------------------
@@ -133,14 +143,3 @@ namespace xcore::compression
         return Error;
     }
 }
-
-//-------------------------------------------------------------------------------------------------------
-// Add libz libraries
-//-------------------------------------------------------------------------------------------------------
-#if _XCORE_DEBUG
-#   pragma comment(lib, "../../dependencies/zstd/build/VS2010/bin/x64_Debug/libzstd_static.lib")
-#else
-#   pragma comment(lib, "../../dependencies/zstd/build/VS2010/bin/x64_Release/libzstd_static.lib")
-#endif
-
-
