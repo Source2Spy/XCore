@@ -3,6 +3,8 @@ setlocal enabledelayedexpansion
 cd %cd%
 %MY_PATH% = %cd%
 
+echo %MY_PATH%
+
 rem --------------------------------------------------------------------------------------------------------
 rem Set the color of the terminal to blue with yellow text
 rem --------------------------------------------------------------------------------------------------------
@@ -67,7 +69,7 @@ if %ERRORLEVEL% GEQ 1 goto :PAUSE
 cd "../dependencies/tracy"
 git checkout 9e1935f --quiet
 if %ERRORLEVEL% GEQ 1 goto :PAUSE
-cd %MY_PATH%
+cd ../../builds
 
 echo.
 rmdir "../dependencies/freetype" /S /Q
