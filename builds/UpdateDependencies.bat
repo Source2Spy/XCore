@@ -62,33 +62,41 @@ powershell write-host -fore White ----------------------------------------------
 echo.
 rmdir "../dependencies/tracy" /S /Q
 git clone https://bitbucket.org/wolfpld/tracy/src/master/ "../dependencies/tracy"
+if %ERRORLEVEL% GEQ 1 goto :PAUSE
 cd "../dependencies/tracy"
 git checkout 9e1935f --quiet
+if %ERRORLEVEL% GEQ 1 goto :PAUSE
 cd %0/..
 
 echo.
 rmdir "../dependencies/freetype" /S /Q
 git clone https://github.com/ubawurinna/freetype-windows-binaries.git "../dependencies/freetype"
+if %ERRORLEVEL% GEQ 1 goto :PAUSE
 
 echo.
 rmdir "../dependencies/glfw-3.3.bin.WIN64" /S /Q
 powershell.exe -nologo -noprofile -command "& { Add-Type -A 'System.IO.Compression.FileSystem'; [IO.Compression.ZipFile]::ExtractToDirectory('glfw-3.3.bin.WIN64.zip', '../dependencies'); }"
+if %ERRORLEVEL% GEQ 1 goto :PAUSE
 
 echo.
 rmdir "../dependencies/properties" /S /Q
 git clone https://gitlab.com/LIONant/properties.git "../dependencies/properties"
+if %ERRORLEVEL% GEQ 1 goto :PAUSE
 
 echo.
 rmdir "../dependencies/span" /S /Q
 git clone https://github.com/tcbrindle/span.git "../dependencies/span"
+if %ERRORLEVEL% GEQ 1 goto :PAUSE
 
 echo.
 rmdir "../dependencies/meow_hash_cpp" /S /Q
 git clone https://github.com/RedSpah/meow_hash_cpp "../dependencies/meow_hash_cpp"
+if %ERRORLEVEL% GEQ 1 goto :PAUSE
 
 echo.
 rmdir "../dependencies/freetype" /S /Q
 git clone https://github.com/ubawurinna/freetype-windows-binaries.git "../dependencies/freetype"
+if %ERRORLEVEL% GEQ 1 goto :PAUSE
 
 rem This may be needed at some point but right now we are not looking for too high speed of Compression.
 rem A better ratio with still fast decompression is prefer.
@@ -98,6 +106,7 @@ rem git clone https://github.com/lz4/lz4.git "../dependencies/lz4"
 echo.
 rmdir "../dependencies/zstd" /S /Q
 git clone https://github.com/facebook/zstd.git "../dependencies/zstd"
+if %ERRORLEVEL% GEQ 1 goto :PAUSE
 
 :COMPILATION
 powershell write-host -fore White ------------------------------------------------------------------------------------------------------
@@ -106,6 +115,7 @@ powershell write-host -fore White ----------------------------------------------
 
 powershell write-host -fore Cyan zstad: Updating...
 "%VSPATH%\Common7\IDE\devenv.exe" "%CD%\..\dependencies\zstd\build\VS2010\zstd.sln" /upgrade
+if %ERRORLEVEL% GEQ 1 goto :PAUSE
 
 echo.
 powershell write-host -fore Cyan zstad Release: Compiling...

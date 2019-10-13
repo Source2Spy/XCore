@@ -1,6 +1,6 @@
 #include "xcore.h"
 
-#if _XCORE_COMPILER_VISUAL_STUDIO   
+#if _XCORE_COMPILER_VISUAL_STUDIO
     #include "windows.h"
     #undef ERROR
     #undef max

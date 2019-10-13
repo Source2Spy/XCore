@@ -252,12 +252,12 @@ namespace xcore::serializer
                                     stream                      (void)                                                                                      noexcept;
         template< class T >
         inline      xcore::err      Serialize                   (const T& A)                                                                                noexcept;
-        template< class T >
-        inline      xcore::err      Serialize                   (const std::span<const T> View, mem_type MemoryFlags)                                     noexcept;
+        template< class T, typename T_SIZE >
+        inline      xcore::err      Serialize                   ( T*const & pView, T_SIZE Size, mem_type MemoryFlags)                                             noexcept;
 
         template< class T >
         inline      err             Save                        ( const string::view<const wchar_t> FileName
-                                                                , const T& Object, mem_type ObjectFlags={}, bool bSwapEndian = false)                  noexcept;
+                                                                , const T& Object, mem_type ObjectFlags={}, bool bSwapEndian = false)                       noexcept;
         
         template< class T >
         inline      err             Save                        ( file::stream& File, const T& Object, mem_type ObjectFlags, bool bSwapEndian = false)      noexcept;

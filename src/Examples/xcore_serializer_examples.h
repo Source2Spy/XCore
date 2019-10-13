@@ -169,13 +169,13 @@ namespace xcore::serializer
             // Don't always need to go into structures
             if (Stream.Serialize(Data.m_DontDynamic.m_Count).isError(Error)) return Error;
 
-            if (Stream.Serialize(xcore::span<const examples::data1>{ Data.m_DontDynamic.m_Data.m_pValue, Data.m_DontDynamic.m_Count }, mem_type::Flags( mem_type::flags::UNIQUE ) ).isError(Error)) return Error;
+            if (Stream.Serialize(Data.m_DontDynamic.m_Data.m_pValue, Data.m_DontDynamic.m_Count, mem_type::Flags( mem_type::flags::UNIQUE ) ).isError(Error)) return Error;
 
             // Serialize the temp
             for (auto& Temp : Data.m_GoTemp)
             {
                 if (Stream.Serialize(Temp.m_Count).isError(Error)) return Error;
-                if (Stream.Serialize(std::span<const examples::data1>{ Temp.m_Data.m_pValue, Temp.m_Count }, mem_type::Flags(mem_type::flags::TEMP_MEMORY) ).isError(Error)) return Error;
+                if (Stream.Serialize(Temp.m_Data.m_pValue, Temp.m_Count, mem_type::Flags(mem_type::flags::TEMP_MEMORY) ).isError(Error)) return Error;
             }
 
             // Tell our parent to save it self

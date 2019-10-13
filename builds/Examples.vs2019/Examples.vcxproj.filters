@@ -18,66 +18,6 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\..\src\xcore_assert.h">
-      <Filter>xCore</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\xcore_bits.h">
-      <Filter>xCore</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\xcore_context.h">
-      <Filter>xCore</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\xcore_crc.h">
-      <Filter>xCore</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\xcore_endian.h">
-      <Filter>xCore</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\xcore_error.h">
-      <Filter>xCore</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\xcore_event.h">
-      <Filter>xCore</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\xcore_function.h">
-      <Filter>xCore</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\xcore_global.h">
-      <Filter>xCore</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\xcore_guid.h">
-      <Filter>xCore</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\xcore_lock.h">
-      <Filter>xCore</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\xcore_log.h">
-      <Filter>xCore</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\xcore_ptr.h">
-      <Filter>xCore</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\xcore_span.h">
-      <Filter>xCore</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\xcore_string.h">
-      <Filter>xCore</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\xcore_target.h">
-      <Filter>xCore</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\xcore_textfile.h">
-      <Filter>xCore</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\xcore_types.h">
-      <Filter>xCore</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\xcore_units.h">
-      <Filter>xCore</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\xcore.h">
-      <Filter>xCore</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\src\Implementation\xcore_string_inline.h">
       <Filter>xCore\Implementation</Filter>
     </ClInclude>
@@ -102,23 +42,11 @@
     <ClInclude Include="..\..\src\Examples\xcore_examples.h">
       <Filter>Examples</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\src\xcore_rtti.h">
-      <Filter>xCore</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\src\Examples\xcore_rtti_examples.h">
       <Filter>Examples</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\src\xcore_textfile2.h">
-      <Filter>xCore</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\xcore_array.h">
-      <Filter>xCore</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\src\Implementation\xcore_linear_buffers_hardness.h">
       <Filter>xCore\Implementation</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\xcore_vector.h">
-      <Filter>xCore</Filter>
     </ClInclude>
     <ClInclude Include="..\..\src\Implementation\xcore_vector_inline.h">
       <Filter>xCore\Implementation</Filter>
@@ -126,14 +54,8 @@
     <ClInclude Include="..\..\src\Examples\xcore_vector_examples.h">
       <Filter>Examples</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\src\xcore_unique_span.h">
-      <Filter>xCore</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\src\Implementation\xcore_textfile2_inline.h">
       <Filter>xCore\Implementation</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\xcore_arglist.h">
-      <Filter>xCore</Filter>
     </ClInclude>
     <ClInclude Include="..\..\dependencies\span\include\tcb\span.hpp">
       <Filter>xCore\Dependencies</Filter>
@@ -150,29 +72,11 @@
     <ClInclude Include="..\..\src\Settings\PropertyConfig.h">
       <Filter>xCore\Settings</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\src\xcore_lockless_queues.h">
-      <Filter>xCore</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\src\Examples\xcore_unique_span.h">
       <Filter>Examples</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\src\xcore_lockless_pool.h">
-      <Filter>xCore</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\src\Examples\xcore_lockless_pool_examples.h">
       <Filter>Examples</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\xcore_scheduler_system.h">
-      <Filter>xCore</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\xcore_scheduler_channel.h">
-      <Filter>xCore</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\xcore_scheduler_job.h">
-      <Filter>xCore</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\xcore_scheduler_trigger.h">
-      <Filter>xCore</Filter>
     </ClInclude>
     <ClInclude Include="..\..\src\Implementation\xcore_scheduler_inline.h">
       <Filter>xCore\Implementation</Filter>
@@ -180,35 +84,8 @@
     <ClInclude Include="..\..\dependencies\tracy\Tracy.hpp">
       <Filter>xCore\Dependencies</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\src\xcore_profiler.h">
-      <Filter>xCore</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\src\Examples\xcore_scheduler_examples.h">
       <Filter>Examples</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\xcore_system_reg.h">
-      <Filter>xCore</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\xcore_math.h">
-      <Filter>xCore</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\xcore_math_quaternion.h">
-      <Filter>xCore</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\xcore_math_vector2.h">
-      <Filter>xCore</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\xcore_math_vector3.h">
-      <Filter>xCore</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\xcore_math_radian3.h">
-      <Filter>xCore</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\xcore_math_vector4.h">
-      <Filter>xCore</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\xcore_math_matrix4.h">
-      <Filter>xCore</Filter>
     </ClInclude>
     <ClInclude Include="..\..\src\Implementation\xcore_math_radian3_inline.h">
       <Filter>xCore\Implementation</Filter>
@@ -231,12 +108,6 @@
     <ClInclude Include="..\..\src\Implementation\xcore_math_inline.h">
       <Filter>xCore\Implementation</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\src\xcore_math_shapes.h">
-      <Filter>xCore</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\xcore_math_transform.h">
-      <Filter>xCore</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\src\Implementation\xcore_math_rect_inline.h">
       <Filter>xCore\Implementation</Filter>
     </ClInclude>
@@ -255,17 +126,11 @@
     <ClInclude Include="..\..\src\Examples\xcore_math_vector3d_examples.h">
       <Filter>Examples</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\src\xcore_cmdline.h">
-      <Filter>xCore</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\src\Examples\xcore_cmdline_example.h">
       <Filter>Examples</Filter>
     </ClInclude>
     <ClInclude Include="..\..\src\Examples\xcore_lockless_queue.h">
       <Filter>Examples</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\xcore_file.h">
-      <Filter>xCore</Filter>
     </ClInclude>
     <ClInclude Include="..\..\src\Implementation\xcore_file_inline.h">
       <Filter>xCore\Implementation</Filter>
@@ -276,17 +141,11 @@
     <ClInclude Include="..\..\src\Implementation\windows\xcore_file_driver_pc.h">
       <Filter>xCore\Implementation</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\src\xcore_compression.h">
-      <Filter>xCore</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\dependencies\zstd\lib\zstd.h">
       <Filter>xCore\Dependencies</Filter>
     </ClInclude>
     <ClInclude Include="..\..\src\Examples\xcore_compression_examples.h">
       <Filter>Examples</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\xcore_serializer.h">
-      <Filter>xCore</Filter>
     </ClInclude>
     <ClInclude Include="..\..\src\Implementation\xcore_serializer_inline.h">
       <Filter>xCore\Implementation</Filter>
@@ -294,20 +153,164 @@
     <ClInclude Include="..\..\src\Examples\xcore_serializer_examples.h">
       <Filter>Examples</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\src\xcore.h">
+      <Filter>xCore</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\xcore_arglist.h">
+      <Filter>xCore</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\xcore_array.h">
+      <Filter>xCore</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\xcore_assert.h">
+      <Filter>xCore</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\xcore_bits.h">
+      <Filter>xCore</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\xcore_cmdline.h">
+      <Filter>xCore</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\xcore_compression.h">
+      <Filter>xCore</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\xcore_context.h">
+      <Filter>xCore</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\xcore_crc.h">
+      <Filter>xCore</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\xcore_endian.h">
+      <Filter>xCore</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\xcore_error.h">
+      <Filter>xCore</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\xcore_event.h">
+      <Filter>xCore</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\xcore_file.h">
+      <Filter>xCore</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\xcore_function.h">
+      <Filter>xCore</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\xcore_global.h">
+      <Filter>xCore</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\xcore_guid.h">
+      <Filter>xCore</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\xcore_lock.h">
+      <Filter>xCore</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\xcore_lockless_pool.h">
+      <Filter>xCore</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\xcore_lockless_queues.h">
+      <Filter>xCore</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\xcore_log.h">
+      <Filter>xCore</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\xcore_math.h">
+      <Filter>xCore</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\xcore_math_matrix4.h">
+      <Filter>xCore</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\xcore_math_quaternion.h">
+      <Filter>xCore</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\xcore_math_radian3.h">
+      <Filter>xCore</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\xcore_math_shapes.h">
+      <Filter>xCore</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\xcore_math_transform.h">
+      <Filter>xCore</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\xcore_math_vector2.h">
+      <Filter>xCore</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\xcore_math_vector3.h">
+      <Filter>xCore</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\xcore_math_vector4.h">
+      <Filter>xCore</Filter>
+    </ClInclude>
     <ClInclude Include="..\..\src\xcore_memory.h">
+      <Filter>xCore</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\xcore_profiler.h">
+      <Filter>xCore</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\xcore_ptr.h">
+      <Filter>xCore</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\xcore_rtti.h">
+      <Filter>xCore</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\xcore_scheduler_channel.h">
+      <Filter>xCore</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\xcore_scheduler_job.h">
+      <Filter>xCore</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\xcore_scheduler_system.h">
+      <Filter>xCore</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\xcore_scheduler_trigger.h">
+      <Filter>xCore</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\xcore_serialicer.h">
+      <Filter>xCore</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\xcore_serializer.h">
+      <Filter>xCore</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\xcore_span.h">
+      <Filter>xCore</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\xcore_string.h">
+      <Filter>xCore</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\xcore_system_reg.h">
+      <Filter>xCore</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\xcore_target.h">
+      <Filter>xCore</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\xcore_textfile.h">
+      <Filter>xCore</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\xcore_textfile2.h">
+      <Filter>xCore</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\xcore_types.h">
+      <Filter>xCore</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\xcore_unique_span.h">
+      <Filter>xCore</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\xcore_units.h">
+      <Filter>xCore</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\xcore_vector.h">
       <Filter>xCore</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\..\src\Examples\main.cpp" />
     <ClCompile Include="..\..\src\xcore.cpp">
       <Filter>xCore</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\src\Examples\main.cpp" />
     <ClCompile Include="..\..\src\xcore_profiler_1.cpp">
-      <Filter>xCore\Implementation</Filter>
+      <Filter>xCore</Filter>
     </ClCompile>
     <ClCompile Include="..\..\src\xcore_profiler_2.cpp">
-      <Filter>xCore\Implementation</Filter>
+      <Filter>xCore</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

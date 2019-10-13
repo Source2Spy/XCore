@@ -204,29 +204,36 @@ namespace xcore::serializer
 
     //------------------------------------------------------------------------------
 
-    template< class T > inline
-    xcore::err stream::Serialize(const std::span<const T> View, mem_type MemoryFlags) noexcept
+    template< class T, typename T_SIZE  > inline
+    xcore::err stream::Serialize( T* const& pView, T_SIZE Size, mem_type MemoryFlags) noexcept
     {
         xcore::err  Error;
         const auto  BackupPackIndex = m_iPack;
-        auto        pA = reinterpret_cast<const std::byte*>(View.data());
 
         // Handle pointer details
-        if (HandlePtrDetails(pA, sizeof(T), View.size(), MemoryFlags).isError(Error)) return Error;
+        if( HandlePtrDetails
+        (
+              reinterpret_cast<const std::byte*>(&pView)
+            , sizeof(T)
+            , Size
+            , MemoryFlags
+        ).isError(Error)) return Error;
 
         //
         // Loop throw all the items
         //
 
         // Now loop
-        for (std::size_t i = 0; i < View.size(); i++)
+        const units::bytes Count{ static_cast<std::int64_t>(Size * sizeof(T)) };
+
+        for (std::int64_t i = 0; i < Count.m_Value; i++)
         {
-            if (Serialize(pA[i]).isError(Error)) return Error;
+            if (Serialize(pView[i]).isError(Error)) return Error;
             xassert_block_basic()
             {
                 units::bytes X;
                 getW().Tell(X).CheckError();
-                xassert((std::uint64_t)X.m_Value >= i * sizeof(pA[0]) );
+                xassert(X.m_Value >= i );
             }
         }
 

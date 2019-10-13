@@ -43,7 +43,7 @@ namespace xcore::examples
             xcore::compression::examples::Test();
         }
 
-        xcore::file::examples::Tests();
-        xcore::serializer::examples::Test();
+        // wip
+        // xcore::serializer::examples::Test();
     }
 }

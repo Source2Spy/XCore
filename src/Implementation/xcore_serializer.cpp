@@ -79,15 +79,6 @@ namespace xcore::serializer
             if( Serialize(*((std::uint64_t*)(pA))).isError(Error) )
                 return Error;
 
-            /*
-                 if( sizeof( void* ) == sizeof( u32 )) Serialize( *((u32*)(pA)) );
-            else if( sizeof( void* ) == sizeof( u64 )) Serialize( *((u64*)(pA)) );
-            else
-            {
-                // What the hell is the size of a pointer?
-                x_assert( 0 );
-            }
-            */
             return Error;
         }
 
