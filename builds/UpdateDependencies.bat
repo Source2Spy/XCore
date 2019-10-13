@@ -1,9 +1,7 @@
 @echo OFF
 setlocal enabledelayedexpansion
 cd %cd%
-%MY_PATH% = %cd%
-
-echo %MY_PATH%
+set MY_PATH = %cd%
 
 rem --------------------------------------------------------------------------------------------------------
 rem Set the color of the terminal to blue with yellow text
@@ -136,4 +134,5 @@ powershell write-host -fore White DONE!!
 powershell write-host -fore White ------------------------------------------------------------------------------------------------------
 
 :PAUSE
-pause
+rem if no one give us any parameters then we will pause it at the end, else we are assuming that another batch file called us
+if %1.==. pause
