@@ -1,6 +1,6 @@
 @echo OFF
 setlocal enabledelayedexpansion
-cd %0/..
+%~dp0
 
 rem --------------------------------------------------------------------------------------------------------
 rem Set the color of the terminal to blue with yellow text
@@ -66,7 +66,7 @@ if %ERRORLEVEL% GEQ 1 goto :PAUSE
 cd "../dependencies/tracy"
 git checkout 9e1935f --quiet
 if %ERRORLEVEL% GEQ 1 goto :PAUSE
-cd %0/..
+%~dp0
 
 echo.
 rmdir "../dependencies/freetype" /S /Q
