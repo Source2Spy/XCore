@@ -16,6 +16,9 @@
     <Filter Include="xCore\Settings">
       <UniqueIdentifier>{bcf07caf-588a-4909-83f0-58195a535c7e}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Examples\wip examples">
+      <UniqueIdentifier>{ab8b6f6e-2f08-4691-ad08-b61ff1a554cd}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\src\Implementation\xcore_string_inline.h">
@@ -299,6 +302,18 @@
     </ClInclude>
     <ClInclude Include="..\..\src\xcore_vector.h">
       <Filter>xCore</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\Examples\ecs.h">
+      <Filter>Examples\wip examples</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\Examples\helpers.h">
+      <Filter>Examples\wip examples</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\Examples\pool.h">
+      <Filter>Examples\wip examples</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\Examples\ecs_examples.h">
+      <Filter>Examples\wip examples</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

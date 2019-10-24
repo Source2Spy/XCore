@@ -24,6 +24,10 @@
     <ClInclude Include="..\..\dependencies\span\include\tcb\span.hpp" />
     <ClInclude Include="..\..\dependencies\tracy\Tracy.hpp" />
     <ClInclude Include="..\..\dependencies\zstd\lib\zstd.h" />
+    <ClInclude Include="..\..\src\Examples\ecs.h" />
+    <ClInclude Include="..\..\src\Examples\ecs_examples.h" />
+    <ClInclude Include="..\..\src\Examples\helpers.h" />
+    <ClInclude Include="..\..\src\Examples\pool.h" />
     <ClInclude Include="..\..\src\Examples\xcore_cmdline_example.h" />
     <ClInclude Include="..\..\src\Examples\xcore_compression_examples.h" />
     <ClInclude Include="..\..\src\Examples\xcore_error_examples.h" />

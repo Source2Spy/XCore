@@ -45,7 +45,7 @@ namespace xcore::event
         //---------------------------------------------------------------------------
         // Delegates that can listen to this event type
         //---------------------------------------------------------------------------
-        class delegate 
+        class delegate
         {
             template< typename T, class ...T_ARGS >
             using fn = T_RET(T::*)(T_ARGS...);
@@ -53,70 +53,70 @@ namespace xcore::event
         public:
 
             template< typename T_THIS >
-            constexpr delegate( const fn<T_THIS,T_ARGS...> Function ) 
+            constexpr delegate(const fn<T_THIS, T_ARGS...> Function)
                 : m_Call
                 { [Function](void* pThis, T_ARGS ... Args)
                     {
-                        (reinterpret_cast<T_THIS*>(pThis)->*Function)( std::forward<T_ARGS>(Args)... );
+                        (reinterpret_cast<T_THIS*>(pThis)->*Function)(std::forward<T_ARGS>(Args)...);
                     }
-                } 
-            {}
+                }
+                {}
 
             template< typename T_THIS >
-            constexpr delegate( T_THIS* This, const fn<T_THIS,T_ARGS...> Function ) 
+            constexpr delegate(T_THIS* This, const fn<T_THIS, T_ARGS...> Function)
                 : m_Call
                 { [Function](void* pThis, T_ARGS ... Args) -> T_RET
                     {
-                        if constexpr ( std::is_same_v<void, T_RET> )        (reinterpret_cast<T_THIS*>(pThis)->*Function)( std::forward<T_ARGS>(Args)... );
-                        else                                         return (reinterpret_cast<T_THIS*>(pThis)->*Function)( std::forward<T_ARGS>(Args)... );
+                        if constexpr (std::is_same_v<void, T_RET>)  (reinterpret_cast<T_THIS*>(pThis)->*Function)(std::forward<T_ARGS>(Args)...);
+                        else                                 return (reinterpret_cast<T_THIS*>(pThis)->*Function)(std::forward<T_ARGS>(Args)...);
                     }
                 }
-                , m_Offset{ static_cast<int>(reinterpret_cast<size_t>(This) - reinterpret_cast<size_t>(this)) } 
-            {}
+                , m_Offset{ static_cast<int>(reinterpret_cast<size_t>(This) - reinterpret_cast<size_t>(this)) }
+                {}
 
             template< typename T_THIS >
-            constexpr delegate( T_THIS* This, const fn<T_THIS,T_ARGS...> Function, self& Event ) 
+            constexpr delegate(T_THIS* This, const fn<T_THIS, T_ARGS...> Function, self& Event)
                 : m_Call
                 { [Function](void* pThis, T_ARGS ... Args) -> T_RET
                     {
-                        if constexpr ( std::is_same_v<void, T_RET> )        (reinterpret_cast<T_THIS*>(pThis)->*Function)( std::forward<T_ARGS>(Args)... );
-                        else                                         return (reinterpret_cast<T_THIS*>(pThis)->*Function)( std::forward<T_ARGS>(Args)... );
+                        if constexpr (std::is_same_v<void, T_RET>)  (reinterpret_cast<T_THIS*>(pThis)->*Function)(std::forward<T_ARGS>(Args)...);
+                        else                                 return (reinterpret_cast<T_THIS*>(pThis)->*Function)(std::forward<T_ARGS>(Args)...);
                     }
                 }
-                , m_Offset{ static_cast<int>(reinterpret_cast<size_t>(This) - reinterpret_cast<size_t>(this)) } 
-            {
-                Connect(Event);
-            }
+                , m_Offset{ static_cast<int>(reinterpret_cast<size_t>(This) - reinterpret_cast<size_t>(this)) }
+                {
+                    Connect(Event);
+                }
 
             template< typename T_THIS >
-            inline void setupFunction( const fn<T_THIS,T_ARGS...> Function )
+            inline void setupFunction(const fn<T_THIS, T_ARGS...> Function)
             {
                 m_Call = [Function](void* pThis, T_ARGS ... Args) -> T_RET
                 {
-                    if constexpr ( std::is_same_v<void, T_RET> )            (reinterpret_cast<T_THIS*>(pThis)->*Function)( std::forward<T_ARGS>(Args)... );
-                    else                                            return  (reinterpret_cast<T_THIS*>(pThis)->*Function)( std::forward<T_ARGS>(Args)... );
+                    if constexpr (std::is_same_v<void, T_RET>)            (reinterpret_cast<T_THIS*>(pThis)->*Function)(std::forward<T_ARGS>(Args)...);
+                    else                                            return  (reinterpret_cast<T_THIS*>(pThis)->*Function)(std::forward<T_ARGS>(Args)...);
                 };
             }
 
             template< typename T_THIS >
-            inline void setupThis( T_THIS& This )
+            inline void setupThis(T_THIS& This)
             {
-                m_Offset = static_cast<int>( reinterpret_cast<size_t>(&This) - reinterpret_cast<size_t>(this) );
+                m_Offset = static_cast<int>(reinterpret_cast<size_t>(&This) - reinterpret_cast<size_t>(this));
             }
 
-            inline bool isConnected( void ) const noexcept 
+            inline bool isConnected(void) const noexcept
             {
-                return !! m_pEvent.load( std::memory_order_relaxed ).getPtr();
+                return !!m_pEvent.load(std::memory_order_relaxed);
             }
 
-            inline void Disconnect( void ) noexcept
+            inline void Disconnect(void) noexcept
             {
                 auto pPtr = lock();
 
-                if( pPtr ) 
+                if (pPtr)
                 {
                     // Inside Disconnect it will get unlock
-                    pPtr->Disconnect( *this );
+                    pPtr->Disconnect(*this);
                 }
                 else
                 {
@@ -124,104 +124,103 @@ namespace xcore::event
                 }
             }
 
-            inline void Connect( self& Event ) noexcept
+            inline void Connect(self& Event) noexcept
             {
                 auto pPtr = lock();
 
-                x_assert( pPtr == nullptr );
-                Event.Connect( *this );
+                xassert(pPtr == nullptr);
+                Event.Connect(*this);
 
-                unlock( &Event );
+                unlock(&Event);
             }
 
-            inline ~delegate( void ) noexcept
+            inline ~delegate(void) noexcept
             {
                 Disconnect();
             }
 
         protected:
 
-            inline auto lock( void ) noexcept
+            inline auto lock(void) noexcept
             {
                 do
                 {
-                    auto    local = m_pEvent.load( std::memory_order_relaxed );
-                    auto    Lockp = static_cast<std::size_t>(local);
+                    auto    local = m_pEvent.load(std::memory_order_relaxed);
+                    auto    Lockp = reinterpret_cast<std::size_t>(local);
 
-                    if( Lockp & mask_bit_v ) continue;
+                    if (Lockp & mask_bit_v) continue;
 
                     Lockp |= mask_bit_v;
-                    if( m_pEvent.compare_exchange_weak( local, reinterpret_cast<self*>(Lockp) ) )
-                        return local; 
+                    if (m_pEvent.compare_exchange_weak(local, reinterpret_cast<self*>(Lockp)))
+                        return local;
 
-                } while( true );
+                } while (true);
             }
 
-            inline void unlock( self* pPtr ) noexcept
+            inline void unlock(self* pPtr) noexcept
             {
-                xassert( pPtr );
-                xassert( (static_cast<std::size_t>(pPtr) & mask_bit_v) == 0 );
-                m_pEvent.store( pPtr );
+                xassert((reinterpret_cast<std::size_t>(pPtr)& mask_bit_v) == 0);
+                m_pEvent.store(pPtr);
             }
 
         protected:
 
             using callback = xcore::function::buffer< 2, T_RET(void*, T_ARGS...) >;
 
-            constexpr static std::size_t                                mask_bit_v = (1<<0);
+            constexpr static std::size_t                                mask_bit_v = (1 << 0);
 
-            std::atomic<self*>              m_pEvent    { nullptr };
-            delegate*                       m_pNext     { nullptr };
-            delegate*                       m_pPrev     { nullptr };
+            std::atomic<self*>              m_pEvent{ nullptr };
+            delegate* m_pNext{ nullptr };
+            delegate* m_pPrev{ nullptr };
             const callback                  m_Call;
-            int                             m_Offset    {0};
+            int                             m_Offset{ 0 };
             friend self;
         };
 
     public:
 
-        constexpr type_rtn_any( void ) = default;
+        constexpr type_rtn_any(void) = default;
 
-        inline ~type_rtn_any( void ) noexcept
+        inline ~type_rtn_any(void) noexcept
         {
-            xcore::lock::scope Lock( m_Lock );
+            xcore::lock::scope Lock(m_Lock);
 
             // Remove all the delegates currently hooked on the event
-            for( auto* pNext = m_pHead; pNext; )
+            for (auto* pNext = m_pHead; pNext; )
             {
                 auto const pNextNext = pNext->m_pNext;
 
-                pNext->m_pNext  = nullptr;
-                pNext->m_pPrev  = nullptr;
+                pNext->m_pNext = nullptr;
+                pNext->m_pPrev = nullptr;
                 pNext->unlock(nullptr);
                 pNext = pNextNext;
-                
+
             }
 
             // Reset the head
             m_pHead = nullptr;
         }
 
-        inline T_RET NotifyAll( T_ARGS ... Args ) const noexcept
+        inline T_RET NotifyAll(T_ARGS ... Args) const noexcept
         {
-            xcore::lock::scope Lock( m_Lock );
+            xcore::lock::scope Lock(m_Lock);
 
-            if constexpr ( std::is_same_v<void, T_RET> )
+            if constexpr (std::is_same_v<void, T_RET>)
             {
-                for( auto pNext = m_pHead; pNext; pNext = pNext->m_pNext )
+                for (auto pNext = m_pHead; pNext; pNext = pNext->m_pNext)
                 {
                     auto uPtr = pNext->m_Offset + reinterpret_cast<size_t>(pNext);
-                    pNext->m_Call( reinterpret_cast<void*>(uPtr), std::forward<T_ARGS>(Args)... );
+                    pNext->m_Call(reinterpret_cast<void*>(uPtr), std::forward<T_ARGS>(Args)...);
                 }
             }
             else
             {
                 T_RET x = 0;
-                for( auto pNext = m_pHead; pNext; pNext = pNext->m_pNext )
+                for (auto pNext = m_pHead; pNext; pNext = pNext->m_pNext)
                 {
                     auto uPtr = pNext->m_Offset + reinterpret_cast<size_t>(pNext);
-                    x = pNext->m_Call( reinterpret_cast<void*>(uPtr), std::forward<T_ARGS>(Args)... );
-                    if( x ) break;
+                    x = pNext->m_Call(reinterpret_cast<void*>(uPtr), std::forward<T_ARGS>(Args)...);
+                    if (x) break;
                 }
 
                 return x;
@@ -230,24 +229,24 @@ namespace xcore::event
 
     private:
 
-        inline void Connect( delegate& Delegate ) noexcept
+        inline void Connect(delegate & Delegate) noexcept
         {
-            xcore::lock::scope Lock( m_Lock );
+            xcore::lock::scope Lock(m_Lock);
 
             Delegate.m_pNext = m_pHead;
             Delegate.m_pPrev = nullptr;
-            if( m_pHead ) m_pHead->m_pPrev = &Delegate;
+            if (m_pHead) m_pHead->m_pPrev = &Delegate;
 
             // set new head
             m_pHead = &Delegate;
         }
 
-        inline void Disconnect( delegate& Delegate ) noexcept
+        inline void Disconnect(delegate & Delegate) noexcept
         {
-            xcore::lock::scope Lock( m_Lock );
-            if( Delegate.isConnected() == false ) return;
+            xcore::lock::scope Lock(m_Lock);
+            if (Delegate.isConnected() == false) return;
 
-            if( m_pHead == &Delegate ) 
+            if (m_pHead == &Delegate)
             {
                 m_pHead = Delegate.m_pNext;
             }
@@ -256,7 +255,7 @@ namespace xcore::event
                 Delegate.m_pPrev->m_pNext = Delegate.m_pNext;
             }
 
-            if( Delegate.m_pNext ) Delegate.m_pNext->m_pPrev = Delegate.m_pPrev;
+            if (Delegate.m_pNext) Delegate.m_pNext->m_pPrev = Delegate.m_pPrev;
 
             // officially release the lock and set the m_Event to null
             // it must be done before releasing m_Lock
@@ -265,15 +264,15 @@ namespace xcore::event
 
     private:
 
-        xcore::lock::spin       m_Lock  {};
-        delegate*               m_pHead { nullptr };
+        mutable xcore::lock::spin       m_Lock{};
+        delegate* m_pHead{ nullptr };
     };
 
     //---------------------------------------------------------------------------
     // Events without return types
     //---------------------------------------------------------------------------
     template< typename ...T_ARGS >
-    using type     = type_rtn_any< void, T_ARGS... >;
+    using type = type_rtn_any< void, T_ARGS... >;
 
     //---------------------------------------------------------------------------
     // Events with a bool return err (bool indicates to stop sending the event)

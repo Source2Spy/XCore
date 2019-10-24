@@ -18,6 +18,8 @@
 #include "xcore_compression_examples.h"
 #include "xcore_serializer_examples.h"
 
+#include "ecs_examples.h"
+
 namespace xcore::examples
 {
     void Test( void )
@@ -44,6 +46,10 @@ namespace xcore::examples
         }
 
         // wip
-        // xcore::serializer::examples::Test();
+        if (0)
+        {
+            // xcore::serializer::examples::Test();
+            ecs_examples::Test();
+        }
     }
 }

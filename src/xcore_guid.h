@@ -186,4 +186,10 @@ struct std::hash< typename xcore::guid::subgroup<T_TAG> >
     auto operator()(const typename xcore::guid::subgroup<T_TAG> obj) const { return hash<std::uint64_t>()(obj.m_Value); } 
 };
 
+template< std::size_t T_SIZE, typename T_TAG >
+struct std::hash< typename xcore::guid::unit<T_SIZE, T_TAG> >
+{
+    auto operator()(const typename xcore::guid::unit<T_SIZE, T_TAG> obj) const { return hash<std::uint64_t>()(obj.m_Value); }
+};
+
 #endif
