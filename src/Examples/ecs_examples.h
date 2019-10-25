@@ -11,9 +11,6 @@ namespace ecs_examples
     //------------------------------------------------------------------------------------------
     struct my_main : ecs::main_system::instance
     {
-        using parent_t = ecs::main_system::instance;
-        using parent_t::instance;
-
         int m_nMaxFrames = 10;
 
         virtual void onExecute(void) noexcept override
@@ -33,17 +30,13 @@ namespace ecs_examples
         struct my_component1
         {
             using factory = ecs::factory::custom_instance<xcore::crc<64>::FromString("my_component1").m_Value, my_component1, 1024>;
-            int m_one;
+            int m_one = 0;
         };
 
         struct my_component2
         {
             using factory = ecs::factory::custom_instance<xcore::crc<64>::FromString("my_component2").m_Value, my_component2, 1024>;
             int m_two = 33;
-            my_component2()
-            {
-                m_two = 33;
-            }
         };
 
         // Example of my own system. It mutates my_component1 with contents of my_component2
@@ -67,10 +60,9 @@ namespace ecs_examples
             Game.AddGraphConnection<my_system>(Game.m_StartSyncPoint, Game.m_EndSyncPoint);
 
             // Create a few entities
-            ecs::entity::guid gEntity1;
-            ecs::entity::guid gEntity2;
-            gEntity1.Reset();
-            gEntity2.Reset();
+            ecs::entity::guid gEntity1; gEntity1.Reset();
+            ecs::entity::guid gEntity2; gEntity2.Reset();
+            
             Game.createEntity<my_component1>(gEntity1);
             Game.createEntity<my_component1, my_component2>(gEntity2);
 
@@ -93,7 +85,6 @@ namespace ecs_examples
             using factory = ecs::factory::custom_instance<xcore::crc<64>::FromString("my_spawner").m_Value, my_spawner, 1024>;
             int CountX;
             int CountY;
-
             // Prefab here ideally
         };
 
@@ -131,9 +122,8 @@ namespace ecs_examples
             void msgStart() noexcept
             {
                 //TODO: Add someone start up code here
-                ecs::entity::guid gEntity;
-                gEntity.Reset();
-                auto EntityTmpRef = m_MainSystem.createEntity<my_spawner>(gEntity);
+                ecs::entity::guid   gEntity; gEntity.Reset();
+                auto                EntityTmpRef = m_MainSystem.createEntity<my_spawner>(gEntity);
                 EntityTmpRef.getComponent<my_spawner>() = my_spawner{ 10, 10 };
             }
 
