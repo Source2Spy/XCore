@@ -107,8 +107,6 @@ namespace ecs_examples
         // Example of my own system. It mutates my_component1 with contents of my_component2
         struct spawner_system 
         {
-            ecs::main_system::instance& m_MainSystem;
-
             spawner_system(ecs::main_system::instance& MainSystem) : m_MainSystem{ MainSystem }
             {
                 m_EvenLink.Connect(m_MainSystem.m_Events.m_OnStart);
@@ -139,7 +137,8 @@ namespace ecs_examples
                 EntityTmpRef.getComponent<my_spawner>() = my_spawner{ 10, 10 };
             }
 
-            ecs::main_system::events::on_start::delegate m_EvenLink{ this, &spawner_system::msgStart };
+            ecs::main_system::instance&                     m_MainSystem;
+            ecs::main_system::events::on_start::delegate    m_EvenLink{ this, &spawner_system::msgStart };
         };
 
         void Test(void) noexcept
@@ -162,7 +161,7 @@ namespace ecs_examples
     void Test(void)
     {
         example01::Test();
-       example02::Test();
+        example02::Test();
     }
 }
 

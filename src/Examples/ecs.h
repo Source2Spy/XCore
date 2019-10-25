@@ -331,9 +331,6 @@ namespace ecs
             constexpr static filter::guid filter_guid_v{ (T_ARGS::factory::guid_component_type_v.m_Value + ...) };
             using final_system_t = T_FINAL_SYSTEM;
 
-            constexpr static bool has_start_v = details::has_start<custom_instance, void(main_system::instance&)>::value;
-
-
             custom_instance(main_system::instance& MainSystem) noexcept
                 : m_MainSystem{ MainSystem }
                 , T_FINAL_SYSTEM::system_t{ MainSystem }
@@ -368,9 +365,6 @@ namespace ecs
                     constexpr static bool value = T_A::factory::guid_component_type_v.m_Value
                                                 > T_B::factory::guid_component_type_v.m_Value;
                 };
-
-                //                template< typename...T_ARGS >
-                //                std::tuple< T_ARGS... >remove_references(std::tuple<T_ARGS&...>);
 
                 template< typename T > struct remove_references;
                 template< typename...T_ARGS >
@@ -455,24 +449,21 @@ namespace ecs
                 // Create a map between the filter and the group
                 //
                 std::array<int, sizeof...(T_ARGS)>   lIndexToComponentLists;
-                int TotalFound = 0;
-                for (auto& E : types_v)
+                int TotalFound  = 0;
+                int Index       = 0;
+                
+                for (auto& E : types_v) for (; Index < Group.m_lComponents.size(); ++Index )
                 {
-                    //TODO: If we had the types always sorted by their guid value this will be faster
-                    for (int Index = 0; Index < Group.m_lComponents.size(); ++Index )
+                    if (Group.m_lComponents[Index].m_guidComponentType == E)
                     {
-                        if (Group.m_lComponents[Index].m_guidComponentType == E)
+                        lIndexToComponentLists[TotalFound++] = Index;
+                        if (TotalFound == types_v.size())
                         {
-                            lIndexToComponentLists[TotalFound] = Index;
-                            TotalFound++;
-                            if (TotalFound == types_v.size())
-                            {
-                                // We have a match
-                                m_lGroupSelection.push_back({ &Group, lIndexToComponentLists });
-                                return;
-                            }
-                            break;
+                            // We have a match
+                            m_lGroupSelection.push_back({ &Group, lIndexToComponentLists });
+                            return;
                         }
+                        break;
                     }
                 }
             }
@@ -790,11 +781,11 @@ namespace ecs
                 return *tupleFilter->second;
             }
 
-            bool                                                                            m_bFrameStarted{ false };
-            bool                                                                            m_bPause{ false };
-            int                                                                             m_FrameNumber{ 0 };
-            start_syncpoint                                                                 m_StartSyncPoint{ *this };
-            end_syncpoint                                                                   m_EndSyncPoint{ *this };
+            bool                                                                            m_bFrameStarted     { false };
+            bool                                                                            m_bPause            { false };
+            int                                                                             m_FrameNumber       { 0 };
+            start_syncpoint                                                                 m_StartSyncPoint    { *this };
+            end_syncpoint                                                                   m_EndSyncPoint      { *this };
             events                                                                          m_Events;
             std::vector<component_factories>                                                m_lComponentFactories;
             std::unordered_map<filter::guid, std::unique_ptr<ecs::group::instance> >        m_mapGroupInstance;
@@ -845,7 +836,6 @@ namespace ecs
                         // One less new entity we need to deal with
                         m_NewEntities--;
                     }
-
                 }
                 else
                 {
