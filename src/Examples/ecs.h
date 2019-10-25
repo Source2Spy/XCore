@@ -352,13 +352,6 @@ namespace ecs
                 template< typename T_FINAL_SYSTEM, typename...T_ARGS >
                 system::custom_instance< T_FINAL_SYSTEM, T_ARGS... > convert(std::tuple<T_ARGS...>*);
 
-                template< typename T_SORTED_TUPLE, typename...T > struct create_array;
-                template< typename T_SORTED_TUPLE, typename...T_ARGS >
-                struct create_array< T_SORTED_TUPLE, std::tuple< T_ARGS... >>
-                {
-                    constexpr static std::array value{ xcore::types::tuple_t2i_v<T_ARGS, T_SORTED_TUPLE> ... };
-                };
-
                 template< typename T_A, typename T_B >
                 struct compare
                 {
@@ -413,8 +406,8 @@ namespace ecs
 
             struct selection
             {
-                group::instance* m_pGroupInstance;
-                std::array<int, sizeof...(T_ARGS)>   m_lIndexToComponentLists;
+                group::instance*                    m_pGroupInstance;
+                std::array<int, sizeof...(T_ARGS)>  m_lIndexToComponentLists;
             };
 
             virtual void onNotifyAdd(group::instance& Group) noexcept
@@ -552,10 +545,6 @@ namespace ecs
         {
             using parent_t = ecs::sync_point::instance;
             using parent_t::instance;
-            virtual void onNotify() noexcept override
-            {
-                parent_t::onNotify();
-            }
         };
 
         struct end_syncpoint final : ecs::sync_point::instance
@@ -786,11 +775,11 @@ namespace ecs
             int                                                                             m_FrameNumber       { 0 };
             start_syncpoint                                                                 m_StartSyncPoint    { *this };
             end_syncpoint                                                                   m_EndSyncPoint      { *this };
-            events                                                                          m_Events;
-            std::vector<component_factories>                                                m_lComponentFactories;
-            std::unordered_map<filter::guid, std::unique_ptr<ecs::group::instance> >        m_mapGroupInstance;
-            std::unordered_map<entity::guid, entity::tmp_ref >                              m_mapEntityInfo;
-            std::unordered_map<filter::guid, std::unique_ptr<filter::instance>>             m_mapFilters;
+            events                                                                          m_Events            {};
+            std::vector<component_factories>                                                m_lComponentFactories{};
+            std::unordered_map<filter::guid, std::unique_ptr<ecs::group::instance> >        m_mapGroupInstance  {};
+            std::unordered_map<entity::guid, entity::tmp_ref >                              m_mapEntityInfo     {};
+            std::unordered_map<filter::guid, std::unique_ptr<filter::instance>>             m_mapFilters        {};
         };
     }
 
@@ -808,9 +797,7 @@ namespace ecs
             {
                 assert(Entity.m_Flags.m_isInWorld == false);
                 Entity.m_Flags.m_isInWorld = true;
-
                 // TODO: Event new entity enters the world
-
             };
 
             //
