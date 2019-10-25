@@ -31,7 +31,7 @@ namespace xcore::system
             xassert(m_Guid.isValid());
             auto& R = xcore::get().m_SystemReg;
             xcore::lock::scope Lock( R );
-            R.getClass().insert( {m_Guid.m_Value, this} );
+            R.get().insert( {m_Guid.m_Value, this} );
         }
 
         inline  ~registration ( void ) noexcept
@@ -40,7 +40,7 @@ namespace xcore::system
             {
                 auto& R = xcore::get().m_SystemReg;
                 xcore::lock::scope Lock( R );
-                R.getClass().erase( m_Guid.m_Value );
+                R.get().erase( m_Guid.m_Value );
             }
         }
 

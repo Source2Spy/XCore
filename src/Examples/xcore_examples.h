@@ -46,7 +46,7 @@ namespace xcore::examples
         }
 
         // wip
-        if (0)
+        //if (0)
         {
             // xcore::serializer::examples::Test();
             ecs_examples::Test();

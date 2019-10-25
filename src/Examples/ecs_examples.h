@@ -39,18 +39,20 @@ namespace ecs_examples
         struct my_component2
         {
             using factory = ecs::factory::custom_instance<xcore::crc<64>::FromString("my_component2").m_Value, my_component2, 1024>;
-            int m_two;
+            int m_two = 33;
+            my_component2()
+            {
+                m_two = 33;
+            }
         };
 
         // Example of my own system. It mutates my_component1 with contents of my_component2
-        struct my_system final : ecs::system::custom_instance< my_component1, const my_component2 >
+        struct my_system
         {
-            using parent_t = custom_instance;
-            using parent_t::custom_instance;
-
-            virtual void operator()(my_component1& A, const my_component2& B) noexcept override
+            my_system(ecs::main_system::instance& MainSystem) {}
+            void Update(my_component1& A, const my_component2& B) noexcept
             {
-                A.m_one = B.m_two;
+                A.m_one = B.m_two * 1000;
             }
         };
 
@@ -62,7 +64,7 @@ namespace ecs_examples
             // Generate my unique game 
             Game.registerComponent<my_component1>();
             Game.registerComponent<my_component2>();
-            Game.AddGraphConnection(Game.m_StartSyncPoint, std::unique_ptr<my_system>{ new my_system{ Game } }, Game.m_EndSyncPoint);
+            Game.AddGraphConnection<my_system>(Game.m_StartSyncPoint, Game.m_EndSyncPoint);
 
             // Create a few entities
             ecs::entity::guid gEntity1;
@@ -103,12 +105,16 @@ namespace ecs_examples
         };
 
         // Example of my own system. It mutates my_component1 with contents of my_component2
-        struct spawner_system final : ecs::system::custom_instance< const ecs::entity::instance, const my_spawner >
+        struct spawner_system 
         {
-            using parent_t = custom_instance;
-            using parent_t::custom_instance;
+            ecs::main_system::instance& m_MainSystem;
 
-            virtual void operator()(const ecs::entity::instance& Entity, const my_spawner& Spawner) noexcept override
+            spawner_system(ecs::main_system::instance& MainSystem) : m_MainSystem{ MainSystem }
+            {
+                m_EvenLink.Connect(m_MainSystem.m_Events.m_OnStart);
+            }
+            
+            void Update(const ecs::entity::instance& Entity, const my_spawner& Spawner) noexcept
             {
                 for (auto x = 0; x < Spawner.CountX; x++)
                 {
@@ -133,7 +139,7 @@ namespace ecs_examples
                 EntityTmpRef.getComponent<my_spawner>() = my_spawner{ 10, 10 };
             }
 
-            ecs::main_system::events::on_start::delegate m_EvenLink{ this, &spawner_system::msgStart, m_MainSystem.m_Events.m_OnStart };
+            ecs::main_system::events::on_start::delegate m_EvenLink{ this, &spawner_system::msgStart };
         };
 
         void Test(void) noexcept
@@ -143,7 +149,7 @@ namespace ecs_examples
             // Generate my unique game 
             Game.registerComponent<my_spawner>();
             Game.registerComponent<my_component>();
-            Game.AddGraphConnection(Game.m_StartSyncPoint, std::unique_ptr<spawner_system>{ new spawner_system{ Game } }, Game.m_EndSyncPoint);
+            Game.AddGraphConnection<spawner_system>(Game.m_StartSyncPoint, Game.m_EndSyncPoint);
 
             // Start the game
             Game.Start();
@@ -156,7 +162,7 @@ namespace ecs_examples
     void Test(void)
     {
         example01::Test();
-        example02::Test();
+       example02::Test();
     }
 }
 
@@ -177,6 +183,7 @@ property_begin_name(ecs_examples::example01::my_component2, "Component2" )
 property_end()
 
 //------------------------------------------------------------------------------------------
+
 property_begin_name(ecs_examples::example02::my_component, "MyComponent")
 {
       property_var(PosX)

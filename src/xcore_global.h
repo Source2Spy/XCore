@@ -58,7 +58,7 @@ namespace xcore::global
                 p = details::local_storage_creator<details::local_storage_ptrs>::Make();
                 m_LocalStorage.setRaw( p );
                 xcore::lock::scope Clean(m_LocalCleanup);
-                m_LocalCleanup.getClass().emplace_back(p);
+                m_LocalCleanup.get().emplace_back(p);
             }
             static_assert( xcore::types::template variant_t2i_v<T,details::local_storage_ptrs> < std::variant_size_v<details::local_storage_ptrs>, "" );
             return std::get<T>(p->at(xcore::types::template variant_t2i_v<T,details::local_storage_ptrs>));

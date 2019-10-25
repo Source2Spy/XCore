@@ -284,22 +284,115 @@ namespace ecs
             std::vector<sync_point::instance*> m_lNotifications;
         };
 
+        namespace details
+        {
+            template<typename, typename T>
+            struct has_start 
+            {
+                static_assert( std::integral_constant<T, false>::value,
+                    "Second template parameter needs to be of function type.");
+            };
+
+            // specialization that does the checking
+            template<typename T_CLASS, typename Ret, typename... Args>
+            struct has_start<T_CLASS, Ret(Args...)>
+            {
+            private:
+                template<typename T>
+                static constexpr auto check(T*)
+                    -> typename std::is_same
+                    <
+                      decltype(std::declval<T>().Start(std::declval<Args>()...))
+                    , Ret    // ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                    >::type;  // attempt to call it and see if the return type is correct
+
+                template<typename>
+                static constexpr std::false_type check(...);
+
+                using type = decltype(check<T_CLASS>(nullptr));
+
+            public:
+                static constexpr bool value = type::value;
+            };
+
+            template<typename T>
+            std::enable_if_t<true == details::has_start<T, void(main_system::instance&)>::value, void >
+            CallStart(T& A) noexcept { A.Start(A.m_MainSystem); }
+
+            template<typename T>
+            std::enable_if_t<false == details::has_start<T, void(main_system::instance&)>::value, void >
+            CallStart(T&) noexcept {}
+        }
+
         //------------------------------------------------------------------------------------------
-        template< typename... T_ARGS >
-        struct custom_instance : instance
+        template< typename T_FINAL_SYSTEM, typename... T_ARGS >
+        struct custom_instance final : T_FINAL_SYSTEM::system_t, instance
         {
             constexpr static filter::guid filter_guid_v{ (T_ARGS::factory::guid_component_type_v.m_Value + ...) };
-            using types_t = std::tuple<T_ARGS...>;
+            using final_system_t = T_FINAL_SYSTEM;
+
+            constexpr static bool has_start_v = details::has_start<custom_instance, void(main_system::instance&)>::value;
+
 
             custom_instance(main_system::instance& MainSystem) noexcept
                 : m_MainSystem{ MainSystem }
-            {}
+                , T_FINAL_SYSTEM::system_t{ MainSystem }
+                , instance{}
+            {
+              //  details::CallStart(*this);
+            }
 
-            virtual void operator()(T_ARGS& ...) noexcept = 0;
             virtual void onExecute(void) noexcept override;
 
             main_system::instance& m_MainSystem;
         };
+
+        //------------------------------------------------------------------------------------------
+        namespace details
+        {
+            namespace details
+            {
+                template< typename T_FINAL_SYSTEM, typename...T_ARGS >
+                system::custom_instance< T_FINAL_SYSTEM, T_ARGS... > convert(std::tuple<T_ARGS...>*);
+
+                template< typename T_SORTED_TUPLE, typename...T > struct create_array;
+                template< typename T_SORTED_TUPLE, typename...T_ARGS >
+                struct create_array< T_SORTED_TUPLE, std::tuple< T_ARGS... >>
+                {
+                    constexpr static std::array value{ xcore::types::tuple_t2i_v<T_ARGS, T_SORTED_TUPLE> ... };
+                };
+
+                template< typename T_A, typename T_B >
+                struct compare
+                {
+                    constexpr static bool value = T_A::factory::guid_component_type_v.m_Value
+                                                > T_B::factory::guid_component_type_v.m_Value;
+                };
+
+                //                template< typename...T_ARGS >
+                //                std::tuple< T_ARGS... >remove_references(std::tuple<T_ARGS&...>);
+
+                template< typename T > struct remove_references;
+                template< typename...T_ARGS >
+                struct remove_references< std::tuple< T_ARGS &... >>
+                {
+                    using type = std::tuple<T_ARGS...>;
+                };
+            }
+
+            template< typename T_SYSTEM >
+            struct final_system
+            {
+                using system_t = T_SYSTEM;
+                using function_traits_t = typename xcore::function::traits<decltype(&system_t::Update)>;
+                static_assert(std::tuple_size_v<typename function_traits_t::args_tuple> > 0);
+
+                using unsorted_tuple_t  = typename details::remove_references<typename function_traits_t::args_tuple>::type;
+                using sorted_tuple_t    = typename helpers::tuple_selection_sort< details::compare, unsorted_tuple_t >::type;
+                using type              = typename decltype(details::convert<final_system>((sorted_tuple_t*)nullptr));
+            };
+        }
+
     }
 
     //------------------------------------------------------------------------------------------
@@ -319,7 +412,7 @@ namespace ecs
         template< typename... T_ARGS >
         struct custom_instance final : instance
         {
-            constexpr static guid       guid_v{ (T_ARGS::factory::guid_component_type_v.m_Value + ...) };
+            constexpr static guid       guid_v { (T_ARGS::factory::guid_component_type_v.m_Value + ...) };
             constexpr static std::array types_v{ T_ARGS::factory::guid_component_type_v ... };
 
             custom_instance() noexcept : instance{ guid_v } {}
@@ -335,6 +428,28 @@ namespace ecs
                 // it wont have enough of my types
                 if (types_v.size() > Group.m_lComponents.size())
                     return;
+
+                //
+                // Sanity check that all the data is as expected
+                //
+                xassert_block_basic()
+                {
+                    for (int i = 0; i < types_v.size(); i++)
+                    {
+                        if ( (i + 1) != types_v.size() )
+                        {
+                            assert(types_v[i] < types_v[i + 1]);
+                        }
+                    }
+
+                    for ( int j = 0; j < Group.m_lComponents.size(); ++j)
+                    {
+                        if ((j + 1) != Group.m_lComponents.size() )
+                        {
+                            assert(Group.m_lComponents[j].m_guidComponentType.m_Value < Group.m_lComponents[j+1].m_guidComponentType.m_Value);
+                        }
+                    }
+                }
 
                 //
                 // Create a map between the filter and the group
@@ -362,16 +477,20 @@ namespace ecs
                 }
             }
 
-            template< typename T_FUNCTOR >
-            void ForEach( T_FUNCTOR&& Functor ) noexcept
+            template< typename T_FINAL_SYSTEM, typename T_SYSTEM >
+            void ForEach(T_SYSTEM& System ) noexcept
             {
                 using tmp_tuple = typename std::tuple<typename T_ARGS::factory::custom_mgr &...>;
                 for (auto& S : m_lGroupSelection)
                 {
+                    using tuple = std::tuple<T_ARGS...>;
                     tmp_tuple Mgrs
                     {
                         reinterpret_cast<typename T_ARGS::factory::custom_mgr&>
-                        (*S.m_pGroupInstance->m_lComponents[S.m_lIndexToComponentLists[0]].m_upComponentMgr.get())
+                        (*S.m_pGroupInstance->m_lComponents
+                        [
+                            S.m_lIndexToComponentLists[xcore::types::tuple_t2i_v< T_ARGS, tuple >]
+                        ].m_upComponentMgr.get())
                         ...
                     };
 
@@ -390,7 +509,14 @@ namespace ecs
                             continue;
 
                         // Let the system execute
-                        Functor(std::get<typename T_ARGS::factory::custom_mgr&>(Mgrs).m_Pool[i] ...);
+                        System.Update( std::get
+                        < 
+                            typename std::tuple_element_t
+                            < 
+                                xcore::types::tuple_t2i_v< T_ARGS, T_FINAL_SYSTEM::sorted_tuple_t >
+                                , T_FINAL_SYSTEM::unsorted_tuple_t
+                            >::factory::custom_mgr&
+                        >(Mgrs).m_Pool[i] ... );
                     }
                 }
             }
@@ -458,7 +584,7 @@ namespace ecs
             on_start m_OnStart;
         };
 
-        struct instance : system::instance
+        struct instance
         {
             struct component_factories
             {
@@ -469,12 +595,10 @@ namespace ecs
             instance()
             {
                 registerComponent<entity::instance>();
-                AddGraphConnection(m_EndSyncPoint, *this, m_StartSyncPoint);
+                m_StartSyncPoint.AddToNotify();
             }
 
-            virtual void onExecute(void) noexcept override
-            {
-            }
+            virtual void onExecute(void) noexcept {}
 
             void Start(void)
             {
@@ -482,7 +606,6 @@ namespace ecs
                 while (m_bPause == false)
                 {
                     m_bFrameStarted = true;
-                    // We first notify ourself ready to go
                     onExecute();
 
                     // Now we can start the cascade...
@@ -622,7 +745,7 @@ namespace ecs
             }
 
             template< typename...T_ARGS >
-            void PrecacheFilter(system::custom_instance<T_ARGS...>*) noexcept
+            void PrecacheFilter(std::tuple<T_ARGS...>*) noexcept
             {
                 using filter_t = filter::custom_instance<T_ARGS...>;
 
@@ -636,35 +759,28 @@ namespace ecs
             }
 
             template< typename T_SYSTEM, typename...T_ARGS >
-            void AddGraphConnection(sync_point::instance& StartSynpoint, T_SYSTEM&& System, T_ARGS&&... EndSyncPoints) noexcept
+            T_SYSTEM& AddGraphConnection(sync_point::instance& StartSynpoint, T_ARGS&&... EndSyncPoints) noexcept
             {
                 static_assert(sizeof...(EndSyncPoints) > 0, "You must pass at least one end Sync_point");
                 static_assert(std::is_base_of_v<sync_point::instance, std::common_type_t<T_ARGS...>>, "All the end sync_points must be non const sync_points");
 
+                // Create the new type and allocated it
+                using final_system = typename system::details::final_system<T_SYSTEM>;
+                using system_t     = typename final_system::type;
+                std::unique_ptr<system_t> System
+                {
+                    std::unique_ptr<system_t>{ new system_t{*this} }
+                };
+
                 // does the user wants us to delete it when we are done?
                 // If the user pass us a unique pointer we will assume that yes.
-                if constexpr (xcore::types::template is_specialized_v< std::unique_ptr, T_SYSTEM>)
-                {
-                    static_assert(std::is_base_of_v<system::instance, std::decay_t<decltype(*System)>>, "This class must be derived from a ecs::system");
+                PrecacheFilter((typename final_system::sorted_tuple_t*)nullptr);
+                auto& P = *System.release();
+                StartSynpoint.AddToTrigger(P, true);
 
-                    PrecacheFilter(System.get());
-                    auto& P = *System.release();
-                    StartSynpoint.AddToTrigger(P, true);
+                ((P.AddNotification(EndSyncPoints)), ...);
 
-                    ((P.AddNotification(EndSyncPoints)), ...);
-                }
-                else
-                {
-                    // Other wise we are going to assume he does not want us to delete the system
-
-                    static_assert(std::is_base_of_v<system::instance, std::decay_t<decltype(System)>>, "This class must be derived from a ecs::system");
-                    static_assert(std::is_reference_v<T_SYSTEM>, "Please pass a reference");
-
-                    if constexpr (xcore::types::template is_specialized_v < ecs::system::custom_instance, T_SYSTEM>) PrecacheFilter(&System);
-                    StartSynpoint.AddToTrigger(System, false);
-
-                    ((System.AddNotification(EndSyncPoints)), ...);
-                }
+                return *System;
             }
 
             filter::instance& getFilter(filter::guid Guid) noexcept
@@ -819,6 +935,7 @@ namespace ecs
         void instance::onNotify() noexcept
         {
             --m_Notifications;
+            assert(m_Notifications >= 0);
             if (m_Notifications == 0)
             {
                 m_Notifications = m_countExpectedNotifications;
@@ -830,11 +947,11 @@ namespace ecs
     //------------------------------------------------------------------------------------------
     namespace system
     {
-        template< typename... T_ARGS >
-        void custom_instance<T_ARGS...>::onExecute(void) noexcept
+        template< typename T_FINAL_SYSTEM, typename... T_ARGS >
+        void custom_instance< T_FINAL_SYSTEM, T_ARGS...>::onExecute(void) noexcept
         {
             auto& Filter = static_cast<filter::custom_instance<T_ARGS...>&>(m_MainSystem.getFilter(filter_guid_v));
-            Filter.ForEach(*this);
+            Filter.ForEach<final_system_t>( *this);
         }
 
         void instance::Execute(void) noexcept

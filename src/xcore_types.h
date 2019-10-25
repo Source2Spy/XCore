@@ -84,7 +84,7 @@ namespace xcore::types
         };
     }
     template< typename T_TYPE, typename T_TUPLE >
-    constexpr static auto tuple_t2i_v = details::Index< T_TYPE, T_TUPLE >::value;
+    constexpr static auto tuple_t2i_v = details::tuple_t2i< T_TYPE, T_TUPLE >::value;
 
     //------------------------------------------------------------------------------------------
     // Variant err to index conversion
