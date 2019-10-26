@@ -304,49 +304,55 @@ namespace ecs
 
         namespace details
         {
-            template<typename, typename T>
-            struct has_start 
-            {
-                static_assert( std::integral_constant<T, false>::value,
-                    "Second template parameter needs to be of function type.");
-            };
+            #define CHECK_FUNCTION( FUNCTION_NAME )                                         \
+            template<typename, typename T>                                                  \
+            struct has_##FUNCTION_NAME                                                      \
+            {                                                                               \
+                static_assert( std::integral_constant<T, false>::value,                     \
+                    "Second template parameter needs to be of function type.");             \
+            };                                                                              \
+            /* specialization that does the checking */                                     \
+            template<typename T_CLASS, typename Ret, typename... Args>                      \
+            struct has_##FUNCTION_NAME <T_CLASS, Ret(Args...)>                              \
+            {                                                                               \
+                template<typename T>                                                        \
+                static constexpr auto check(T*) -> typename std::is_same                    \
+                <                                                                           \
+                    decltype(std::declval<T>().FUNCTION_NAME(std::declval<Args>()...))      \
+                    , Ret /* ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^   */    \
+                >::type;  /* attempt to call it and see if the return type is correct */    \
+                template<typename>                                                          \
+                static constexpr std::false_type check(...);                                \
+                using type = decltype(check<T_CLASS>(nullptr));                             \
+                static constexpr bool value = type::value;                                  \
+            };                                                                              \
+            template<typename T, typename...T_ARGS>                                         \
+            std::enable_if_t<true == has_##FUNCTION_NAME<T, void(T_ARGS...)>::value, void > \
+            Call##FUNCTION_NAME(T& A, T_ARGS...Args) noexcept { A.FUNCTION_NAME(Args...); } \
+            template<typename T, typename...T_ARGS>                                         \
+            std::enable_if_t<false == has_##FUNCTION_NAME<T, void(T_ARGS...)>::value, void >\
+            Call##FUNCTION_NAME(T&, T_ARGS...Args) noexcept {}                          
 
-            // specialization that does the checking
-            template<typename T_CLASS, typename Ret, typename... Args>
-            struct has_start<T_CLASS, Ret(Args...)>
-            {
-            private:
-                template<typename T>
-                static constexpr auto check(T*)
-                    -> typename std::is_same
-                    <
-                      decltype(std::declval<T>().Start(std::declval<Args>()...))
-                    , Ret    // ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-                    >::type;  // attempt to call it and see if the return type is correct
+            CHECK_FUNCTION(Update)                          // W/R Components
+            CHECK_FUNCTION(ExclusiveUpdate)                 // W/R Components + add/remove components
 
-                template<typename>
-                static constexpr std::false_type check(...);
-
-                using type = decltype(check<T_CLASS>(nullptr));
-
-            public:
-                static constexpr bool value = type::value;
-            };
-
-            template<typename T>
-            std::enable_if_t<true == details::has_start<T, void(main_system::instance&)>::value, void >
-            CallStart(T& A) noexcept { A.Start(A.m_MainSystem); }
-
-            template<typename T>
-            std::enable_if_t<false == details::has_start<T, void(main_system::instance&)>::value, void >
-            CallStart(T&) noexcept {}
+            #undef CHECK_FUNCTION
         }
 
         //------------------------------------------------------------------------------------------
         template< typename T_FINAL_SYSTEM, typename... T_ARGS >
         struct custom_instance final : T_FINAL_SYSTEM::system_t, instance
         {
-            constexpr static filter::guid filter_guid_v{ (T_ARGS::factory::guid_component_type_v.m_Value + ...) };
+            constexpr static filter::guid filter_guid_v { (T_ARGS::factory::guid_component_type_v.m_Value + ...) };
+            constexpr static std::array   io_v          { std::tuple{ T_ARGS::factory::guid_component_type_v, std::is_const_v
+                                                            <
+                                                                typename std::tuple_element_t
+                                                                <
+                                                                    xcore::types::tuple_t2i_v< T_ARGS, T_FINAL_SYSTEM::sorted_tuple_t >
+                                                                    , T_FINAL_SYSTEM::function_traits_t::args_tuple
+                                                                >
+                                                            > } ... };
+
             using final_system_t = T_FINAL_SYSTEM;
 
             custom_instance(main_system::instance& MainSystem) noexcept
@@ -354,7 +360,14 @@ namespace ecs
                 , T_FINAL_SYSTEM::system_t{ MainSystem }
                 , instance{}
             {
-              //  details::CallStart(*this);
+                static_assert(details::has_Update<typename T_FINAL_SYSTEM::system_t, void
+                (
+                    typename std::tuple_element_t
+                    <
+                        xcore::types::tuple_t2i_v< T_ARGS, T_FINAL_SYSTEM::sorted_tuple_t >
+                        , T_FINAL_SYSTEM::function_traits_t::args_tuple
+                    > ...
+                )>::value);
             }
 
             virtual void onExecute(void) noexcept override;
