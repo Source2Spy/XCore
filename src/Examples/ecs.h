@@ -38,7 +38,17 @@ namespace ecs
     namespace component
     {
         using type_guid = xcore::guid::unit<64, struct component_type_tag>;
+
     }
+
+    //------------------------------------------------------------------------------------------
+    // HELPERS
+    //------------------------------------------------------------------------------------------
+    template< typename T, std::size_t N >
+    constexpr static std::uint64_t name_guid(T (&Name)[N]) { return xcore::crc<64>::FromString(Name).m_Value; }
+
+    template< std::uint64_t T_GUID, typename T, std::size_t T_PAGE_SIZE >
+    using make_factory = typename factory::custom_instance< T_GUID, T, T_PAGE_SIZE >;
 
     using properties_tuple = std::tuple<const property::table*, component::type_guid, void*>;
 

@@ -27,15 +27,15 @@ namespace ecs_examples
     {
         // Examples of components
         // Note all components must have their own factory type
-        struct my_component1
+        struct my_component1 
         {
-            using factory = ecs::factory::custom_instance<xcore::crc<64>::FromString("my_component1").m_Value, my_component1, 1024>;
+            using factory = ecs::make_factory<ecs::name_guid("my_component1"), my_component1, 1024>;
             int m_one = 0;
         };
 
-        struct my_component2
+        struct my_component2 
         {
-            using factory = ecs::factory::custom_instance<xcore::crc<64>::FromString("my_component2").m_Value, my_component2, 1024>;
+            using factory = ecs::make_factory<ecs::name_guid("my_component2"), my_component2, 1024>;
             int m_two = 33;
         };
 
@@ -60,8 +60,8 @@ namespace ecs_examples
             Game.AddGraphConnection<my_system>(Game.m_StartSyncPoint, Game.m_EndSyncPoint);
 
             // Create a few entities
-            ecs::entity::guid gEntity1; gEntity1.Reset();
-            ecs::entity::guid gEntity2; gEntity2.Reset();
+            ecs::entity::guid gEntity1{ xcore::not_null };
+            ecs::entity::guid gEntity2{ xcore::not_null };
             
             Game.createEntity<my_component1>(gEntity1);
             Game.createEntity<my_component1, my_component2>(gEntity2);
@@ -82,7 +82,7 @@ namespace ecs_examples
     {
         struct my_spawner
         {
-            using factory = ecs::factory::custom_instance<xcore::crc<64>::FromString("my_spawner").m_Value, my_spawner, 1024>;
+            using factory = ecs::make_factory<ecs::name_guid("my_spawner"), my_spawner, 1024>;
             int CountX;
             int CountY;
             // Prefab here ideally
@@ -90,7 +90,7 @@ namespace ecs_examples
 
         struct my_component
         {
-            using factory = ecs::factory::custom_instance<xcore::crc<64>::FromString("my_component").m_Value, my_component, 1024>;
+            using factory = ecs::make_factory<ecs::name_guid("my_component"), my_component, 1024>;
             int PosX;
             int PosY;
         };
@@ -109,8 +109,7 @@ namespace ecs_examples
                 {
                     for (auto y = 0; y < Spawner.CountY; y++)
                     {
-                        ecs::entity::guid gEntity;
-                        gEntity.Reset();
+                        ecs::entity::guid gEntity{ xcore::not_null };
                         auto EntityTmpRef = m_MainSystem.createEntity<my_component>(gEntity);
                         EntityTmpRef.getComponent<my_component>() = my_component{ x,y };
                     }
@@ -122,7 +121,7 @@ namespace ecs_examples
             void msgStart() noexcept
             {
                 //TODO: Add someone start up code here
-                ecs::entity::guid   gEntity; gEntity.Reset();
+                ecs::entity::guid   gEntity{ xcore::not_null };
                 auto                EntityTmpRef = m_MainSystem.createEntity<my_spawner>(gEntity);
                 EntityTmpRef.getComponent<my_spawner>() = my_spawner{ 10, 10 };
             }

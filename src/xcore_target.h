@@ -372,6 +372,14 @@ constexpr xcore::target::compiler   xcore::target::getCompiler      ( void ) noe
     #define TRACY_ENABLE
 #endif
 
+
+// Provide a generic tag that allows constructor to generate a default
+namespace xcore
+{
+    struct not_null_t {};
+    constexpr static not_null_t not_null {};
+}
+
 //------------------------------------------------------------------------------
 // END
 //------------------------------------------------------------------------------

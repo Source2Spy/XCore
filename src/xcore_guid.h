@@ -55,6 +55,7 @@ namespace xcore::guid
         constexpr explicit                  unit                ( t X )                                                         noexcept : m_Value{ X }{}
         constexpr                           unit                ( void )                                                        noexcept = default;
         constexpr explicit                  unit                ( h High, h Low )                                               noexcept : m_Value{ (static_cast<t>(High)<<(bit_size_v/2)) | Low }{}
+        constexpr explicit                  unit                (xcore::not_null_t)                                             noexcept : m_Value{ details::Generate<bit_size_v>() } {}
         constexpr            bool           operator ==         ( const unit A )                                        const   noexcept { return m_Value == A.m_Value; }
         constexpr            bool           operator !=         ( const unit A )                                        const   noexcept { return m_Value != A.m_Value; }
         constexpr            bool           operator <          ( const unit A )                                        const   noexcept { return m_Value < A.m_Value; }
