@@ -127,6 +127,14 @@ namespace ecs
             group::instance*        m_pGroupInstance{ nullptr };
             mgr::instance::index    m_Index{};
         };
+
+        // returned by a createEntity ones it dies the entity will be able to be executed by systems
+        struct tmp_ref_create : tmp_ref
+        {
+            tmp_ref_create() = default;
+            tmp_ref_create(tmp_ref_create&& Entry) noexcept : tmp_ref{ Entry } { Entry.m_pGroupInstance = nullptr; }
+            ~tmp_ref_create() noexcept;
+        };
     }
 
     //------------------------------------------------------------------------------------------
@@ -147,8 +155,9 @@ namespace ecs
             struct custom_mgr final : mgr::instance
             {
                 using mgr::instance::instance;
+                using pool_t = containers::pool<T_COMPONENT, T_SIZE >;
 
-                containers::pool<T_COMPONENT, T_SIZE > m_Pool;
+                pool_t m_Pool;
 
                 virtual index               appendComponent (void)              noexcept override { return { static_cast<std::uint32_t>(m_Pool.append()) }; }
                 virtual bool                deleteComponent (index ID)          noexcept override { return m_Pool.deleteBySwap(ID.m_Value); }
@@ -226,16 +235,8 @@ namespace ecs
                         auto& Entity = E.m_upComponentMgr->getAs<entity::instance>(Index);
                         Entity.m_Guid = guidEntity;
                         Entity.m_Flags.m_Value = 0;
-                        if (bMidFrame)
-                        {
-                            m_NewEntities++;
-                            Entity.m_Flags.m_isInWorld = false;
-                        }
-                        else
-                        {
-                            Entity.m_Flags.m_isInWorld = true;
-                        }
-
+                        m_NewEntities++;
+                        Entity.m_Flags.m_isInWorld = false;
                     }
                 }
 
@@ -243,6 +244,13 @@ namespace ecs
             }
 
             void onUpdateEndFrame(main_system::instance& MainSystem) noexcept;
+
+            void setEntityInWorld(mgr::instance::index Index) noexcept
+            {
+                // const auto Size = m_lComponents[0].m_upComponentMgr->size();
+                // for( int i=0; i< Size; ++i ) m_lComponents[i].m_upComponentMgr->NotifyInWorld();
+                m_lComponents[0].m_upComponentMgr->getAs<entity::instance>(Index).m_Flags.m_isInWorld = true;
+            }
 
             std::vector<properties_tuple> getProperties(mgr::instance::index Index) const noexcept
             {
@@ -464,27 +472,26 @@ namespace ecs
             template< typename T_FINAL_SYSTEM, typename T_SYSTEM >
             void ForEach(T_SYSTEM& System ) noexcept
             {
-                using tmp_tuple = typename std::tuple<typename T_ARGS::factory::custom_mgr &...>;
+                using tmp_tuple = typename std::tuple<typename T_ARGS::factory::custom_mgr::pool_t &...>;
                 for (auto& S : m_lGroupSelection)
                 {
                     using tuple = std::tuple<T_ARGS...>;
-                    tmp_tuple Mgrs
+                    tmp_tuple Pools
                     {
                         reinterpret_cast<typename T_ARGS::factory::custom_mgr&>
                         (*S.m_pGroupInstance->m_lComponents
                         [
                             S.m_lIndexToComponentLists[xcore::types::tuple_t2i_v< T_ARGS, tuple >]
-                        ].m_upComponentMgr.get())
+                        ].m_upComponentMgr.get()).m_Pool
                         ...
                     };
 
-                    const auto& EntityMgr = reinterpret_cast<entity::instance::factory::custom_mgr&>
-                                            (*S.m_pGroupInstance->m_lComponents[0].m_upComponentMgr.get());
+                    const auto& EntityPool = reinterpret_cast<entity::instance::factory::custom_mgr&>
+                                            (*S.m_pGroupInstance->m_lComponents[0].m_upComponentMgr.get()).m_Pool;
 
-                    const auto Size = std::get<0>(Mgrs).m_Pool.size();
-                    for (int i = 0; i < Size; ++i)
+                    for (int i = 0; i < EntityPool.size(); ++i)
                     {
-                        auto& Entity = EntityMgr.m_Pool[i];
+                        auto& Entity = EntityPool[i];
 
                         // Make sure we are running a valid entity
                         if( Entity.m_Flags.m_isDeleted 
@@ -499,8 +506,8 @@ namespace ecs
                             < 
                                 xcore::types::tuple_t2i_v< T_ARGS, T_FINAL_SYSTEM::sorted_tuple_t >
                                 , T_FINAL_SYSTEM::unsorted_tuple_t
-                            >::factory::custom_mgr&
-                        >(Mgrs).m_Pool[i] ... );
+                            >::factory::custom_mgr::pool_t&
+                        >(Pools)[i] ... );
                     }
                 }
             }
@@ -623,7 +630,7 @@ namespace ecs
             }
 
             template< typename...T_COMPONENTS >
-            entity::tmp_ref createEntity(entity::guid EntityGuid ) noexcept
+            entity::tmp_ref_create createEntity(entity::guid EntityGuid ) noexcept
             {
                 if constexpr (sizeof...(T_COMPONENTS) > 0)
                 {
@@ -647,12 +654,12 @@ namespace ecs
             }
 
             // private
-            entity::tmp_ref createEntity(  
+            entity::tmp_ref_create createEntity(
                                 entity::guid    EntityGuid
                             ,   filter::guid    GroupID
                             ,   const std::span<const component::type_guid> lGuidComponentTypes ) noexcept
             {
-                entity::tmp_ref EntityRef;
+                entity::tmp_ref_create EntityRef;
 
                 //
                 // find or add the group
@@ -690,7 +697,7 @@ namespace ecs
                     , EntityRef
                 });
 
-                return EntityRef;
+                return std::move(EntityRef);
             }
 
             void deleteUpdateEntities(entity::guid gEntity ) noexcept
@@ -793,13 +800,6 @@ namespace ecs
         {
             assert(m_lComponents.size());
 
-            const auto HandleNewEntity = [&](entity::instance& Entity)
-            {
-                assert(Entity.m_Flags.m_isInWorld == false);
-                Entity.m_Flags.m_isInWorld = true;
-                // TODO: Event new entity enters the world
-            };
-
             //
             // Removed all deleted entities
             //
@@ -815,14 +815,6 @@ namespace ecs
                 {
                     auto& SwappedEntity = *reinterpret_cast<entity::instance*>(m_lComponents[0].m_upComponentMgr->getElement(E.m_Index));
                     MainSystem.deleteUpdateEntities(E.m_guidEntity, SwappedEntity.m_Guid, E.m_Index);
-
-                    if (m_NewEntities)
-                    {
-                        HandleNewEntity(SwappedEntity);
-
-                        // One less new entity we need to deal with
-                        m_NewEntities--;
-                    }
                 }
                 else
                 {
@@ -834,21 +826,9 @@ namespace ecs
             }
 
             //
-            // Notify any new entity that it just entered the world
+            // Reset the count
             //
-            if (m_NewEntities)
-            {
-                assert(m_lComponents[0].m_upComponentMgr->size() >= m_NewEntities);
-
-                const auto Total = m_lComponents[0].m_upComponentMgr->size();
-                
-                for(mgr::instance::index Index{ static_cast<std::uint32_t>(Total - m_NewEntities) }; Index.m_Value < Total; ++Index.m_Value )
-                {
-                    auto& NewEntity = *reinterpret_cast<entity::instance*>(m_lComponents[0].m_upComponentMgr->getElement(Index));
-                    HandleNewEntity(NewEntity);
-                }
-                m_NewEntities = 0;
-            }
+            m_NewEntities = 0;
         }
 
         //------------------------------------------------------------------------------------------
@@ -877,6 +857,15 @@ namespace ecs
     //------------------------------------------------------------------------------------------
     namespace entity
     {
+        tmp_ref_create::~tmp_ref_create() noexcept
+        {
+            if (m_pGroupInstance)
+            {
+                m_pGroupInstance->setEntityInWorld(m_Index);
+                m_pGroupInstance = nullptr;
+            }
+        }
+
         template< typename T >
         T& tmp_ref::getComponent(component::type_guid TypeGuid) noexcept
         {
@@ -928,7 +917,7 @@ namespace ecs
         void custom_instance< T_FINAL_SYSTEM, T_ARGS...>::onExecute(void) noexcept
         {
             auto& Filter = static_cast<filter::custom_instance<T_ARGS...>&>(m_MainSystem.getFilter(filter_guid_v));
-            Filter.ForEach<final_system_t>( *this);
+            Filter.ForEach<final_system_t>( *this );
         }
 
         void instance::Execute(void) noexcept
