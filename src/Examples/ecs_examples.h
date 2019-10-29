@@ -151,6 +151,10 @@ namespace ecs_examples
     {
         example01::Test();
         example02::Test();
+
+        containers::circular_pool<1024> Pool;
+
+        Pool.New<int>();
     }
 }
 

@@ -1,7 +1,7 @@
 
 //#include "xcore.h"
 #include "pool.h"
-
+#include "circular_pool.h"
 #include "helpers.h"
 
 namespace ecs
@@ -28,6 +28,11 @@ namespace ecs
     }
 
     namespace group
+    {
+        struct instance;
+    }
+
+    namespace system
     {
         struct instance;
     }
@@ -287,13 +292,46 @@ namespace ecs
     }
 
     //------------------------------------------------------------------------------------------
+    // SYNC_POINT - A sync point establish a moment in time where systems can be run. You can
+    //              also build complex graphs this way.
+    //------------------------------------------------------------------------------------------
+    namespace sync_point
+    {
+        struct instance
+        {
+                                instance            (main_system::instance& MainSystem)             noexcept : m_MainSystem{ MainSystem } {}
+            virtual            ~instance            (void)                                          noexcept;
+                        void    AddToTrigger        (system::instance& Job, bool bDeleteWhenDone )  noexcept { m_lSystems.push_back({ &Job , bDeleteWhenDone }); }
+                        void    AddToNotify         (void)                                          noexcept { m_countExpectedNotifications++; m_Notifications = m_countExpectedNotifications; }
+            virtual     void    onNotify            (void)                                          noexcept;
+
+            struct entry 
+            {
+                system::instance*   m_pSystem;
+                bool                m_bDeleteWhenDone;
+            };
+
+            std::vector<entry>      m_lSystems;
+            int                     m_countExpectedNotifications{ 0 };
+            int                     m_Notifications{ 0 };
+            main_system::instance&  m_MainSystem;
+        };
+
+        struct memory_barier : instance
+        {
+            memory_barier            (main_system::instance& MainSystem)             noexcept : instance{ MainSystem } {}
+
+        };
+    }
+
+    //------------------------------------------------------------------------------------------
     // SYSTEM - System execute logic for components
     //------------------------------------------------------------------------------------------
     namespace system
     {
-        struct instance
+        struct instance : sync_point::instance
         {
-            constexpr           instance            (void)                              noexcept = default;
+            constexpr           instance            (main_system::instance& MainSystem) noexcept : sync_point::instance{ MainSystem }{};
             virtual            ~instance            (void)                              noexcept = default;
                         void    Execute             (void)                              noexcept;
             virtual     void    onExecute           (void)                              noexcept = 0;
@@ -356,9 +394,8 @@ namespace ecs
             using final_system_t = T_FINAL_SYSTEM;
 
             custom_instance(main_system::instance& MainSystem) noexcept
-                : m_MainSystem{ MainSystem }
-                , T_FINAL_SYSTEM::system_t{ MainSystem }
-                , instance{}
+                : T_FINAL_SYSTEM::system_t{ MainSystem }
+                , instance{ MainSystem }
             {
                 static_assert(details::has_Update<typename T_FINAL_SYSTEM::system_t, void
                 (
@@ -371,8 +408,6 @@ namespace ecs
             }
 
             virtual void onExecute(void) noexcept override;
-
-            main_system::instance& m_MainSystem;
         };
 
         //------------------------------------------------------------------------------------------
@@ -410,7 +445,6 @@ namespace ecs
                 using type              = typename decltype(details::convert<final_system>((sorted_tuple_t*)nullptr));
             };
         }
-
     }
 
     //------------------------------------------------------------------------------------------
@@ -536,33 +570,6 @@ namespace ecs
             }
 
             std::vector<selection>      m_lGroupSelection;
-        };
-    }
-
-    //------------------------------------------------------------------------------------------
-    // SYNC_POINT - A sync point establish a moment in time where systems can be run. You can
-    //              also build complex graphs this way.
-    //------------------------------------------------------------------------------------------
-    namespace sync_point
-    {
-        struct instance
-        {
-                                instance            (main_system::instance& MainSystem)             noexcept : m_MainSystem{ MainSystem } {}
-            virtual            ~instance            (void)                                          noexcept { for (auto& E : m_lSystems) if (E.m_bDeleteWhenDone) delete(E.m_pSystem); }
-                        void    AddToTrigger        (system::instance& Job, bool bDeleteWhenDone )  noexcept { m_lSystems.push_back({ &Job , bDeleteWhenDone }); }
-                        void    AddToNotify         (void)                                          noexcept { m_countExpectedNotifications++; m_Notifications = m_countExpectedNotifications; }
-            virtual     void    onNotify            (void)                                          noexcept;
-
-            struct entry 
-            {
-                system::instance*   m_pSystem;
-                bool                m_bDeleteWhenDone;
-            };
-
-            std::vector<entry>      m_lSystems;
-            int                     m_countExpectedNotifications{ 0 };
-            int                     m_Notifications{ 0 };
-            main_system::instance&  m_MainSystem;
         };
     }
 
@@ -930,6 +937,12 @@ namespace ecs
                 m_Notifications = m_countExpectedNotifications;
                 for (auto& E : m_lSystems) E.m_pSystem->Execute();
             }
+        }
+
+        instance::~instance(void) noexcept 
+        { 
+            for (auto& E : m_lSystems) 
+                if (E.m_bDeleteWhenDone) delete(E.m_pSystem); 
         }
     }
 
