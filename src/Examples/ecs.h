@@ -32,6 +32,11 @@ namespace ecs
         struct instance;
     }
 
+    namespace system
+    {
+        struct instance;
+    }
+
     //------------------------------------------------------------------------------------------
     // COMPONENT
     //------------------------------------------------------------------------------------------
@@ -117,9 +122,9 @@ namespace ecs
         struct instance
         {
             using factory = factory::custom_instance<0, instance, 1024>;
-            entity::guid    m_Guid;
-            entity::flags   m_Flags;
-            string_t        m_Name;     // Editor only?
+            entity::guid    m_Guid;     // This is 64 bits
+            entity::flags   m_Flags;    // This is 32 bits
+                                        // Means 32bits are been used to padding here
         };
 
         struct tmp_ref
@@ -287,13 +292,91 @@ namespace ecs
     }
 
     //------------------------------------------------------------------------------------------
-    // SYSTEM - System execute logic for components
+    // COMMANDS - What kinds of things can the sync points do for us...
     //------------------------------------------------------------------------------------------
-    namespace system
+    namespace commands
+    {
+        struct component_data
+        {
+            component::type_guid    m_Guid;
+            int                     m_Size;
+            std::byte*              m_pData;
+            component_data*         m_pNext;
+        };
+
+        struct add_entity
+        {
+            entity::guid            m_Guid;
+            component_data*         m_pComponentDataHead;
+        };
+
+        struct add_components
+        {
+            entity::tmp_ref         m_TmpRef;
+            component_data*         m_pComponentDataHead;
+        };
+
+        struct delete_components
+        {
+            entity::tmp_ref         m_TmpRef;
+            component_data*         m_pComponentDataHead;
+        };
+
+        struct set_components
+        {
+            entity::tmp_ref         m_TmpRef;
+            component_data*         m_pComponentDataHead;
+        };
+
+        using cmds = std::variant
+        <
+              add_entity
+            , add_components
+            , delete_components
+            , set_components
+        >;
+    }
+
+    //------------------------------------------------------------------------------------------
+    // SYNC_POINT - A sync point establish a moment in time where systems can be run. You can
+    //              also build complex graphs this way.
+    //------------------------------------------------------------------------------------------
+    namespace sync_point
     {
         struct instance
         {
-            constexpr           instance            (void)                              noexcept = default;
+                                instance            (main_system::instance& MainSystem)             noexcept : m_MainSystem{ MainSystem } {}
+            virtual            ~instance            (void)                                          noexcept;
+            void                AddToTrigger        (system::instance& Job, bool bDeleteWhenDone)   noexcept { m_lSystems.push_back({ &Job , bDeleteWhenDone }); }
+            void                AddToNotify         (void)                                          noexcept { m_countExpectedNotifications++; m_Notifications = m_countExpectedNotifications; }
+            virtual     void    onNotify            (void)                                          noexcept;
+
+            struct entry
+            {
+                system::instance* m_pSystem;
+                bool                m_bDeleteWhenDone;
+            };
+
+            std::vector<entry>      m_lSystems;
+            int                     m_countExpectedNotifications{ 0 };
+            int                     m_Notifications{ 0 };
+            main_system::instance& m_MainSystem;
+        };
+
+        struct memory_barrier
+        {
+        };
+    }
+
+    //------------------------------------------------------------------------------------------
+    // SYSTEM - System execute logic for components
+    //------------------------------------------------------------------------------------------
+    namespace system 
+    {
+        struct instance : sync_point::instance
+        {
+            using sync_point::instance::instance;
+
             virtual            ~instance            (void)                              noexcept = default;
                         void    Execute             (void)                              noexcept;
             virtual     void    onExecute           (void)                              noexcept = 0;
@@ -356,9 +439,8 @@ namespace ecs
             using final_system_t = T_FINAL_SYSTEM;
 
             custom_instance(main_system::instance& MainSystem) noexcept
-                : m_MainSystem{ MainSystem }
-                , T_FINAL_SYSTEM::system_t{ MainSystem }
-                , instance{}
+                : T_FINAL_SYSTEM::system_t{ MainSystem }
+                , instance{ MainSystem }
             {
                 static_assert(details::has_Update<typename T_FINAL_SYSTEM::system_t, void
                 (
@@ -371,8 +453,6 @@ namespace ecs
             }
 
             virtual void onExecute(void) noexcept override;
-
-            main_system::instance& m_MainSystem;
         };
 
         //------------------------------------------------------------------------------------------
@@ -536,33 +616,6 @@ namespace ecs
             }
 
             std::vector<selection>      m_lGroupSelection;
-        };
-    }
-
-    //------------------------------------------------------------------------------------------
-    // SYNC_POINT - A sync point establish a moment in time where systems can be run. You can
-    //              also build complex graphs this way.
-    //------------------------------------------------------------------------------------------
-    namespace sync_point
-    {
-        struct instance
-        {
-                                instance            (main_system::instance& MainSystem)             noexcept : m_MainSystem{ MainSystem } {}
-            virtual            ~instance            (void)                                          noexcept { for (auto& E : m_lSystems) if (E.m_bDeleteWhenDone) delete(E.m_pSystem); }
-                        void    AddToTrigger        (system::instance& Job, bool bDeleteWhenDone )  noexcept { m_lSystems.push_back({ &Job , bDeleteWhenDone }); }
-                        void    AddToNotify         (void)                                          noexcept { m_countExpectedNotifications++; m_Notifications = m_countExpectedNotifications; }
-            virtual     void    onNotify            (void)                                          noexcept;
-
-            struct entry 
-            {
-                system::instance*   m_pSystem;
-                bool                m_bDeleteWhenDone;
-            };
-
-            std::vector<entry>      m_lSystems;
-            int                     m_countExpectedNotifications{ 0 };
-            int                     m_Notifications{ 0 };
-            main_system::instance&  m_MainSystem;
         };
     }
 
@@ -921,6 +974,12 @@ namespace ecs
 
     namespace sync_point
     {
+        instance::~instance (void) noexcept 
+        { 
+            for (auto& E : m_lSystems) 
+                if (E.m_bDeleteWhenDone) delete(E.m_pSystem); 
+        }
+
         void instance::onNotify() noexcept
         {
             --m_Notifications;
@@ -958,6 +1017,5 @@ namespace ecs
 }
 property_begin_name(ecs::entity::instance, "Entity")
 {
-    property_var(m_Name)
 }
 property_end()

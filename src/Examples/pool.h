@@ -59,7 +59,7 @@ namespace containers
     public:
 
         constexpr   auto begin()                        const   noexcept { return iterator{ *this }; }
-        auto begin()                                noexcept { return iterator{ *this }; }
+                    auto begin()                                noexcept { return iterator{ *this }; }
         constexpr   auto end()                          const   noexcept { return nullptr; }
         constexpr   auto size()                         const   noexcept { return m_Count; }
 
@@ -67,7 +67,7 @@ namespace containers
         {
             if constexpr (std::is_destructible_v<entry>)
             {
-                for( auto& E : *this ) std::destroy_at(&E);
+                clear();
             }
         }
 
@@ -79,10 +79,40 @@ namespace containers
                 m_lPages.push_back(std::make_unique<page>());
 
             // construct the entry
-            new(&(*m_lPages[m_Count / entries_per_page_v])[m_Count % entries_per_page_v].m_Data)
-                entry{ std::forward<T_ARGS>(Args)... };
+            if constexpr ( std::is_constructible_v<entry> || sizeof...(T_ARGS) > 0 )
+            {
+                new(&(*m_lPages[m_Count / entries_per_page_v])[m_Count % entries_per_page_v].m_Data)
+                    entry{ std::forward<T_ARGS>(Args)... };
+            }
+            else
+            {
+                m_Count++;
+            }
+            return m_Count;
+        }
 
-            return m_Count++;
+        template< typename...T_ARGS >
+        std::size_t appendList( int Count, T_ARGS&&... Args) noexcept
+        {
+            const auto NewCount = m_Count + Count;
+
+            // Grow if we need to
+            while (NewCount > (m_lPages.size() * entries_per_page_v) )
+                m_lPages.push_back(std::make_unique<page>());
+
+            // construct the entry
+            if constexpr (std::is_constructible_v<entry>)
+            {
+                for( ; m_Count < NewCount; m_Count++ )
+                    new(&(*m_lPages[m_Count / entries_per_page_v])[m_Count % entries_per_page_v].m_Data)
+                        entry{ std::forward<T_ARGS>(Args)... };
+            }
+            else
+            {
+                m_Count = NewCount;
+            }
+
+            return m_Count;
         }
 
         bool deleteBySwap(std::size_t Index) noexcept
@@ -112,6 +142,15 @@ namespace containers
         constexpr auto& operator[](T Index) const noexcept
         {
             return reinterpret_cast<const entry&>((*m_lPages[Index / entries_per_page_v])[Index % entries_per_page_v].m_Data);
+        }
+
+        void clear(void) noexcept
+        {
+            if constexpr (std::is_destructible_v<entry>)
+            {
+                for (auto& E : *this) std::destroy_at(&E);
+            }
+            m_Count = 0;
         }
 
     protected:

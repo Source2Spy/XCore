@@ -24,6 +24,7 @@
     <ClInclude Include="..\..\dependencies\span\include\tcb\span.hpp" />
     <ClInclude Include="..\..\dependencies\tracy\Tracy.hpp" />
     <ClInclude Include="..\..\dependencies\zstd\lib\zstd.h" />
+    <ClInclude Include="..\..\src\Examples\cmdPool.h" />
     <ClInclude Include="..\..\src\Examples\ecs.h" />
     <ClInclude Include="..\..\src\Examples\ecs_examples.h" />
     <ClInclude Include="..\..\src\Examples\helpers.h" />
