@@ -1,3 +1,6 @@
+
+#include "circular_pool.h"
+
 namespace helpers
 {
     namespace details

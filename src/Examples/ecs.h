@@ -1,7 +1,6 @@
 
 //#include "xcore.h"
 #include "pool.h"
-
 #include "helpers.h"
 
 namespace ecs
@@ -299,15 +298,15 @@ namespace ecs
         struct component_data
         {
             component::type_guid    m_Guid;
-            int                     m_Size;
             std::byte*              m_pData;
-            component_data*         m_pNext;
         };
 
         struct add_entity
         {
             entity::guid            m_Guid;
-            component_data*         m_pComponentDataHead;
+            int                     m_Size;
+            component::type_guid*   m_pComponentTypes;
+            void*                   m_pData;
         };
 
         struct add_components
@@ -335,6 +334,45 @@ namespace ecs
             , delete_components
             , set_components
         >;
+
+        namespace details
+        {
+            template< typename...T_ARGS >
+            struct entity_add
+            {
+                using component_tuple = std::tuple< T_ARGS... >;
+
+                add_entity& m_EntityDetail;
+
+                template< typename T >
+                auto& getComponentData(void) noexcept
+                {
+                    return std::get<T&>(*reinterpret_cast<component_tuple*>(m_EntityDetail.m_pData));
+                }
+            };
+        }
+
+        struct command_buffer
+        {
+            template< typename...T_ARGS >
+            auto AddEntity(entity::guid Guid) noexcept
+            {
+                using component_tuple = std::tuple< T_ARGS... >;
+
+                auto        h                   = m_Commands.newContext();
+                auto&       EntityCmd           = m_Commands.NewCmd<add_entity>(h);
+                std::array  ComponentData       { T_ARGS::factory::guid_component_type_v ... };
+
+                EntityCmd.m_Guid                = Guid;
+                EntityCmd.m_pComponentTypes     = m_Commands.NewData<decltype(component_data)>(h, ComponentData).data();
+                EntityCmd.m_Size                = ComponentData.size();
+                EntityCmd.m_pData               = &m_Commands.NewData<component_tuple>(h);
+
+                return details::entity_add<T_ARGS...>{ EntityCmd };
+            }
+
+            containers::cmd_pool<1024> m_Commands;
+        };
     }
 
     //------------------------------------------------------------------------------------------
