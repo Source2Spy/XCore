@@ -1,7 +1,7 @@
 
 //#include "xcore.h"
 #include "pool.h"
-#include "circular_pool.h"
+
 #include "helpers.h"
 
 namespace ecs
@@ -122,9 +122,9 @@ namespace ecs
         struct instance
         {
             using factory = factory::custom_instance<0, instance, 1024>;
-            entity::guid    m_Guid;
-            entity::flags   m_Flags;
-            string_t        m_Name;     // Editor only?
+            entity::guid    m_Guid;     // This is 64 bits
+            entity::flags   m_Flags;    // This is 32 bits
+                                        // Means 32bits are been used to padding here
         };
 
         struct tmp_ref
@@ -292,6 +292,52 @@ namespace ecs
     }
 
     //------------------------------------------------------------------------------------------
+    // COMMANDS - What kinds of things can the sync points do for us...
+    //------------------------------------------------------------------------------------------
+    namespace commands
+    {
+        struct component_data
+        {
+            component::type_guid    m_Guid;
+            int                     m_Size;
+            std::byte*              m_pData;
+            component_data*         m_pNext;
+        };
+
+        struct add_entity
+        {
+            entity::guid            m_Guid;
+            component_data*         m_pComponentDataHead;
+        };
+
+        struct add_components
+        {
+            entity::tmp_ref         m_TmpRef;
+            component_data*         m_pComponentDataHead;
+        };
+
+        struct delete_components
+        {
+            entity::tmp_ref         m_TmpRef;
+            component_data*         m_pComponentDataHead;
+        };
+
+        struct set_components
+        {
+            entity::tmp_ref         m_TmpRef;
+            component_data*         m_pComponentDataHead;
+        };
+
+        using cmds = std::variant
+        <
+              add_entity
+            , add_components
+            , delete_components
+            , set_components
+        >;
+    }
+
+    //------------------------------------------------------------------------------------------
     // SYNC_POINT - A sync point establish a moment in time where systems can be run. You can
     //              also build complex graphs this way.
     //------------------------------------------------------------------------------------------
@@ -301,37 +347,36 @@ namespace ecs
         {
                                 instance            (main_system::instance& MainSystem)             noexcept : m_MainSystem{ MainSystem } {}
             virtual            ~instance            (void)                                          noexcept;
-                        void    AddToTrigger        (system::instance& Job, bool bDeleteWhenDone )  noexcept { m_lSystems.push_back({ &Job , bDeleteWhenDone }); }
-                        void    AddToNotify         (void)                                          noexcept { m_countExpectedNotifications++; m_Notifications = m_countExpectedNotifications; }
+            void                AddToTrigger        (system::instance& Job, bool bDeleteWhenDone)   noexcept { m_lSystems.push_back({ &Job , bDeleteWhenDone }); }
+            void                AddToNotify         (void)                                          noexcept { m_countExpectedNotifications++; m_Notifications = m_countExpectedNotifications; }
             virtual     void    onNotify            (void)                                          noexcept;
 
-            struct entry 
+            struct entry
             {
-                system::instance*   m_pSystem;
+                system::instance* m_pSystem;
                 bool                m_bDeleteWhenDone;
             };
 
             std::vector<entry>      m_lSystems;
             int                     m_countExpectedNotifications{ 0 };
             int                     m_Notifications{ 0 };
-            main_system::instance&  m_MainSystem;
+            main_system::instance& m_MainSystem;
         };
 
-        struct memory_barier : instance
+        struct memory_barrier
         {
-            memory_barier            (main_system::instance& MainSystem)             noexcept : instance{ MainSystem } {}
-
         };
     }
 
     //------------------------------------------------------------------------------------------
     // SYSTEM - System execute logic for components
     //------------------------------------------------------------------------------------------
-    namespace system
+    namespace system 
     {
         struct instance : sync_point::instance
         {
-            constexpr           instance            (main_system::instance& MainSystem) noexcept : sync_point::instance{ MainSystem }{};
+            using sync_point::instance::instance;
+
             virtual            ~instance            (void)                              noexcept = default;
                         void    Execute             (void)                              noexcept;
             virtual     void    onExecute           (void)                              noexcept = 0;
@@ -445,6 +490,7 @@ namespace ecs
                 using type              = typename decltype(details::convert<final_system>((sorted_tuple_t*)nullptr));
             };
         }
+
     }
 
     //------------------------------------------------------------------------------------------
@@ -928,6 +974,12 @@ namespace ecs
 
     namespace sync_point
     {
+        instance::~instance (void) noexcept 
+        { 
+            for (auto& E : m_lSystems) 
+                if (E.m_bDeleteWhenDone) delete(E.m_pSystem); 
+        }
+
         void instance::onNotify() noexcept
         {
             --m_Notifications;
@@ -937,12 +989,6 @@ namespace ecs
                 m_Notifications = m_countExpectedNotifications;
                 for (auto& E : m_lSystems) E.m_pSystem->Execute();
             }
-        }
-
-        instance::~instance(void) noexcept 
-        { 
-            for (auto& E : m_lSystems) 
-                if (E.m_bDeleteWhenDone) delete(E.m_pSystem); 
         }
     }
 
@@ -971,6 +1017,5 @@ namespace ecs
 }
 property_begin_name(ecs::entity::instance, "Entity")
 {
-    property_var(m_Name)
 }
 property_end()

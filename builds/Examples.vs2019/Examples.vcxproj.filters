@@ -315,7 +315,7 @@
     <ClInclude Include="..\..\src\Examples\ecs_examples.h">
       <Filter>Examples\wip examples</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\src\Examples\circular_pool.h">
+    <ClInclude Include="..\..\src\Examples\cmdPool.h">
       <Filter>Examples\wip examples</Filter>
     </ClInclude>
   </ItemGroup>
