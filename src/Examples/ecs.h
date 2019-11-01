@@ -295,83 +295,128 @@ namespace ecs
     //------------------------------------------------------------------------------------------
     namespace commands
     {
-        struct component_data
-        {
-            component::type_guid    m_Guid;
-            std::byte*              m_pData;
-        };
-
-        struct add_entity
-        {
-            entity::guid            m_Guid;
-            int                     m_Size;
-            component::type_guid*   m_pComponentTypes;
-            void*                   m_pData;
-        };
-
-        struct add_components
-        {
-            entity::tmp_ref         m_TmpRef;
-            component_data*         m_pComponentDataHead;
-        };
-
-        struct delete_components
-        {
-            entity::tmp_ref         m_TmpRef;
-            component_data*         m_pComponentDataHead;
-        };
-
-        struct set_components
-        {
-            entity::tmp_ref         m_TmpRef;
-            component_data*         m_pComponentDataHead;
-        };
-
-        using cmds = std::variant
-        <
-              add_entity
-            , add_components
-            , delete_components
-            , set_components
-        >;
+        using command_pool = containers::cmd_pool<1024>;
 
         namespace details
         {
-            template< typename...T_ARGS >
-            struct entity_add
+            struct cmd_add_entity
+            {
+                entity::guid            m_Guid;
+                int                     m_Size;
+                component::type_guid*   m_pComponentTypes;
+                void*                   m_pNewComponentData;
+            };
+
+            struct cmd_modify_components
+            {
+                entity::guid            m_Guid;
+                int                     m_DelComponentCount     {0};
+                component::type_guid*   m_pDelComponentTypes    {nullptr};
+                int                     m_NewComponentCount     {0};
+                component::type_guid*   m_pNewComponentTypes    {nullptr};
+                void*                   m_pNewComponentData     { nullptr };
+            };
+
+            struct cmd_set_components
+            {
+                entity::guid            m_Guid;
+                component::type_guid*   m_pComponentTypes       { nullptr };
+                int                     m_ComponentCount        { 0 };
+                void*                   m_pNewComponentData     { nullptr };
+            };
+
+            using cmds = std::variant
+            <
+                  cmd_add_entity
+                , cmd_modify_components
+                , cmd_set_components
+            >;
+
+            template< typename T_CLASS, typename...T_ARGS >
+            struct set_component_handler
             {
                 using component_tuple = std::tuple< T_ARGS... >;
 
-                add_entity& m_EntityDetail;
+                T_CLASS& m_Ref;
 
                 template< typename T >
                 auto& getComponentData(void) noexcept
                 {
-                    return std::get<T&>(*reinterpret_cast<component_tuple*>(m_EntityDetail.m_pData));
+                    return std::get<T&>(*reinterpret_cast<component_tuple*>(m_Ref.m_pNewComponentData));
+                }
+            };
+
+            struct modify_components_handler
+            {
+                cmd_modify_components&  m_Ref;
+                command_pool&           m_Pool;
+                command_pool::handle    m_Handel;
+
+                template< typename...T_COMPONENTS >
+                auto AddComponents( void ) noexcept
+                {
+                    using component_tuple = std::tuple<T_COMPONENTS...>;
+                    std::array  ComponentData{ T_COMPONENTS::factory::guid_component_type_v ... };
+
+                    m_Ref.m_NewComponentCount   = sizeof...(T_COMPONENTS);
+                    m_Ref.m_pNewComponentData   = &m_Pool.NewData<component_tuple>(m_Handel);
+                    m_Ref.m_pNewComponentTypes  = m_Pool.NewData<decltype(ComponentData)>(m_Handel, ComponentData).data();
+                    return details::set_component_handler<cmd_modify_components, T_COMPONENTS...>{ m_Ref };
+                }
+
+                template< typename...T_COMPONENTS >
+                void RemoveComponents(void) noexcept
+                {
+                    std::array  ComponentData{ T_COMPONENTS::factory::guid_component_type_v ... };
+                    m_Ref.m_DelComponentCount   = sizeof...(T_COMPONENTS);
+                    m_Ref.m_pDelComponentTypes  = m_Pool.NewData<decltype(ComponentData)>(m_Handel, ComponentData).data();
                 }
             };
         }
 
         struct command_buffer
         {
-            template< typename...T_ARGS >
+            template< typename...T_COMPONENTS >
             auto AddEntity(entity::guid Guid) noexcept
             {
-                using component_tuple = std::tuple< T_ARGS... >;
+                using component_tuple = std::tuple< T_COMPONENTS... >;
 
-                auto        h                   = m_Commands.newContext();
-                auto&       EntityCmd           = m_Commands.NewCmd<add_entity>(h);
-                std::array  ComponentData       { T_ARGS::factory::guid_component_type_v ... };
+                auto&       EntityCmd           = m_Pool.NewCmd<details::cmd_add_entity>(m_Handle);
+                std::array  ComponentData       { T_COMPONENTS::factory::guid_component_type_v ... };
 
                 EntityCmd.m_Guid                = Guid;
-                EntityCmd.m_pComponentTypes     = m_Commands.NewData<decltype(component_data)>(h, ComponentData).data();
+                EntityCmd.m_pComponentTypes     = m_Pool.NewData<decltype(ComponentData)>(m_Handle, ComponentData).data();
                 EntityCmd.m_Size                = ComponentData.size();
-                EntityCmd.m_pData               = &m_Commands.NewData<component_tuple>(h);
+                EntityCmd.m_pData               = &m_Pool.NewData<component_tuple>(m_Handle);
 
-                return details::entity_add<T_ARGS...>{ EntityCmd };
+                return details::set_component_handler<details::cmd_add_entity, T_COMPONENTS...>{ EntityCmd };
             }
 
-            containers::cmd_pool<1024> m_Commands;
+            auto EntityModifyComponets(entity::guid Guid) noexcept
+            {
+                auto& ModifyCmd = m_Pool.NewCmd<details::cmd_modify_components>(m_Handle);
+                ModifyCmd.m_Guid = Guid;
+                return details::modify_components_handler{ ModifyCmd, m_Pool, m_Handle };
+            }
+
+            template< typename...T_COMPONENTS >
+            void SetComponents(entity::guid Guid) noexcept
+            {
+                using component_tuple = std::tuple< T_COMPONENTS... >;
+
+                auto&       SetCmd      = m_Pool.NewCmd<details::cmd_set_components>(m_Handle);
+                std::array  ComponentData{ T_COMPONENTS::factory::guid_component_type_v ... };
+
+                SetCmd.m_Guid                   = Guid;
+                SetCmd.m_ComponentCount         = sizeof...(T_COMPONENTS);
+                SetCmd.m_pComponentTypes        = m_Pool.NewData<decltype(ComponentData)>(m_Handle, ComponentData).data();
+                SetCmd.m_pNewComponentData      = &m_Pool.NewData<component_tuple>(m_Handle);
+
+                return details::set_component_handler<details::cmd_set_components, T_COMPONENTS...>{ SetCmd };
+            }
+
+            command_pool&           m_Pool;
+            command_pool::handle    m_Handle;
         };
     }
 
@@ -391,18 +436,20 @@ namespace ecs
 
             struct entry
             {
-                system::instance* m_pSystem;
+                system::instance*   m_pSystem;
                 bool                m_bDeleteWhenDone;
             };
 
             std::vector<entry>      m_lSystems;
             int                     m_countExpectedNotifications{ 0 };
             int                     m_Notifications{ 0 };
-            main_system::instance& m_MainSystem;
+            main_system::instance&  m_MainSystem;
         };
 
-        struct memory_barrier
+        struct memory_barrier final : instance
         {
+            virtual     void    onNotify            (void)                                          noexcept;
+            commands::command_pool  m_CmdPool;
         };
     }
 
@@ -456,6 +503,7 @@ namespace ecs
 
             CHECK_FUNCTION(Update)                          // W/R Components
             CHECK_FUNCTION(ExclusiveUpdate)                 // W/R Components + add/remove components
+            CHECK_FUNCTION(BarrierUpdate)
 
             #undef CHECK_FUNCTION
         }
@@ -685,6 +733,16 @@ namespace ecs
             on_start m_OnStart;
         };
 
+        namespace details
+        {
+            struct alignas(std::uint64_t) sync
+            {
+                std::uint16_t   m_nRunningSystems{ 0 };
+                std::uint16_t   m_UniqueCounter  { 0 };
+                bool            m_isBlocked      { false };
+            };
+        }
+
         struct instance
         {
             struct component_factories
@@ -891,6 +949,78 @@ namespace ecs
                 return *tupleFilter->second;
             }
 
+            void incSystemProcessing(int N) noexcept
+            {
+                details::sync NewSync;
+                details::sync Sync      = m_Barrier.load(std::memory_order_relaxed);
+
+                do
+                {
+                    if (Sync.m_isBlocked)
+                    {
+                        Sync = m_Barrier.load();
+                        // Wasting time....
+                        continue;
+                    }
+
+                    NewSync = Sync;
+                    NewSync.m_UniqueCounter++;
+                    NewSync.m_nRunningSystems += N;
+                    
+                } while (m_Barrier.compare_exchange_weak(Sync, NewSync) == false );
+            }
+
+            void decSystemProcessing(int N) noexcept
+            {
+                details::sync NewSync;
+                details::sync Sync      = m_Barrier.load(std::memory_order_relaxed);
+
+                do
+                {
+                    NewSync = Sync;
+                    NewSync.m_UniqueCounter++;
+                    NewSync.m_nRunningSystems -= N;
+
+                } while (m_Barrier.compare_exchange_weak(Sync, NewSync) == false);
+            }
+
+            void LockExcusiveBarrierAccess(void) noexcept
+            {
+                details::sync NewSync;
+                details::sync Sync      = m_Barrier.load(std::memory_order_relaxed);
+
+                do
+                {
+                    if (Sync.m_isBlocked)
+                    {
+                        Sync = m_Barrier.load();
+                        // Wasting time
+                        continue;
+                    }
+
+                    NewSync = Sync;
+                    NewSync.m_UniqueCounter++;
+                    NewSync.m_isBlocked = true;
+
+                } while (m_Barrier.compare_exchange_weak(Sync, NewSync) == false);
+            }
+
+            void ReleaseExcusiveBarrierAccess(void) noexcept
+            {
+                details::sync NewSync;
+                details::sync Sync      = m_Barrier.load(std::memory_order_relaxed);
+
+                do
+                {
+                    NewSync = Sync;
+                    NewSync.m_UniqueCounter++;
+                    assert(NewSync.m_isBlocked == true);
+                    NewSync.m_isBlocked = false;
+
+                } while (m_Barrier.compare_exchange_weak(Sync, NewSync) == false);
+            }
+
+            std::atomic<details::sync>                                                      m_Barrier;
             bool                                                                            m_bFrameStarted     { false };
             bool                                                                            m_bPause            { false };
             int                                                                             m_FrameNumber       { 0 };
@@ -1025,6 +1155,9 @@ namespace ecs
             if (m_Notifications == 0)
             {
                 m_Notifications = m_countExpectedNotifications;
+
+                // Let the main system know that we are ready to go
+                m_MainSystem.incSystemProcessing( static_cast<int>(m_lSystems.size()) );
                 for (auto& E : m_lSystems) E.m_pSystem->Execute();
             }
         }
@@ -1043,6 +1176,7 @@ namespace ecs
         void instance::Execute(void) noexcept
         {
             onExecute();
+            m_MainSystem.ReleaseExcusiveBarrierAccess();
             for (auto p : m_lNotifications) p->onNotify();
         }
 
@@ -1054,6 +1188,5 @@ namespace ecs
     }
 }
 property_begin_name(ecs::entity::instance, "Entity")
-{
-}
+{}
 property_end()
