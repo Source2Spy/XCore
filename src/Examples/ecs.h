@@ -2,6 +2,7 @@
 //#include "xcore.h"
 #include "pool.h"
 #include "helpers.h"
+#include "multicore_ecs.h"
 
 namespace ecs
 {

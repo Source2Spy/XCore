@@ -321,6 +321,9 @@
     <ClInclude Include="..\..\src\Examples\circular_pool.h">
       <Filter>Examples\wip examples</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\src\Examples\multicore_ecs.h">
+      <Filter>Examples\wip examples</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\src\Examples\main.cpp" />
