@@ -87,6 +87,12 @@ namespace xcore::types
     constexpr static auto tuple_t2i_v = details::tuple_t2i< T_TYPE, T_TUPLE >::value;
 
     //------------------------------------------------------------------------------------------
+    // Concatenate a list of tuples into a simple one
+    //------------------------------------------------------------------------------------------
+    template<typename ... T_TUPLES>
+    using tuple_cat_t = decltype(std::tuple_cat(std::declval<T_TUPLES>()...));
+
+    //------------------------------------------------------------------------------------------
     // Variant err to index conversion
     //------------------------------------------------------------------------------------------
     namespace details
