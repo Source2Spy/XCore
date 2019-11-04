@@ -50,7 +50,7 @@ namespace xcore::guid
         using                 h             = xcore::types::byte_size_uint_t<bytes_size_v/2>;
 
         template< std::size_t N >
-        constexpr                           unit                ( const char (&Str)[N] )                                        noexcept : m_Value{ xcore::crc::FromString<bit_size_v>(Str) }{}
+        constexpr                           unit                ( const char (&Str)[N] )                                        noexcept : m_Value{ xcore::crc<bit_size_v>::FromString(Str).m_Value }{}
         constexpr                           unit                ( std::nullptr_t )                                              noexcept : m_Value{ 0 }{}
         constexpr explicit                  unit                ( t X )                                                         noexcept : m_Value{ X }{}
         constexpr                           unit                ( void )                                                        noexcept = default;

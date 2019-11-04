@@ -4,8 +4,14 @@ namespace mecs
     namespace group
     {
         struct instance;
+        struct local_index  : xcore::units::type<local_index,   std::uint32_t> {using type::type;};
+        struct page_index   : xcore::units::type<page_index,    std::uint32_t> {using type::type;};
+        struct global_index : xcore::units::type<global_index,  std::uint32_t> {using type::type;};
     }
 
+    //---------------------------------------------------------------------------------
+    // COMPONENT
+    //---------------------------------------------------------------------------------
     namespace component
     {
         using type_guid = xcore::guid::unit<64, struct component_type_guid_tag >;
@@ -20,10 +26,12 @@ namespace mecs
         struct tag {};
     }
 
+    //---------------------------------------------------------------------------------
+    // ENTITY
+    //---------------------------------------------------------------------------------
     namespace entity
     {
         using guid = xcore::guid::unit<64, struct ecs_entity_tag>;
-        struct index { std::uint32_t m_Value; };
 
         union flags
         {
@@ -39,8 +47,7 @@ namespace mecs
 
         struct instance
         {
-            constexpr static component::type_guid component_type_guid_v{};
-            //using factory = factory::custom_instance<0, instance, 1024>;
+            constexpr static component::type_guid component_type_guid_v{0ull};
             entity::guid    m_Guid;     // This is 64 bits
             entity::flags   m_Flags;    // This is 32 bits
                                         // Means 32bits are been used to padding here
@@ -50,27 +57,36 @@ namespace mecs
         {
             constexpr bool isValid(void) const noexcept { return !!m_pGroupInstance; }
 
-            //template< typename T >
-            //T& getComponent(component::type_guid TypeGuid = T::factory::guid_component_type_v) noexcept;
+            template< typename T >
+            T& getComponent(component::type_guid TypeGuid = T::component_type_guid_v) noexcept;
 
-            //template< typename T >
-            //constexpr const T& getComponent(component::type_guid TypeGuid = T::factory::guid_component_type_v) const noexcept;
+            template< typename T >
+            constexpr const T& getComponent(component::type_guid TypeGuid = T::component_type_guid_v) const noexcept;
 
             //std::vector<properties_tuple> getProperties(void) const noexcept;
 
             group::instance*        m_pGroupInstance{ nullptr };
-            index                   m_LocalIndex{};
-            index                   m_PageIndex{};
+            group::local_index      m_LocalIndex{};
+            group::page_index       m_PageIndex{};
         };
     }
 
+    //---------------------------------------------------------------------------------
+    // GROUP
+    //---------------------------------------------------------------------------------
     namespace group
     {
+        //---------------------------------------------------------------------------------
+        // GROUP::PAGE
+        //---------------------------------------------------------------------------------
         struct alignas(std::uint64_t) page
         {
             std::byte    m_RawData[1024*64];
         };
 
+        //---------------------------------------------------------------------------------
+        // GROUP::DETAILS
+        //---------------------------------------------------------------------------------
         namespace details
         {
             template< typename T_COMPONENTS, typename T_TAGS >
@@ -195,6 +211,9 @@ namespace mecs
             struct default_tag : component::tag{};
         }
 
+        //---------------------------------------------------------------------------------
+        // GROUP::PAGE MANAGER
+        //---------------------------------------------------------------------------------
         struct page_mgr
         {
             struct next
@@ -202,7 +221,7 @@ namespace mecs
                 next* m_pNext;
             };
 
-            std::atomic<next*> m_pFreeHead;
+            std::atomic<next*> m_pFreeHead{ nullptr };
 
             page* AllocPage( void ) noexcept
             {
@@ -223,13 +242,28 @@ namespace mecs
             }
         };
 
+        //---------------------------------------------------------------------------------
+        // GROUP::ITERATOR
+        //---------------------------------------------------------------------------------
+        struct iterator : entity::tmp_ref
+        {
+            inline              iterator        operator++  (void)                      noexcept;
+            inline constexpr    bool            operator!=  (std::nullptr_t)    const   noexcept;
+            inline constexpr    entity::tmp_ref operator*   (void)              const   noexcept { return *this; }
+            inline              entity::tmp_ref operator*   (void)                      noexcept { return *this; }
+        };
+
+        //---------------------------------------------------------------------------------
+        // GROUP::INSTANCE
+        //---------------------------------------------------------------------------------
         struct instance
         {
-            using page_list = std::array<page*, 1024>;
+            using page_list = std::array<page*, 1024*8>;
 
             template< typename T_PAGE_INFO >
             constexpr instance(bool, page_mgr& PageMgr, T_PAGE_INFO*) noexcept
                 : m_PageMgr             { PageMgr }
+                , m_TypeSizes           (T_PAGE_INFO::sizes_v)
                 , m_Offsets             (T_PAGE_INFO::offset_list_v)
                 , m_EntriesPerPage      (T_PAGE_INFO::entry_count_v)
                 , m_isDoubleBuffer      (T_PAGE_INFO::is_double_buffer_v)
@@ -262,6 +296,12 @@ namespace mecs
                 )
             {}
 
+            constexpr   const auto begin()                  const   noexcept { return iterator{ const_cast<instance*>(this), local_index{0u}, page_index{0u} }; }
+                        auto begin()                                noexcept { return iterator{ this, local_index{0u}, page_index{0u} }; }
+            constexpr   auto end()                          const   noexcept { return nullptr; }
+            constexpr   auto size()                         const   noexcept { return m_Count; }
+            inline      auto newSize()                      const   noexcept { return m_NewCount.load(std::memory_order_relaxed); }
+
             entity::tmp_ref appendEntity()
             {
                 const auto Index         = m_NewCount++;
@@ -290,25 +330,50 @@ namespace mecs
 
                 } while (true);
 
-                return { this, RelativeIndex, PageIndex };
+                return { this, local_index{RelativeIndex}, page_index{PageIndex} };
+            }
+
+            void* getComponent(const entity::tmp_ref& Ref, component::type_guid TypeGuid) noexcept
+            {
+                for (int i = 0; i < m_ComponentTypeGuid.size(); ++i)
+                {
+                    if (m_ComponentTypeGuid[i] == TypeGuid)
+                    {
+                        std::byte* p = &reinterpret_cast<std::byte*>(m_lPages[Ref.m_PageIndex.m_Value])[m_Offsets[i]];
+                        const auto d = m_isDoubleBuffer[i];
+                        if (d == 0xff)  return &p[Ref.m_LocalIndex.m_Value       * m_TypeSizes[i]];
+                        else            return &p[(Ref.m_LocalIndex.m_Value + d) * m_TypeSizes[i]];
+                    }
+                }
+
+                return nullptr;
+            }
+
+            const void* getComponent(const entity::tmp_ref& Ref, component::type_guid TypeGuid) const noexcept
+            {
+                return const_cast<instance*>(this)->getComponent(Ref, TypeGuid);
             }
 
             using construction = void (page * pPage, std::uint32_t Index);
             using destruction  = void (page * pPage, std::uint32_t Index);
 
-            std::uint32_t                               m_Count         {0};
-            std::atomic<std::uint32_t>                  m_nPages        {0};
-            std::atomic<std::uint32_t>                  m_NewCount      {0};
-            page_list                                   m_lPages        {};
+            std::uint32_t                               m_Count             {0u};
+            std::atomic<std::uint32_t>                  m_nPages            {0u};
+            std::atomic<std::uint32_t>                  m_NewCount          {0u};
+            page_list                                   m_lPages            {};
             page_mgr&                                   m_PageMgr;
             construction&                               m_pConstruction;
             destruction&                                m_pDestruction;
             const std::uint32_t                         m_EntriesPerPage;
+            const std::span<const std::uint32_t>        m_TypeSizes;
             const std::span<const std::uint32_t>        m_Offsets;
             const std::span<const std::uint8_t>         m_isDoubleBuffer;
             const std::span<const component::type_guid> m_ComponentTypeGuid;
         };
 
+        //---------------------------------------------------------------------------------
+        // GROUP::MAKE INSTANCE
+        //---------------------------------------------------------------------------------
         template< typename...T_COMPONENTS_AND_TAGS >
         auto MakeInstance(page_mgr& PageMgr) noexcept
         {
@@ -324,8 +389,50 @@ namespace mecs
             };
         }
 
+        //---------------------------------------------------------------------------------
+        // GROUP::ITERATOR FUNCTIONS
+        //---------------------------------------------------------------------------------
+        inline
+        iterator iterator::operator++ (void) noexcept
+        {
+            m_LocalIndex.m_Value++;
+            if (m_LocalIndex.m_Value == m_pGroupInstance->m_EntriesPerPage)
+            {
+                m_PageIndex.m_Value++;
+                m_LocalIndex.m_Value = 0;
+                if (m_PageIndex.m_Value < m_pGroupInstance->m_lPages.size())
+                    _mm_prefetch((const char*)m_pGroupInstance->m_lPages[m_PageIndex.m_Value], _MM_HINT_NTA);
+            }
+            return *this;
+        }
+
+        inline constexpr
+        bool iterator::operator !=  (std::nullptr_t) const noexcept
+        {
+            const auto l = m_pGroupInstance->m_lPages.size() - 1;
+            return !(l == m_PageIndex.m_Value
+                && (m_pGroupInstance->m_Count - l * m_pGroupInstance->m_EntriesPerPage) == m_LocalIndex.m_Value);
+        }
+
     }
 
+    //------------------------------------------------------------------------------------
+    // ENTITY:FUNCTIONS
+    //------------------------------------------------------------------------------------
+    namespace entity
+    {
+        template< typename T >
+        T& tmp_ref::getComponent(component::type_guid TypeGuid) noexcept
+        {
+            return *reinterpret_cast<T*>(m_pGroupInstance->getComponent(*this,TypeGuid));
+        }
+
+        template< typename T >
+        constexpr const T& tmp_ref::getComponent(component::type_guid TypeGuid) const noexcept
+        {
+            return *reinterpret_cast<T*>(m_pGroupInstance->getComponent(*this, TypeGuid));
+        }
+    }
 
     //------------------------------------------------------------------------------------
     // Test
@@ -334,12 +441,13 @@ namespace mecs
     {
         struct simple
         {
-            constexpr static component::type_guid component_type_guid_v{};
+            constexpr static component::type_guid component_type_guid_v{"simple"};
+            int m_Value{ 22 };
         };
 
         struct double_buff : component::double_buffer<double_buff>
         {
-            constexpr static component::type_guid component_type_guid_v{};
+            constexpr static component::type_guid component_type_guid_v{ "double_buff" };
         };
 
         struct my_tag : component::tag {};
@@ -347,8 +455,23 @@ namespace mecs
         void Test()
         {
             group::page_mgr PageMgr;
-            auto Group = group::MakeInstance<simple,double_buff,my_tag>(PageMgr);
+            auto upGroup = group::MakeInstance<simple,double_buff,my_tag>(PageMgr);
 
+            xcore::scheduler::channel MyChannel(xconst_universal_str("Test"));
+
+            MyChannel.SubmitJob([&]
+            {
+                while (upGroup->newSize() < 10000000)
+                {
+                    auto tmpEntityRef = upGroup->appendEntity();
+                    auto& Entry = tmpEntityRef.getComponent<simple>();
+                    assert(Entry.m_Value == 22);
+                }
+            });
+
+            MyChannel.join();
+
+            int b = 0;
         }
     }
 }

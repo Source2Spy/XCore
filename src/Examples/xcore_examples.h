@@ -49,7 +49,7 @@ namespace xcore::examples
         //if (0)
         {
             // xcore::serializer::examples::Test();
-            ecs_examples::Test();
+            mecs::test::Test();
         }
     }
 }
