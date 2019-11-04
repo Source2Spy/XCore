@@ -9,19 +9,19 @@ namespace mecs
         struct global_index : xcore::units::type<global_index,  std::uint32_t> {using type::type;};
     }
 
+    using type_guid = xcore::guid::unit<64, struct component_type_guid_tag >;
+
     //---------------------------------------------------------------------------------
     // COMPONENT
     //---------------------------------------------------------------------------------
     namespace component
     {
-        using type_guid = xcore::guid::unit<64, struct component_type_guid_tag >;
-
         struct double_buffer_tag {};
         template< typename T_COMPONENT >
         struct double_buffer : double_buffer_tag
         {
-            struct t0 : T_COMPONENT { using T_COMPONENT::T_COMPONENT; constexpr static auto component_type_guid_v = T_COMPONENT::component_type_guid_v; /*using factory = typename T_COMPONENT::factory;*/ };
-            struct t1 : T_COMPONENT { using T_COMPONENT::T_COMPONENT; constexpr static auto component_type_guid_v = T_COMPONENT::component_type_guid_v; /*using factory = typename T_COMPONENT::factory;*/ };
+            struct t0 : T_COMPONENT { using T_COMPONENT::T_COMPONENT; constexpr static auto type_guid_v = T_COMPONENT::type_guid_v; /*using factory = typename T_COMPONENT::factory;*/ };
+            struct t1 : T_COMPONENT { using T_COMPONENT::T_COMPONENT; constexpr static auto type_guid_v = T_COMPONENT::type_guid_v; /*using factory = typename T_COMPONENT::factory;*/ };
         };
         struct tag {};
     }
@@ -47,7 +47,7 @@ namespace mecs
 
         struct instance
         {
-            constexpr static component::type_guid component_type_guid_v{0ull};
+            constexpr static type_guid type_guid_v{0ull};
             entity::guid    m_Guid;     // This is 64 bits
             entity::flags   m_Flags;    // This is 32 bits
                                         // Means 32bits are been used to padding here
@@ -58,10 +58,10 @@ namespace mecs
             constexpr bool isValid(void) const noexcept { return !!m_pGroupInstance; }
 
             template< typename T >
-            T& getComponent(component::type_guid TypeGuid = T::component_type_guid_v) noexcept;
+            T& getComponent(type_guid TypeGuid = T::type_guid_v) noexcept;
 
             template< typename T >
-            constexpr const T& getComponent(component::type_guid TypeGuid = T::component_type_guid_v) const noexcept;
+            constexpr const T& getComponent(type_guid TypeGuid = T::type_guid_v) const noexcept;
 
             //std::vector<properties_tuple> getProperties(void) const noexcept;
 
@@ -92,8 +92,8 @@ namespace mecs
             template< typename T_COMPONENTS, typename T_TAGS >
             struct page_info;
 
-            template< typename...T_COMPONENTS, typename...T_TAGS >
-            struct page_info< std::tuple<T_COMPONENTS...>, std::tuple<T_TAGS...> >
+            template< typename...T_COMPONENTS >
+            struct page_info_components
             {
                 using                   ptr_tuple_t         = std::tuple< T_COMPONENTS *... >;
                 using                   ptr_list_t          = std::array<std::byte*,    sizeof...(T_COMPONENTS)>;
@@ -135,8 +135,8 @@ namespace mecs
                 constexpr static auto  is_double_buffer_v = std::array
                 { (std::is_base_of_v<T_COMPONENTS, mecs::component::double_buffer_tag> ? std::uint8_t{0x0} : std::uint8_t{0xff}) ... };
 
-                constexpr static auto  component_type_guid_v = std::array
-                { T_COMPONENTS::component_type_guid_v ... };
+                constexpr static auto  type_guid_v = std::array
+                { T_COMPONENTS::type_guid_v ... };
 
                 constexpr static void Construct(page* pPage, std::uint32_t Index) noexcept
                 {
@@ -166,6 +166,18 @@ namespace mecs
                     );
                 }
             };
+
+            template< typename...T_TAGS >
+            struct page_info_tags
+            {
+
+            };
+
+            template< typename...T_COMPONENTS, typename...T_TAGS >
+            struct page_info< std::tuple<T_COMPONENTS...>, std::tuple<T_TAGS...> > 
+                : page_info_components<T_COMPONENTS...>
+                , page_info_tags<T_TAGS...>
+            {};
 
             //---------------------------------------------------------------------------------
 
@@ -208,7 +220,18 @@ namespace mecs
             > FilterOutComponents();
             
             //---------------------------------------------------------------------------------
-            struct default_tag : component::tag{};
+            struct default_tag : component::tag
+            {
+                constexpr static type_guid type_guid_v{ 0ull };
+            };
+
+            //---------------------------------------------------------------------------------
+            template< typename T_A, typename T_B >
+            struct compare
+            {
+                constexpr static bool value = T_A::type_guid_v.m_Value
+                                            > T_B::type_guid_v.m_Value;
+            };
         }
 
         //---------------------------------------------------------------------------------
@@ -267,7 +290,7 @@ namespace mecs
                 , m_Offsets             (T_PAGE_INFO::offset_list_v)
                 , m_EntriesPerPage      (T_PAGE_INFO::entry_count_v)
                 , m_isDoubleBuffer      (T_PAGE_INFO::is_double_buffer_v)
-                , m_ComponentTypeGuid   (T_PAGE_INFO::component_type_guid_v)
+                , m_ComponentTypeGuid   (T_PAGE_INFO::type_guid_v)
                 , m_pConstruction       (T_PAGE_INFO::Construct)
                 , m_pDestruction        (T_PAGE_INFO::Destruct)
             {}
@@ -282,15 +305,21 @@ namespace mecs
                     <
                         details::page_info
                         <
-                            xcore::types::tuple_cat_t
+                            helpers::tuple_selection_sort
                             < 
-                                decltype(details::FilterOutTagsExtendDoubleBuffer<T_COMPONENTS_AND_TAGS>())...
-                            >
+                                details::compare, xcore::types::tuple_cat_t
+                                < 
+                                    decltype(details::FilterOutTagsExtendDoubleBuffer<T_COMPONENTS_AND_TAGS>())...
+                                >
+                            >::type
                             , 
-                            xcore::types::tuple_cat_t
-                            <
-                                decltype(details::FilterOutComponents<T_COMPONENTS_AND_TAGS>())...
-                            >
+                            helpers::tuple_selection_sort
+                            < 
+                                details::compare, xcore::types::tuple_cat_t
+                                <
+                                    decltype(details::FilterOutComponents<T_COMPONENTS_AND_TAGS>())...
+                                >
+                            >::type
                         >*
                     >(nullptr)
                 )
@@ -319,13 +348,16 @@ namespace mecs
                     }
                     else if (PageIndex == nPages && RelativeIndex == 0)
                     {
-                        m_lPages[m_nPages++] = m_PageMgr.AllocPage();
+                        m_lPages[PageIndex] = m_PageMgr.AllocPage();
+                        m_nPages++;
                         m_pConstruction(m_lPages[PageIndex], RelativeIndex);
                         break;
                     }
                     else
                     {
                         // We will have to wait...
+                        XCORE_PERF_ZONE_SCOPED_N("Wasting Time")
+                        XCORE_CMD_PROFILER( while (PageIndex >= m_nPages.load(std::memory_order_relaxed)); )
                     }
 
                 } while (true);
@@ -333,12 +365,15 @@ namespace mecs
                 return { this, local_index{RelativeIndex}, page_index{PageIndex} };
             }
 
-            void* getComponent(const entity::tmp_ref& Ref, component::type_guid TypeGuid) noexcept
+            inline
+            void* getComponent(const entity::tmp_ref& Ref, type_guid TypeGuid) noexcept
             {
                 for (int i = 0; i < m_ComponentTypeGuid.size(); ++i)
                 {
-                    if (m_ComponentTypeGuid[i] == TypeGuid)
+                    if (m_ComponentTypeGuid[i] >= TypeGuid )
                     {
+                        if (m_ComponentTypeGuid[i] > TypeGuid) break;
+
                         std::byte* p = &reinterpret_cast<std::byte*>(m_lPages[Ref.m_PageIndex.m_Value])[m_Offsets[i]];
                         const auto d = m_isDoubleBuffer[i];
                         if (d == 0xff)  return &p[Ref.m_LocalIndex.m_Value       * m_TypeSizes[i]];
@@ -349,7 +384,8 @@ namespace mecs
                 return nullptr;
             }
 
-            const void* getComponent(const entity::tmp_ref& Ref, component::type_guid TypeGuid) const noexcept
+            inline
+            const void* getComponent(const entity::tmp_ref& Ref, type_guid TypeGuid) const noexcept
             {
                 return const_cast<instance*>(this)->getComponent(Ref, TypeGuid);
             }
@@ -368,7 +404,7 @@ namespace mecs
             const std::span<const std::uint32_t>        m_TypeSizes;
             const std::span<const std::uint32_t>        m_Offsets;
             const std::span<const std::uint8_t>         m_isDoubleBuffer;
-            const std::span<const component::type_guid> m_ComponentTypeGuid;
+            const std::span<const type_guid> m_ComponentTypeGuid;
         };
 
         //---------------------------------------------------------------------------------
@@ -422,13 +458,13 @@ namespace mecs
     namespace entity
     {
         template< typename T >
-        T& tmp_ref::getComponent(component::type_guid TypeGuid) noexcept
+        T& tmp_ref::getComponent(type_guid TypeGuid) noexcept
         {
             return *reinterpret_cast<T*>(m_pGroupInstance->getComponent(*this,TypeGuid));
         }
 
         template< typename T >
-        constexpr const T& tmp_ref::getComponent(component::type_guid TypeGuid) const noexcept
+        constexpr const T& tmp_ref::getComponent(type_guid TypeGuid) const noexcept
         {
             return *reinterpret_cast<T*>(m_pGroupInstance->getComponent(*this, TypeGuid));
         }
@@ -441,16 +477,20 @@ namespace mecs
     {
         struct simple
         {
-            constexpr static component::type_guid component_type_guid_v{"simple"};
+            constexpr static type_guid type_guid_v{"simple"};
             int m_Value{ 22 };
         };
 
         struct double_buff : component::double_buffer<double_buff>
         {
-            constexpr static component::type_guid component_type_guid_v{ "double_buff" };
+            constexpr static type_guid type_guid_v{ "double_buff" };
+            int m_Value{ 123 };
         };
 
-        struct my_tag : component::tag {};
+        struct my_tag : component::tag 
+        {
+            constexpr static type_guid type_guid_v{ "my_tag" };
+        };
 
         void Test()
         {
@@ -459,15 +499,19 @@ namespace mecs
 
             xcore::scheduler::channel MyChannel(xconst_universal_str("Test"));
 
-            MyChannel.SubmitJob([&]
-            {
-                while (upGroup->newSize() < 10000000)
+            for(int i=0; i<xcore::get().m_Scheduler.getWorkerCount(); i++)
+                MyChannel.SubmitJob([&]
                 {
-                    auto tmpEntityRef = upGroup->appendEntity();
-                    auto& Entry = tmpEntityRef.getComponent<simple>();
-                    assert(Entry.m_Value == 22);
-                }
-            });
+                    while (upGroup->newSize() < 10000000)
+                    {
+                        auto    tmpEntityRef = upGroup->appendEntity();
+                        auto&   Entity = tmpEntityRef.getComponent<entity::instance>();
+                        auto&   Simple = tmpEntityRef.getComponent<simple>();
+                        auto&   Double = tmpEntityRef.getComponent<double_buff>();
+                        assert(Simple.m_Value == 22);
+                        assert(Double.m_Value == 123);
+                    }
+                });
 
             MyChannel.join();
 

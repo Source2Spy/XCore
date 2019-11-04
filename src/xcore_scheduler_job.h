@@ -61,7 +61,7 @@ namespace xcore::scheduler
                 else if constexpr ( std::is_same_v<T,xcore::scheduler::jobtype>  )    D.m_JobType  = V;
                 else if constexpr ( std::is_same_v<T,xcore::scheduler::affinity> )    D.m_Affinity = V;
                 else if constexpr ( std::is_same_v<T,xcore::scheduler::priority> )    D.m_Priority = V;
-                else static_assert( always_false_v<T>, "You pass a type that is not recognize!" );
+                else static_assert( types::always_false_v<T>, "You pass a type that is not recognize!" );
             }, std::tuple{ std::forward<T_ARGS>(Args)... } );
             return D;
         }

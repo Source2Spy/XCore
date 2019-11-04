@@ -60,6 +60,8 @@ namespace xcore::guid
         constexpr            bool           operator !=         ( const unit A )                                        const   noexcept { return m_Value != A.m_Value; }
         constexpr            bool           operator <          ( const unit A )                                        const   noexcept { return m_Value < A.m_Value; }
         constexpr            bool           operator >          ( const unit A )                                        const   noexcept { return m_Value > A.m_Value; }
+        constexpr            bool           operator <=         ( const unit A )                                        const   noexcept { return m_Value <= A.m_Value; }
+        constexpr            bool           operator >=         ( const unit A )                                        const   noexcept { return m_Value >= A.m_Value; }
         inline               bool           isValid             ( void )                                                const   noexcept { return !!m_Value;  }
         inline               bool           isNull              ( void )                                                const   noexcept { return 0 == m_Value;  }
         inline               void           setNull             ( void )                                                        noexcept { m_Value = 0; }
