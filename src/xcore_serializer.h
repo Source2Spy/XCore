@@ -227,7 +227,7 @@ namespace xcore::serializer
             mem_type D;
             if constexpr (sizeof...(T_ARGS) > 0)
             {
-                xcore::types::visit([&](auto&& V) noexcept
+                xcore::types::tuple_visit([&](auto&& V) noexcept
                 {
                     switch (V)
                     {

@@ -20,8 +20,8 @@ namespace mecs
         template< typename T_COMPONENT >
         struct double_buffer : double_buffer_tag
         {
-            struct t0 : T_COMPONENT { using T_COMPONENT::T_COMPONENT; constexpr static auto type_guid_v = T_COMPONENT::type_guid_v; /*using factory = typename T_COMPONENT::factory;*/ };
-            struct t1 : T_COMPONENT { using T_COMPONENT::T_COMPONENT; constexpr static auto type_guid_v = T_COMPONENT::type_guid_v; /*using factory = typename T_COMPONENT::factory;*/ };
+            struct t0 : T_COMPONENT { using T_COMPONENT::T_COMPONENT; constexpr static auto type_guid_v = T_COMPONENT::type_guid_v; };
+            struct t1 : T_COMPONENT { using T_COMPONENT::T_COMPONENT; constexpr static auto type_guid_v = T_COMPONENT::type_guid_v; };
         };
         struct tag {};
     }
@@ -291,8 +291,8 @@ namespace mecs
                 , m_EntriesPerPage      (T_PAGE_INFO::entry_count_v)
                 , m_isDoubleBuffer      (T_PAGE_INFO::is_double_buffer_v)
                 , m_ComponentTypeGuid   (T_PAGE_INFO::type_guid_v)
-                , m_pConstruction       (T_PAGE_INFO::Construct)
-                , m_pDestruction        (T_PAGE_INFO::Destruct)
+                , m_fnConstruction       (T_PAGE_INFO::Construct)
+                , m_fnDestruction        (T_PAGE_INFO::Destruct)
             {}
 
             template< typename...T_COMPONENTS_AND_TAGS >
@@ -305,31 +305,31 @@ namespace mecs
                     <
                         details::page_info
                         <
-                            helpers::tuple_selection_sort
+                            xcore::types::tuple_sort_t
                             < 
                                 details::compare, xcore::types::tuple_cat_t
                                 < 
                                     decltype(details::FilterOutTagsExtendDoubleBuffer<T_COMPONENTS_AND_TAGS>())...
                                 >
-                            >::type
+                            >
                             , 
-                            helpers::tuple_selection_sort
+                            xcore::types::tuple_sort_t
                             < 
                                 details::compare, xcore::types::tuple_cat_t
                                 <
                                     decltype(details::FilterOutComponents<T_COMPONENTS_AND_TAGS>())...
                                 >
-                            >::type
+                            >
                         >*
                     >(nullptr)
                 )
             {}
 
-            constexpr   const auto begin()                  const   noexcept { return iterator{ const_cast<instance*>(this), local_index{0u}, page_index{0u} }; }
-                        auto begin()                                noexcept { return iterator{ this, local_index{0u}, page_index{0u} }; }
-            constexpr   auto end()                          const   noexcept { return nullptr; }
-            constexpr   auto size()                         const   noexcept { return m_Count; }
-            inline      auto newSize()                      const   noexcept { return m_NewCount.load(std::memory_order_relaxed); }
+            constexpr   const auto  begin()                 const   noexcept { return iterator{ const_cast<instance*>(this), local_index{0u}, page_index{0u} }; }
+                        auto        begin()                         noexcept { return iterator{ this, local_index{0u}, page_index{0u} }; }
+            constexpr   auto        end()                   const   noexcept { return nullptr; }
+            constexpr   auto        size()                  const   noexcept { return m_Count; }
+            inline      auto        newSize()               const   noexcept { return m_NewCount.load(std::memory_order_relaxed); }
 
             entity::tmp_ref appendEntity()
             {
@@ -343,14 +343,14 @@ namespace mecs
                     if (PageIndex < nPages)
                     {
                         // Create entry here
-                        m_pConstruction( m_lPages[PageIndex], RelativeIndex );
+                        m_fnConstruction( m_lPages[PageIndex], RelativeIndex );
                         break;
                     }
                     else if (PageIndex == nPages && RelativeIndex == 0)
                     {
                         m_lPages[PageIndex] = m_PageMgr.AllocPage();
                         m_nPages++;
-                        m_pConstruction(m_lPages[PageIndex], RelativeIndex);
+                        m_fnConstruction(m_lPages[PageIndex], RelativeIndex);
                         break;
                     }
                     else
@@ -398,13 +398,13 @@ namespace mecs
             std::atomic<std::uint32_t>                  m_NewCount          {0u};
             page_list                                   m_lPages            {};
             page_mgr&                                   m_PageMgr;
-            construction&                               m_pConstruction;
-            destruction&                                m_pDestruction;
+            construction&                               m_fnConstruction;
+            destruction&                                m_fnDestruction;
             const std::uint32_t                         m_EntriesPerPage;
             const std::span<const std::uint32_t>        m_TypeSizes;
             const std::span<const std::uint32_t>        m_Offsets;
             const std::span<const std::uint8_t>         m_isDoubleBuffer;
-            const std::span<const type_guid> m_ComponentTypeGuid;
+            const std::span<const type_guid>            m_ComponentTypeGuid;
         };
 
         //---------------------------------------------------------------------------------

@@ -54,7 +54,7 @@ namespace xcore::scheduler
         static constexpr definition Flags( T_ARGS&&...Args ) noexcept
         {
             definition D;
-            xcore::types::visit( [&]( auto&& V ) noexcept
+            xcore::types::tuple_visit( [&]( auto&& V ) noexcept
             {
                 using T = std::decay_t<decltype( V )>;
                      if constexpr ( std::is_same_v<T,xcore::scheduler::lifetime> )    D.m_LifeTime = V;
