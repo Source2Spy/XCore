@@ -52,14 +52,10 @@ namespace xcore::examples
         }
 
         // wip
-        //if (0)
+        if (0)
         {
             // xcore::serializer::examples::Test();
-            // mecs::test::Test();
+            mecs::test::Test();
         }
-        xcore::textfile::examples::Test();
-
-        //xcore::textfile::examples::Test();
-
     }
 }
