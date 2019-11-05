@@ -394,9 +394,9 @@ namespace xcore::textfile::examples
         //
         if( true && ( 0
             || Test01( TextFileName, false, file_type::TEXT, {flags::DEFAULTS} ).isError(Error) 
-            || Test01( TextFileName, true,  file_type::TEXT, {flags::DEFAULTS} ).isError(Error)
-            || Test01( TextFileName, false, file_type::TEXT, {flags::WRITE_FLOATS} ).isError(Error)
-            || Test01( TextFileName, true,  file_type::TEXT, {flags::WRITE_FLOATS} ).isError(Error)
+  //          || Test01( TextFileName, true,  file_type::TEXT, {flags::DEFAULTS} ).isError(Error)
+ //           || Test01( TextFileName, false, file_type::TEXT, {flags::WRITE_FLOATS} ).isError(Error)
+ //           || Test01( TextFileName, true,  file_type::TEXT, {flags::WRITE_FLOATS} ).isError(Error)
             ))
         {
             xassert(false);

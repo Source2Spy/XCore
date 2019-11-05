@@ -65,9 +65,9 @@ namespace mecs
 
             //std::vector<properties_tuple> getProperties(void) const noexcept;
 
-            group::instance*        m_pGroupInstance{ nullptr };
-            group::local_index      m_LocalIndex{};
-            group::page_index       m_PageIndex{};
+            group::instance*        m_pGroupInstance;
+            group::local_index      m_LocalIndex;
+            group::page_index       m_PageIndex;
         };
     }
 
@@ -422,6 +422,50 @@ namespace mecs
                     , reinterpret_cast<details::default_tag*>(nullptr)          // We must have a least one tag
                     , reinterpret_cast<T_COMPONENTS_AND_TAGS*>(nullptr) ...
                 } 
+            };
+        }
+
+        //---------------------------------------------------------------------------------
+        // WORLD
+        //---------------------------------------------------------------------------------
+        namespace world
+        {
+            namespace details
+            {
+                struct component_desc
+                {
+                    using fn_construct = void(void*);
+                    using fn_destruct = void(void*);
+
+                    type_guid       m_Guid;
+                    fn_construct& m_Construct;
+                    fn_destruct& m_Destruct;
+                    std::uint16_t   m_Size;
+                    bool            m_isDoubleBuffer;
+                };
+
+                struct entity_dec : entity::tmp_ref
+                {
+                    std::atomic<entity::guid> m_Guid{ 0 };
+                };
+            }
+
+            struct instance
+            {
+                /*
+            entity::tmp_ref createEntity(entity::guid Guid, const std::span<const type_guid> ComponentTypesGuids)
+                {
+                    do 
+                    {
+                        m_lEntityHash[Guid.m_Value % max_entity_count_v]
+                    } while ();
+                    auto& Entry = ;
+                }
+                */
+
+                std::vector<details::component_desc>            m_lComponentDescs;
+                constexpr static std::size_t                    max_entity_count_v = xcore::bits::RoundToNextPowOfTwo(100000000ull);
+                xcore::unique_span<details::entity_dec>         m_lEntityHash{ max_entity_count_v };
             };
         }
 

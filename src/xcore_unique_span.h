@@ -18,8 +18,8 @@ namespace xcore::allocator
     //--------------------------------------------------------------------------------------------
     template
     < 
-       typename T               // Node to be allocated ( new T )
-     , typename T_COUNTER       // type of the counter  ( T_COUNTER m_Count; ) 
+       typename T                           // Node to be allocated ( new T )
+     , typename T_COUNTER = std::size_t     // type of the counter  ( T_COUNTER m_Count; ) 
     >
     struct unique_span : xcore::span<T>
     {
@@ -38,6 +38,12 @@ namespace xcore::allocator
             auto p = parent::data();
             if( p ) delete []p;
         }
+
+        //--------------------------------------------------------------------------------------------
+        template< typename...T_ARGS > inline
+        unique_span(size_type Count, T_ARGS&&...Args) noexcept
+            : parent( new T[Count]{ std::forward<T_ARGS>(Args)... }, Count)
+        {}
 
         //--------------------------------------------------------------------------------------------
 

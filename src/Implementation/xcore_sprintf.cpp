@@ -736,7 +736,7 @@ namespace xcore::string::details
         const char*                 pFormat = pFormatStr;   // format string 
         char                        ch;                     // character from fmt 
         const char*                 cp;                     // handy char pointer (short term usage)
-        flags                       Flags;                  // flags as above
+        flags                       Flags{ 0 };             // flags as above
         int                         width;                  // width from format (%8d), or 0
         int                         prec;                   // precision from format (%.3d), or -1
         char                        sign;                   // sign prefix (' ', '+', '-', or \0)
@@ -972,25 +972,25 @@ namespace xcore::string::details
 
                     if( Flags.m_QUADINT ) 
                     {
-                        auto* pPtr = ArgList.get<std::int64_t*>(); //*x_va_arg(Args, s64 *) = ret;
+                        auto* pPtr = ArgList.get<std::int64_t*>();
                         xassert(pPtr);
                         *pPtr = Buffer.getCursor();
                     }   
                     else if( Flags.m_LONGINT ) 
                     {
-                        auto* pPtr = ArgList.get<std::int32_t*>(); // *x_va_arg(Args, s32 *) = ret;
+                        auto* pPtr = ArgList.get<std::int32_t*>();
                         xassert(pPtr);
                         *pPtr = Buffer.getCursor();
                     }   
                     else if( Flags.m_SHORTINT ) 
                     {
-                        auto* pPtr = ArgList.get<std::int16_t*>(); //*x_va_arg(Args, s16 *) = (s16)ret;
+                        auto* pPtr = ArgList.get<std::int16_t*>();
                         xassert(pPtr);
                         *pPtr = Buffer.getCursor();
                     }   
                     else
                     {
-                        auto* pPtr = ArgList.get<std::int32_t*>(); //*x_va_arg(Args, s32 *) = ret;
+                        auto* pPtr = ArgList.get<std::int32_t*>();
                         xassert(pPtr);
                         *pPtr = Buffer.getCursor();
                     }   
@@ -1038,7 +1038,7 @@ namespace xcore::string::details
 
                 case 's':
 
-                    cp = const_cast<char*>(ArgList.getGenericString());//get<char*>();//x_va_arg(Args, char*);
+                    cp = const_cast<char*>(ArgList.getGenericString());
                     xassert( cp != nullptr );
                     if (prec >= 0)
                     {
@@ -1068,8 +1068,8 @@ namespace xcore::string::details
                 case 'u':
                     // Give a break to the user_types and allow quadints
                     Flags.m_QUADINT = true;
-                    if (Flags.m_QUADINT) uqval = ArgList.getGenericInt(); //ArgList.get<u64>(); //(u64)x_va_arg(Args, u64); 
-                    else                 ulval = ArgList.get<std::uint32_t>(); //x_va_arg(Args, u32); //GetUnSignARG( (xva_list*)&Args, flags );
+                    if (Flags.m_QUADINT) uqval = ArgList.getGenericInt();
+                    else                 ulval = ArgList.get<std::uint32_t>();
 
                     base = 10;
                     goto nosign;
@@ -1079,8 +1079,8 @@ namespace xcore::string::details
 
                     // Give a break to the user_types and allow quadints
                     Flags.m_QUADINT = true;
-                    if (Flags.m_QUADINT) uqval = ArgList.getGenericInt(); //ArgList.get<u64>(); //(u64)x_va_arg(Args, u64); 
-                    else                 ulval = ArgList.get<std::uint32_t>(); //x_va_arg(Args, u32); //GetUnSignARG( (xva_list*)&Args, flags );
+                    if (Flags.m_QUADINT) uqval = ArgList.getGenericInt();
+                    else                 ulval = ArgList.get<std::uint32_t>();
 
                     base = 16;
 
