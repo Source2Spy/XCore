@@ -1141,9 +1141,7 @@ namespace xcore::textfile::version_2
             //
             // Clear the memory pointer
             //
-            m_iMemOffet = 0;
-
-            return Error;
+            goto CLEAR ;
         }
 
         //
@@ -1528,7 +1526,7 @@ namespace xcore::textfile::version_2
         //
         // Reset to get ready for the next block of lines
         //
-
+        CLEAR:
         // Clear the columns
         if( m_iLine < m_Record.m_Count )
         {

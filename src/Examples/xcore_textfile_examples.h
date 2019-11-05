@@ -76,10 +76,9 @@ namespace xcore::textfile::examples
                     if( isRead )    xassert( C == StringBack.size() * Times );
                     else            C = StringBack.size() * Times;
                 }
-            ,   [&]( std::size_t i, xcore::err& Error )
+            ,   [&]( std::size_t c, xcore::err& Error )
                 {
-                    i %= StringBack.size();
-
+                    const auto i = c%StringBack.size();
                     0
                     ||  TextFile.Field( "String",   String[i]       ).isError(Error)
                     ||  TextFile.Field( "Floats",   Floats64[i]
@@ -93,39 +92,42 @@ namespace xcore::textfile::examples
                                                 ,   UInt16[i] 
                                                 ,   UInt8[i]        ).isError(Error)
                     ;
+
+
+                    //
+                    // Sanity check
+                    //
+                    if (isRead)
+                    {
+                        xassert(StringBack[i] == String[i]);
+
+                        //
+                        // If we tell the file system to write floats as floats then we will leak precision
+                        // so we need to take that into account when checking.
+                        //
+                        if (Flags.m_isWriteFloats)
+                        {
+                            xassert(AlmostEqualRelative(Floats64Back[i], Floats64[i]));
+                            xassert(AlmostEqualRelative(Floats32Back[i], Floats32[i]));
+                        }
+                        else
+                        {
+                            xassert(Floats64Back[i] == Floats64[i]);
+                            xassert(Floats32Back[i] == Floats32[i]);
+                        }
+
+                        xassert(Int64Back[i] == Int64[i]);
+                        xassert(Int32Back[i] == Int32[i]);
+                        xassert(Int16Back[i] == Int16[i]);
+                        xassert(Int8Back[i]  == Int8[i]);
+
+                        xassert(UInt64Back[i] == UInt64[i]);
+                        xassert(UInt32Back[i] == UInt32[i]);
+                        xassert(UInt16Back[i] == UInt16[i]);
+                        xassert(UInt8Back[i]  == UInt8[i]);
+                    }
                 }
             )) return Error;
-
-        //
-        // Sanity check
-        //
-        if( isRead ) for( int i=0; i<StringBack.size(); ++i )
-        {
-            //
-            // If we tell the file system to write floats as floats then we will leak precision
-            // so we need to take that into account when checking.
-            //
-            if( Flags.m_isWriteFloats )
-            {
-                xassert( AlmostEqualRelative( Floats64Back[i], Floats64[i] ) );
-                xassert( AlmostEqualRelative( Floats32Back[i], Floats32[i] ) );
-            }
-            else
-            {
-                xassert( Floats64Back[i] == Floats64[i] );
-                xassert( Floats32Back[i] == Floats32[i] );
-            }
-
-            xassert( StringBack[i]  == String[i] );
-            xassert( Int64Back[i]   == Int64[i] );
-            xassert( Int32Back[i]   == Int32[i] );
-            xassert( Int16Back[i]   == Int16[i] );
-            xassert( Int8Back [i]   == Int8[i]  );
-            xassert( UInt64Back[i]  == UInt64[i] );
-            xassert( UInt32Back[i]  == UInt32[i] );
-            xassert( UInt16Back[i]  == UInt16[i] );
-            xassert( UInt8Back [i]  == UInt8[i]  );
-        }
 
         return Error;
     }
@@ -385,19 +387,32 @@ namespace xcore::textfile::examples
 
     void Test( void )
     {
-        constexpr static xcore::string::constant TextFileName( "TextFileTest.la.txt" ); 
-        constexpr static xcore::string::constant BinaryFileName( "BinaryFileTest.la.bin" );
         xcore::err Error;
 
         //
         // Test write and read (Text Style)
         //
-        if( true && ( 0
-            || Test01( TextFileName, false, file_type::TEXT, {flags::DEFAULTS} ).isError(Error) 
-  //          || Test01( TextFileName, true,  file_type::TEXT, {flags::DEFAULTS} ).isError(Error)
- //           || Test01( TextFileName, false, file_type::TEXT, {flags::WRITE_FLOATS} ).isError(Error)
- //           || Test01( TextFileName, true,  file_type::TEXT, {flags::WRITE_FLOATS} ).isError(Error)
-            ))
+        constexpr static xcore::string::constant TextFileName("TextFileTest.la.txt");
+        if(true) if( 0
+            || Test01(  TextFileName,   false, file_type::TEXT,     {flags::DEFAULTS}       ).isError(Error) 
+            || Test01(  TextFileName,   true,  file_type::TEXT,     {flags::DEFAULTS}       ).isError(Error)
+            || Test01(  TextFileName,   false, file_type::TEXT,     {flags::WRITE_FLOATS}   ).isError(Error)
+            || Test01(  TextFileName,   true,  file_type::TEXT,     {flags::WRITE_FLOATS}   ).isError(Error)
+            )
+        {
+            xassert(false);
+        }
+
+        //
+        // Test write and read (Binary Style)
+        //
+        constexpr static xcore::string::constant BinaryFileName("BinaryFileTest.la.bin");
+        if (true) if ( 0
+            || Test01(  BinaryFileName, false, file_type::BINARY,   { flags::DEFAULTS }     ).isError(Error)
+            || Test01(  BinaryFileName, true,  file_type::BINARY,   { flags::DEFAULTS }     ).isError(Error)
+            || Test01(  BinaryFileName, false, file_type::BINARY,   { flags::WRITE_FLOATS } ).isError(Error)
+            || Test01(  BinaryFileName, true,  file_type::BINARY,   { flags::WRITE_FLOATS } ).isError(Error)
+            )
         {
             xassert(false);
         }

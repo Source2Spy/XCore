@@ -1,5 +1,11 @@
 
 #include "../xcore.h"
+
+#ifndef _XCORE_DEBUG
+    #undef xassert
+    #define xassert(A) [&]{ if(!(A)){ __debugbreak(); } }()
+#endif
+
 #include "xcore_error_examples.h"
 #include "xcore_function_examples.h"
 #include "xcore_log_examples.h"
