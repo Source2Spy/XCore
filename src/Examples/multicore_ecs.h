@@ -492,154 +492,6 @@ namespace mecs
             const std::array<details::offsets, max_ingroup_components_v>                m_lComponentOffsets;
         };
 
-        /*
-        struct instance
-        {
-
-            template< typename T_PAGE_INFO >
-            constexpr instance(bool, page_mgr& PageMgr, T_PAGE_INFO*) noexcept
-                : m_PageMgr             { PageMgr }
-                , m_TypeSizes           (T_PAGE_INFO::sizes_v)
-                , m_Offsets             (T_PAGE_INFO::offset_list_v)
-                , m_EntriesPerPage      (T_PAGE_INFO::entry_count_v)
-                , m_isDoubleBuffer      (T_PAGE_INFO::is_double_buffer_v)
-                , m_ComponentTypeGuid   (T_PAGE_INFO::type_guid_v)
-                , m_fnConstruction       (T_PAGE_INFO::Construct)
-                , m_fnDestruction        (T_PAGE_INFO::Destruct)
-            {}
-
-            template< typename...T_COMPONENTS_AND_TAGS >
-            constexpr instance(page_mgr& PageMgr, T_COMPONENTS_AND_TAGS* ... ) noexcept
-                : instance
-                ( 
-                    false
-                    , PageMgr
-                    , reinterpret_cast
-                    <
-                        details::page_info
-                        <
-                            xcore::types::tuple_sort_t
-                            < 
-                                details::compare, xcore::types::tuple_cat_t
-                                < 
-                                    decltype(details::FilterOutTagsExtendDoubleBuffer<T_COMPONENTS_AND_TAGS>())...
-                                >
-                            >
-                            , 
-                            xcore::types::tuple_sort_t
-                            < 
-                                details::compare, xcore::types::tuple_cat_t
-                                <
-                                    decltype(details::FilterOutComponents<T_COMPONENTS_AND_TAGS>())...
-                                >
-                            >
-                        >*
-                    >(nullptr)
-                )
-            {}
-
-            constexpr   const auto  begin()                 const   noexcept { return iterator{ const_cast<instance*>(this), local_index{0u}, page_index{0u} }; }
-                        auto        begin()                         noexcept { return iterator{ this, local_index{0u}, page_index{0u} }; }
-            constexpr   auto        end()                   const   noexcept { return nullptr; }
-            constexpr   auto        size()                  const   noexcept { return m_Count; }
-            inline      auto        newSize()               const   noexcept { return m_NewCount.load(std::memory_order_relaxed); }
-
-
-            entity::tmp_ref CreateEntity( entity::guid Guid )
-            {
-                const auto Index         = m_NewCount++;
-                const auto RelativeIndex = Index % m_EntriesPerPage;
-                const auto PageIndex     = Index / m_EntriesPerPage;
-                do
-                {
-                    const auto nPages   = m_nPages.load(std::memory_order_relaxed);
-
-                    if (PageIndex < nPages)
-                    {
-                        // Create entry here
-                        m_fnConstruction( m_lPages[PageIndex], RelativeIndex );
-                        break;
-                    }
-                    else if (PageIndex == nPages && RelativeIndex == 0)
-                    {
-                        m_lPages[PageIndex] = m_PageMgr.AllocPage();
-                        m_nPages++;
-                        m_fnConstruction(m_lPages[PageIndex], RelativeIndex);
-                        break;
-                    }
-                    else
-                    {
-                        // We will have to wait...
-                        XCORE_PERF_ZONE_SCOPED_N("Wasting Time")
-                        XCORE_CMD_PROFILER( while (PageIndex >= m_nPages.load(std::memory_order_relaxed)); )
-                    }
-
-                } while (true);
-
-                return { this, local_index{RelativeIndex}, page_index{PageIndex} };
-            }
-
-            inline
-            void* getComponent(const entity::tmp_ref& Ref, type_guid TypeGuid) noexcept
-            {
-                for (int i = 0; i < m_ComponentTypeGuid.size(); ++i)
-                {
-                    if (m_ComponentTypeGuid[i] >= TypeGuid )
-                    {
-                        if (m_ComponentTypeGuid[i] > TypeGuid) break;
-
-                        std::byte* p = &reinterpret_cast<std::byte*>(m_lPages[Ref.m_PageIndex.m_Value])[m_Offsets[i]];
-                        const auto d = m_isDoubleBuffer[i];
-                        if (d == 0xff)  return &p[Ref.m_LocalIndex.m_Value       * m_TypeSizes[i]];
-                        else            return &p[(Ref.m_LocalIndex.m_Value + d) * m_TypeSizes[i]];
-                    }
-                }
-
-                return nullptr;
-            }
-
-            inline
-            const void* getComponent(const entity::tmp_ref& Ref, type_guid TypeGuid) const noexcept
-            {
-                return const_cast<instance*>(this)->getComponent(Ref, TypeGuid);
-            }
-
-            using construction = void (page * pPage, std::uint32_t Index);
-            using destruction  = void (page * pPage, std::uint32_t Index);
-
-            std::uint32_t                               m_Count             {0u};
-            std::atomic<std::uint32_t>                  m_nPages            {0u};
-            std::atomic<std::uint32_t>                  m_NewCount          {0u};
-            page_list                                   m_lPages            {};
-            page_mgr&                                   m_PageMgr;
-            construction&                               m_fnConstruction;
-            destruction&                                m_fnDestruction;
-            const std::uint32_t                         m_EntriesPerPage;
-            const std::span<const std::uint32_t>        m_TypeSizes;
-            const std::span<const std::uint32_t>        m_Offsets;
-            const std::span<const std::uint8_t>         m_isDoubleBuffer;
-            const std::span<const type_guid>            m_ComponentTypeGuid;
-        };
-
-        //---------------------------------------------------------------------------------
-        // GROUP::MAKE INSTANCE
-        //---------------------------------------------------------------------------------
-        template< typename...T_COMPONENTS_AND_TAGS >
-        auto MakeInstance(page_mgr& PageMgr) noexcept
-        {
-            return std::unique_ptr<instance>
-            { 
-                new instance
-                { 
-                    PageMgr
-                    , reinterpret_cast<entity::instance*>(nullptr)              // Entity always go first
-                    , reinterpret_cast<details::default_tag*>(nullptr)          // We must have a least one tag
-                    , reinterpret_cast<T_COMPONENTS_AND_TAGS*>(nullptr) ...
-                } 
-            };
-        }
-        */
-
         //---------------------------------------------------------------------------------
         // GROUP::ITERATOR FUNCTIONS
         //---------------------------------------------------------------------------------
@@ -662,8 +514,38 @@ namespace mecs
         {
             const auto l = m_pGroupInstance->m_lPages.size() - 1;
             return !(l == m_PageIndex.m_Value
-                && (m_pGroupInstance->m_Count - l * m_pGroupInstance->m_EntriesPerPage) == m_LocalIndex.m_Value);
+                 && (m_pGroupInstance->m_Count - l * m_pGroupInstance->m_EntriesPerPage) == m_LocalIndex.m_Value);
         }
+    }
+
+    //---------------------------------------------------------------------------------
+    // QUERY
+    //---------------------------------------------------------------------------------
+    namespace query
+    {
+        template< typename...T_COMPONENTS_AND_TAGS >
+        struct all
+        {
+        };
+
+        template< typename...T_COMPONENTS_AND_TAGS >
+        struct none
+        {
+        };
+
+        namespace details
+        {
+            struct selected_group
+            {
+                group::instance*                                        m_pGroup;
+                std::array< std::uint8_t, group::max_ingroup_components_v >    m_Map;
+            };
+        };
+
+        struct instance
+        {
+            //std::array< std::uint8_t, max_ingroup_components_v >    m_Map;
+        };
     }
 
     //---------------------------------------------------------------------------------
@@ -914,7 +796,13 @@ namespace mecs
 
                 m_mapComponentDescriptor.append(T_COMPONENT::type_guid_v).m_pDescriptor = &component_descriptor_v;
             }
-
+ 
+            template< typename...T_COMPONENTS >
+            inline void registerComponents(void) noexcept
+            {
+                (registerComponent<T_COMPONENTS>(), ... );
+            }
+ 
             constexpr static std::size_t                            max_entity_count_v = xcore::bits::RoundToNextPowOfTwo(10000000ull);
 
             group::page_mgr                                         m_PageMgr                   {};
@@ -967,9 +855,12 @@ namespace mecs
         void Test()
         {
             mecs::world::instance World;
-            World.registerComponent<simple>();
-            World.registerComponent<double_buff>();
-            World.registerComponent<my_tag>();
+            World.registerComponents
+            <
+                    simple
+                ,   double_buff
+                ,   my_tag
+            >();
             auto& Group = World.getOrCreateGroup<simple,double_buff,my_tag>();
 
             xcore::scheduler::channel MyChannel(xconst_universal_str("Test"));
