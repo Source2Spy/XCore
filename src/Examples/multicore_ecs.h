@@ -16,13 +16,7 @@ namespace mecs
     //---------------------------------------------------------------------------------
     namespace component
     {
-        struct double_buffer_tag {};
-        template< typename T_COMPONENT >
-        struct double_buffer : double_buffer_tag
-        {
-            struct t0 : T_COMPONENT { using T_COMPONENT::T_COMPONENT; constexpr static auto type_guid_v = T_COMPONENT::type_guid_v; };
-            struct t1 : T_COMPONENT { using T_COMPONENT::T_COMPONENT; constexpr static auto type_guid_v = T_COMPONENT::type_guid_v; };
-        };
+        struct double_buffer{};
         struct tag {};
 
         struct descriptor
@@ -205,22 +199,22 @@ namespace mecs
             template< typename T_COMPONENT >
             std::enable_if_t
             <
-                  true == std::is_base_of_v<mecs::component::double_buffer_tag,     T_COMPONENT>
-                , std::tuple<typename T_COMPONENT::t0, typename T_COMPONENT::t1>
+                  true == std::is_base_of_v<mecs::component::double_buffer,         T_COMPONENT>
+                , std::tuple<T_COMPONENT, T_COMPONENT>
             > FilterOutTagsExtendDoubleBuffer();
 
             template< typename T_COMPONENT >
             std::enable_if_t
             <
-                   false == std::is_base_of_v<mecs::component::double_buffer_tag,   T_COMPONENT>
-                && false == std::is_base_of_v<mecs::component::tag, T_COMPONENT>
+                   false == std::is_base_of_v<mecs::component::double_buffer,       T_COMPONENT>
+                && false == std::is_base_of_v<mecs::component::tag,                 T_COMPONENT>
                 , std::tuple<T_COMPONENT>
             > FilterOutTagsExtendDoubleBuffer();
 
             template< typename T_COMPONENT >
             std::enable_if_t
             <
-                   false == std::is_base_of_v<mecs::component::double_buffer_tag,   T_COMPONENT>
+                   false == std::is_base_of_v<mecs::component::double_buffer,       T_COMPONENT>
                 && true  == std::is_base_of_v<mecs::component::tag,                 T_COMPONENT>
                 , std::tuple<>
             > FilterOutTagsExtendDoubleBuffer();
@@ -243,7 +237,7 @@ namespace mecs
             //---------------------------------------------------------------------------------
             struct default_tag : component::tag
             {
-                constexpr static type_guid type_guid_v{ 0ull };
+                constexpr static type_guid type_guid_v{ 2ull };
             };
 
             //---------------------------------------------------------------------------------
@@ -826,17 +820,22 @@ namespace mecs
                         };
                     });
 
+                    bool    bAddEntityComponent = false;
+                    auto    nComponents         = ComponentTypesGuids.size();
                     xcore::array<const component::descriptor*, group::max_ingroup_components_v> lComponetDesc;
-                    for( int i=0; i< ComponentTypesGuids.size(); ++i )
+                    for( int i=0; i<nComponents; ++i )
                     {
-                        xassert(ComponentTypesGuids[i].m_Value);
-                        lComponetDesc[i+1] = m_mapComponentDescriptor.get(ComponentTypesGuids[i]).m_pDescriptor;
+                        auto& C = ComponentTypesGuids[i];
+                        xassert(C.m_Value);
+                        lComponetDesc[i] = m_mapComponentDescriptor.get(C).m_pDescriptor;
+                        if( C == entity::instance::type_guid_v) bAddEntityComponent = true;
                     }
 
-                    // Add always the entity
-                    lComponetDesc[0] = m_mapComponentDescriptor.get(entity::instance::type_guid_v).m_pDescriptor;
-                    const auto nComponents = 1 + ComponentTypesGuids.size();
+                    // the entity if we have to
+                    if(bAddEntityComponent)
+                        lComponetDesc[nComponents++] = m_mapComponentDescriptor.get(entity::instance::type_guid_v).m_pDescriptor;
 
+                    // Make sure that we store data in the ascending order
                     std::sort(  lComponetDesc.begin()
                             ,   lComponetDesc.begin() + nComponents
                             ,   [](const component::descriptor* pA, const component::descriptor* pB) { return pA->m_Guid.m_Value < pA->m_Guid.m_Value;} 
@@ -844,7 +843,7 @@ namespace mecs
 
                     auto pGroupInstance = new group::instance
                     { 
-                            m_PageMgr
+                          m_PageMgr
                         , lComponetDesc.ViewTo(nComponents)
                         , TagTypesGuids 
                     };
@@ -869,7 +868,8 @@ namespace mecs
                         < 
                             group::details::compare, xcore::types::tuple_cat_t
                             < 
-                                decltype(group::details::FilterOutTagsExtendDoubleBuffer<T_COMPONENTS_AND_TAGS>())...
+                                  std::tuple<entity::instance>
+                                , decltype(group::details::FilterOutTagsExtendDoubleBuffer<T_COMPONENTS_AND_TAGS>())...
                             >
                         >*
                     >(nullptr)
@@ -882,7 +882,8 @@ namespace mecs
                         < 
                             group::details::compare, xcore::types::tuple_cat_t
                             <
-                                decltype(group::details::FilterOutComponents<T_COMPONENTS_AND_TAGS>())...
+                                  std::tuple<group::details::default_tag>
+                                , decltype(group::details::FilterOutComponents<T_COMPONENTS_AND_TAGS>())...
                             >
                         >*
                     >(nullptr)
@@ -908,7 +909,7 @@ namespace mecs
                         // //property::table&  m_PropertyTable;
                     ,   static_cast<std::uint16_t>(sizeof(T_COMPONENT))
                     ,   static_cast<std::uint16_t>(std::alignment_of_v<T_COMPONENT>)
-                    ,   std::is_base_of_v<mecs::component::double_buffer_tag, T_COMPONENT>
+                    ,   std::is_base_of_v<mecs::component::double_buffer, T_COMPONENT>
                 };
 
                 m_mapComponentDescriptor.append(T_COMPONENT::type_guid_v).m_pDescriptor = &component_descriptor_v;
@@ -952,7 +953,7 @@ namespace mecs
             int m_Value{ 22 };
         };
 
-        struct double_buff : component::double_buffer<double_buff>
+        struct double_buff : component::double_buffer
         {
             constexpr static type_guid type_guid_v{ "double_buff" };
             int m_Value{ 123 };
