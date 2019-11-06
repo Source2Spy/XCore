@@ -27,15 +27,16 @@ namespace mecs
 
         struct descriptor
         {
-            using fn_construct  = void(void*);
-            using fn_destruct   = void(void*);
+            using fn_construct  = void(void*) noexcept;
+            using fn_destruct   = void(void*) noexcept;
 
-            type_guid           m_Guid;
-            fn_construct&       m_fnConstruct;
-            fn_construct&       m_fnDestruct;
+            const type_guid         m_Guid;
+            fn_construct* const     m_fnConstruct;
+            fn_construct* const     m_fnDestruct;
             //property::table&  m_PropertyTable;
-            std::uint16_t       m_Size;
-            std::uint16_t       m_Aligment;
+            const std::uint16_t     m_Size;
+            const std::uint16_t     m_Aligment;
+            const bool              m_isDoubleBuffer;
         };
     }
 
@@ -60,7 +61,7 @@ namespace mecs
 
         struct instance
         {
-            constexpr static type_guid type_guid_v{0ull};
+            constexpr static type_guid type_guid_v{1ull};
             entity::guid    m_Guid;     // This is 64 bits
             entity::flags   m_Flags;    // This is 32 bits
                                         // Means 32bits are been used to padding here
@@ -91,12 +92,14 @@ namespace mecs
     {
         using guid = xcore::guid::unit<64, struct ecs_group_tag>;
 
+        constexpr static std::size_t max_ingroup_components_v = 64;
+
         //---------------------------------------------------------------------------------
         // GROUP::DETAILS
         //---------------------------------------------------------------------------------
-        /*
         namespace details
         {
+            /*
             template< typename T_COMPONENTS, typename T_TAGS >
             struct page_info;
 
@@ -187,6 +190,16 @@ namespace mecs
                 , page_info_tags<T_TAGS...>
             {};
 
+            */
+
+            //---------------------------------------------------------------------------------
+
+            template< typename...T_COMPONENTS >
+            constexpr auto MakeArrayTypeGuids( std::tuple<T_COMPONENTS...>* ) noexcept
+            {
+                return std::array{ T_COMPONENTS::type_guid_v ... };
+            }  
+
             //---------------------------------------------------------------------------------
 
             template< typename T_COMPONENT >
@@ -241,15 +254,13 @@ namespace mecs
                                             > T_B::type_guid_v.m_Value;
             };
         }
-        */
-
 
         //---------------------------------------------------------------------------------
         // GROUP::PAGE
         //---------------------------------------------------------------------------------
         struct alignas(std::uint64_t) page
         {
-            std::byte    m_RawData[1024*64];
+            std::byte    m_RawData[1024*16];
         };
 
         //---------------------------------------------------------------------------------
@@ -302,25 +313,26 @@ namespace mecs
         {
             struct offsets
             {
-                std::uint16_t m_Offset;
-                std::uint16_t m_Size;
+                std::uint16_t   m_Offset;       // Offset   - Where in the page is this component
+                std::uint16_t   m_Size:14       // Size     - Size of the component
+                              , m_T0:1          // T0       - Which of the double buffer is T0 [0,1]
+                              , m_HasT1:1;      // HasT1    - Does this component has a double buffer?
             };
         }
 
-
         struct instance
         {
-            instance( page_mgr& PageMgr, group::instance& GroupInstance, std::span<component::descriptor*> lComponetDesc, const std::span<const type_guid> TagTypesGuids) noexcept
+            instance( page_mgr& PageMgr, xcore::span<const component::descriptor*> lComponetDesc, const std::span<const type_guid> TagTypesGuids ) noexcept
                 : m_PageMgr             { PageMgr }
-                , m_lComponentTypeGuids { [&]() constexpr { std::array<type_guid,64>                D; for (int i = 0; i < lComponetDesc.size(); ++i) D[i] = lComponetDesc[i]->m_Guid;  return D; }() }
-                , m_lTagGuids           { [&]() constexpr { std::array<type_guid,64>                D; for (int i = 0; i < TagTypesGuids.size(); ++i) D[i] = TagTypesGuids[i];          return D; }() }
-                , m_lDescriptors        { [&]() constexpr { std::array<component::descriptor*,64>   D; for (int i = 0; i < lComponetDesc.size(); ++i) D[i] = lComponetDesc[i];          return D; }() }
+                , m_lComponentTypeGuids { [&]() constexpr { std::array<type_guid,64>                    D{}; for (int i = 0; i < lComponetDesc.size(); ++i) D[i] = lComponetDesc[i]->m_Guid;  return D; }() }
+                , m_lTagGuids           { [&]() constexpr { std::array<type_guid,64>                    D{}; for (int i = 0; i < TagTypesGuids.size(); ++i) D[i] = TagTypesGuids[i];          return D; }() }
+                , m_lDescriptors        { [&]() constexpr { std::array<const component::descriptor*,64> D{}; for (int i = 0; i < lComponetDesc.size(); ++i) D[i] = lComponetDesc[i];          return D; }() }
                 , m_nTagGuids           { static_cast<std::uint16_t>(TagTypesGuids.size()) }
-                , m_nComponentTypeGuids { static_cast<std::uint16_t>(lComponetDesc.size()) }
+                , m_nComponents         { static_cast<std::uint16_t>(lComponetDesc.size()) }
                 , m_EntriesPerPage      { [&]() constexpr
                                             {
                                                 const std::uint32_t     SizeOfOne           = [&]() constexpr { std::uint32_t S = 0; for (auto p : lComponetDesc) S += p->m_Size; return S; }();
-                                                const std::uint32_t     OriginalAddress     = sizeof(page);
+                                                const std::uint32_t     OriginalAddress     = std::alignment_of_v<page>;
                                                 std::uint32_t           WastedToAligment    = 0;
                                                 std::uint32_t           p                   = OriginalAddress;
 
@@ -335,14 +347,19 @@ namespace mecs
                                         }
                 , m_lComponentOffsets   { [&]() constexpr 
                                             {
-                                                std::array<details::offsets, 64>      lComponentOffsets;
-                                                const std::uint32_t                   OriginalAddress     = sizeof(page);
+                                                std::array<details::offsets, 64>      lComponentOffsets{};
+                                                const std::uint32_t                   OriginalAddress     = std::alignment_of_v<page>;
                                                 std::uint32_t                         p                   = OriginalAddress;
 
                                                 for (int i = 0; i < lComponetDesc.size(); i++)
                                                 {
-                                                    lComponentOffsets[i].m_Offset = xcore::bits::Align( p, lComponetDesc[i]->m_Aligment ) - OriginalAddress;
-                                                    p                            += m_EntriesPerPage * lComponetDesc[i]->m_Size;
+                                                    auto& D     = lComponentOffsets[i];
+                                                    auto& S     = *lComponetDesc[i];
+                                                    D.m_HasT1   = S.m_isDoubleBuffer;
+                                                    D.m_T0      = 0;
+                                                    D.m_Size    = S.m_Size;
+                                                    D.m_Offset  = xcore::bits::Align( p, S.m_Aligment ) - OriginalAddress;
+                                                    p          += m_EntriesPerPage * D.m_Size;
                                                 }
                                                 assert((p - OriginalAddress) <= sizeof(page));
                                                 return lComponentOffsets;
@@ -350,24 +367,85 @@ namespace mecs
                                         }
                 {}
 
+            constexpr   auto        size()                  const   noexcept { return m_Count; }
+            inline      auto        newSize()               const   noexcept { return m_NewCount.load(std::memory_order_relaxed); }
+
             void ConstructEntity( page* Page, std::uint32_t LocalIndex ) noexcept
             {
                 std::byte* p = reinterpret_cast<std::byte*>(Page);
-                for( int i=0; i<m_lComponentOffsets.size(); ++i )
+                for( int i=0; i<m_nComponents; ++i )
                 {
-                    auto& E = m_lComponentOffsets[i];
-                    m_lDescriptors[i]->m_fnConstruct( &(&p[ E.m_Offset ])[ LocalIndex * E.m_Size ] );
+                    auto&       E       = m_lComponentOffsets[i];
+                    const auto  Index   = E.m_Offset + LocalIndex * E.m_Size;
+                    m_lDescriptors[i]->m_fnConstruct( &p[Index] );
                 }
             }
 
             void DestructEntity( page* Page, std::uint32_t LocalIndex ) noexcept
             {
                 std::byte* p = reinterpret_cast<std::byte*>(Page);
-                for( int i=0; i<m_lComponentOffsets.size(); ++i )
+                for( int i=0; i<m_nComponents; ++i )
                 {
-                    auto& E = m_lComponentOffsets[i];
-                    m_lDescriptors[i]->m_fnDestruct( &(&p[ E.m_Offset ])[ LocalIndex * E.m_Size ] );
+                    auto&       E       = m_lComponentOffsets[i];
+                    const auto  Index   = E.m_Offset + LocalIndex * E.m_Size;
+                    m_lDescriptors[i]->m_fnDestruct( &p[Index] );
                 }
+            }
+
+            const details::offsets* findOffset( const entity::tmp_ref& Ref, type_guid TypeGuid ) noexcept
+            {
+                for (int i = 0; i <m_nComponents; ++i)
+                {
+                    if (m_lComponentTypeGuids[i] >= TypeGuid)
+                    {
+                        if (m_lComponentTypeGuids[i] > TypeGuid) break;
+
+                        const auto& Offsets = m_lComponentOffsets[i];
+                        const auto  T1      = Offsets.m_HasT1?(1-Offsets.m_T0):0;
+                        return &m_lComponentOffsets[i + T1];
+                    }
+                }
+                return nullptr;
+            }
+
+            const details::offsets* findOffset( const entity::tmp_ref& Ref, type_guid TypeGuid ) const noexcept
+            {
+                for (int i = 0; i <m_nComponents; ++i)
+                {
+                    if (m_lComponentTypeGuids[i] >= TypeGuid)
+                    {
+                        if (m_lComponentTypeGuids[i] > TypeGuid) break;
+                        const auto& Offsets = m_lComponentOffsets[i];
+                        return &m_lComponentOffsets[i + Offsets.m_T0];
+                    }
+                }
+                return nullptr;
+            }
+
+            inline
+            void* getComponent(const entity::tmp_ref& Ref, type_guid TypeGuid) noexcept
+            {
+                if( auto pOffset = findOffset(Ref,TypeGuid); pOffset )
+                {
+                    const auto  Index   = pOffset->m_Offset + Ref.m_LocalIndex.m_Value * pOffset->m_Size;
+                    std::byte*  p       = &reinterpret_cast<std::byte*>(m_lPages[Ref.m_PageIndex.m_Value])[Index];
+                    return p;
+                }
+
+                return nullptr;
+            }
+
+            inline
+            void* getComponent(const entity::tmp_ref& Ref, type_guid TypeGuid) const noexcept
+            {
+                if( auto pOffset = findOffset(Ref,TypeGuid); pOffset )
+                {
+                    const auto  Index   = pOffset->m_Offset + Ref.m_LocalIndex.m_Value * pOffset->m_Size;
+                    std::byte*  p       = &reinterpret_cast<std::byte*>(m_lPages[Ref.m_PageIndex.m_Value])[Index];
+                    return p;
+                }
+
+                return nullptr;
             }
 
             entity::tmp_ref CreateEntity( entity::guid Guid )
@@ -404,20 +482,20 @@ namespace mecs
                 return { this, local_index{RelativeIndex}, page_index{PageIndex} };
             }
 
-            using page_list = std::array<page*, 1024*8>;
+            using page_list = std::array<page*, 1024*32>;
 
-            page_mgr&                                       m_PageMgr;
-            std::uint32_t                                   m_NewCount      { 0 };
-            std::uint32_t                                   m_Count         { 0 };
-            std::atomic<std::uint32_t>                      m_nPages        { 0 };
-            page_list                                       m_lPages        {};
-            const std::array<type_guid, 64>                 m_lComponentTypeGuids;
-            const std::array<type_guid, 64>                 m_lTagGuids;
-            const std::array<component::descriptor*, 64>    m_lDescriptors;
-            const std::array<details::offsets, 64>          m_lComponentOffsets;
-            const std::uint16_t                             m_nComponentTypeGuids;
-            const std::uint16_t                             m_nTagGuids;
-            const std::uint16_t                             m_EntriesPerPage;
+            page_mgr&                                                                   m_PageMgr;
+            std::atomic<std::uint32_t>                                                  m_NewCount      { 0 };
+            std::uint32_t                                                               m_Count         { 0 };
+            std::atomic<std::uint32_t>                                                  m_nPages        { 0 };
+            page_list                                                                   m_lPages        {};
+            const std::uint16_t                                                         m_EntriesPerPage;
+            const std::uint16_t                                                         m_nComponents;
+            const std::uint16_t                                                         m_nTagGuids;
+            const std::array<type_guid, max_ingroup_components_v>                       m_lComponentTypeGuids;
+            const std::array<type_guid, max_ingroup_components_v>                       m_lTagGuids;
+            const std::array<const component::descriptor*, max_ingroup_components_v>    m_lDescriptors;
+            const std::array<details::offsets, max_ingroup_components_v>                m_lComponentOffsets;
         };
 
         /*
@@ -569,209 +647,6 @@ namespace mecs
         */
 
         //---------------------------------------------------------------------------------
-        // WORLD
-        //---------------------------------------------------------------------------------
-        namespace world
-        {
-            namespace details
-            {
-                struct component_desc
-                {
-                    using fn_construct = void(void*);
-                    using fn_destruct = void(void*);
-
-                    type_guid       m_Guid;
-                    fn_construct& m_Construct;
-                    fn_destruct& m_Destruct;
-                    std::uint16_t   m_Size;
-                    bool            m_isDoubleBuffer;
-                };
-
-                struct entity_dec
-                {
-                    std::atomic<entity::guid>                       m_Guid{ 0 };
-                    entity::tmp_ref                                 m_EntityRef{ nullptr, group::local_index{0u}, group::page_index{0u} };
-                };
-
-                struct group_dec
-                {
-                    std::atomic<group::guid>                        m_Guid{ 0 };
-                    std::atomic<group::instance*>                   m_pGroup{nullptr};
-                };
-
-                struct component_dec
-                {
-                    std::atomic<type_guid>                          m_Guid{ 0 };
-                    const component::descriptor*                    m_pDescriptor{nullptr};
-                };
-
-                template< typename T, std::size_t T_MAXSIZE_V > 
-                struct map
-                {
-                    constexpr static auto max_size_v = T_MAXSIZE_V;
-
-                    template< typename T_GUID >
-                    T& append(T_GUID Guid) noexcept
-                    {
-                        for (auto Index = Guid.m_Value % max_size_v; true; ++Index)
-                        {
-                            auto&   Entry = m_Map[Index];
-                            auto    Local = Entry.m_Guid.load(std::memory_order_relaxed);
-
-                            if (Local.isValid()) continue;
-
-                            if (Entry.m_Guid.compare_exchange_weak(Local, Guid))
-                            {
-                                return Entry;
-                            }
-                            else
-                            {
-                                // Lets try again
-                                Index--;
-                            }
-                        }
-
-                        xassert(false);
-                    }
-
-                    template< typename T_GUID, typename T_WAIT_LAMBDA >
-                    T& appendOrGet(T_GUID Guid, T_WAIT_LAMBDA&& WaitLambda) noexcept
-                    {
-                        for (auto Index = Guid.m_Value % max_size_v; true; ++Index)
-                        {
-                            auto& Entry = m_Map[Index];
-                            auto  Local = Entry.m_Guid.load(std::memory_order_relaxed);
-
-                            if (Local == Guid)
-                            {
-                                WaitLambda(Entry);
-                                return Entry;
-                            }
-
-                            if ( Local.isValid() ) continue;
-
-                            if (Entry.m_Guid.compare_exchange_weak(Local, Guid))
-                            {
-                                return Entry;
-                            }
-                            else
-                            {
-                                // Lets try again
-                                Index--;
-                            }
-                        }
-                        xassert(false);
-                    }
-
-                    template< typename T_GUID >
-                    T* find(T_GUID Guid) noexcept
-                    {
-                        for (auto Index = Guid.m_Value % max_size_v; true; ++Index)
-                        {
-                            auto&   Entry = m_Map[Index];
-                            auto    Local = Entry.m_Guid.load(std::memory_order_relaxed);
-                            if (Local == Guid) return &Entry;
-                            if (Local.isValid() == false) return nullptr;;
-                        }
-
-                        xassert(false);
-                    }
-
-                    template< typename T_GUID >
-                    T& get(T_GUID Guid) noexcept
-                    {
-                        return *find(Guid);
-                    }
-
-                    xcore::unique_span<T> m_Map{ T_MAXSIZE_V };
-                };
-            }
-
-            //---------------------------------------------------------------------------------
-            // WORLD::instance
-            //---------------------------------------------------------------------------------
-            struct instance
-            {
-                entity::tmp_ref createEntity( group::instance& Group, entity::guid EntityGuid )
-                {
-                    auto  EntityRef = Group.CreateEntity(EntityGuid);
-                    auto& Entry     = m_mapEntity.append(EntityGuid);
-
-                    Entry.m_EntityRef.m_LocalIndex      = EntityRef.m_LocalIndex;
-                    Entry.m_EntityRef.m_PageIndex       = EntityRef.m_PageIndex;
-                    Entry.m_EntityRef.m_pGroupInstance  = EntityRef.m_pGroupInstance;
-                    return EntityRef;
-                }
-
-                group::instance& getOrCreateGroup( const std::span<const type_guid>    ComponentTypesGuids
-                                                 , const std::span<const type_guid>    TagTypesGuids )
-                {
-                    const auto          ComponentGroupGuid  = [&] {std::uint64_t Key = 0; for (auto E : ComponentTypesGuids) Key += E; return Key; }();
-                    const auto          TagGroupGuid        = [&] {std::uint64_t Key = 0; for (auto E : TagTypesGuids)       Key += E; return Key; }();
-                    const auto          GroupGuid           = group::guid{ ComponentGroupGuid + TagGroupGuid };
-
-                    //
-                    // Create a new group if we need to
-                    //
-                    if( auto pGroupDesc = m_mapGroup.find(GroupGuid); pGroupDesc == nullptr )
-                    {
-                        pGroupDesc = &m_mapGroup.appendOrGet(GroupGuid, [&](const details::group_dec& Entry)
-                        { 
-                            while( Entry.m_upGroup.load(std::memory_order_relaxed).get() == nullptr )
-                            {
-                                // Spin lock
-                            };
-                        });
-
-                        xcore::array<const component::descriptor*, 128> m_lComponetDesc;
-                        for( int i=0; i< ComponentTypesGuids.size(); ++i )
-                            m_lComponetDesc[i] = m_mapComponentDescriptor.get(ComponentTypesGuids[i]).m_pDescriptor;
-                        
-                        std::sort(  m_lComponetDesc.begin()
-                                ,   m_lComponetDesc.begin() + ComponentTypesGuids.size()
-                                ,   [](const component::descriptor* pA, const component::descriptor* pB) { return pA->m_Guid.m_Value < pA->m_Guid.m_Value;} 
-                        );
-
-                        pGroupDesc->m_pGroup = new group::instance{ *this, m_lComponetDesc.ViewTo(ComponentTypesGuids.size()), TagTypesGuids };
-                        
-                        return *pGroupDesc->m_upGroup;
-                    }
-                    else
-                    {
-                        return *pGroupDesc->m_upGroup;
-                    }
-                }
-
-                entity::tmp_ref createEntity(group::guid GroupGuid, entity::guid EntityGuid)
-                {
-                    return createEntity(m_mapGroup.get(GroupGuid), EntityGuid);
-                }
-
-                template< typename T_COMPONENT >
-                void registerComponent(void) noexcept
-                {
-                    constexpr static component::descriptor component_v
-                    {
-                            T_COMPONENT::type_guid_v
-                        ,   [](void* p) { new(p) T_COMPONENT{}; }
-                        ,   [](void* p) { std::destroy_at( reinterpret_cast<T_COMPONENT*>(p) ); }
-                            // //property::table&  m_PropertyTable;
-                        ,   static_cast<std::uint16_t>(sizeof(T_COMPONENT))
-                        ,   static_cast<std::uint16_t>(std::alignment_of_v<T_COMPONENT>)
-                    };
-
-                    m_mapComponentDescriptor.append(T_COMPONENT::type_guid_v).m_pDescriptor = &component_v;
-                }
-
-                constexpr static std::size_t                            max_entity_count_v = xcore::bits::RoundToNextPowOfTwo(100000000ull);
-
-                details::map<details::entity_dec, max_entity_count_v>   m_mapEntity                 {};
-                details::map<details::group_dec, 1024>                  m_mapGroup                  {};
-                details::map<details::component_dec, 256>               m_mapComponentDescriptor    {};
-            };
-        }
-
-        //---------------------------------------------------------------------------------
         // GROUP::ITERATOR FUNCTIONS
         //---------------------------------------------------------------------------------
         inline
@@ -795,7 +670,257 @@ namespace mecs
             return !(l == m_PageIndex.m_Value
                 && (m_pGroupInstance->m_Count - l * m_pGroupInstance->m_EntriesPerPage) == m_LocalIndex.m_Value);
         }
+    }
 
+    //---------------------------------------------------------------------------------
+    // WORLD
+    //---------------------------------------------------------------------------------
+    namespace world
+    {
+        namespace details
+        {
+            struct component_desc
+            {
+                using fn_construct = void(void*);
+                using fn_destruct = void(void*);
+
+                type_guid       m_Guid;
+                fn_construct& m_Construct;
+                fn_destruct& m_Destruct;
+                std::uint16_t   m_Size;
+                bool            m_isDoubleBuffer;
+            };
+
+            struct entity_dec
+            {
+                std::atomic<entity::guid>                       m_Guid{ 0 };
+                entity::tmp_ref                                 m_EntityRef{ nullptr, group::local_index{0u}, group::page_index{0u} };
+            };
+
+            struct group_dec
+            {
+                std::atomic<group::guid>                        m_Guid{ 0 };
+                std::atomic<group::instance*>                   m_pGroup{nullptr};
+            };
+
+            struct component_dec
+            {
+                std::atomic<type_guid>                          m_Guid{ 0 };
+                const component::descriptor*                    m_pDescriptor{nullptr};
+            };
+
+            template< typename T, std::size_t T_MAXSIZE_V > 
+            struct map
+            {
+                constexpr static auto max_size_v = T_MAXSIZE_V;
+
+                template< typename T_GUID >
+                T& append(const T_GUID Guid) noexcept
+                {
+                    assert(Guid.isValid());
+                    auto Index = Guid.m_Value % max_size_v;
+                    do 
+                    {
+                        auto Local = m_Map[Index].m_Guid.load(std::memory_order_relaxed);
+                        while( Local.m_Value == 0 )
+                            if( auto& Entry = m_Map[Index]; Entry.m_Guid.compare_exchange_weak(Local, Guid) )
+                                return Entry;
+                        Index = (Index+1) % max_size_v;
+                    } while(true);
+
+                    xassert(false);
+                }
+
+                template< typename T_GUID, typename T_WAIT_LAMBDA >
+                T& appendOrGet(T_GUID Guid, T_WAIT_LAMBDA&& WaitLambda) noexcept
+                {
+                    assert(Guid.isValid());
+                    auto Index = Guid.m_Value % max_size_v;
+                    do 
+                    {
+                        auto Local = m_Map[Index].m_Guid.load(std::memory_order_relaxed);
+                        if (Local == Guid)
+                        {
+                            auto& Entry = m_Map[Index];
+                            WaitLambda(Entry);
+                            return Entry;
+                        }
+                        else while( Local.m_Value == 0 )
+                            if( auto& Entry = m_Map[Index]; Entry.m_Guid.compare_exchange_weak(Local, Guid) )
+                                return Entry;
+                        Index = (Index+1) % max_size_v;
+                    } while(true);
+
+                    xassert(false);
+                }
+
+                template< typename T_GUID >
+                T* find(T_GUID Guid) noexcept
+                {
+                    assert(Guid.isValid());
+                    auto Index = Guid.m_Value % max_size_v;
+                    do 
+                    {
+                        auto Local = m_Map[Index].m_Guid.load(std::memory_order_relaxed);
+                        if (Local == Guid)
+                        {
+                            auto& Entry = m_Map[Index];
+                            return &Entry;
+                        }
+                        if( Local.m_Value == 0 ) return nullptr;
+                        Index = (Index+1) % max_size_v;
+                    } while(true);
+
+                    xassert(false);
+                }
+
+                template< typename T_GUID >
+                T& get(T_GUID Guid) noexcept
+                {
+                    return *find(Guid);
+                }
+
+                xcore::unique_span<T> m_Map{ T_MAXSIZE_V };
+            };
+        }
+
+        //---------------------------------------------------------------------------------
+        // WORLD::instance
+        //---------------------------------------------------------------------------------
+        struct instance
+        {
+            instance()
+            {
+                registerComponent<entity::instance>();
+            }
+
+            inline
+            entity::tmp_ref createEntity( group::instance& Group, entity::guid EntityGuid ) noexcept
+            {
+                auto  EntityRef = Group.CreateEntity(EntityGuid);
+                auto& Entry     = m_mapEntity.append(EntityGuid);
+
+                Entry.m_EntityRef.m_LocalIndex      = EntityRef.m_LocalIndex;
+                Entry.m_EntityRef.m_PageIndex       = EntityRef.m_PageIndex;
+                Entry.m_EntityRef.m_pGroupInstance  = EntityRef.m_pGroupInstance;
+                return EntityRef;
+            }
+
+            group::instance& getOrCreateGroup( const std::span<const type_guid>    ComponentTypesGuids
+                                             , const std::span<const type_guid>    TagTypesGuids ) noexcept
+            {
+                const auto          ComponentGroupGuid  = [&] {std::uint64_t Key = 0; for (auto E : ComponentTypesGuids) Key += E.m_Value; return Key; }();
+                const auto          TagGroupGuid        = [&] {std::uint64_t Key = 0; for (auto E : TagTypesGuids)       Key += E.m_Value; return Key; }();
+                const auto          GroupGuid           = group::guid{ ComponentGroupGuid + TagGroupGuid };
+
+                //
+                // Create a new group if we need to
+                //
+                if( auto pGroupDesc = m_mapGroup.find(GroupGuid); pGroupDesc == nullptr )
+                {
+                    pGroupDesc = &m_mapGroup.appendOrGet(GroupGuid, [&](const details::group_dec& Entry)
+                    { 
+                        while( Entry.m_pGroup.load(std::memory_order_relaxed) == nullptr )
+                        {
+                            // Spin lock
+                        };
+                    });
+
+                    xcore::array<const component::descriptor*, group::max_ingroup_components_v> lComponetDesc;
+                    for( int i=0; i< ComponentTypesGuids.size(); ++i )
+                    {
+                        xassert(ComponentTypesGuids[i].m_Value);
+                        lComponetDesc[i+1] = m_mapComponentDescriptor.get(ComponentTypesGuids[i]).m_pDescriptor;
+                    }
+
+                    // Add always the entity
+                    lComponetDesc[0] = m_mapComponentDescriptor.get(entity::instance::type_guid_v).m_pDescriptor;
+                    const auto nComponents = 1 + ComponentTypesGuids.size();
+
+                    std::sort(  lComponetDesc.begin()
+                            ,   lComponetDesc.begin() + nComponents
+                            ,   [](const component::descriptor* pA, const component::descriptor* pB) { return pA->m_Guid.m_Value < pA->m_Guid.m_Value;} 
+                    );
+
+                    auto pGroupInstance = new group::instance
+                    { 
+                            m_PageMgr
+                        , lComponetDesc.ViewTo(nComponents)
+                        , TagTypesGuids 
+                    };
+
+                    pGroupDesc->m_pGroup.store( pGroupInstance, std::memory_order_relaxed );
+                        
+                    return *pGroupInstance;
+                }
+                else
+                {
+                    return *pGroupDesc->m_pGroup.load(std::memory_order_relaxed);
+                }
+            }
+
+            template< typename...T_COMPONENTS_AND_TAGS >
+            inline group::instance& getOrCreateGroup( void ) noexcept
+            {
+                constexpr static auto ComponentGuid = group::details::MakeArrayTypeGuids
+                ( reinterpret_cast
+                    <
+                        xcore::types::tuple_sort_t
+                        < 
+                            group::details::compare, xcore::types::tuple_cat_t
+                            < 
+                                decltype(group::details::FilterOutTagsExtendDoubleBuffer<T_COMPONENTS_AND_TAGS>())...
+                            >
+                        >*
+                    >(nullptr)
+                );
+
+                constexpr static auto TagsGuid = group::details::MakeArrayTypeGuids
+                ( reinterpret_cast
+                    <
+                        xcore::types::tuple_sort_t
+                        < 
+                            group::details::compare, xcore::types::tuple_cat_t
+                            <
+                                decltype(group::details::FilterOutComponents<T_COMPONENTS_AND_TAGS>())...
+                            >
+                        >*
+                    >(nullptr)
+                );
+
+                return getOrCreateGroup(ComponentGuid,TagsGuid);
+            }
+
+            
+            inline entity::tmp_ref createEntity(group::guid GroupGuid, entity::guid EntityGuid) noexcept
+            {
+                return createEntity( *m_mapGroup.get(GroupGuid).m_pGroup.load(std::memory_order_relaxed), EntityGuid);
+            }
+
+            template< typename T_COMPONENT >
+            inline void registerComponent(void) noexcept
+            {
+                constexpr static component::descriptor component_descriptor_v
+                {
+                        T_COMPONENT::type_guid_v
+                    ,   [](void* p) noexcept { new(p) T_COMPONENT{}; }
+                    ,   [](void* p) noexcept { std::destroy_at( reinterpret_cast<T_COMPONENT*>(p) ); }
+                        // //property::table&  m_PropertyTable;
+                    ,   static_cast<std::uint16_t>(sizeof(T_COMPONENT))
+                    ,   static_cast<std::uint16_t>(std::alignment_of_v<T_COMPONENT>)
+                    ,   std::is_base_of_v<mecs::component::double_buffer_tag, T_COMPONENT>
+                };
+
+                m_mapComponentDescriptor.append(T_COMPONENT::type_guid_v).m_pDescriptor = &component_descriptor_v;
+            }
+
+            constexpr static std::size_t                            max_entity_count_v = xcore::bits::RoundToNextPowOfTwo(10000000ull);
+
+            group::page_mgr                                         m_PageMgr                   {};
+            details::map<details::entity_dec, max_entity_count_v>   m_mapEntity                 {};
+            details::map<details::group_dec, 1024>                  m_mapGroup                  {};
+            details::map<details::component_dec, 256>               m_mapComponentDescriptor    {};
+        };
     }
 
     //------------------------------------------------------------------------------------
@@ -806,7 +931,7 @@ namespace mecs
         template< typename T >
         T& tmp_ref::getComponent(type_guid TypeGuid) noexcept
         {
-            return *reinterpret_cast<T*>(m_pGroupInstance->getComponent(*this,TypeGuid));
+            return *reinterpret_cast<T*>(m_pGroupInstance->getComponent(*this, TypeGuid));
         }
 
         template< typename T >
@@ -840,17 +965,20 @@ namespace mecs
 
         void Test()
         {
-            group::page_mgr PageMgr;
-            auto upGroup = group::MakeInstance<simple,double_buff,my_tag>(PageMgr);
+            mecs::world::instance World;
+            World.registerComponent<simple>();
+            World.registerComponent<double_buff>();
+            World.registerComponent<my_tag>();
+            auto& Group = World.getOrCreateGroup<simple,double_buff,my_tag>();
 
             xcore::scheduler::channel MyChannel(xconst_universal_str("Test"));
-
+            
             for(int i=0; i<xcore::get().m_Scheduler.getWorkerCount(); i++)
                 MyChannel.SubmitJob([&]
                 {
-                    while (upGroup->newSize() < 10000000)
+                    while (Group.newSize() < 10000000)
                     {
-                        auto    tmpEntityRef = upGroup->appendEntity();
+                        auto    tmpEntityRef = World.createEntity( Group, entity::guid{xcore::not_null} );
                         auto&   Entity = tmpEntityRef.getComponent<entity::instance>();
                         auto&   Simple = tmpEntityRef.getComponent<simple>();
                         auto&   Double = tmpEntityRef.getComponent<double_buff>();

@@ -1188,6 +1188,7 @@ namespace ecs
         }
     }
 }
+
 property_begin_name(ecs::entity::instance, "Entity")
 {}
 property_end()

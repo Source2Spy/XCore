@@ -3,7 +3,7 @@
 
 #ifndef _XCORE_DEBUG
     #undef xassert
-    #define xassert(A) [&]{ if(!(A)){ __debugbreak(); } }()
+    #define xassert(A) [&]{ if(false == (A)){ __debugbreak(); } }()
 #endif
 
 #include "xcore_error_examples.h"
@@ -52,7 +52,7 @@ namespace xcore::examples
         }
 
         // wip
-        if (0)
+        if (1)
         {
             // xcore::serializer::examples::Test();
             mecs::test::Test();
