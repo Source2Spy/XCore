@@ -28,6 +28,7 @@
 
 #ifdef _MSC_VER 
     #include <malloc.h>         // align_alloc
+    #include <intrin.h>
 #else
     #include <cstdlib>
 #endif

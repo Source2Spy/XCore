@@ -223,6 +223,72 @@ namespace xcore::bits
         static_assert( std::is_integral<T>::value,"" );
         return static_cast<T>(details::murmurHash3_by_size<sizeof(T)>::Compute( static_cast< typename xcore::type::template to_uint_t<T> >(h) ));
     }
+
+    //------------------------------------------------------------------------------
+    // Scans from Least significant bit to most until it finds a bit turn on and returns that position
+    //------------------------------------------------------------------------------
+#if _XCORE_COMPILER_VISUAL_STUDIO
+    #pragma intrinsic(_BitScanForward)
+    inline
+    std::uint32_t ctz32( std::uint32_t value ) noexcept
+    {
+        unsigned long leading_zero = 0;
+
+        if ( _BitScanForward( &leading_zero, value ) )
+        {
+            return leading_zero;
+        }
+        else
+        {
+            // undefine....
+            return 32;
+        }
+    }
+    inline
+    std::uint32_t ctz64( std::uint64_t value ) noexcept
+    {
+        unsigned long leading_zero = 0;
+
+        if ( _BitScanForward64( &leading_zero, value ) )
+        {
+            return leading_zero;
+        }
+        else
+        {
+            // undefine....
+            return 64;
+        }
+    }
+#else
+    constexpr
+    std::uint32_t popcnt32( uint32_t x ) noexcept
+    {
+        x -= ((x >> 1) & 0x55555555);
+        x = (((x >> 2) & 0x33333333) + (x & 0x33333333));
+        x = (((x >> 4) + x) & 0x0f0f0f0f);
+        x += (x >> 8);
+        x += (x >> 16);
+        return x & 0x0000003f;
+    }
+
+    constexpr
+    std::uint32_t clz32( uint32_t x ) noexcept
+    {
+        x |= (x >> 1);
+        x |= (x >> 2);
+        x |= (x >> 4);
+        x |= (x >> 8);
+        x |= (x >> 16);
+        return 32 - popcnt32(x);
+    }
+
+    constexpr
+    std::uint32_t ctz32( std::uint32_t x ) noexcept
+    {
+        return popcnt32((x & -x) - 1);
+    }
+#endif
+
 }
 
 #endif

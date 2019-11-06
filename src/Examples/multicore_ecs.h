@@ -31,6 +31,7 @@ namespace mecs
             const std::uint16_t     m_Size;
             const std::uint16_t     m_Aligment;
             const bool              m_isDoubleBuffer;
+            mutable int             m_BitNumber;
         };
     }
 
@@ -80,6 +81,80 @@ namespace mecs
     }
 
     //---------------------------------------------------------------------------------
+    // QUERY
+    //---------------------------------------------------------------------------------
+    namespace query
+    {
+        struct filter_bits
+        {
+            std::array<std::uint64_t,2> m_Bits;
+
+            constexpr filter_bits()=default;
+            constexpr filter_bits(std::nullptr_t)    noexcept : m_Bits{ 0ull, 0ull}{}
+            constexpr filter_bits(xcore::not_null_t) noexcept : m_Bits{~0ull,~0ull}{}
+
+            constexpr int AllocBit( void ) noexcept
+            {
+                for( auto& E : m_Bits ) 
+                {
+                    const auto Index = xcore::bits::ctz64(E);
+                    if(Index != 64 )
+                    {
+                        E &= ~(1ull<<Index);
+                        return Index;
+                    }
+                }
+
+                xassert(false);
+                return -1;
+            }
+
+            inline void AddBit( int Index ) noexcept
+            {
+                m_Bits[Index/64] |= (1ull<<(Index%64));
+            }
+
+            inline void Add( filter_bits Bits ) noexcept
+            {
+                for( int i=0; i<m_Bits.size(); ++i ) m_Bits[i] |= Bits.m_Bits[i];
+            }
+
+            constexpr bool Query( filter_bits All, filter_bits Any, filter_bits None ) const noexcept
+            {
+                bool bAny = false;
+                for( int i=0; i<m_Bits.size(); ++i )
+                { 
+                    const auto B = m_Bits[i];
+                    if( None.m_Bits[i] & B ) return false;
+                    if( const auto A = All.m_Bits[i]; (A&B) != A ) return false;
+                    if( const auto A = Any.m_Bits[i]; (A&B) ) bAny = true;
+                }
+                return bAny;
+            }
+        };
+
+        template< typename...T_COMPONENTS_AND_TAGS >
+        struct all
+        {
+        };
+
+        template< typename...T_COMPONENTS_AND_TAGS >
+        struct none
+        {
+        };
+
+        struct instance
+        {
+            template< typename...T_ARGS >
+            instance( T_ARGS... Args );
+
+            filter_bits m_All;
+            filter_bits m_Any;
+            filter_bits m_None;
+        };
+    }
+
+    //---------------------------------------------------------------------------------
     // GROUP
     //---------------------------------------------------------------------------------
     namespace group
@@ -93,99 +168,6 @@ namespace mecs
         //---------------------------------------------------------------------------------
         namespace details
         {
-            /*
-            template< typename T_COMPONENTS, typename T_TAGS >
-            struct page_info;
-
-            template< typename...T_COMPONENTS >
-            struct page_info_components
-            {
-                using                   ptr_tuple_t         = std::tuple< T_COMPONENTS *... >;
-                using                   ptr_list_t          = std::array<std::byte*,    sizeof...(T_COMPONENTS)>;
-                using                   offset_list_t       = std::array<std::uint32_t, sizeof...(T_COMPONENTS)>;
-                using                   data_aligment_as_t  = mecs::group::page;
-                constexpr static auto   raw_data_size_v     = static_cast<std::uint32_t>(sizeof(mecs::group::page));
-                constexpr static auto   aligments_v         = offset_list_t{ static_cast<std::uint32_t>(std::alignment_of_v<T_COMPONENTS>) ... };
-                constexpr static auto   sizes_v             = offset_list_t{ static_cast<std::uint32_t>(sizeof(T_COMPONENTS)) ... };
-                constexpr static auto   entry_count_v       = []() constexpr
-                {
-                    const std::uint32_t     SizeOfOne           = (static_cast<std::uint32_t>(sizeof(T_COMPONENTS)) + ...);
-                    const std::uint32_t     OriginalAddress     = sizeof(data_aligment_as_t);
-                    std::uint32_t           WastedToAligment    = 0;
-                    std::uint32_t           p                   = OriginalAddress;
-
-                    for (int i = 0; i < aligments_v.size(); i++)
-                    {
-                        WastedToAligment += xcore::bits::Align(p, aligments_v[i]) - p;
-                        p                += sizes_v[i];
-                    }
-
-                    return (raw_data_size_v - WastedToAligment) / SizeOfOne;
-                }();
-                constexpr static auto   offset_list_v = []() constexpr
-                {
-                    const std::uint32_t     OriginalAddress     = sizeof(data_aligment_as_t);
-                    std::uint32_t           p                   = OriginalAddress;
-                    offset_list_t           FinalOffsets{};
-
-                    for (int i = 0; i < aligments_v.size(); i++)
-                    {
-                        FinalOffsets[i] = xcore::bits::Align( p, aligments_v[i] ) - OriginalAddress;
-                        p              += entry_count_v * sizes_v[i];
-                    }
-                    assert((p - OriginalAddress) <= raw_data_size_v);
-                    return FinalOffsets;
-                }();
-
-                constexpr static auto  is_double_buffer_v = std::array
-                { (std::is_base_of_v<T_COMPONENTS, mecs::component::double_buffer_tag> ? std::uint8_t{0x0} : std::uint8_t{0xff}) ... };
-
-                constexpr static auto  type_guid_v = std::array
-                { T_COMPONENTS::type_guid_v ... };
-
-                constexpr static void Construct(page* pPage, std::uint32_t Index) noexcept
-                {
-                    (
-                        new( &pPage->m_RawData
-                            [
-                                offset_list_v[xcore::types::tuple_t2i_v<T_COMPONENTS*, ptr_tuple_t>]
-                                + Index * sizeof(T_COMPONENTS)
-                            ]
-                        ) T_COMPONENTS,
-                        ... 
-                    );
-                }
-
-                constexpr static void Destruct(page* pPage, std::uint32_t Index) noexcept
-                {
-                    (
-                        std::destroy_at
-                        (
-                            reinterpret_cast<T_COMPONENTS*>(&pPage->m_RawData
-                            [
-                                offset_list_v[xcore::types::tuple_t2i_v<T_COMPONENTS*, ptr_tuple_t>]
-                                + Index * sizeof(T_COMPONENTS)
-                            ])
-                        ),
-                        ...
-                    );
-                }
-            };
-
-            template< typename...T_TAGS >
-            struct page_info_tags
-            {
-
-            };
-
-            template< typename...T_COMPONENTS, typename...T_TAGS >
-            struct page_info< std::tuple<T_COMPONENTS...>, std::tuple<T_TAGS...> > 
-                : page_info_components<T_COMPONENTS...>
-                , page_info_tags<T_TAGS...>
-            {};
-
-            */
-
             //---------------------------------------------------------------------------------
 
             template< typename...T_COMPONENTS >
@@ -218,7 +200,6 @@ namespace mecs
                 && true  == std::is_base_of_v<mecs::component::tag,                 T_COMPONENT>
                 , std::tuple<>
             > FilterOutTagsExtendDoubleBuffer();
-
 
             template< typename T_COMPONENT >
             std::enable_if_t
@@ -519,36 +500,6 @@ namespace mecs
     }
 
     //---------------------------------------------------------------------------------
-    // QUERY
-    //---------------------------------------------------------------------------------
-    namespace query
-    {
-        template< typename...T_COMPONENTS_AND_TAGS >
-        struct all
-        {
-        };
-
-        template< typename...T_COMPONENTS_AND_TAGS >
-        struct none
-        {
-        };
-
-        namespace details
-        {
-            struct selected_group
-            {
-                group::instance*                                        m_pGroup;
-                std::array< std::uint8_t, group::max_ingroup_components_v >    m_Map;
-            };
-        };
-
-        struct instance
-        {
-            //std::array< std::uint8_t, max_ingroup_components_v >    m_Map;
-        };
-    }
-
-    //---------------------------------------------------------------------------------
     // WORLD
     //---------------------------------------------------------------------------------
     namespace world
@@ -583,6 +534,12 @@ namespace mecs
             {
                 std::atomic<type_guid>                          m_Guid{ 0 };
                 const component::descriptor*                    m_pDescriptor{nullptr};
+            };
+
+            struct query_table_entry
+            {
+                query::filter_bits                              m_Bits;
+                const group::instance*                          m_pGroup{nullptr};
             };
 
             template< typename T, std::size_t T_MAXSIZE_V > 
@@ -667,7 +624,7 @@ namespace mecs
         {
             instance()
             {
-                registerComponent<entity::instance>();
+                registerComponents<entity::instance,group::details::default_tag>();
             }
 
             inline
@@ -702,15 +659,30 @@ namespace mecs
                         };
                     });
 
-                    bool    bAddEntityComponent = false;
-                    auto    nComponents         = ComponentTypesGuids.size();
+                    bool                bAddEntityComponent = true;
+                    auto                nComponents         = ComponentTypesGuids.size();
+                    query::filter_bits  Bits                {nullptr};
+ 
                     xcore::array<const component::descriptor*, group::max_ingroup_components_v> lComponetDesc;
                     for( int i=0; i<nComponents; ++i )
                     {
                         auto& C = ComponentTypesGuids[i];
                         xassert(C.m_Value);
+
+                        // Collect all the component descriptors
                         lComponetDesc[i] = m_mapComponentDescriptor.get(C).m_pDescriptor;
-                        if( C == entity::instance::type_guid_v) bAddEntityComponent = true;
+
+                        // Make sure we set all the bits for the query
+                        Bits.AddBit(lComponetDesc[i]->m_BitNumber);
+
+                        // Did we found the entity in the list if so we dont need to add it
+                        if( C == entity::instance::type_guid_v) bAddEntityComponent = false;
+                    }
+
+                    // Add the bits for the tags as well
+                    for(auto E : TagTypesGuids)
+                    {
+                        Bits.AddBit(m_mapComponentDescriptor.get(E).m_pDescriptor->m_BitNumber);
                     }
 
                     // the entity if we have to
@@ -730,6 +702,12 @@ namespace mecs
                         , TagTypesGuids 
                     };
 
+                    // Add new entry into the query table
+                    auto& QueryEntry    = m_lQueryTable[m_nQueryTables++];
+                    QueryEntry.m_Bits   = Bits;
+                    QueryEntry.m_pGroup = pGroupInstance;
+                    
+                    // Officially release the lock/set the group
                     pGroupDesc->m_pGroup.store( pGroupInstance, std::memory_order_relaxed );
                         
                     return *pGroupInstance;
@@ -792,23 +770,29 @@ namespace mecs
                     ,   static_cast<std::uint16_t>(sizeof(T_COMPONENT))
                     ,   static_cast<std::uint16_t>(std::alignment_of_v<T_COMPONENT>)
                     ,   std::is_base_of_v<mecs::component::double_buffer, T_COMPONENT>
+                    ,   -1
                 };
 
+                component_descriptor_v.m_BitNumber = m_RegistrationFreeBits.AllocBit();
                 m_mapComponentDescriptor.append(T_COMPONENT::type_guid_v).m_pDescriptor = &component_descriptor_v;
             }
  
-            template< typename...T_COMPONENTS >
+            template< typename...T_COMPONENTS_AND_TAGS >
             inline void registerComponents(void) noexcept
             {
-                (registerComponent<T_COMPONENTS>(), ... );
+                (registerComponent<T_COMPONENTS_AND_TAGS>(), ... );
             }
  
-            constexpr static std::size_t                            max_entity_count_v = xcore::bits::RoundToNextPowOfTwo(10000000ull);
+            constexpr static std::size_t                                max_entity_count_v = xcore::bits::RoundToNextPowOfTwo(10000000ull);
+            constexpr static std::size_t                                max_groups_count_v = 1024;
 
-            group::page_mgr                                         m_PageMgr                   {};
-            details::map<details::entity_dec, max_entity_count_v>   m_mapEntity                 {};
-            details::map<details::group_dec, 1024>                  m_mapGroup                  {};
-            details::map<details::component_dec, 256>               m_mapComponentDescriptor    {};
+            std::uint32_t                                               m_nQueryTables              {0};
+            group::page_mgr                                             m_PageMgr                   {};
+            details::map<details::entity_dec, max_entity_count_v>       m_mapEntity                 {};
+            details::map<details::group_dec, max_groups_count_v>        m_mapGroup                  {};
+            details::map<details::component_dec, 256>                   m_mapComponentDescriptor    {};
+            std::array<details::query_table_entry, max_groups_count_v>  m_lQueryTable               {};
+            query::filter_bits                                          m_RegistrationFreeBits      {xcore::not_null};
         };
     }
 
