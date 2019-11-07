@@ -553,12 +553,6 @@ namespace mecs
                 m_Definition.m_Triggers = xcore::scheduler::triggers::DONT_CLEAN_COUNT;
             }
 
-            virtual void qt_onDone( void ) noexcept
-            {
-                parent_t::qt_onDone();
-            }
-
-            //virtual void onEnterWorld( void ) {}
             virtual void qt_onRun( void ) noexcept override
             {
                 printf("System Working\n");
