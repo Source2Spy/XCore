@@ -136,21 +136,54 @@ namespace mecs
         template< typename...T_COMPONENTS_AND_TAGS >
         struct all
         {
+            constexpr static int type_v = 0;
+            constexpr static std::array list_v{ T_COMPONENTS_AND_TAGS::type_guid_v ... };
         };
 
         template< typename...T_COMPONENTS_AND_TAGS >
         struct none
         {
+            constexpr static int type_v = 1;
+            constexpr static std::array list_v{ T_COMPONENTS_AND_TAGS::type_guid_v ... };
+        };
+
+        template< typename...T_COMPONENTS_AND_TAGS >
+        struct any
+        {
+            constexpr static int type_v = 2;
+            constexpr static std::array list_v{ T_COMPONENTS_AND_TAGS::type_guid_v ... };
+        };
+
+        struct define_data
+        {
+            std::span<const type_guid>    m_All;            // Which components/tags we must have
+            std::span<const type_guid>    m_Any;            // Must have at least one component/tag from the set
+            std::span<const type_guid>    m_None;           // Which components/tags you must not have
+        };
+
+        template< typename...T_ARGS >
+        struct define : define_data
+        {
+            template< int I >
+            constexpr static void Initializer( define& This, std::span<const type_guid> X ) noexcept
+            {
+                     if constexpr ( I == 0 ) This.m_All  = X;
+                else if constexpr ( I == 1 ) This.m_Any  = X;
+                else if constexpr ( I == 2 ) This.m_None = X;
+            };
+
+            constexpr define( void ) noexcept
+            {
+                ( Initializer<T_ARGS::type_v>( *this, T_ARGS::list_v ), ... );
+            }
         };
 
         struct instance
         {
-            template< typename...T_ARGS >
-            instance( T_ARGS... Args );
-
-            filter_bits m_All;
-            filter_bits m_Any;
-            filter_bits m_None;
+            filter_bits     m_Write;
+            filter_bits     m_All;
+            filter_bits     m_Any;
+            filter_bits     m_None;
         };
     }
 
@@ -500,6 +533,79 @@ namespace mecs
     }
 
     //---------------------------------------------------------------------------------
+    // SYSTEM - System execute logic for components
+    //---------------------------------------------------------------------------------
+    namespace system
+    {
+        constexpr static std::size_t max_systems_v = 256;
+
+        struct instance : xcore::scheduler::job<4>
+        {
+            using parent_t = xcore::scheduler::job<4>;
+
+            instance(xcore::scheduler::definition Def) : parent_t{ Def}
+            {
+                m_Definition.m_Triggers = xcore::scheduler::triggers::DONT_CLEAN_COUNT;
+            }
+
+            instance(void) : parent_t()
+            {
+                m_Definition.m_Triggers = xcore::scheduler::triggers::DONT_CLEAN_COUNT;
+            }
+
+            virtual void qt_onDone( void ) noexcept
+            {
+                parent_t::qt_onDone();
+            }
+
+            //virtual void onEnterWorld( void ) {}
+            virtual void qt_onRun( void ) noexcept override
+            {
+                printf("System Working\n");
+            }
+        };
+    }
+
+    //---------------------------------------------------------------------------------
+    // SYNC_POINT - A sync point establish a moment in time where systems can be run. You can
+    //              also build complex graphs this way.
+    //---------------------------------------------------------------------------------
+    namespace sync_point
+    {
+        struct events
+        {
+            using done  = xcore::types::make_unique< xcore::event::type<>, struct done_tag >;
+            using start = xcore::types::make_unique< xcore::event::type<>, struct start_tag >;
+
+            start m_Start;
+            done  m_Done;
+        };
+
+        struct instance : xcore::scheduler::trigger<system::max_systems_v>
+        {
+            events  m_Events;
+            bool    m_bDisable = false;
+            int     m_FreethCount;
+
+            void FreezCount() noexcept
+            {
+                m_FreethCount = m_NotificationCounter.load();
+            }
+
+            virtual void qt_onTriggered ( void ) noexcept override
+            {
+                m_NotificationCounter = m_FreethCount;
+                m_Events.m_Done.NotifyAll();                
+                if(m_bDisable == false)
+                {
+                    m_Events.m_Start.NotifyAll();
+                    xcore::scheduler::trigger<system::max_systems_v>::qt_onTriggered();
+                }
+            }
+        };
+    }
+
+    //---------------------------------------------------------------------------------
     // WORLD
     //---------------------------------------------------------------------------------
     namespace world
@@ -512,8 +618,8 @@ namespace mecs
                 using fn_destruct = void(void*);
 
                 type_guid       m_Guid;
-                fn_construct& m_Construct;
-                fn_destruct& m_Destruct;
+                fn_construct&   m_Construct;
+                fn_destruct&    m_Destruct;
                 std::uint16_t   m_Size;
                 bool            m_isDoubleBuffer;
             };
@@ -620,11 +726,41 @@ namespace mecs
         //---------------------------------------------------------------------------------
         // WORLD::instance
         //---------------------------------------------------------------------------------
-        struct instance
+        struct instance : xcore::scheduler::job<1>
         {
+            sync_point::instance    m_StartSyncPoint;
+            sync_point::instance    m_EndSyncPoint;
+
+            void msgSyncPointDone()
+            {
+                auto& Scheduler = xcore::get().m_Scheduler;
+                Scheduler.MainThreadStopWorking();
+            }
+
+            const sync_point::events::done::delegate m_SyncPointDoneDelegate{ this, &instance::msgSyncPointDone, m_EndSyncPoint.m_Events.m_Done };
+
             instance()
             {
+                m_Definition.m_Triggers = xcore::scheduler::triggers::DONT_CLEAN_COUNT;
                 registerComponents<entity::instance,group::details::default_tag>();
+                m_EndSyncPoint.AddJobToBeTrigger(*this);
+                m_EndSyncPoint.FreezCount();
+                m_EndSyncPoint.m_bDisable = true;
+
+                m_StartSyncPoint.JobWillNotifyMe(*this);
+                m_StartSyncPoint.FreezCount();
+            }
+
+            virtual void qt_onRun( void ) noexcept override
+            {
+                printf("Hello world\n");
+            }
+
+            void Start( void )
+            {
+                auto& Scheduler = xcore::get().m_Scheduler;
+                Scheduler.AddJobToQuantumWorld(*this);
+                Scheduler.MainThreadStartsWorking();
             }
 
             inline
@@ -782,8 +918,28 @@ namespace mecs
             {
                 (registerComponent<T_COMPONENTS_AND_TAGS>(), ... );
             }
+
+            template< typename T_SYSTEM, typename...T_ARGS >
+            T_SYSTEM& AddGraphConnection(sync_point::instance& StartSynpoint, T_ARGS&&... EndSyncPoints) noexcept
+            {
+                static_assert(sizeof...(EndSyncPoints) > 0, "You must pass at least one end Sync_point");
+                static_assert(std::is_base_of_v<sync_point::instance, std::common_type_t<T_ARGS...>>, "All the end sync_points must be non const sync_points");
+            
+                auto pSystem = new T_SYSTEM{};
+
+                // Add all end triggers
+                ( EndSyncPoints.JobWillNotifyMe(*pSystem), ... );
+                ( EndSyncPoints.FreezCount(), ... );
+
+                // Set the start trigger
+                StartSynpoint.AddJobToBeTrigger(*pSystem);
+                StartSynpoint.FreezCount();
+
+                return *pSystem;
+            }
  
-            constexpr static std::size_t                                max_entity_count_v = xcore::bits::RoundToNextPowOfTwo(10000000ull);
+            constexpr static std::size_t                                max_entity_count_v = xcore::bits::RoundToNextPowOfTwo(10000000ull)
+                                                                        XCORE_CMD_ASSERT(  - xcore::bits::RoundToNextPowOfTwo( 8000000ull));
             constexpr static std::size_t                                max_groups_count_v = 1024;
 
             std::uint32_t                                               m_nQueryTables              {0};
@@ -836,6 +992,19 @@ namespace mecs
             constexpr static type_guid type_guid_v{ "my_tag" };
         };
 
+        struct my_system : system::instance
+        {
+            constexpr static query::define
+            <
+                query::all<simple>
+              , query::none<my_tag>
+            > query_v{};
+
+            void Update( simple& Simple )
+            {
+            }
+        };
+
         void Test()
         {
             mecs::world::instance World;
@@ -845,10 +1014,16 @@ namespace mecs
                 ,   double_buff
                 ,   my_tag
             >();
+
+            World.AddGraphConnection<my_system>(World.m_StartSyncPoint, World.m_EndSyncPoint );
+
+
             auto& Group = World.getOrCreateGroup<simple,double_buff,my_tag>();
 
             xcore::scheduler::channel MyChannel(xconst_universal_str("Test"));
             
+            World.Start();
+
             for(int i=0; i<xcore::get().m_Scheduler.getWorkerCount(); i++)
                 MyChannel.SubmitJob([&]
                 {

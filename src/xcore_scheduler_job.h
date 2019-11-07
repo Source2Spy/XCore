@@ -36,6 +36,13 @@ namespace xcore::scheduler
         ,   ABOVE_NORMAL
         ,   ENUM_COUNT
     };
+
+    enum class triggers : std::uint8_t
+    {
+            CLEAN_COUNT
+        ,   DONT_CLEAN_COUNT
+        ,   ENUM_COUNT
+    };
     
     union definition
     {
@@ -46,6 +53,7 @@ namespace xcore::scheduler
             jobtype     m_JobType  : bits::Log2IntRoundUp( static_cast<int>(jobtype::ENUM_COUNT) -1 );
             affinity    m_Affinity : bits::Log2IntRoundUp( static_cast<int>(affinity::ENUM_COUNT)-1 );
             priority    m_Priority : bits::Log2IntRoundUp( static_cast<int>(priority::ENUM_COUNT)-1 );
+            triggers    m_Triggers : bits::Log2IntRoundUp( static_cast<int>(triggers::ENUM_COUNT)-1 );
         };
 
         constexpr definition( void ) noexcept = default;
@@ -61,6 +69,7 @@ namespace xcore::scheduler
                 else if constexpr ( std::is_same_v<T,xcore::scheduler::jobtype>  )    D.m_JobType  = V;
                 else if constexpr ( std::is_same_v<T,xcore::scheduler::affinity> )    D.m_Affinity = V;
                 else if constexpr ( std::is_same_v<T,xcore::scheduler::priority> )    D.m_Priority = V;
+                else if constexpr ( std::is_same_v<T,xcore::scheduler::triggers> )    D.m_Triggers = V;
                 else static_assert( types::always_false_v<T>, "You pass a type that is not recognize!" );
             }, std::tuple{ std::forward<T_ARGS>(Args)... } );
             return D;
@@ -109,7 +118,7 @@ namespace xcore::scheduler
     #if _X_DEBUG
         x_debug_linear_quantum          m_Debug_LQ          {};
     #endif
-        definition                      m_Definition{ definition::Flags( lifetime::DONT_DELETE_WHEN_DONE, jobtype::NORMAL, affinity::NORMAL, priority::NORMAL ) };
+        definition                      m_Definition{ definition::Flags( lifetime::DONT_DELETE_WHEN_DONE, jobtype::NORMAL, affinity::NORMAL, priority::NORMAL, triggers::CLEAN_COUNT ) };
 
         XCORE_CMD_PROFILER( string::const_universal  m_JobName{} );
 

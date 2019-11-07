@@ -61,10 +61,12 @@ namespace xcore::scheduler
     template< std::size_t T_NUM_TRIGGERS > inline
     void job<T_NUM_TRIGGERS>::qt_onDone( void ) noexcept  
     { 
-        xassert_linear( m_Debug_LQ ); 
-        while( m_nTriggers )
+        xassert_linear( m_Debug_LQ );
+        auto nTriggers = m_nTriggers.load(std::memory_order_relaxed);
+        if( m_Definition.m_Triggers == triggers::CLEAN_COUNT ) m_nTriggers.store(0,std::memory_order_relaxed);
+        while( nTriggers )
         {
-            NotifyTrigger( *m_TriggerList[--m_nTriggers] ); 
+            NotifyTrigger( *m_TriggerList[--nTriggers] ); 
         }
     }
 

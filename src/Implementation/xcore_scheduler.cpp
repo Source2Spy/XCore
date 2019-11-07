@@ -126,6 +126,7 @@ namespace xcore::scheduler
         // Create the channel
         //
         m_LogChannel = std::make_unique<xcore::log::channel>("xcore::Scheduler");
+        m_LogChannel->TurnOff();
 
         //
         // Make sure some basic stuff is reset
