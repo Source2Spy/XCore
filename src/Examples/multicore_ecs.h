@@ -10,6 +10,7 @@ namespace mecs
     }
 
     using type_guid = xcore::guid::unit<64, struct component_type_guid_tag >;
+    constexpr static std::size_t max_ingroup_components_v = 64;
 
     //---------------------------------------------------------------------------------
     // COMPONENT
@@ -85,6 +86,9 @@ namespace mecs
     //---------------------------------------------------------------------------------
     namespace query
     {
+        //---------------------------------------------------------------------------------
+        // QUERY::FILTER_BITS
+        //---------------------------------------------------------------------------------
         struct filter_bits
         {
             std::array<std::uint64_t,2> m_Bits;
@@ -133,6 +137,9 @@ namespace mecs
             }
         };
 
+        //---------------------------------------------------------------------------------
+        // QUERY::ALL NONE ANY
+        //---------------------------------------------------------------------------------
         template< typename...T_COMPONENTS_AND_TAGS >
         struct all
         {
@@ -154,6 +161,77 @@ namespace mecs
             constexpr static std::array list_v{ T_COMPONENTS_AND_TAGS::type_guid_v ... };
         };
 
+        //---------------------------------------------------------------------------------
+        // QUERY::SYSTEM FUNCTION
+        //---------------------------------------------------------------------------------
+        namespace details
+        {
+            template<typename...T_ARGS>
+            constexpr auto TypeArray( std::tuple<T_ARGS...>* ) noexcept
+            {
+                static_assert( (std::is_reference_v<T_ARGS> && ...) );
+                return std::array
+                {
+                    std::decay_t<T_ARGS>::type_guid_v ...
+                };
+            }
+
+            template<typename...T_ARGS>
+            constexpr auto ConstArray( std::tuple<T_ARGS...>* ) noexcept
+            {
+                static_assert( (std::is_reference_v<T_ARGS> && ...) );
+                return std::array
+                {
+                    std::is_const_v<T_ARGS> ...
+                };
+            }
+
+            template< typename T > struct remove_references;
+            template< typename...T_ARGS >
+            struct remove_references< std::tuple< T_ARGS &... >>
+            {
+                using type = std::tuple<T_ARGS...>;
+            };
+
+            template< typename B, typename A >
+            struct compare
+            {
+                constexpr static bool value = std::decay_t<A>::type_guid_v.m_Value 
+                                            < std::decay_t<B>::type_guid_v.m_Value;
+            };
+
+            template< std::size_t T_SIZE, typename T_FUNCTION, typename T_SORTED >
+            constexpr auto remap( T_FUNCTION& Fun, T_SORTED& Sort ) noexcept
+            {
+                std::array<int,T_SIZE> Array{};
+                for( int i=0; i<Array.size(); ++i )
+                {
+                    for( int j=0; j<Array.size(); ++j )
+                        if( Sort[i] == Fun[j] ) 
+                        {
+                            Array[i] = j - i;
+                        }
+                }
+                return Array;
+            }
+        }
+
+        template< typename T >
+        struct system_function
+        {
+            using args_t        = typename xcore::function::traits<decltype(&T::Update)>::args_tuple;
+            using sorted_args_t = typename xcore::types::tuple_sort_t< details::compare, args_t >;
+            constexpr static std::array list_v          { details::TypeArray ( reinterpret_cast<args_t*>(nullptr) ) };
+            constexpr static std::array const_list_v    { details::ConstArray( reinterpret_cast<args_t*>(nullptr) ) };
+            constexpr static std::array sorted_list_v   { details::TypeArray ( reinterpret_cast<sorted_args_t*>(nullptr) ) };
+            constexpr static std::array remap_v         { details::remap<list_v.size()>( list_v, sorted_list_v ) };
+
+            static_assert(sorted_list_v[0].m_Value < sorted_list_v[1].m_Value);
+        };
+
+        //---------------------------------------------------------------------------------
+        // QUERY::DEFINE
+        //---------------------------------------------------------------------------------
         struct define_data
         {
             std::span<const type_guid>    m_All;            // Which components/tags we must have
@@ -167,9 +245,10 @@ namespace mecs
             template< int I >
             constexpr static void Initializer( define& This, std::span<const type_guid> X ) noexcept
             {
-                     if constexpr ( I == 0 ) This.m_All  = X;
-                else if constexpr ( I == 1 ) This.m_Any  = X;
-                else if constexpr ( I == 2 ) This.m_None = X;
+                     if constexpr ( I == 0 ) This.m_All         = X;
+                else if constexpr ( I == 1 ) This.m_Any         = X;
+                else if constexpr ( I == 2 ) This.m_None        = X;
+                else if constexpr ( I == 3 ) This.m_Function    = X;
             };
 
             constexpr define( void ) noexcept
@@ -178,12 +257,28 @@ namespace mecs
             }
         };
 
+        //---------------------------------------------------------------------------------
+        // QUERY::RESULT ENTRY
+        //---------------------------------------------------------------------------------
+        struct result_entry
+        {
+            group::instance*                                    m_pGroup;
+            std::uint8_t                                        m_nRemaps;
+            std::array<std::uint8_t,15>                         m_lRemaps;
+        };
+
+        //---------------------------------------------------------------------------------
+        // QUERY::INSTANCE
+        //---------------------------------------------------------------------------------
         struct instance
         {
-            filter_bits     m_Write;
-            filter_bits     m_All;
-            filter_bits     m_Any;
-            filter_bits     m_None;
+            xcore::vector<result_entry> m_lResults              {};
+            bool                        m_isInitialized         {false};
+            filter_bits                 m_Function              {nullptr};
+            filter_bits                 m_Write                 {nullptr};
+            filter_bits                 m_All                   {nullptr};
+            filter_bits                 m_Any                   {nullptr};
+            filter_bits                 m_None                  {nullptr};
         };
     }
 
@@ -193,8 +288,6 @@ namespace mecs
     namespace group
     {
         using guid = xcore::guid::unit<64, struct ecs_group_tag>;
-
-        constexpr static std::size_t max_ingroup_components_v = 64;
 
         //---------------------------------------------------------------------------------
         // GROUP::DETAILS
@@ -259,7 +352,7 @@ namespace mecs
             struct compare
             {
                 constexpr static bool value = T_A::type_guid_v.m_Value
-                                            > T_B::type_guid_v.m_Value;
+                                            < T_B::type_guid_v.m_Value;
             };
         }
 
@@ -314,9 +407,8 @@ namespace mecs
         };
 
         //---------------------------------------------------------------------------------
-        // GROUP::INSTANCE
+        // GROUP::INSTANCE::DETAIL
         //---------------------------------------------------------------------------------
-
         namespace details
         {
             struct offsets
@@ -328,6 +420,9 @@ namespace mecs
             };
         }
 
+        //---------------------------------------------------------------------------------
+        // GROUP::INSTANCE
+        //---------------------------------------------------------------------------------
         struct instance
         {
             instance( page_mgr& PageMgr, xcore::span<const component::descriptor*> lComponetDesc, const std::span<const type_guid> TagTypesGuids ) noexcept
@@ -409,7 +504,7 @@ namespace mecs
                         if (m_lComponentTypeGuids[i] > TypeGuid) break;
 
                         const auto& Offsets = m_lComponentOffsets[i];
-                        const auto  T1      = Offsets.m_HasT1?(1-Offsets.m_T0):0;
+                        const auto  T1      = Offsets.m_HasT1 - Offsets.m_T0;
                         return &m_lComponentOffsets[i + T1];
                     }
                 }
@@ -688,7 +783,7 @@ namespace mecs
                 }
 
                 template< typename T_GUID >
-                T* find(T_GUID Guid) noexcept
+                T* find(T_GUID Guid) const noexcept
                 {
                     assert(Guid.isValid());
                     auto Index = Guid.m_Value % max_size_v;
@@ -708,7 +803,19 @@ namespace mecs
                 }
 
                 template< typename T_GUID >
+                T* find(T_GUID Guid) noexcept
+                {
+                    return const_cast<T*>(const_cast<const map*>(this)->find(Guid));
+                }
+
+                template< typename T_GUID >
                 T& get(T_GUID Guid) noexcept
+                {
+                    return *find(Guid);
+                }
+
+                template< typename T_GUID >
+                T& get(T_GUID Guid) const noexcept
                 {
                     return *find(Guid);
                 }
@@ -793,7 +900,7 @@ namespace mecs
                     auto                nComponents         = ComponentTypesGuids.size();
                     query::filter_bits  Bits                {nullptr};
  
-                    xcore::array<const component::descriptor*, group::max_ingroup_components_v> lComponetDesc;
+                    xcore::array<const component::descriptor*, max_ingroup_components_v> lComponetDesc;
                     for( int i=0; i<nComponents; ++i )
                     {
                         auto& C = ComponentTypesGuids[i];
@@ -822,7 +929,7 @@ namespace mecs
                     // Make sure that we store data in the ascending order
                     std::sort(  lComponetDesc.begin()
                             ,   lComponetDesc.begin() + nComponents
-                            ,   [](const component::descriptor* pA, const component::descriptor* pB) { return pA->m_Guid.m_Value < pA->m_Guid.m_Value;} 
+                            ,   [](const component::descriptor* pA, const component::descriptor* pB) { return pA->m_Guid.m_Value < pB->m_Guid.m_Value;} 
                     );
 
                     auto pGroupInstance = new group::instance
@@ -931,18 +1038,83 @@ namespace mecs
 
                 return *pSystem;
             }
+
+            template<typename T_SYSTEM >
+            void DoQuery( query::instance& Instance ) const noexcept
+            {
+                using system    = T_SYSTEM;
+                using function  = query::system_function<T_SYSTEM>;
+
+                if( Instance.m_isInitialized == false )
+                {
+                    Instance.m_isInitialized = true;
+                    for( auto E : system::query_v.m_All )
+                    {
+                        Instance.m_All.AddBit( m_mapComponentDescriptor.get(E).m_pDescriptor->m_BitNumber );
+                    }
+
+                    for( auto E : system::query_v.m_Any )
+                    {
+                        Instance.m_Any.AddBit( m_mapComponentDescriptor.get(E).m_pDescriptor->m_BitNumber );
+                    }
+
+                    for( auto E : system::query_v.m_None )
+                    {
+                        Instance.m_None.AddBit( m_mapComponentDescriptor.get(E).m_pDescriptor->m_BitNumber );
+                    }
+
+                    for( int i=0; i<function::list_v.size(); ++i )
+                    {
+                        const auto BitNum = m_mapComponentDescriptor.get(function::list_v[i]).m_pDescriptor->m_BitNumber;
+                        Instance.m_Function.AddBit( BitNum );
+                        if( function::const_list_v[i] == false ) Instance.m_Write.AddBit(BitNum);
+                    }
+
+                    // All arguments are a must
+                    Instance.m_All.Add(Instance.m_Function);
+                }
+                
+                //
+                // Do query
+                //
+                Instance.m_lResults.clear();
+                for( const auto& E : m_lQueryTable.ViewTo(m_nQueryTables) )
+                {
+                    if( false == E.m_Bits.Query( Instance.m_All, Instance.m_Any, Instance.m_None ) ) continue;
+
+                    //
+                    // Create new entry for this query
+                    //
+                    auto&       Entry       = Instance.m_lResults.append();
+                    const auto& lCTypeGuid  = E.m_pGroup->m_lComponentTypeGuids;
+                    const int   Size        = E.m_pGroup->m_nComponents;
+                    int         F           = 0;
+                    for( int i=0; i<Size; ++i)
+                    {
+                        if( lCTypeGuid[i] == function::sorted_list_v[F] )
+                        {
+                            Entry.m_lRemaps[F + function::remap_v[F]] = static_cast<std::uint8_t>(i);
+                            F++;
+                            if(F==function::list_v.size()) break;
+                        }
+                    }
+                    xassert(F==function::list_v.size());
+                    Entry.m_nRemaps = static_cast<std::uint8_t>(function::list_v.size()); 
+                }
+            }
+
  
             constexpr static std::size_t                                max_entity_count_v = xcore::bits::RoundToNextPowOfTwo(10000000ull)
                                                                         XCORE_CMD_ASSERT(  - xcore::bits::RoundToNextPowOfTwo( 8000000ull));
             constexpr static std::size_t                                max_groups_count_v = 1024;
 
-            std::uint32_t                                               m_nQueryTables              {0};
-            group::page_mgr                                             m_PageMgr                   {};
-            details::map<details::entity_dec, max_entity_count_v>       m_mapEntity                 {};
-            details::map<details::group_dec, max_groups_count_v>        m_mapGroup                  {};
-            details::map<details::component_dec, 256>                   m_mapComponentDescriptor    {};
-            std::array<details::query_table_entry, max_groups_count_v>  m_lQueryTable               {};
-            query::filter_bits                                          m_RegistrationFreeBits      {xcore::not_null};
+            std::uint32_t                                                   m_nQueryTables              {0};
+            group::page_mgr                                                 m_PageMgr                   {};
+            details::map<details::entity_dec, max_entity_count_v>           m_mapEntity                 {};
+            details::map<details::group_dec, max_groups_count_v>            m_mapGroup                  {};
+            details::map<details::component_dec, 256>                       m_mapComponentDescriptor    {};
+            xcore::array<details::query_table_entry, max_groups_count_v>    m_lQueryTable               {};
+            query::filter_bits                                              m_RegistrationFreeBits      {xcore::not_null};
         };
     }
 
@@ -994,8 +1166,10 @@ namespace mecs
               , query::none<my_tag>
             > query_v{};
 
-            void Update( simple& Simple )
+            void Update( const double_buff& Buff, simple& Simple )
             {
+                //using tt = xcore::function::traits<decltype(&my_system::Update)>::args_tuple;
+               // using t = query::function<tt>;
             }
         };
 
@@ -1011,8 +1185,10 @@ namespace mecs
 
             World.AddGraphConnection<my_system>(World.m_StartSyncPoint, World.m_EndSyncPoint );
 
-
             auto& Group = World.getOrCreateGroup<simple,double_buff,my_tag>();
+
+            query::instance Instance;
+            World.DoQuery<my_system>(Instance);
 
             xcore::scheduler::channel MyChannel(xconst_universal_str("Test"));
             
