@@ -74,6 +74,14 @@ namespace xcore::scheduler
             }, std::tuple{ std::forward<T_ARGS>(Args)... } );
             return D;
         }
+
+        template< typename T >
+        constexpr definition operator | ( T X ) const noexcept
+        {
+            definition D;
+            D.m_Value = m_Value | Flags( X ).m_Value;
+            return D;
+        }
     };
     static_assert( sizeof(definition) == 1 );
 
