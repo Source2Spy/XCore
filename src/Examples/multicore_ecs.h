@@ -655,13 +655,13 @@ namespace mecs
                 custom_system( world::instance& World ) noexcept 
                     : m_World       { World }
                     , T_SYSTEM      {}
-                {}
+                { user_system_t::setupName(user_system_t::system_name_v); }
 
                 template< typename...T_ARGS >
                 void ForEach( std::tuple<T_ARGS...>* ) noexcept
                 {
                     using pool_tuple = typename std::tuple< std::remove_reference_t<T_ARGS>*... >;
-                    xcore::scheduler::channel Channel( xconst_universal_str("System::ForEach") );
+                    xcore::scheduler::channel Channel( xconst_universal_str("ForEach") );
 
                     for (auto& R : m_Query.m_lResults )
                     {
@@ -671,24 +671,26 @@ namespace mecs
 
                         for( auto& Page : Group.m_lPages.ViewTo(Group.m_nPages.load(std::memory_order_relaxed)) )
                         {
-                            auto pPage = reinterpret_cast<std::byte*>( Page->m_RawData );
-                            pool_tuple Pools
-                            {
-                                reinterpret_cast<std::remove_reference_t<T_ARGS>*>
-                                ( &pPage
-                                    [ 
-                                        R.m_lRemaps[ xcore::types::tuple_t2i_v< T_ARGS, system_function_t::args_t > ] 
-                                    ]
-                                ) ...
-                            };
-
-                            const auto iEnd  = std::min( static_cast<std::uint16_t>(TotalEntries), EntriesPerPage );
+                            auto        pPage = reinterpret_cast<std::byte*>( Page->m_RawData );
+                            const auto  iEnd  = std::min( static_cast<std::uint16_t>(TotalEntries), EntriesPerPage );
                             TotalEntries -= iEnd;
-                            Channel.SubmitJob( [ iEnd, Pools, this ]
+                            Channel.SubmitJob( [ &R, iEnd, pPage, this ]
                             {
+                                XCORE_PERF_ZONE_SCOPED_N("ForEach::LightJob")
+
+                                pool_tuple Pools
+                                {
+                                    reinterpret_cast<std::remove_reference_t<T_ARGS>*>
+                                    ( &pPage
+                                        [ 
+                                            R.m_lRemaps[ xcore::types::tuple_t2i_v< T_ARGS, system_function_t::args_t > ] 
+                                        ]
+                                    ) ...
+                                };
+
                                 for( auto i = 0; i < iEnd; ++i )
                                 {
-                                    Update
+                                    user_system_t::Update
                                     ( 
                                         std::get
                                         <
@@ -716,7 +718,8 @@ namespace mecs
 
         struct instance : xcore::scheduler::job<4>
         {
-            using parent_t = xcore::scheduler::job<4>;
+            using                   parent_t        = xcore::scheduler::job<4>;
+            constexpr static auto   system_name_v   = xconst_universal_str("System");
 
             constexpr instance(xcore::scheduler::definition Def) noexcept 
                 : parent_t{ Def | xcore::scheduler::triggers::DONT_CLEAN_COUNT }
@@ -1330,8 +1333,10 @@ namespace mecs
               , query::none<my_tag>
             > query_v{};
 
-            void Update( const double_buff& Buff, simple& Simple )
+            constexpr
+            void Update( const double_buff& Buff, simple& Simple ) const noexcept
             {
+                Simple.m_Value += Buff.m_Value;
             }
         };
 
@@ -1351,13 +1356,13 @@ namespace mecs
             // Create a bunch of entities
             //
             {
-                xcore::scheduler::channel MyChannel(xconst_universal_str("Test"));
+                xcore::scheduler::channel MyChannel(xconst_universal_str("Create Entities"));
                 auto& Group = World.getOrCreateGroup<simple,double_buff,my_tag>();
 
                 for(int i=0; i<xcore::get().m_Scheduler.getWorkerCount(); i++)
                     MyChannel.SubmitJob([&]
                     {
-                        while (Group.newSize() < (world::instance::max_entity_count_v - 100) )
+                        while (Group.newSize() < 10000000ull )//(world::instance::max_entity_count_v) )
                         {
                             auto    tmpEntityRef = World.createEntity( Group, entity::guid{xcore::not_null} );
                             auto&   Entity = tmpEntityRef.getComponent<entity::instance>();
