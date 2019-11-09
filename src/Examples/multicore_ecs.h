@@ -4,8 +4,8 @@ namespace mecs
     namespace group
     {
         struct instance;
-        struct local_index  : xcore::units::type<local_index,   std::uint32_t> {using type::type;};
-        struct page_index   : xcore::units::type<page_index,    std::uint32_t> {using type::type;};
+        struct local_index  : xcore::units::type<local_index,   std::uint16_t> {using type::type;};
+        struct page_index   : xcore::units::type<page_index,    std::uint16_t> {using type::type;};
         struct global_index : xcore::units::type<global_index,  std::uint32_t> {using type::type;};
     }
 
@@ -60,9 +60,9 @@ namespace mecs
         struct instance
         {
             constexpr static type_guid type_guid_v{1ull};
-            entity::guid    m_Guid;     // This is 64 bits
-            entity::flags   m_Flags;    // This is 32 bits
-                                        // Means 32bits are been used to padding here
+            std::atomic<entity::flags>  m_SystemFlags;  // This is 32 bits
+            std::uint32_t               m_Layer;        // Means 32bits are been used to padding here
+            entity::guid                m_Guid;         // This is 64 bits
         };
 
         struct tmp_ref
@@ -160,7 +160,7 @@ namespace mecs
         //---------------------------------------------------------------------------------
         // GROUP::PAGE
         //---------------------------------------------------------------------------------
-        struct alignas(std::uint64_t) page
+        struct alignas(128) page
         {
             std::byte    m_RawData[1024*16];
         };
@@ -197,6 +197,106 @@ namespace mecs
         };
 
         //---------------------------------------------------------------------------------
+        // GROUP::SIMPLE POOL
+        //---------------------------------------------------------------------------------
+        template< typename T, std::size_t MAX_PAGES >
+        struct pool
+        {
+            constexpr static auto entries_per_page_v = sizeof(page)/sizeof(T);
+
+            struct alignas(std::uint64_t) counts
+            {
+                std::uint32_t   m_nEntries;
+                std::uint16_t   m_nPages;
+                std::uint16_t   m_bLock;
+            };
+
+            constexpr pool( page_mgr& PageMgr ) noexcept : m_PageMgr{PageMgr}{}
+
+            template< typename...T_ARGS >
+            T& append( T_ARGS&&... Args ) noexcept
+            {
+                auto Counts    = m_Counts.load( std::memory_order_relaxed);
+                do 
+                {
+                    if( Counts.m_bLock )
+                    {
+                        Counts = m_Counts.load( std::memory_order_relaxed );
+                    }
+                    else if( Counts.m_nEntries < Counts.m_nPages*entries_per_page_v )
+                    {
+                        const counts NewCounts{ Counts.m_nEntries+1, Counts.m_nPages, 0 }; 
+                        
+                        if( m_Counts.compare_exchange_weak( Counts, NewCounts ) )
+                            return *new( &m_lPages[Counts.m_nPages-1]->m_RawData[(Counts.m_nEntries%entries_per_page_v)*sizeof(T)] ) 
+                                        T{std::forward<T_ARGS>(Args)...};
+                    }
+                    else if( Counts.m_nEntries == Counts.m_nPages*entries_per_page_v )
+                    {
+                        counts NewCounts{ Counts.m_nEntries+1, static_cast<std::uint16_t>(Counts.m_nPages+1), 1u }; 
+                        if( m_Counts.compare_exchange_weak( Counts, NewCounts ) )
+                        {
+                            auto p = m_PageMgr.AllocPage();
+                            m_lPages[NewCounts.m_nPages] = p;
+                            auto& E = *new( &p->m_RawData[(Counts.m_nEntries%entries_per_page_v)*sizeof(T)] ) 
+                                        T{std::forward<T_ARGS>(Args)...};
+
+                            // Release the lock
+                            NewCounts.m_bLock = 0;
+                            m_Counts.store( NewCounts );
+
+                            return E;
+                        }
+                    }
+
+                    // Spin Lock...
+                } while (true);
+
+                xassert(false);
+            }
+
+            void clear( void ) noexcept
+            {
+                counts Counts    = m_Counts.load( std::memory_order_relaxed);
+                do 
+                {
+                    if( Counts.m_bLock )
+                    {
+                        Counts = m_Counts.load( std::memory_order_relaxed );
+                    }
+                    else if( m_Counts.compare_exchange_weak( Counts, counts{ 0, 0, 1 } ) )
+                    {
+                        if constexpr (std::is_destructible_v<T>)
+                        {
+                            for( int i=0; i<Counts.m_nEntries; ++i )
+                            {
+                                std::destroy_at
+                                (
+                                    reinterpret_cast<T*>(&m_lPages[i/entries_per_page_v]->m_RawData[i%entries_per_page_v])
+                                );
+                            }                        
+                        }
+
+                        for( int i=0; i<Counts.m_Pages; ++i )
+                        {
+                            m_PageMgr.FreePage(m_lPages[i]);
+                        }
+
+                        m_Counts.store( counts{ 0, 0, 0 } );
+                    }
+
+                    // Spin Lock...
+                } while (true);
+
+                xassert(false);            
+            }
+
+            std::atomic<counts>             m_Counts    {counts{0,0,0}};
+            std::array<page*, MAX_PAGES>    m_lPages    {};
+            page_mgr&                       m_PageMgr;
+        };
+
+        //---------------------------------------------------------------------------------
         // GROUP::ITERATOR
         //---------------------------------------------------------------------------------
         struct iterator : entity::tmp_ref
@@ -215,8 +315,8 @@ namespace mecs
             struct offsets
             {
                 std::uint16_t   m_Offset;       // Offset   - Where in the page is this component
-                std::uint16_t   m_Size:14       // Size     - Size of the component
-                              , m_T0:1          // T0       - Which of the double buffer is T0 [0,1]
+                std::uint16_t   m_Size :14      // Size     - Size of the component
+                              , m_T0   :1       // T0       - Which of the double buffer is T0 [0,1]
                               , m_HasT1:1;      // HasT1    - Does this component has a double buffer?
             };
         }
@@ -269,18 +369,19 @@ namespace mecs
                                                 return lComponentOffsets;
                                             }()
                                         }
+                , m_lDeleteEntries      { m_PageMgr }
                 {}
 
             constexpr   auto        size()                  const   noexcept { return m_Count; }
             inline      auto        newSize()               const   noexcept { return m_NewCount.load(std::memory_order_relaxed); }
 
-            void ConstructEntity( page* Page, std::uint32_t LocalIndex ) noexcept
+            void ConstructEntity( page* Page, group::local_index LocalIndex ) noexcept
             {
                 std::byte* p = reinterpret_cast<std::byte*>(Page);
                 for( int i=0; i<m_nComponents; ++i )
                 {
                     auto&       E       = m_lComponentOffsets[i];
-                    const auto  Index   = E.m_Offset + LocalIndex * E.m_Size;
+                    const auto  Index   = E.m_Offset + static_cast<std::uint32_t>(LocalIndex.m_Value) * E.m_Size;
                     m_lDescriptors[i]->m_fnConstruct( &p[Index] );
                 }
             }
@@ -354,9 +455,10 @@ namespace mecs
 
             entity::tmp_ref CreateEntity( entity::guid Guid )
             {
-                const auto Index         = m_NewCount++;
-                const auto RelativeIndex = Index % m_EntriesPerPage;
-                const auto PageIndex     = Index / m_EntriesPerPage;
+                const auto          Index           = m_NewCount++;
+                const local_index   RelativeIndex   { Index % m_EntriesPerPage };
+                const page_index    PageIndex       { static_cast<std::uint16_t>(Index / m_EntriesPerPage) };
+
                 do
                 {
                     const auto nPages   = m_nPages.load(std::memory_order_relaxed);
@@ -364,20 +466,21 @@ namespace mecs
                     if (PageIndex < nPages)
                     {
                         // Create entry here
-                        ConstructEntity( m_lPages[PageIndex], RelativeIndex );
+                        ConstructEntity( m_lPages[PageIndex.m_Value], RelativeIndex );
                         break;
                     }
-                    else if (PageIndex == nPages && RelativeIndex == 0)
+                    else if (PageIndex == nPages && RelativeIndex.m_Value == 0)
                     {
-                        m_lPages[PageIndex] = m_PageMgr.AllocPage();
-                        m_nPages++;
-                        ConstructEntity( m_lPages[PageIndex], RelativeIndex );
+                        m_lPages[PageIndex.m_Value] = m_PageMgr.AllocPage();
+
+                        m_nPages.store(page_index{static_cast<std::uint16_t>(nPages.m_Value+1)});
+                        ConstructEntity( m_lPages[PageIndex.m_Value], RelativeIndex );
                         break;
                     }
                     else
                     {
                         // We will have to wait...
-                        XCORE_PERF_ZONE_SCOPED_N("Wasting Time")
+                        XCORE_PERF_ZONE_SCOPED_N("CreateEntity::Wasting Time")
                         XCORE_CMD_PROFILER( while (PageIndex >= m_nPages.load(std::memory_order_relaxed)); )
                     }
 
@@ -386,13 +489,45 @@ namespace mecs
                 return { this, local_index{RelativeIndex}, page_index{PageIndex} };
             }
 
-            using page_list = xcore::array<page*, 1024*32>;
+            struct delete_entry
+            {
+                page_index  m_PageIndex;
+                local_index m_LocalEntry;
+            };
+
+            void DeleteEntity( entity::tmp_ref Entry ) noexcept
+            {
+                auto& Entity = *reinterpret_cast<entity::instance*>
+                (
+                    &m_lPages[Entry.m_PageIndex.m_Value]->m_RawData
+                    [
+                        m_lComponentOffsets[0].m_Offset + m_lComponentOffsets[0].m_Size * static_cast<std::uint32_t>(Entry.m_LocalIndex.m_Value)
+                    ]
+                );
+
+                auto Guid       = Entity.m_Guid;
+                auto Flags      = Entity.m_SystemFlags.load(std::memory_order_relaxed);
+                auto NewFlags   = Flags;
+
+                do 
+                {
+                    NewFlags = Flags;
+                    NewFlags.m_isDeleted = true;
+                } while( Entity.m_SystemFlags.compare_exchange_weak( Flags, NewFlags) == false );
+
+                auto& Del = m_lDeleteEntries.append();
+                Del.m_PageIndex  = Entry.m_PageIndex;
+                Del.m_LocalEntry = Entry.m_LocalIndex;
+            }
+
+            constexpr static std::size_t max_pages_v = 1024*32;
+            using page_list = xcore::array<page*, max_pages_v>;
 
             group::instance*                                                            m_pNext         {nullptr};
             page_mgr&                                                                   m_PageMgr;
             std::atomic<std::uint32_t>                                                  m_NewCount      { 0 };
             std::uint32_t                                                               m_Count         { 0 };
-            std::atomic<std::uint32_t>                                                  m_nPages        { 0 };
+            std::atomic<group::page_index>                                              m_nPages        { group::page_index{0} };
             page_list                                                                   m_lPages        {};
             const std::uint16_t                                                         m_EntriesPerPage;
             const std::uint16_t                                                         m_nComponents;
@@ -401,6 +536,7 @@ namespace mecs
             const std::array<type_guid, max_ingroup_components_v>                       m_lTagGuids;
             const std::array<const component::descriptor*, max_ingroup_components_v>    m_lDescriptors;
             const std::array<details::offsets, max_ingroup_components_v>                m_lComponentOffsets;
+            pool<delete_entry,max_pages_v>                                              m_lDeleteEntries;
         };
 
         //---------------------------------------------------------------------------------
@@ -668,17 +804,18 @@ namespace mecs
                         auto&               Group           = *R.m_pGroup;
                         auto                TotalEntries    = Group.m_Count;
                         const auto          EntriesPerPage  = Group.m_EntriesPerPage;
+                        const std::uint16_t EntityOffset    = Group.m_lComponentOffsets[0].m_Offset;
 
                         for( auto& Page : Group.m_lPages.ViewTo(Group.m_nPages.load(std::memory_order_relaxed)) )
                         {
                             auto        pPage = reinterpret_cast<std::byte*>( Page->m_RawData );
                             const auto  iEnd  = std::min( static_cast<std::uint16_t>(TotalEntries), EntriesPerPage );
                             TotalEntries -= iEnd;
-                            Channel.SubmitJob( [ &R, iEnd, pPage, this ]
+                            Channel.SubmitJob( [ EntityOffset, &R, iEnd, pPage, this ]
                             {
                                 XCORE_PERF_ZONE_SCOPED_N("ForEach::LightJob")
 
-                                pool_tuple Pools
+                                const pool_tuple Pools
                                 {
                                     reinterpret_cast<std::remove_reference_t<T_ARGS>*>
                                     ( &pPage
@@ -688,8 +825,19 @@ namespace mecs
                                     ) ...
                                 };
 
+                                auto pEntityPool = reinterpret_cast<const entity::instance* const>(&pPage[EntityOffset]);
+
                                 for( auto i = 0; i < iEnd; ++i )
                                 {
+                                    auto Flags = pEntityPool[i].m_SystemFlags.load(std::memory_order_relaxed);
+
+                                    // Make sure we are running a valid entity
+                                    if(    Flags.m_isDeleted 
+                                        || Flags.m_isDisable
+                                        || Flags.m_isInWorld == false )
+                                        continue;
+
+                                    // Call the system update function
                                     user_system_t::Update
                                     ( 
                                         std::get
@@ -786,7 +934,7 @@ namespace mecs
             struct component_desc
             {
                 using fn_construct = void(void*);
-                using fn_destruct = void(void*);
+                using fn_destruct  = void(void*);
 
                 type_guid       m_Guid;
                 fn_construct&   m_Construct;
@@ -795,10 +943,10 @@ namespace mecs
                 bool            m_isDoubleBuffer;
             };
 
-            struct entity_dec
+            struct entity_desc : xcore::lock::spin
             {
-                std::atomic<entity::guid>                       m_Guid{ 0 };
-                entity::tmp_ref                                 m_EntityRef{ nullptr, group::local_index{0u}, group::page_index{0u} };
+                entity::guid                                    m_Guid;
+                entity::tmp_ref                                 m_EntityRef;
             };
 
             struct group_dec
@@ -831,6 +979,7 @@ namespace mecs
                     auto Index = Guid.m_Value % max_size_v;
                     do 
                     {
+
                         auto Local = m_Map[Index].m_Guid.load(std::memory_order_relaxed);
                         while( Local.m_Value == 0 )
                             if( auto& Entry = m_Map[Index]; Entry.m_Guid.compare_exchange_weak(Local, Guid) )
@@ -1028,10 +1177,12 @@ namespace mecs
                 {
                     pGroupDesc = &m_mapGroup.appendOrGet(GroupGuid, [&](const details::group_dec& Entry)
                     { 
-                        while( Entry.m_pGroup.load(std::memory_order_relaxed) == nullptr )
+                        if( Entry.m_pGroup.load(std::memory_order_relaxed) == nullptr )
                         {
                             // Spin lock
-                        };
+                            XCORE_PERF_ZONE_SCOPED_N("getOrCreateGroup::Wasting Time")
+                            while( Entry.m_pGroup.load(std::memory_order_relaxed) == nullptr );
+                        }
                     });
 
                     bool                bAddEntityComponent = true;
@@ -1265,16 +1416,30 @@ namespace mecs
                 }
             }
 
+            void DeleteEntity( entity::guid Guid ) noexcept
+            {
+                auto pEntity = m_mapEntity.find(Guid);
+                if( pEntity == nullptr ) return;
+
+                entity::tmp_ref TmpRef{ nullptr,group::local_index{0u},group::page_index{0u}};
+                if( xcore::lock::scope Lk(*pEntity); pEntity->m_Guid.m_Value )
+                {
+                    pEntity->m_Guid.m_Value = 0;
+                    TmpRef = pEntity->m_EntityRef;
+                }
+
+                if(TmpRef.m_pGroupInstance) TmpRef.m_pGroupInstance->DeleteEntity(TmpRef);
+            }
  
-            constexpr static std::size_t                                max_entity_count_v = xcore::bits::RoundToNextPowOfTwo(10000000ull)
-                                                                        XCORE_CMD_ASSERT(  - xcore::bits::RoundToNextPowOfTwo(10000000ull)
-                                                                                           + xcore::bits::RoundToNextPowOfTwo(100000ull));
+            constexpr static std::size_t                                max_entity_count_v = xcore::bits::RoundToNextPowOfTwo(100000000ull)
+                                                                        XCORE_CMD_ASSERT(  - xcore::bits::RoundToNextPowOfTwo(100000000ull)
+                                                                                           + xcore::bits::RoundToNextPowOfTwo(  1000000ull));
             constexpr static std::size_t                                max_groups_count_v = 1024;
 
             std::atomic<group::instance*>                                   m_pGroupHead                {nullptr};
             std::uint32_t                                                   m_nQueryTables              {0};
             group::page_mgr                                                 m_PageMgr                   {};
-            details::map<details::entity_dec, max_entity_count_v>           m_mapEntity                 {};
+            details::map<details::entity_desc, max_entity_count_v>           m_mapEntity                 {};
             details::map<details::group_dec, max_groups_count_v>            m_mapGroup                  {};
             details::map<details::component_dec, 256>                       m_mapComponentDescriptor    {};
             xcore::array<details::query_table_entry, max_groups_count_v>    m_lQueryTable               {};
@@ -1362,7 +1527,7 @@ namespace mecs
                 for(int i=0; i<xcore::get().m_Scheduler.getWorkerCount(); i++)
                     MyChannel.SubmitJob([&]
                     {
-                        while (Group.newSize() < 10000000ull )//(world::instance::max_entity_count_v) )
+                        while (Group.newSize() < 10000000ull XCORE_CMD_ASSERT( - 9500000ull ) )
                         {
                             auto    tmpEntityRef = World.createEntity( Group, entity::guid{xcore::not_null} );
                             auto&   Entity = tmpEntityRef.getComponent<entity::instance>();
