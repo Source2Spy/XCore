@@ -319,85 +319,80 @@ namespace mecs
                               , m_T0   :1       // T0       - Which of the double buffer is T0 [0,1]
                               , m_HasT1:1;      // HasT1    - Does this component has a double buffer?
             };
+
         }
 
         //---------------------------------------------------------------------------------
-        // GROUP::INSTANCE
+        // GROUP::DESCRIPTOR
         //---------------------------------------------------------------------------------
-        struct instance
+        struct descriptor
         {
-            instance( page_mgr& PageMgr, xcore::span<const component::descriptor*> lComponetDesc, const std::span<const type_guid> TagTypesGuids ) noexcept
-                : m_PageMgr             { PageMgr }
-                , m_lComponentTypeGuids { [&]() constexpr { std::array<type_guid,64>                    D{}; for (int i = 0; i < lComponetDesc.size(); ++i) D[i] = lComponetDesc[i]->m_Guid;  return D; }() }
-                , m_lTagGuids           { [&]() constexpr { std::array<type_guid,64>                    D{}; for (int i = 0; i < TagTypesGuids.size(); ++i) D[i] = TagTypesGuids[i];          return D; }() }
-                , m_lDescriptors        { [&]() constexpr { std::array<const component::descriptor*,64> D{}; for (int i = 0; i < lComponetDesc.size(); ++i) D[i] = lComponetDesc[i];          return D; }() }
-                , m_nTagGuids           { static_cast<std::uint16_t>(TagTypesGuids.size()) }
-                , m_nComponents         { static_cast<std::uint16_t>(lComponetDesc.size()) }
-                , m_EntriesPerPage      { [&]() constexpr
-                                            {
-                                                const std::uint32_t     SizeOfOne           = [&]() constexpr { std::uint32_t S = 0; for (auto p : lComponetDesc) S += p->m_Size; return S; }();
-                                                const std::uint32_t     OriginalAddress     = std::alignment_of_v<page>;
-                                                std::uint32_t           WastedToAligment    = 0;
-                                                std::uint32_t           p                   = OriginalAddress;
-
-                                                for( auto pE : lComponetDesc )
+            constexpr descriptor( xcore::span<const component::descriptor*> lComponetDesc ) noexcept
+                : m_lComponentTypeGuids     { [&]() constexpr { std::array<type_guid,64>                    D{}; for (int i = 0; i < lComponetDesc.size(); ++i) D[i] = lComponetDesc[i]->m_Guid;  return D; }() }
+                , m_lComponentDescriptors   { [&]() constexpr { std::array<const component::descriptor*,64> D{}; for (int i = 0; i < lComponetDesc.size(); ++i) D[i] = lComponetDesc[i];          return D; }() }
+                , m_nComponents             { static_cast<std::uint16_t>(lComponetDesc.size()) }
+                , m_EntriesPerPage          { [&]() constexpr
                                                 {
-                                                    WastedToAligment += xcore::bits::Align(p, pE->m_Aligment) - p;
-                                                    p += pE->m_Size;
-                                                }
+                                                    const std::uint32_t     SizeOfOne           = [&]() constexpr { std::uint32_t S = 0; for (auto p : lComponetDesc) S += p->m_Size; return S; }();
+                                                    const std::uint32_t     OriginalAddress     = std::alignment_of_v<page>;
+                                                    std::uint32_t           WastedToAligment    = 0;
+                                                    std::uint32_t           p                   = OriginalAddress;
 
-                                                return static_cast<std::uint16_t>((sizeof(page) - WastedToAligment) / SizeOfOne);
-                                            }()
-                                        }
-                , m_lComponentOffsets   { [&]() constexpr 
-                                            {
-                                                std::array<details::offsets, 64>      lComponentOffsets{};
-                                                const std::uint32_t                   OriginalAddress     = std::alignment_of_v<page>;
-                                                std::uint32_t                         p                   = OriginalAddress;
+                                                    for( auto pE : lComponetDesc )
+                                                    {
+                                                        WastedToAligment += xcore::bits::Align(p, pE->m_Aligment) - p;
+                                                        p += pE->m_Size;
+                                                    }
 
-                                                for (int i = 0; i < lComponetDesc.size(); i++)
+                                                    return static_cast<std::uint16_t>((sizeof(page) - WastedToAligment) / SizeOfOne);
+                                                }()
+                                            }
+                , m_lComponentOffsets       { [&]() constexpr 
                                                 {
-                                                    auto& D     = lComponentOffsets[i];
-                                                    auto& S     = *lComponetDesc[i];
-                                                    D.m_HasT1   = S.m_isDoubleBuffer;
-                                                    D.m_T0      = 0;
-                                                    D.m_Size    = S.m_Size;
-                                                    D.m_Offset  = xcore::bits::Align( p, S.m_Aligment ) - OriginalAddress;
-                                                    p          += m_EntriesPerPage * D.m_Size;
-                                                }
-                                                assert((p - OriginalAddress) <= sizeof(page));
-                                                return lComponentOffsets;
-                                            }()
-                                        }
-                , m_lDeleteEntries      { m_PageMgr }
+                                                    std::array<details::offsets, 64>      lComponentOffsets{};
+                                                    const std::uint32_t                   OriginalAddress     = std::alignment_of_v<page>;
+                                                    std::uint32_t                         p                   = OriginalAddress;
+
+                                                    for (int i = 0; i < lComponetDesc.size(); i++)
+                                                    {
+                                                        auto& D     = lComponentOffsets[i];
+                                                        auto& S     = *lComponetDesc[i];
+                                                        D.m_HasT1   = S.m_isDoubleBuffer;
+                                                        D.m_T0      = 0;
+                                                        D.m_Size    = S.m_Size;
+                                                        D.m_Offset  = xcore::bits::Align( p, S.m_Aligment ) - OriginalAddress;
+                                                        p          += m_EntriesPerPage * D.m_Size;
+                                                    }
+                                                    assert((p - OriginalAddress) <= sizeof(page));
+                                                    return lComponentOffsets;
+                                                }()
+                                            }
                 {}
 
-            constexpr   auto        size()                  const   noexcept { return m_Count; }
-            inline      auto        newSize()               const   noexcept { return m_NewCount.load(std::memory_order_relaxed); }
-
-            void ConstructEntity( page* Page, group::local_index LocalIndex ) noexcept
+            
+            void ConstructEntity( page* Page, group::local_index LocalIndex ) const noexcept
             {
                 std::byte* p = reinterpret_cast<std::byte*>(Page);
                 for( int i=0; i<m_nComponents; ++i )
                 {
                     auto&       E       = m_lComponentOffsets[i];
                     const auto  Index   = E.m_Offset + static_cast<std::uint32_t>(LocalIndex.m_Value) * E.m_Size;
-                    m_lDescriptors[i]->m_fnConstruct( &p[Index] );
+                    m_lComponentDescriptors[i]->m_fnConstruct( &p[Index] );
                 }
             }
 
-            void DestructEntity( page* Page, std::uint32_t LocalIndex ) noexcept
+            void DestructEntity( page* Page, std::uint32_t LocalIndex ) const noexcept
             {
                 std::byte* p = reinterpret_cast<std::byte*>(Page);
                 for( int i=0; i<m_nComponents; ++i )
                 {
                     auto&       E       = m_lComponentOffsets[i];
                     const auto  Index   = E.m_Offset + LocalIndex * E.m_Size;
-                    m_lDescriptors[i]->m_fnDestruct( &p[Index] );
+                    m_lComponentDescriptors[i]->m_fnDestruct( &p[Index] );
                 }
             }
 
-            const details::offsets* findOffset( const entity::tmp_ref& Ref, type_guid TypeGuid ) noexcept
+            constexpr const details::offsets* findMutableOffset( const entity::tmp_ref& Ref, type_guid TypeGuid ) const noexcept
             {
                 for (int i = 0; i <m_nComponents; ++i)
                 {
@@ -413,7 +408,7 @@ namespace mecs
                 return nullptr;
             }
 
-            const details::offsets* findOffset( const entity::tmp_ref& Ref, type_guid TypeGuid ) const noexcept
+            constexpr const details::offsets* findReadOnlyOffset( const entity::tmp_ref& Ref, type_guid TypeGuid ) const noexcept
             {
                 for (int i = 0; i <m_nComponents; ++i)
                 {
@@ -427,10 +422,34 @@ namespace mecs
                 return nullptr;
             }
 
+
+            const std::uint16_t                                                         m_EntriesPerPage;
+            const std::uint16_t                                                         m_nComponents;
+            const std::array<type_guid, max_ingroup_components_v>                       m_lComponentTypeGuids;
+            const std::array<const component::descriptor*, max_ingroup_components_v>    m_lComponentDescriptors;
+            const std::array<details::offsets, max_ingroup_components_v>                m_lComponentOffsets;
+        };
+
+        //---------------------------------------------------------------------------------
+        // GROUP::INSTANCE
+        //---------------------------------------------------------------------------------
+        struct instance
+        {
+            instance( page_mgr& PageMgr, const descriptor& GroupDescriptor, const std::span<const type_guid> TagTypesGuids ) noexcept
+                : m_PageMgr             { PageMgr }
+                , m_GroupDescriptor     {GroupDescriptor}
+                , m_lTagGuids           { [&]() constexpr { std::array<type_guid,64>                    D{}; for (int i = 0; i < TagTypesGuids.size(); ++i) D[i] = TagTypesGuids[i];          return D; }() }
+                , m_nTagGuids           { static_cast<std::uint16_t>(TagTypesGuids.size()) }
+                , m_lDeleteEntries      { m_PageMgr }
+                {}
+
+            constexpr   auto        size()                  const   noexcept { return m_Count; }
+            inline      auto        newSize()               const   noexcept { return m_NewCount.load(std::memory_order_relaxed); }
+
             inline
             void* getComponent(const entity::tmp_ref& Ref, type_guid TypeGuid) noexcept
             {
-                if( auto pOffset = findOffset(Ref,TypeGuid); pOffset )
+                if( auto pOffset = m_GroupDescriptor.findMutableOffset(Ref,TypeGuid); pOffset )
                 {
                     const auto  Index   = pOffset->m_Offset + Ref.m_LocalIndex.m_Value * pOffset->m_Size;
                     std::byte*  p       = &reinterpret_cast<std::byte*>(m_lPages[Ref.m_PageIndex.m_Value])[Index];
@@ -443,7 +462,7 @@ namespace mecs
             inline
             void* getComponent(const entity::tmp_ref& Ref, type_guid TypeGuid) const noexcept
             {
-                if( auto pOffset = findOffset(Ref,TypeGuid); pOffset )
+                if( auto pOffset = m_GroupDescriptor.findReadOnlyOffset(Ref,TypeGuid); pOffset )
                 {
                     const auto  Index   = pOffset->m_Offset + Ref.m_LocalIndex.m_Value * pOffset->m_Size;
                     std::byte*  p       = &reinterpret_cast<std::byte*>(m_lPages[Ref.m_PageIndex.m_Value])[Index];
@@ -456,8 +475,8 @@ namespace mecs
             entity::tmp_ref CreateEntity( entity::guid Guid )
             {
                 const auto          Index           = m_NewCount++;
-                const local_index   RelativeIndex   { Index % m_EntriesPerPage };
-                const page_index    PageIndex       { static_cast<std::uint16_t>(Index / m_EntriesPerPage) };
+                const local_index   RelativeIndex   { Index % m_GroupDescriptor.m_EntriesPerPage };
+                const page_index    PageIndex       { static_cast<std::uint16_t>(Index / m_GroupDescriptor.m_EntriesPerPage) };
 
                 do
                 {
@@ -466,7 +485,7 @@ namespace mecs
                     if (PageIndex < nPages)
                     {
                         // Create entry here
-                        ConstructEntity( m_lPages[PageIndex.m_Value], RelativeIndex );
+                        m_GroupDescriptor.ConstructEntity( m_lPages[PageIndex.m_Value], RelativeIndex );
                         break;
                     }
                     else if (PageIndex == nPages && RelativeIndex.m_Value == 0)
@@ -474,7 +493,7 @@ namespace mecs
                         m_lPages[PageIndex.m_Value] = m_PageMgr.AllocPage();
 
                         m_nPages.store(page_index{static_cast<std::uint16_t>(nPages.m_Value+1)});
-                        ConstructEntity( m_lPages[PageIndex.m_Value], RelativeIndex );
+                        m_GroupDescriptor.ConstructEntity( m_lPages[PageIndex.m_Value], RelativeIndex );
                         break;
                     }
                     else
@@ -501,7 +520,9 @@ namespace mecs
                 (
                     &m_lPages[Entry.m_PageIndex.m_Value]->m_RawData
                     [
-                        m_lComponentOffsets[0].m_Offset + m_lComponentOffsets[0].m_Size * static_cast<std::uint32_t>(Entry.m_LocalIndex.m_Value)
+                          m_GroupDescriptor.m_lComponentOffsets[0].m_Offset 
+                        + m_GroupDescriptor.m_lComponentOffsets[0].m_Size 
+                        * static_cast<std::uint32_t>(Entry.m_LocalIndex.m_Value)
                     ]
                 );
 
@@ -523,25 +544,24 @@ namespace mecs
             constexpr static std::size_t max_pages_v = 1024*32;
             using page_list = xcore::array<page*, max_pages_v>;
 
-            group::instance*                                                            m_pNext         {nullptr};
-            page_mgr&                                                                   m_PageMgr;
-            std::atomic<std::uint32_t>                                                  m_NewCount      { 0 };
-            std::uint32_t                                                               m_Count         { 0 };
-            std::atomic<group::page_index>                                              m_nPages        { group::page_index{0} };
-            page_list                                                                   m_lPages        {};
-            const std::uint16_t                                                         m_EntriesPerPage;
-            const std::uint16_t                                                         m_nComponents;
             const std::uint16_t                                                         m_nTagGuids;
-            const std::array<type_guid, max_ingroup_components_v>                       m_lComponentTypeGuids;
             const std::array<type_guid, max_ingroup_components_v>                       m_lTagGuids;
-            const std::array<const component::descriptor*, max_ingroup_components_v>    m_lDescriptors;
-            const std::array<details::offsets, max_ingroup_components_v>                m_lComponentOffsets;
+
+
+            group::instance*                                                            m_pNext             {nullptr};
+            page_mgr&                                                                   m_PageMgr;
+            std::atomic<std::uint32_t>                                                  m_NewCount          { 0 };
+            std::uint32_t                                                               m_Count             { 0 };
+            std::atomic<group::page_index>                                              m_nPages            { group::page_index{0} };
+            page_list                                                                   m_lPages            {};
+            const group::descriptor&                                                    m_GroupDescriptor;
             pool<delete_entry,max_pages_v>                                              m_lDeleteEntries;
         };
 
         //---------------------------------------------------------------------------------
         // GROUP::ITERATOR FUNCTIONS
         //---------------------------------------------------------------------------------
+        /*
         inline
         iterator iterator::operator++ (void) noexcept
         {
@@ -563,6 +583,7 @@ namespace mecs
             return !(l == m_PageIndex.m_Value
                  && (m_pGroupInstance->m_Count - l * m_pGroupInstance->m_EntriesPerPage) == m_LocalIndex.m_Value);
         }
+        */
     }
 
     //---------------------------------------------------------------------------------
@@ -803,10 +824,10 @@ namespace mecs
                     {
                         auto&               Group           = *R.m_pGroup;
                         auto                TotalEntries    = Group.m_Count;
-                        const auto          EntriesPerPage  = Group.m_EntriesPerPage;
-                        const std::uint16_t EntityOffset    = Group.m_lComponentOffsets[0].m_Offset;
+                        const auto          EntriesPerPage  = Group.m_GroupDescriptor.m_EntriesPerPage;
+                        const std::uint16_t EntityOffset    = Group.m_GroupDescriptor.m_lComponentOffsets[0].m_Offset;
 
-                        for( auto& Page : Group.m_lPages.ViewTo(Group.m_nPages.load(std::memory_order_relaxed)) )
+                        for( auto& Page : Group.m_lPages.ViewTo(Group.m_nPages.load(std::memory_order_relaxed).m_Value) )
                         {
                             auto        pPage = reinterpret_cast<std::byte*>( Page->m_RawData );
                             const auto  iEnd  = std::min( static_cast<std::uint16_t>(TotalEntries), EntriesPerPage );
@@ -943,115 +964,428 @@ namespace mecs
                 bool            m_isDoubleBuffer;
             };
 
-            struct entity_desc : xcore::lock::spin
-            {
-                entity::guid                                    m_Guid;
-                entity::tmp_ref                                 m_EntityRef;
-            };
-
-            struct group_dec
-            {
-                std::atomic<group::guid>                        m_Guid{ 0 };
-                std::atomic<group::instance*>                   m_pGroup{nullptr};
-            };
-
-            struct component_dec
-            {
-                std::atomic<type_guid>                          m_Guid{ 0 };
-                const component::descriptor*                    m_pDescriptor{nullptr};
-            };
-
             struct query_table_entry
             {
                 query::filter_bits                              m_Bits;
                 const group::instance*                          m_pGroup{nullptr};
             };
 
-            template< typename T, std::size_t T_MAXSIZE_V > 
+            template< typename T_KEY, typename T_VALUE, std::size_t T_MAXSIZE_V > 
             struct map
             {
                 constexpr static auto max_size_v = T_MAXSIZE_V;
 
-                template< typename T_GUID >
-                T& append(const T_GUID Guid) noexcept
+                map()
                 {
-                    assert(Guid.isValid());
-                    auto Index = Guid.m_Value % max_size_v;
-                    do 
+                    for( int i=1; i<m_Extras.size(); ++i )
                     {
+                        m_Extras[i-1].m_pNext = &m_Extras[i];
+                    }
 
-                        auto Local = m_Map[Index].m_Guid.load(std::memory_order_relaxed);
-                        while( Local.m_Value == 0 )
-                            if( auto& Entry = m_Map[Index]; Entry.m_Guid.compare_exchange_weak(Local, Guid) )
-                                return Entry;
-                        Index = (Index+1) % max_size_v;
-                    } while(true);
-
-                    xassert(false);
+                    m_Extras.back().m_pNext = nullptr;
+                    m_pFreeOverflow.store( &m_Extras[0] );
                 }
 
-                template< typename T_GUID, typename T_WAIT_LAMBDA >
-                T& appendOrGet(T_GUID Guid, T_WAIT_LAMBDA&& WaitLambda) noexcept
+                void push( T_KEY Key, T_VALUE&& Data ) noexcept
                 {
-                    assert(Guid.isValid());
-                    auto Index = Guid.m_Value % max_size_v;
+                    assert(Key.isValid());
+
+                    auto&           MapEntry    = m_Map[Key.m_Value % max_size_v];
+                    auto            Local       = MapEntry.m_Lock.load(std::memory_order_relaxed);
+
+                    //
+                    // Lock
+                    //
                     do 
                     {
-                        auto Local = m_Map[Index].m_Guid.load(std::memory_order_relaxed);
-                        if (Local == Guid)
+                        if( Local.m_isLocked == true ) 
                         {
-                            auto& Entry = m_Map[Index];
-                            WaitLambda(Entry);
-                            return Entry;
+                            // Spin....
+                            Local       = MapEntry.m_Lock.load(std::memory_order_relaxed);
+                            continue;
                         }
-                        else while( Local.m_Value == 0 )
-                            if( auto& Entry = m_Map[Index]; Entry.m_Guid.compare_exchange_weak(Local, Guid) )
-                                return Entry;
-                        Index = (Index+1) % max_size_v;
-                    } while(true);
 
-                    xassert(false);
+                        if( MapEntry.m_Lock.compare_exchange_weak(Local, lock{ true, Local.m_isValid } ) )
+                            break;
+
+                    } while( true );
+
+                    //
+                    // Set new data
+                    //
+
+                    // Do we have a collision? 
+                    if( Local.m_isValid )
+                    {
+                        // Make sure we have not collisions with any one
+                        xassert_block_basic()
+                        {
+                            xassert( Key.m_Value != MapEntry.m_Key.m_Value );
+                            for( auto p = MapEntry.m_pNext; p ; p = p->m_pNext )
+                            {
+                                xassert( Key.m_Value != MapEntry.m_Key.m_Value );
+                            }
+                        }
+
+                        // Allocate an overflow entry
+                        auto pNode = m_pFreeOverflow.load(std::memory_order_relaxed);
+                        do 
+                        {
+                            // Run out of free entries!
+                            xassert(pNode);
+
+                            if( m_pFreeOverflow.compare_exchange_weak( pNode, pNode->m_pNext ) )
+                                break;
+                        } while ( true );
+
+                        // Link new node
+                        pNode->m_pNext = MapEntry.m_pNext;
+                        MapEntry.m_pNext = pNode;
+
+                        // Copy data
+                        pNode->m_Key    = Key;
+                        pNode->m_Value  = std::move(Data);
+                    }
+                    else
+                    {
+                        MapEntry.m_Key   = Key;
+                        MapEntry.m_Value = std::move(Data);
+                    }
+
+                    //
+                    // Unlock
+                    //
+                    MapEntry.m_Lock.store( lock{ false, true } );
                 }
 
-                template< typename T_GUID >
-                T* find(T_GUID Guid) const noexcept
+                template< typename T > 
+                const T_VALUE& getOrCreate( T_KEY Key, T&& SafeCreateCallBack ) noexcept
                 {
-                    assert(Guid.isValid());
-                    auto Index = Guid.m_Value % max_size_v;
+                    assert(Key.isValid());
+
+                    auto&           MapEntry    = m_Map[Key.m_Value % max_size_v];
+                    auto            Local       = MapEntry.m_Lock.load(std::memory_order_relaxed);
+
+                    //
+                    // Lock
+                    //
                     do 
                     {
-                        auto Local = m_Map[Index].m_Guid.load(std::memory_order_relaxed);
-                        if (Local == Guid)
+                        if( Local.m_isLocked == true ) 
                         {
-                            auto& Entry = m_Map[Index];
-                            return &Entry;
+                            // Spin....
+                            Local       = MapEntry.m_Lock.load(std::memory_order_relaxed);
+                            continue;
                         }
-                        if( Local.m_Value == 0 ) return nullptr;
-                        Index = (Index+1) % max_size_v;
-                    } while(true);
 
-                    xassert(false);
+                        if( MapEntry.m_Lock.compare_exchange_weak(Local, lock{ true, Local.m_isValid } ) )
+                            break;
+
+                    } while( true );
+
+                    //
+                    // Search for the node
+                    //
+                    T_VALUE*      pResult     = nullptr;
+
+                    if( Local.m_isValid )
+                    {
+                        if( Key.m_Value == MapEntry.m_Key.m_Value )
+                        {
+                            pResult = &MapEntry.m_Value;
+                        }
+                        else
+                        {
+                            for( auto p = MapEntry.m_pNext; p; p = p->m_pNext )
+                            {
+                                if( Key.m_Value == p->m_Key.m_Value ) 
+                                {
+                                    pResult = &p->m_Value;
+                                    break;
+                                }
+
+                            }
+                        }
+                    }
+
+                    if( pResult == nullptr )
+                    {
+                        // Do we have a collision? 
+                        if( Local.m_isValid )
+                        {
+                            // Make sure we have not collisions with any one
+                            xassert_block_basic()
+                            {
+                                xassert( Key.m_Value != MapEntry.m_Key.m_Value );
+                                for( auto p = MapEntry.m_pNext; p ; p = p->m_pNext )
+                                {
+                                    xassert( Key.m_Value != MapEntry.m_Key.m_Value );
+                                }
+                            }
+
+                            // Allocate an overflow entry
+                            auto pNode = m_pFreeOverflow.load(std::memory_order_relaxed);
+                            do 
+                            {
+                                // Run out of free entries!
+                                xassert(pNode);
+
+                                if( m_pFreeOverflow.compare_exchange_weak( pNode, pNode->m_pNext ) )
+                                    break;
+                            } while ( true );
+
+                            // Link new node
+                            pNode->m_pNext = MapEntry.m_pNext;
+                            MapEntry.m_pNext = pNode;
+
+                            // Copy data
+                            pNode->m_Key   = Key;
+                            pNode->m_Value = SafeCreateCallBack();
+
+                            pResult = &pNode->m_Value;
+                        }
+                        else
+                        {
+                            MapEntry.m_Key   = Key;
+                            MapEntry.m_Value = SafeCreateCallBack();
+
+                            pResult = &MapEntry.m_Value;
+                        }
+                    }
+
+                    //
+                    // Unlock
+                    //
+                    MapEntry.m_Lock.store( lock{ false, true } );
+
+                    return *pResult;
                 }
 
-                template< typename T_GUID >
-                T* find(T_GUID Guid) noexcept
+                template< typename T_CALLBACK >
+                void pop( T_KEY Key, T_CALLBACK&& CallBack = [](T_VALUE&){} ) noexcept
                 {
-                    return const_cast<T*>(const_cast<const map*>(this)->find(Guid));
+                    assert(Key.isValid());
+
+                    auto&           MapEntry    = m_Map[Key.m_Value % max_size_v];
+                    auto            Local       = MapEntry.m_Lock.load(std::memory_order_relaxed);
+
+                    //
+                    // Lock
+                    //
+                    do 
+                    {
+                        if( Local.m_isLocked == true ) 
+                        {
+                            // Spin....
+                            Local       = MapEntry.m_Lock.load(std::memory_order_relaxed);
+                            continue;
+                        }
+
+                        if( MapEntry.m_Lock.compare_exchange_weak(Local, lock{ true, Local.m_isValid } ) )
+                            break;
+
+                    } while( true );
+
+                    //
+                    // Remove node
+                    //
+
+                    // Better have that node
+                    xassert(Local.m_isValid);
+                    entry* pCleanUp = nullptr;
+
+                    if( Key.m_Value == MapEntry.m_Key.m_Value  )
+                    {
+                        CallBack(MapEntry.m_Value);
+                        if( MapEntry.m_pNext )
+                        {
+                            pCleanUp = MapEntry.m_pNext;
+
+                            MapEntry.m_Key      = MapEntry.m_pNext->m_Key;
+                            MapEntry.m_Value    = std::move( MapEntry.m_pNext->m_Value );
+                            MapEntry.m_pNext    = MapEntry.m_pNext->m_pNext;
+                        }
+                        else
+                        {
+                            MapEntry.m_Lock.store( lock{ false, false }, std::memory_order_relaxed );
+                            return;
+                        }
+                    }
+                    else
+                    {
+                        for( entry* p = &MapEntry; p->m_pNext; p = p->m_pNext )
+                        {
+                            if( Key.m_Value == p->m_pNext->m_Key.m_Value )
+                            {
+                                CallBack(p->m_pNext->m_Value);
+                                pCleanUp    = p->m_pNext;
+                                p->m_pNext  = p->m_pNext->m_pNext;
+                                break;
+                            }
+                        }
+                    }
+
+                    if( pCleanUp )
+                    {
+                        pCleanUp->m_pNext = m_pFreeOverflow.load(std::memory_order_relaxed);
+                        while( m_pFreeOverflow.compare_exchange_weak( pCleanUp->m_pNext, pCleanUp) == false );
+                    }
+                
+                    //
+                    // Unlock
+                    //
+                    MapEntry.m_Lock.store( lock{ false, true } );
                 }
 
-                template< typename T_GUID >
-                T& get(T_GUID Guid) noexcept
+                T_VALUE* find(T_KEY Key) const noexcept
                 {
-                    return *find(Guid);
+                    assert(Key.isValid());
+                    auto&   MapEntry    = m_Map[Key.m_Value % max_size_v];
+                    auto    Local       = MapEntry.m_Lock.load(std::memory_order_relaxed);
+
+                    //
+                    // Lock
+                    //
+                    do 
+                    {
+                        if( Local.m_isValid == false ) return nullptr; 
+                        if( Local.m_isLocked == true ) 
+                        {
+                            // Spin....
+                            Local       = MapEntry.m_Lock.load(std::memory_order_relaxed);
+                            continue;
+                        }
+
+                        if( MapEntry.m_Lock.compare_exchange_weak(Local, lock{ true, true } ) )
+                            break;
+
+                    } while( true );
+
+                    //
+                    // Search for the node
+                    //
+                    xassert( Local.m_isValid );
+                    T_VALUE*      pResult     = nullptr;
+
+                    if( Key.m_Value == MapEntry.m_Key.m_Value )
+                    {
+                        pResult = &MapEntry.m_Value;
+                    }
+                    else
+                    {
+                        for( auto p = MapEntry.m_pNext; p; p = p->m_pNext )
+                        {
+                            if( Key.m_Value == p->m_Key.m_Value ) 
+                            {
+                                pResult = &p->m_Value;
+                                break;
+                            }
+                        }
+                    }
+                    
+                    //
+                    // Unlock
+                    //
+                    MapEntry.m_Lock.store( lock{ false, true } );
+                    
+                    return pResult;
                 }
 
-                template< typename T_GUID >
-                T& get(T_GUID Guid) const noexcept
+                T_VALUE& get(T_KEY Key) noexcept
                 {
-                    return *find(Guid);
+                    auto p = find(Key);
+                    xassert(p);
+                    return *p;
                 }
 
-                xcore::unique_span<T> m_Map{ T_MAXSIZE_V };
+                T_VALUE& get(T_KEY Key) const noexcept
+                {
+                    auto p = find(Key);
+                    xassert(p);
+                    return *p;
+                }
+
+                template< typename T_CALLBACK >
+                bool getExlusive( T_KEY Key, T_CALLBACK&& CallBack ) noexcept
+                {
+                    assert(Key.isValid());
+                    auto&   MapEntry    = m_Map[Key.m_Value % max_size_v];
+                    auto    Local       = MapEntry.m_Lock.load(std::memory_order_relaxed);
+
+                    //
+                    // Lock
+                    //
+                    do 
+                    {
+                        if( Local.m_isValid == false ) return false; 
+                        if( Local.m_isLocked == true ) 
+                        {
+                            // Spin....
+                            Local       = MapEntry.m_Lock.load(std::memory_order_relaxed);
+                            continue;
+                        }
+
+                        if( MapEntry.m_Lock.compare_exchange_weak(Local, lock{ true, true } ) )
+                            break;
+
+                    } while( true );
+
+                    //
+                    // Search for the node
+                    //
+                    xassert( Local.m_isValid );
+                    T_VALUE*      pResult     = nullptr;
+
+                    if( Key.m_Value == MapEntry.m_Key.m_Value )
+                    {
+                        pResult = &MapEntry.m_Value;
+                    }
+                    else
+                    {
+                        for( auto p = MapEntry.m_pNext; p; p = p->m_pNext )
+                        {
+                            if( Key.m_Value == p->m_Key.m_Value ) 
+                            {
+                                pResult = &p->m_Value;
+                                break;
+                            }
+                        }
+                    }
+                    
+                    if( pResult )
+                    {
+                        CallBack(*pResult);
+                    }
+
+                    //
+                    // Unlock
+                    //
+                    MapEntry.m_Lock.store( lock{ false, true } );
+                    
+                    return !!pResult;
+                }
+
+                struct entry
+                {
+                    T_KEY               m_Key;
+                    T_VALUE             m_Value;
+                    entry*              m_pNext {nullptr};        // Next for cases where collisions happen
+                };
+                
+                struct alignas(std::uint16_t) lock
+                {
+                    bool            m_isValid   { false };
+                    bool            m_isLocked  { false };
+                };
+
+                struct lock_entry : entry
+                {
+                    std::atomic<lock>   m_Lock;
+                };
+
+                std::atomic<entry*>             m_pFreeOverflow { nullptr };                // Link list of overflow entries
+                xcore::unique_span<lock_entry>  m_Map           { T_MAXSIZE_V };
+                xcore::unique_span<entry>       m_Extras        { (T_MAXSIZE_V*10)/100 };   // 10% overflow
             };
 
             #define CHECK_FUNCTION( FUNCTION_NAME )                                         \
@@ -1155,11 +1489,7 @@ namespace mecs
             entity::tmp_ref createEntity( group::instance& Group, entity::guid EntityGuid ) noexcept
             {
                 auto  EntityRef = Group.CreateEntity(EntityGuid);
-                auto& Entry     = m_mapEntity.append(EntityGuid);
-
-                Entry.m_EntityRef.m_LocalIndex      = EntityRef.m_LocalIndex;
-                Entry.m_EntityRef.m_PageIndex       = EntityRef.m_PageIndex;
-                Entry.m_EntityRef.m_pGroupInstance  = EntityRef.m_pGroupInstance;
+                m_mapEntity.push( EntityGuid, std::move(EntityRef) );
                 return EntityRef;
             }
 
@@ -1173,18 +1503,10 @@ namespace mecs
                 //
                 // Create a new group if we need to
                 //
-                if( auto pGroupDesc = m_mapGroup.find(GroupGuid); pGroupDesc == nullptr )
-                {
-                    pGroupDesc = &m_mapGroup.appendOrGet(GroupGuid, [&](const details::group_dec& Entry)
-                    { 
-                        if( Entry.m_pGroup.load(std::memory_order_relaxed) == nullptr )
-                        {
-                            // Spin lock
-                            XCORE_PERF_ZONE_SCOPED_N("getOrCreateGroup::Wasting Time")
-                            while( Entry.m_pGroup.load(std::memory_order_relaxed) == nullptr );
-                        }
-                    });
+                //                             XCORE_PERF_ZONE_SCOPED_N("getOrCreateGroup::Wasting Time")
 
+                auto pGroup = m_mapGroup.getOrCreate(GroupGuid, [&]
+                { 
                     bool                bAddEntityComponent = true;
                     auto                nComponents         = ComponentTypesGuids.size();
                     query::filter_bits  Bits                {nullptr};
@@ -1196,7 +1518,7 @@ namespace mecs
                         xassert(C.m_Value);
 
                         // Collect all the component descriptors
-                        lComponetDesc[i] = m_mapComponentDescriptor.get(C).m_pDescriptor;
+                        lComponetDesc[i] = m_mapComponentDescriptor.get(C);
 
                         // Make sure we set all the bits for the query
                         Bits.AddBit(lComponetDesc[i]->m_BitNumber);
@@ -1208,12 +1530,12 @@ namespace mecs
                     // Add the bits for the tags as well
                     for(auto E : TagTypesGuids)
                     {
-                        Bits.AddBit(m_mapComponentDescriptor.get(E).m_pDescriptor->m_BitNumber);
+                        Bits.AddBit(m_mapComponentDescriptor.get(E)->m_BitNumber);
                     }
 
                     // the entity if we have to
                     if(bAddEntityComponent)
-                        lComponetDesc[nComponents++] = m_mapComponentDescriptor.get(entity::instance::type_guid_v).m_pDescriptor;
+                        lComponetDesc[nComponents++] = m_mapComponentDescriptor.get(entity::instance::type_guid_v);
 
                     // Make sure that we store data in the ascending order
                     std::sort(  lComponetDesc.begin()
@@ -1221,10 +1543,22 @@ namespace mecs
                             ,   [](const component::descriptor* pA, const component::descriptor* pB) { return pA->m_Guid.m_Value < pB->m_Guid.m_Value;} 
                     );
 
+                    auto pGroupDesc = m_mapGroupDescriptor.getOrCreate
+                    ( 
+                        group::guid{ ComponentGroupGuid }
+                        , [&]
+                        {
+                            return new group::descriptor
+                            {
+                                lComponetDesc.ViewTo(nComponents)
+                            };
+                        }
+                    );
+
                     auto pGroupInstance = new group::instance
                     { 
                           m_PageMgr
-                        , lComponetDesc.ViewTo(nComponents)
+                        , *pGroupDesc
                         , TagTypesGuids 
                     };
 
@@ -1236,14 +1570,11 @@ namespace mecs
                     // Officially release the lock/set the group
                     for( pGroupInstance->m_pNext = m_pGroupHead.load(std::memory_order_relaxed); 
                          m_pGroupHead.compare_exchange_weak( pGroupInstance->m_pNext, pGroupInstance ) == false; );
-                    pGroupDesc->m_pGroup.store( pGroupInstance, std::memory_order_relaxed );
-                        
-                    return *pGroupInstance;
-                }
-                else
-                {
-                    return *pGroupDesc->m_pGroup.load(std::memory_order_relaxed);
-                }
+                    
+                    return pGroupInstance;
+                });
+
+                return *pGroup;
             }
 
             template< typename...T_COMPONENTS_AND_TAGS >
@@ -1283,7 +1614,7 @@ namespace mecs
             
             inline entity::tmp_ref createEntity(group::guid GroupGuid, entity::guid EntityGuid) noexcept
             {
-                return createEntity( *m_mapGroup.get(GroupGuid).m_pGroup.load(std::memory_order_relaxed), EntityGuid);
+                return createEntity( *m_mapGroup.get(GroupGuid), EntityGuid);
             }
 
             template< typename T_COMPONENT >
@@ -1302,7 +1633,7 @@ namespace mecs
                 };
 
                 component_descriptor_v.m_BitNumber = m_RegistrationFreeBits.AllocBit();
-                m_mapComponentDescriptor.append(T_COMPONENT::type_guid_v).m_pDescriptor = &component_descriptor_v;
+                m_mapComponentDescriptor.push(T_COMPONENT::type_guid_v, &component_descriptor_v);
             }
  
             template< typename...T_COMPONENTS_AND_TAGS >
@@ -1341,22 +1672,22 @@ namespace mecs
                     Instance.m_isInitialized = true;
                     for( auto E : system::query_v.m_All )
                     {
-                        Instance.m_All.AddBit( m_mapComponentDescriptor.get(E).m_pDescriptor->m_BitNumber );
+                        Instance.m_All.AddBit( m_mapComponentDescriptor.get(E)->m_BitNumber );
                     }
 
                     for( auto E : system::query_v.m_Any )
                     {
-                        Instance.m_Any.AddBit( m_mapComponentDescriptor.get(E).m_pDescriptor->m_BitNumber );
+                        Instance.m_Any.AddBit( m_mapComponentDescriptor.get(E)->m_BitNumber );
                     }
 
                     for( auto E : system::query_v.m_None )
                     {
-                        Instance.m_None.AddBit( m_mapComponentDescriptor.get(E).m_pDescriptor->m_BitNumber );
+                        Instance.m_None.AddBit( m_mapComponentDescriptor.get(E)->m_BitNumber );
                     }
 
                     for( int i=0; i<function::list_v.size(); ++i )
                     {
-                        const auto BitNum = m_mapComponentDescriptor.get(function::list_v[i]).m_pDescriptor->m_BitNumber;
+                        const auto BitNum = m_mapComponentDescriptor.get(function::list_v[i])->m_BitNumber;
                         Instance.m_Function.AddBit( BitNum );
                         if( function::const_list_v[i] == false ) Instance.m_Write.AddBit(BitNum);
                     }
@@ -1380,9 +1711,9 @@ namespace mecs
                     Entry.m_pGroup          = const_cast<group::instance*>(E.m_pGroup);
 
                     const auto& Group       = *E.m_pGroup;
-                    const auto& lOffsets    = Group.m_lComponentOffsets;
-                    const auto& lCTypeGuid  = Group.m_lComponentTypeGuids;
-                    const int   Size        = Group.m_nComponents;
+                    const auto& lOffsets    = Group.m_GroupDescriptor.m_lComponentOffsets;
+                    const auto& lCTypeGuid  = Group.m_GroupDescriptor.m_lComponentTypeGuids;
+                    const int   Size        = Group.m_GroupDescriptor.m_nComponents;
                     int         F           = 0;
                     for( int i=0; i<Size; ++i)
                     {
@@ -1418,17 +1749,10 @@ namespace mecs
 
             void DeleteEntity( entity::guid Guid ) noexcept
             {
-                auto pEntity = m_mapEntity.find(Guid);
-                if( pEntity == nullptr ) return;
-
-                entity::tmp_ref TmpRef{ nullptr,group::local_index{0u},group::page_index{0u}};
-                if( xcore::lock::scope Lk(*pEntity); pEntity->m_Guid.m_Value )
+                m_mapEntity.pop( Guid, [&]( entity::tmp_ref TmpRef )
                 {
-                    pEntity->m_Guid.m_Value = 0;
-                    TmpRef = pEntity->m_EntityRef;
-                }
-
-                if(TmpRef.m_pGroupInstance) TmpRef.m_pGroupInstance->DeleteEntity(TmpRef);
+                    TmpRef.m_pGroupInstance->DeleteEntity(TmpRef);
+                });
             }
  
             constexpr static std::size_t                                max_entity_count_v = xcore::bits::RoundToNextPowOfTwo(100000000ull)
@@ -1436,17 +1760,18 @@ namespace mecs
                                                                                            + xcore::bits::RoundToNextPowOfTwo(  1000000ull));
             constexpr static std::size_t                                max_groups_count_v = 1024;
 
-            std::atomic<group::instance*>                                   m_pGroupHead                {nullptr};
-            std::uint32_t                                                   m_nQueryTables              {0};
-            group::page_mgr                                                 m_PageMgr                   {};
-            details::map<details::entity_desc, max_entity_count_v>           m_mapEntity                 {};
-            details::map<details::group_dec, max_groups_count_v>            m_mapGroup                  {};
-            details::map<details::component_dec, 256>                       m_mapComponentDescriptor    {};
-            xcore::array<details::query_table_entry, max_groups_count_v>    m_lQueryTable               {};
-            bool                                                            m_bFrameStarted             { false };
-            bool                                                            m_bPause                    { false };
-            int                                                             m_FrameNumber               { 0 };
-            query::filter_bits                                              m_RegistrationFreeBits      {xcore::not_null};
+            std::atomic<group::instance*>                                           m_pGroupHead                {nullptr};
+            std::uint32_t                                                           m_nQueryTables              {0};
+            group::page_mgr                                                         m_PageMgr                   {};
+            details::map<entity::guid, entity::tmp_ref, max_entity_count_v>         m_mapEntity                 {};
+            details::map<group::guid,  group::instance*,    max_groups_count_v>     m_mapGroup                  {};
+            details::map<group::guid,  const group::descriptor*, max_groups_count_v> m_mapGroupDescriptor        {};
+            details::map<type_guid,    const component::descriptor*, 256>           m_mapComponentDescriptor    {};
+            xcore::array<details::query_table_entry, max_groups_count_v>            m_lQueryTable               {};
+            bool                                                                    m_bFrameStarted             { false };
+            bool                                                                    m_bPause                    { false };
+            int                                                                     m_FrameNumber               { 0 };
+            query::filter_bits                                                      m_RegistrationFreeBits      {xcore::not_null};
         };
     }
 
