@@ -144,19 +144,69 @@ namespace mecs
                   false == std::is_base_of_v<mecs::component::tag,  T_COMPONENT>
                 , std::tuple<>
             > FilterOutComponents();
-            
-            //---------------------------------------------------------------------------------
-            struct default_tag : component::tag
-            {
-                constexpr static type_guid type_guid_v{ 2ull };
-            };
+
+            template< typename T_COMPONENT >
+            std::enable_if_t
+            <
+                  false == std::is_base_of_v<mecs::component::tag,   T_COMPONENT>
+                , std::tuple<T_COMPONENT>
+            > FilterOutTags();
+
+            template< typename T_COMPONENT >
+            std::enable_if_t
+            <
+                  true == std::is_base_of_v<mecs::component::tag,  T_COMPONENT>
+                , std::tuple<>
+            > FilterOutTags();
 
             //---------------------------------------------------------------------------------
+
+            struct default_tag : component::tag
+            {
+                constexpr static type_guid type_guid_v{ 1ull };
+            };
+
             template< typename T_A, typename T_B >
             struct compare
             {
-                constexpr static bool value = T_A::type_guid_v.m_Value
-                                            < T_B::type_guid_v.m_Value;
+                constexpr static bool value = std::decay_t<T_A>::type_guid_v.m_Value
+                                            < std::decay_t<T_B>::type_guid_v.m_Value;
+            };
+
+            //---------------------------------------------------------------------------------
+
+            template< typename...T_COMPONENTS_AND_TAGS >
+            struct guid_arrays_from_types
+            {
+                constexpr static auto component_guid_list_v = MakeArrayTypeGuids
+                ( reinterpret_cast
+                    <
+                        xcore::types::tuple_sort_t
+                        < 
+                            compare, xcore::types::tuple_cat_t
+                            < 
+                                  std::tuple<entity::instance>
+                                , decltype(FilterOutTags<std::decay_t<T_COMPONENTS_AND_TAGS>>())...
+                            >
+                        >*
+                    >(nullptr)
+                );
+
+                constexpr static auto tag_guid_list_v = MakeArrayTypeGuids
+                ( reinterpret_cast
+                    <
+                        xcore::types::tuple_sort_t
+                        < 
+                            compare, xcore::types::tuple_cat_t
+                            <
+                                  std::tuple<default_tag>
+                                , decltype(FilterOutComponents<std::decay_t<T_COMPONENTS_AND_TAGS>>())...
+                            >
+                        >*
+                    >(nullptr)
+                );
+
+                static_assert( component_guid_list_v.size() == 1 || component_guid_list_v[0].m_Value < component_guid_list_v[1].m_Value );
             };
         }
 
@@ -626,15 +676,17 @@ namespace mecs
 
             constexpr bool Query( filter_bits All, filter_bits Any, filter_bits None ) const noexcept
             {
-                bool bAny = false;
+                bool    bAny1 = false;
+                bool    bAny2 = false;
                 for( int i=0; i<m_Bits.size(); ++i )
                 { 
                     const auto B = m_Bits[i];
                     if( None.m_Bits[i] & B ) return false;
                     if( const auto A = All.m_Bits[i]; (A&B) != A ) return false;
-                    if( const auto A = Any.m_Bits[i]; (A&B) ) bAny = true;
+                    if( const auto A = Any.m_Bits[i]; (A&B) ) bAny1 = true;
+                    else bAny2 = A != 0;
                 }
-                return bAny;
+                return bAny2 == bAny1;
             }
         };
 
@@ -642,24 +694,21 @@ namespace mecs
         // QUERY::ALL NONE ANY
         //---------------------------------------------------------------------------------
         template< typename...T_COMPONENTS_AND_TAGS >
-        struct all
+        struct all : component::group::details::guid_arrays_from_types< T_COMPONENTS_AND_TAGS... >
         {
             constexpr static int type_v = 0;
-            constexpr static std::array list_v{ T_COMPONENTS_AND_TAGS::type_guid_v ... };
         };
 
         template< typename...T_COMPONENTS_AND_TAGS >
-        struct none
+        struct none : component::group::details::guid_arrays_from_types< T_COMPONENTS_AND_TAGS... >
         {
             constexpr static int type_v = 1;
-            constexpr static std::array list_v{ T_COMPONENTS_AND_TAGS::type_guid_v ... };
         };
 
         template< typename...T_COMPONENTS_AND_TAGS >
-        struct any
+        struct any : component::group::details::guid_arrays_from_types< T_COMPONENTS_AND_TAGS... >
         {
             constexpr static int type_v = 2;
-            constexpr static std::array list_v{ T_COMPONENTS_AND_TAGS::type_guid_v ... };
         };
 
         //---------------------------------------------------------------------------------
@@ -694,13 +743,6 @@ namespace mecs
                 using type = std::tuple<T_ARGS...>;
             };
 
-            template< typename B, typename A >
-            struct compare
-            {
-                constexpr static bool value = std::decay_t<A>::type_guid_v.m_Value 
-                                            < std::decay_t<B>::type_guid_v.m_Value;
-            };
-
             template< std::size_t T_SIZE, typename T_FUNCTION, typename T_SORTED >
             constexpr auto remap( T_FUNCTION& Fun, T_SORTED& Sort ) noexcept
             {
@@ -721,7 +763,7 @@ namespace mecs
         struct system_function
         {
             using args_t        = typename xcore::function::traits<decltype(&T::Update)>::args_tuple;
-            using sorted_args_t = typename xcore::types::tuple_sort_t< details::compare, args_t >;
+            using sorted_args_t = typename xcore::types::tuple_sort_t< component::group::details::compare, args_t >;
             constexpr static std::array list_v          { details::TypeArray ( reinterpret_cast<args_t*>(nullptr) ) };
             constexpr static std::array const_list_v    { details::ConstArray( reinterpret_cast<args_t*>(nullptr) ) };
             constexpr static std::array sorted_list_v   { details::TypeArray ( reinterpret_cast<sorted_args_t*>(nullptr) ) };
@@ -746,23 +788,23 @@ namespace mecs
             query m_TagQuery;
         };
 
-        template< typename...T_COMPONENTS_AND_TAGS >
+        template< typename...T_QUERY_FILTERS >
         struct define : define_data
         {
             template< bool T_IS_TAG, int I >
-            constexpr static void Initializer( define& This, std::span<const type_guid> X ) noexcept
+            constexpr static void Initializer( define& This, std::span<const type_guid> Componets, std::span<const type_guid> Tags ) noexcept
             {
                 if constexpr (T_IS_TAG)
                 {
-                         if constexpr ( I == 0 ) This.m_TagQuery.m_All         = X;
-                    else if constexpr ( I == 1 ) This.m_TagQuery.m_Any         = X;
-                    else if constexpr ( I == 2 ) This.m_TagQuery.m_None        = X;
+                         if constexpr ( I == 0 ) if(Tags.size()>1) This.m_TagQuery.m_All  = std::span<const type_guid>(&Tags[1], Tags.size()-1);
+                    else if constexpr ( I == 1 ) if(Tags.size()>1) This.m_TagQuery.m_Any  = std::span<const type_guid>(&Tags[1], Tags.size()-1);
+                    else if constexpr ( I == 2 ) if(Tags.size()>1) This.m_TagQuery.m_None = std::span<const type_guid>(&Tags[1], Tags.size()-1);
                 }
                 else
                 {
-                         if constexpr ( I == 0 ) This.m_ComponentQuery.m_All         = X;
-                    else if constexpr ( I == 1 ) This.m_ComponentQuery.m_Any         = X;
-                    else if constexpr ( I == 2 ) This.m_ComponentQuery.m_None        = X;
+                         if constexpr ( I == 0 ) if(Componets.size()>1) This.m_ComponentQuery.m_All  = std::span<const type_guid>(&Componets[1], Componets.size()-1);
+                    else if constexpr ( I == 1 ) if(Componets.size()>1) This.m_ComponentQuery.m_Any  = std::span<const type_guid>(&Componets[1], Componets.size()-1);
+                    else if constexpr ( I == 2 ) if(Componets.size()>1) This.m_ComponentQuery.m_None = std::span<const type_guid>(&Componets[1], Componets.size()-1);
                 }
             };
 
@@ -771,9 +813,9 @@ namespace mecs
                 ( 
                     Initializer
                     <
-                        std::is_base_of_v<mecs::component::tag, T_COMPONENTS_AND_TAGS>
-                        , T_COMPONENTS_AND_TAGS::type_v
-                    >( *this, T_COMPONENTS_AND_TAGS::list_v )
+                        std::is_base_of_v<mecs::component::tag, T_QUERY_FILTERS>
+                        , T_QUERY_FILTERS::type_v
+                    >( *this, T_QUERY_FILTERS::component_guid_list_v, T_QUERY_FILTERS::tag_guid_list_v )
                     , ... 
                 );
             }
@@ -885,7 +927,7 @@ namespace mecs
                                     // Make sure we are running a valid entity
                                     if(    Flags.m_isDeleted 
                                         || Flags.m_isDisable
-                                        || Flags.m_isInWorld == false )
+                                         )//|| Flags.m_isInWorld == false )
                                         continue;
 
                                     // Call the system update function
@@ -1426,8 +1468,8 @@ namespace mecs
                 
                 struct alignas(std::uint16_t) lock
                 {
-                    bool            m_isValid   { false };
                     bool            m_isLocked  { false };
+                    bool            m_isValid   { false };
                 };
 
                 struct lock_entry : entry
@@ -1668,15 +1710,8 @@ namespace mecs
                     >(nullptr)
                 );
 
-                return getOrCreateGroup(ComponentGuid,TagsGuid);
+                return getOrCreateGroup( ComponentGuid, TagsGuid );
             }
-
-            /*
-            inline entity::tmp_ref createEntity(component::group::guid GroupGuid, entity::guid EntityGuid) noexcept
-            {
-                return createEntity( *m_mapGroup.get(GroupGuid), EntityGuid);
-            }
-            */
 
             template< typename T_COMPONENTS_AND_TAGS >
             inline void registerComponent(void) noexcept

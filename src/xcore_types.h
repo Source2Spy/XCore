@@ -159,8 +159,8 @@ namespace xcore::types
                 <
                     Comparator
                     <
-                        std::tuple_element_t<i, LoopTuple>,
-                        std::tuple_element_t<j, LoopTuple>
+                          std::tuple_element_t<j, LoopTuple>
+                        , std::tuple_element_t<i, LoopTuple>
                     >::value,
                     typename tuple_element_swap<i, j, LoopTuple>::type, // true: swap(i, j)
                     LoopTuple                                           // false: do nothing
