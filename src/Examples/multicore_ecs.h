@@ -48,23 +48,9 @@ namespace mecs
     {
         using guid = xcore::guid::unit<64, struct ecs_entity_tag>;
 
-        union flags
-        {
-            std::uint32_t m_Value{ 0 };
-            struct
-            {
-                bool  m_isDeleted : 1
-                    , m_isDisable : 1
-                    , m_isInWorld : 1
-                    ;
-            };
-        };
-
         struct instance
         {
             constexpr static type_guid type_guid_v{1ull};
-            std::atomic<entity::flags>  m_SystemFlags;  // This is 32 bits
-            std::uint32_t               m_Layer;        // Means 32bits are been used to padding here
             entity::guid                m_Guid;         // This is 64 bits
         };
 
@@ -516,6 +502,16 @@ namespace mecs
             const std::array<details::offsets, max_ingroup_components_v>                m_lComponentOffsets;
         };
 
+
+        struct events
+        {
+            // onNewEntities...      (which new entities where created this frame)
+            // onDeleteEntities...   (which entities got deleted this frame)
+            // onUpdatedEntities...  (Some system may have change this entity (Had write access to it))
+            // onMovedInEntities...  (Some new entity got moved in here, from another group)
+            // onMovedOutEntities... (By Adding or Removing Componets)
+        };
+
         //---------------------------------------------------------------------------------
         // GROUP::INSTANCE
         //---------------------------------------------------------------------------------
@@ -598,6 +594,7 @@ namespace mecs
                 local_index m_LocalEntry;
             };
 
+            /*
             void DeleteEntity( entity::tmp_ref Entry ) noexcept
             {
                 auto& Entity = *reinterpret_cast<entity::instance*>
@@ -624,6 +621,7 @@ namespace mecs
                 Del.m_PageIndex  = Entry.m_PageIndex;
                 Del.m_LocalEntry = Entry.m_LocalIndex;
             }
+                */
 
             constexpr static std::size_t max_pages_v = 1024*32;
             using page_list = xcore::array<page*, max_pages_v>;
@@ -861,7 +859,7 @@ namespace mecs
         struct result_entry
         {
             component::group::instance*                         m_pGroup;
-            std::array<std::uint16_t,15>                        m_lRemaps;
+            std::array<std::uint16_t,15>                        m_lRemaps;  // Offsets into the actual page where the component is
             std::uint8_t                                        m_nRemaps;
         };
 
@@ -931,14 +929,13 @@ namespace mecs
                         auto&               Group           = *R.m_pGroup;
                         auto                TotalEntries    = Group.m_Count;
                         const auto          EntriesPerPage  = Group.m_GroupDescriptor.m_EntriesPerPage;
-                        const std::uint16_t EntityOffset    = Group.m_GroupDescriptor.m_lComponentOffsets[0].m_Offset;
 
                         for( auto& Page : Group.m_lPages.ViewTo(Group.m_nPages.load(std::memory_order_relaxed).m_Value) )
                         {
                             auto        pPage = reinterpret_cast<std::byte*>( Page->m_RawData );
                             const auto  iEnd  = std::min( static_cast<std::uint16_t>(TotalEntries), EntriesPerPage );
                             TotalEntries -= iEnd;
-                            Channel.SubmitJob( [ EntityOffset, &R, iEnd, pPage, this ]
+                            Channel.SubmitJob( [ &R, iEnd, pPage, this ]
                             {
                                 XCORE_PERF_ZONE_SCOPED_N("ForEach::LightJob")
 
@@ -952,18 +949,8 @@ namespace mecs
                                     ) ...
                                 };
 
-                                auto pEntityPool = reinterpret_cast<const entity::instance* const>(&pPage[EntityOffset]);
-
                                 for( auto i = 0; i < iEnd; ++i )
                                 {
-                                    auto Flags = pEntityPool[i].m_SystemFlags.load(std::memory_order_relaxed);
-
-                                    // Make sure we are running a valid entity
-                                    if(    Flags.m_isDeleted 
-                                        || Flags.m_isDisable
-                                         )//|| Flags.m_isInWorld == false )
-                                        continue;
-
                                     // Call the system update function
                                     user_system_t::Update
                                     ( 
@@ -1873,6 +1860,7 @@ namespace mecs
                 }
             }
 
+            /*
             void DeleteEntity( entity::guid Guid ) noexcept
             {
                 m_mapEntity.pop( Guid, [&]( entity::tmp_ref TmpRef )
@@ -1880,6 +1868,7 @@ namespace mecs
                     TmpRef.m_pGroupInstance->DeleteEntity(TmpRef);
                 });
             }
+            */
  
             constexpr static std::size_t                                max_entity_count_v = xcore::bits::RoundToNextPowOfTwo(100000000ull)
                                                                         XCORE_CMD_ASSERT(  - xcore::bits::RoundToNextPowOfTwo(100000000ull)
