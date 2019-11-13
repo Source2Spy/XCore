@@ -205,9 +205,42 @@ namespace mecs
                         >*
                     >(nullptr)
                 );
-
-                static_assert( component_guid_list_v.size() == 1 || component_guid_list_v[0].m_Value < component_guid_list_v[1].m_Value );
             };
+
+            //---------------------------------------------------------------------------------
+
+            template< typename...T_COMPONENTS_AND_TAGS >
+            struct guid_arrays_from_types_with_duplication
+            {
+                constexpr static auto component_guid_list_v = component::group::details::MakeArrayTypeGuids
+                ( reinterpret_cast
+                    <
+                        xcore::types::tuple_sort_t
+                        < 
+                            compare, xcore::types::tuple_cat_t
+                            < 
+                                  std::tuple<entity::instance>
+                                , decltype(FilterOutTagsExtendDoubleBuffer<T_COMPONENTS_AND_TAGS>())...
+                            >
+                        >*
+                    >(nullptr)
+                );
+
+                constexpr static auto tag_guid_list_v = component::group::details::MakeArrayTypeGuids
+                ( reinterpret_cast
+                    <
+                        xcore::types::tuple_sort_t
+                        < 
+                            compare, xcore::types::tuple_cat_t
+                            <
+                                  std::tuple<default_tag>
+                                , decltype(FilterOutComponents<T_COMPONENTS_AND_TAGS>())...
+                            >
+                        >*
+                    >(nullptr)
+                );
+            };
+
         }
 
         //---------------------------------------------------------------------------------
@@ -794,6 +827,7 @@ namespace mecs
             template< bool T_IS_TAG, int I >
             constexpr static void Initializer( define& This, std::span<const type_guid> Componets, std::span<const type_guid> Tags ) noexcept
             {
+                // We filter out the first component since it is always the entity or the default_tag
                 if constexpr (T_IS_TAG)
                 {
                          if constexpr ( I == 0 ) if(Tags.size()>1) This.m_TagQuery.m_All  = std::span<const type_guid>(&Tags[1], Tags.size()-1);
@@ -1682,35 +1716,8 @@ namespace mecs
             template< typename...T_COMPONENTS_AND_TAGS >
             inline component::group::instance& getOrCreateGroup( void ) noexcept
             {
-                constexpr static auto ComponentGuid = component::group::details::MakeArrayTypeGuids
-                ( reinterpret_cast
-                    <
-                        xcore::types::tuple_sort_t
-                        < 
-                            component::group::details::compare, xcore::types::tuple_cat_t
-                            < 
-                                  std::tuple<entity::instance>
-                                , decltype(component::group::details::FilterOutTagsExtendDoubleBuffer<T_COMPONENTS_AND_TAGS>())...
-                            >
-                        >*
-                    >(nullptr)
-                );
-
-                constexpr static auto TagsGuid = component::group::details::MakeArrayTypeGuids
-                ( reinterpret_cast
-                    <
-                        xcore::types::tuple_sort_t
-                        < 
-                            component::group::details::compare, xcore::types::tuple_cat_t
-                            <
-                                  std::tuple<component::group::details::default_tag>
-                                , decltype(component::group::details::FilterOutComponents<T_COMPONENTS_AND_TAGS>())...
-                            >
-                        >*
-                    >(nullptr)
-                );
-
-                return getOrCreateGroup( ComponentGuid, TagsGuid );
+                constexpr static component::group::details::guid_arrays_from_types_with_duplication<T_COMPONENTS_AND_TAGS...> arrays_v;
+                return getOrCreateGroup( arrays_v.component_guid_list_v, arrays_v.tag_guid_list_v );
             }
 
             template< typename T_COMPONENTS_AND_TAGS >
@@ -1879,19 +1886,26 @@ namespace mecs
                                                                                            + xcore::bits::RoundToNextPowOfTwo(  1000000ull));
             constexpr static std::size_t                                max_groups_count_v = 1024;
 
-            component::group::page_mgr                                                  m_PageMgr                       {};
-            details::map<entity::guid, entity::tmp_ref, max_entity_count_v>             m_mapEntity                     {};
-            details::dbase                                                              m_TagDBase                      {};
-            details::map<type_guid, component::group::instance*, max_groups_count_v>    m_mapGroupPerTag                {};
-            details::map<component::group::guid,  const component::group::descriptor*, max_groups_count_v>    m_mapGroupDescriptor            {};
-            details::map<type_guid, const component::descriptor*, 256>                  m_mapComponentDescriptor        {};
-            details::map<type_guid, std::uint8_t, 256>                                  m_mapTagDescriptor              {};
-            details::map<type_guid, details::dbase::tag_entry*, 256>                    m_mapTagLookup                  {};
-            bool                                                                        m_bFrameStarted                 { false };
-            bool                                                                        m_bPause                        { false };
-            int                                                                         m_FrameNumber                   { 0 };
-            query::filter_bits                                                          m_ComponentRegistrationFreeBits {xcore::not_null};
-            query::filter_bits                                                          m_TagRegistrationFreeBits       {xcore::not_null};
+            using map_entity_t                  = details::map<entity::guid,            entity::tmp_ref,                        max_entity_count_v>;
+            using map_group_per_tag_t           = details::map<type_guid,               component::group::instance*,            max_groups_count_v>;
+            using map_group_descriptor_t        = details::map<component::group::guid,  const component::group::descriptor*,    max_groups_count_v>;
+            using map_component_descriptor_t    = details::map<type_guid,               const component::descriptor*,           256>;
+            using map_tag_descriptor_t          = details::map<type_guid,               std::uint8_t,                           256>;
+            using map_tag_lookup_t              = details::map<type_guid,               details::dbase::tag_entry*,             max_groups_count_v>;
+
+            bool                                        m_bFrameStarted                 { false };
+            bool                                        m_bPause                        { false };
+            int                                         m_FrameNumber                   { 0 };
+            component::group::page_mgr                  m_PageMgr                       {};
+            map_entity_t                                m_mapEntity                     {};
+            details::dbase                              m_TagDBase                      {};
+            map_group_per_tag_t                         m_mapGroupPerTag                {};
+            map_group_descriptor_t                      m_mapGroupDescriptor            {};
+            map_component_descriptor_t                  m_mapComponentDescriptor        {};
+            map_tag_descriptor_t                        m_mapTagDescriptor              {};
+            map_tag_lookup_t                            m_mapTagLookup                  {};
+            query::filter_bits                          m_ComponentRegistrationFreeBits {xcore::not_null};
+            query::filter_bits                          m_TagRegistrationFreeBits       {xcore::not_null};
         };
     }
 
