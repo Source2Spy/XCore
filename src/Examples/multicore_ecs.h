@@ -1,12 +1,15 @@
 
 namespace mecs
 {
-    namespace group
+    namespace component
     {
-        struct instance;
-        struct local_index  : xcore::units::type<local_index,   std::uint16_t> {using type::type;};
-        struct page_index   : xcore::units::type<page_index,    std::uint16_t> {using type::type;};
-        struct global_index : xcore::units::type<global_index,  std::uint32_t> {using type::type;};
+        namespace group
+        {
+            struct instance;
+            struct local_index  : xcore::units::type<local_index,   std::uint16_t> {using type::type;};
+            struct page_index   : xcore::units::type<page_index,    std::uint16_t> {using type::type;};
+            struct global_index : xcore::units::type<global_index,  std::uint32_t> {using type::type;};
+        }
     }
 
     using type_guid = xcore::guid::unit<64, struct component_type_guid_tag >;
@@ -77,16 +80,16 @@ namespace mecs
 
             //std::vector<properties_tuple> getProperties(void) const noexcept;
 
-            group::instance*        m_pGroupInstance;
-            group::local_index      m_LocalIndex;
-            group::page_index       m_PageIndex;
+            component::group::instance*        m_pGroupInstance;
+            component::group::local_index      m_LocalIndex;
+            component::group::page_index       m_PageIndex;
         };
     }
 
     //---------------------------------------------------------------------------------
     // GROUP
     //---------------------------------------------------------------------------------
-    namespace group
+    namespace component::group
     {
         using guid = xcore::guid::unit<64, struct ecs_group_tag>;
 
@@ -435,11 +438,9 @@ namespace mecs
         //---------------------------------------------------------------------------------
         struct instance
         {
-            instance( page_mgr& PageMgr, const descriptor& GroupDescriptor, const std::span<const type_guid> TagTypesGuids ) noexcept
+            instance( page_mgr& PageMgr, const descriptor& GroupDescriptor ) noexcept
                 : m_PageMgr             { PageMgr }
-                , m_GroupDescriptor     {GroupDescriptor}
-                , m_lTagGuids           { [&]() constexpr { std::array<type_guid,64>                    D{}; for (int i = 0; i < TagTypesGuids.size(); ++i) D[i] = TagTypesGuids[i];          return D; }() }
-                , m_nTagGuids           { static_cast<std::uint16_t>(TagTypesGuids.size()) }
+                , m_GroupDescriptor     { GroupDescriptor }
                 , m_lDeleteEntries      { m_PageMgr }
                 {}
 
@@ -544,11 +545,6 @@ namespace mecs
             constexpr static std::size_t max_pages_v = 1024*32;
             using page_list = xcore::array<page*, max_pages_v>;
 
-            const std::uint16_t                                                         m_nTagGuids;
-            const std::array<type_guid, max_ingroup_components_v>                       m_lTagGuids;
-
-
-            group::instance*                                                            m_pNext             {nullptr};
             page_mgr&                                                                   m_PageMgr;
             std::atomic<std::uint32_t>                                                  m_NewCount          { 0 };
             std::uint32_t                                                               m_Count             { 0 };
@@ -739,26 +735,47 @@ namespace mecs
         //---------------------------------------------------------------------------------
         struct define_data
         {
-            std::span<const type_guid>    m_All;            // Which components/tags we must have
-            std::span<const type_guid>    m_Any;            // Must have at least one component/tag from the set
-            std::span<const type_guid>    m_None;           // Which components/tags you must not have
+            struct query
+            {
+                std::span<const type_guid>    m_All;            // Which components/tags we must have
+                std::span<const type_guid>    m_Any;            // Must have at least one component/tag from the set
+                std::span<const type_guid>    m_None;           // Which components/tags you must not have
+            };
+
+            query m_ComponentQuery;
+            query m_TagQuery;
         };
 
-        template< typename...T_ARGS >
+        template< typename...T_COMPONENTS_AND_TAGS >
         struct define : define_data
         {
-            template< int I >
+            template< bool T_IS_TAG, int I >
             constexpr static void Initializer( define& This, std::span<const type_guid> X ) noexcept
             {
-                     if constexpr ( I == 0 ) This.m_All         = X;
-                else if constexpr ( I == 1 ) This.m_Any         = X;
-                else if constexpr ( I == 2 ) This.m_None        = X;
-                else if constexpr ( I == 3 ) This.m_Function    = X;
+                if constexpr (T_IS_TAG)
+                {
+                         if constexpr ( I == 0 ) This.m_TagQuery.m_All         = X;
+                    else if constexpr ( I == 1 ) This.m_TagQuery.m_Any         = X;
+                    else if constexpr ( I == 2 ) This.m_TagQuery.m_None        = X;
+                }
+                else
+                {
+                         if constexpr ( I == 0 ) This.m_ComponentQuery.m_All         = X;
+                    else if constexpr ( I == 1 ) This.m_ComponentQuery.m_Any         = X;
+                    else if constexpr ( I == 2 ) This.m_ComponentQuery.m_None        = X;
+                }
             };
 
             constexpr define( void ) noexcept
             {
-                ( Initializer<T_ARGS::type_v>( *this, T_ARGS::list_v ), ... );
+                ( 
+                    Initializer
+                    <
+                        std::is_base_of_v<mecs::component::tag, T_COMPONENTS_AND_TAGS>
+                        , T_COMPONENTS_AND_TAGS::type_v
+                    >( *this, T_COMPONENTS_AND_TAGS::list_v )
+                    , ... 
+                );
             }
         };
 
@@ -767,7 +784,7 @@ namespace mecs
         //---------------------------------------------------------------------------------
         struct result_entry
         {
-            group::instance*                                    m_pGroup;
+            component::group::instance*                         m_pGroup;
             std::array<std::uint16_t,15>                        m_lRemaps;
             std::uint8_t                                        m_nRemaps;
         };
@@ -777,13 +794,26 @@ namespace mecs
         //---------------------------------------------------------------------------------
         struct instance
         {
+            struct component_query
+            {
+                filter_bits                 m_All                   {nullptr};
+                filter_bits                 m_Any                   {nullptr};
+                filter_bits                 m_None                  {nullptr};
+            };
+
+            struct tag_query
+            {
+                filter_bits                 m_All                   {nullptr};
+                filter_bits                 m_Any                   {nullptr};
+                filter_bits                 m_None                  {nullptr};
+            };
+
             xcore::vector<result_entry> m_lResults              {};
             bool                        m_isInitialized         {false};
             filter_bits                 m_Function              {nullptr};
             filter_bits                 m_Write                 {nullptr};
-            filter_bits                 m_All                   {nullptr};
-            filter_bits                 m_Any                   {nullptr};
-            filter_bits                 m_None                  {nullptr};
+            component_query             m_ComponentQuery        {};
+            tag_query                   m_TagQuery              {};
         };
     }
 
@@ -964,10 +994,32 @@ namespace mecs
                 bool            m_isDoubleBuffer;
             };
 
-            struct query_table_entry
+            struct dbase
             {
-                query::filter_bits                              m_Bits;
-                const group::instance*                          m_pGroup{nullptr};
+                struct tag_entry
+                {
+                    struct group_entry
+                    {
+                        query::filter_bits                          m_Bits;
+                        component::group::instance*                 m_pGroup{nullptr};
+                    };
+
+                    type_guid                                       m_Guid;         // Tag UID (Sum of all individual tags)
+                    query::filter_bits                              m_Bits;         // Tag bitsets (Unique bit set for each tag)
+                    std::uint32_t                                   m_nGroups;      
+                    xcore::array<group_entry,32>                    m_lGroups;
+                    std::uint32_t                                   m_nTags;      
+                    xcore::array<type_guid,64>                      m_lTagGuids;    // Individual tag guids that make this entry
+                };
+
+                std::uint32_t                                       m_nTagEntries;
+                xcore::array<tag_entry,128>                         m_lTagEntries;
+            };
+
+            struct tag_lookup
+            {
+                dbase::tag_entry*   m_pEntry;
+                std::uint8_t        m_BitIndex;
             };
 
             template< typename T_KEY, typename T_VALUE, std::size_t T_MAXSIZE_V > 
@@ -1367,8 +1419,8 @@ namespace mecs
 
                 struct entry
                 {
-                    T_KEY               m_Key;
-                    T_VALUE             m_Value;
+                    T_KEY               m_Key   {};
+                    T_VALUE             m_Value {};
                     entry*              m_pNext {nullptr};        // Next for cases where collisions happen
                 };
                 
@@ -1380,7 +1432,7 @@ namespace mecs
 
                 struct lock_entry : entry
                 {
-                    std::atomic<lock>   m_Lock;
+                    std::atomic<lock>   m_Lock{};
                 };
 
                 std::atomic<entry*>             m_pFreeOverflow { nullptr };                // Link list of overflow entries
@@ -1442,10 +1494,10 @@ namespace mecs
             void EndFrameUpdate( void )
             {
                 m_bFrameStarted = false;
-                for( auto pGroupInstance = m_pGroupHead.load(std::memory_order_relaxed); pGroupInstance; pGroupInstance = pGroupInstance->m_pNext )
-                {
-                    pGroupInstance->m_Count = pGroupInstance->m_NewCount.load(std::memory_order_relaxed);
-                }
+
+                for( const auto& TagE : m_TagDBase.m_lTagEntries.ViewTo(m_TagDBase.m_nTagEntries) )
+                    for( auto& GroupE : TagE.m_lGroups.ViewTo(TagE.m_nGroups) )
+                        GroupE.m_pGroup->m_Count = GroupE.m_pGroup->m_NewCount.load(std::memory_order_relaxed);
             }
 
             const sync_point::events::done::delegate m_SyncPointDoneDelegate{ this, &instance::msgSyncPointDone, m_EndSyncPoint.m_Events.m_Done };
@@ -1453,7 +1505,7 @@ namespace mecs
             instance()
             {
                 m_Definition.m_Triggers = xcore::scheduler::triggers::DONT_CLEAN_COUNT;
-                registerComponents<entity::instance,group::details::default_tag>();
+                registerComponents<entity::instance,component::group::details::default_tag>();
                 m_EndSyncPoint.AddJobToBeTrigger(*this);
                 m_EndSyncPoint.FreezCount();
                 m_EndSyncPoint.m_bDisable = true;
@@ -1486,56 +1538,76 @@ namespace mecs
             }
 
             inline
-            entity::tmp_ref createEntity( group::instance& Group, entity::guid EntityGuid ) noexcept
+            entity::tmp_ref createEntity( component::group::instance& Group, entity::guid EntityGuid ) noexcept
             {
                 auto  EntityRef = Group.CreateEntity(EntityGuid);
                 m_mapEntity.push( EntityGuid, std::move(EntityRef) );
                 return EntityRef;
             }
 
-            group::instance& getOrCreateGroup( const std::span<const type_guid>    ComponentTypesGuids
-                                             , const std::span<const type_guid>    TagTypesGuids ) noexcept
+            component::group::instance& getOrCreateGroup( const std::span<const type_guid>    lComponentTypesGuids
+                                                        , const std::span<const type_guid>    lTagTypesGuids ) noexcept
             {
-                const auto          ComponentGroupGuid  = [&] {std::uint64_t Key = 0; for (auto E : ComponentTypesGuids) Key += E.m_Value; return Key; }();
-                const auto          TagGroupGuid        = [&] {std::uint64_t Key = 0; for (auto E : TagTypesGuids)       Key += E.m_Value; return Key; }();
-                const auto          GroupGuid           = group::guid{ ComponentGroupGuid + TagGroupGuid };
+                bool                bHasEntity          = false;
+                const auto          ComponentGroupGuid  = component::group::guid{ [&] 
+                {
+                    std::uint64_t Key = 0; 
+                    for (auto E : lComponentTypesGuids) 
+                    {
+                        if( E == entity::instance::type_guid_v ) bHasEntity = true;
+                        Key += E.m_Value;
+                    }
+                    if(bHasEntity == false) Key += entity::instance::type_guid_v.m_Value; 
+                    return Key; 
+                 }() };
+                const auto          TagGuid             = type_guid{ [&] {std::uint64_t Key = 0; for (auto E : lTagTypesGuids)       Key += E.m_Value; return Key; }() };
+                const auto          TagGroupGuid        = type_guid{ ComponentGroupGuid.m_Value + TagGuid.m_Value };
 
-                //
-                // Create a new group if we need to
-                //
-                //                             XCORE_PERF_ZONE_SCOPED_N("getOrCreateGroup::Wasting Time")
+                return *m_mapGroupPerTag.getOrCreate( TagGroupGuid, [&]
+                {
+                    auto& TagEntry = *m_mapTagLookup.getOrCreate( TagGuid,[&]()
+                    {
+                        auto& Entry = m_TagDBase.m_lTagEntries[ m_TagDBase.m_nTagEntries++ ];
+                        Entry.m_Guid      = TagGuid;
+                        Entry.m_nGroups   = 0;
+                        Entry.m_nTags     = 0;
 
-                auto pGroup = m_mapGroup.getOrCreate(GroupGuid, [&]
-                { 
-                    bool                bAddEntityComponent = true;
-                    auto                nComponents         = ComponentTypesGuids.size();
-                    query::filter_bits  Bits                {nullptr};
+                        for( auto E : lTagTypesGuids )
+                        {
+                            Entry.m_Bits.AddBit( m_mapTagDescriptor.get(E) );
+                            Entry.m_lTagGuids[ Entry.m_nTags++ ] = E;
+                        }
+
+                        return &Entry;
+                    });
+
+                    //
+                    // Create a new group if we need to
+                    //
+                    //                             XCORE_PERF_ZONE_SCOPED_N("getOrCreateGroup::Wasting Time")
+                    auto&               GroupEntry          = *new( &TagEntry.m_lGroups[TagEntry.m_nGroups++] ) details::dbase::tag_entry::group_entry {};
+                    auto                nComponents         = lComponentTypesGuids.size();
  
                     xcore::array<const component::descriptor*, max_ingroup_components_v> lComponetDesc;
                     for( int i=0; i<nComponents; ++i )
                     {
-                        auto& C = ComponentTypesGuids[i];
+                        auto& C = lComponentTypesGuids[i];
                         xassert(C.m_Value);
 
                         // Collect all the component descriptors
                         lComponetDesc[i] = m_mapComponentDescriptor.get(C);
 
                         // Make sure we set all the bits for the query
-                        Bits.AddBit(lComponetDesc[i]->m_BitNumber);
-
-                        // Did we found the entity in the list if so we dont need to add it
-                        if( C == entity::instance::type_guid_v) bAddEntityComponent = false;
-                    }
-
-                    // Add the bits for the tags as well
-                    for(auto E : TagTypesGuids)
-                    {
-                        Bits.AddBit(m_mapComponentDescriptor.get(E)->m_BitNumber);
+                        GroupEntry.m_Bits.AddBit(lComponetDesc[i]->m_BitNumber);
                     }
 
                     // the entity if we have to
-                    if(bAddEntityComponent)
-                        lComponetDesc[nComponents++] = m_mapComponentDescriptor.get(entity::instance::type_guid_v);
+                    if(bHasEntity == false)
+                    {
+                        lComponetDesc[nComponents] = m_mapComponentDescriptor.get(entity::instance::type_guid_v);
+                        GroupEntry.m_Bits.AddBit(lComponetDesc[nComponents]->m_BitNumber);
+                        nComponents++;
+                    }
 
                     // Make sure that we store data in the ascending order
                     std::sort(  lComponetDesc.begin()
@@ -1545,64 +1617,52 @@ namespace mecs
 
                     auto pGroupDesc = m_mapGroupDescriptor.getOrCreate
                     ( 
-                        group::guid{ ComponentGroupGuid }
+                        ComponentGroupGuid
                         , [&]
                         {
-                            return new group::descriptor
+                            return new component::group::descriptor
                             {
                                 lComponetDesc.ViewTo(nComponents)
                             };
                         }
                     );
 
-                    auto pGroupInstance = new group::instance
+                    GroupEntry.m_pGroup = new component::group::instance
                     { 
                           m_PageMgr
                         , *pGroupDesc
-                        , TagTypesGuids 
                     };
 
-                    // Add new entry into the query table
-                    auto& QueryEntry    = m_lQueryTable[m_nQueryTables++];
-                    QueryEntry.m_Bits   = Bits;
-                    QueryEntry.m_pGroup = pGroupInstance;
-                    
-                    // Officially release the lock/set the group
-                    for( pGroupInstance->m_pNext = m_pGroupHead.load(std::memory_order_relaxed); 
-                         m_pGroupHead.compare_exchange_weak( pGroupInstance->m_pNext, pGroupInstance ) == false; );
-                    
-                    return pGroupInstance;
+                    return GroupEntry.m_pGroup;
                 });
-
-                return *pGroup;
             }
 
             template< typename...T_COMPONENTS_AND_TAGS >
-            inline group::instance& getOrCreateGroup( void ) noexcept
+            inline component::group::instance& getOrCreateGroup( void ) noexcept
             {
-                constexpr static auto ComponentGuid = group::details::MakeArrayTypeGuids
+                constexpr static auto ComponentGuid = component::group::details::MakeArrayTypeGuids
                 ( reinterpret_cast
                     <
                         xcore::types::tuple_sort_t
                         < 
-                            group::details::compare, xcore::types::tuple_cat_t
+                            component::group::details::compare, xcore::types::tuple_cat_t
                             < 
                                   std::tuple<entity::instance>
-                                , decltype(group::details::FilterOutTagsExtendDoubleBuffer<T_COMPONENTS_AND_TAGS>())...
+                                , decltype(component::group::details::FilterOutTagsExtendDoubleBuffer<T_COMPONENTS_AND_TAGS>())...
                             >
                         >*
                     >(nullptr)
                 );
 
-                constexpr static auto TagsGuid = group::details::MakeArrayTypeGuids
+                constexpr static auto TagsGuid = component::group::details::MakeArrayTypeGuids
                 ( reinterpret_cast
                     <
                         xcore::types::tuple_sort_t
                         < 
-                            group::details::compare, xcore::types::tuple_cat_t
+                            component::group::details::compare, xcore::types::tuple_cat_t
                             <
-                                  std::tuple<group::details::default_tag>
-                                , decltype(group::details::FilterOutComponents<T_COMPONENTS_AND_TAGS>())...
+                                  std::tuple<component::group::details::default_tag>
+                                , decltype(component::group::details::FilterOutComponents<T_COMPONENTS_AND_TAGS>())...
                             >
                         >*
                     >(nullptr)
@@ -1611,29 +1671,38 @@ namespace mecs
                 return getOrCreateGroup(ComponentGuid,TagsGuid);
             }
 
-            
-            inline entity::tmp_ref createEntity(group::guid GroupGuid, entity::guid EntityGuid) noexcept
+            /*
+            inline entity::tmp_ref createEntity(component::group::guid GroupGuid, entity::guid EntityGuid) noexcept
             {
                 return createEntity( *m_mapGroup.get(GroupGuid), EntityGuid);
             }
+            */
 
-            template< typename T_COMPONENT >
+            template< typename T_COMPONENTS_AND_TAGS >
             inline void registerComponent(void) noexcept
             {
-                constexpr static component::descriptor component_descriptor_v
+                if constexpr ( std::is_base_of_v<mecs::component::tag, T_COMPONENTS_AND_TAGS> )
                 {
-                        T_COMPONENT::type_guid_v
-                    ,   [](void* p) noexcept { new(p) T_COMPONENT{}; }
-                    ,   [](void* p) noexcept { std::destroy_at( reinterpret_cast<T_COMPONENT*>(p) ); }
-                        // //property::table&  m_PropertyTable;
-                    ,   static_cast<std::uint16_t>(sizeof(T_COMPONENT))
-                    ,   static_cast<std::uint16_t>(std::alignment_of_v<T_COMPONENT>)
-                    ,   std::is_base_of_v<mecs::component::double_buffer, T_COMPONENT>
-                    ,   -1
-                };
+                    static_assert( sizeof(T_COMPONENTS_AND_TAGS)==1, "Tags should not contain any data" );
+                    m_mapTagDescriptor.push( T_COMPONENTS_AND_TAGS::type_guid_v, m_TagRegistrationFreeBits.AllocBit() );
+                }
+                else
+                {
+                    constexpr static component::descriptor component_descriptor_v
+                    {
+                            T_COMPONENTS_AND_TAGS::type_guid_v
+                        ,   [](void* p) noexcept { new(p) T_COMPONENTS_AND_TAGS{}; }
+                        ,   [](void* p) noexcept { std::destroy_at( reinterpret_cast<T_COMPONENTS_AND_TAGS*>(p) ); }
+                            // //property::table&  m_PropertyTable;
+                        ,   static_cast<std::uint16_t>(sizeof(T_COMPONENTS_AND_TAGS))
+                        ,   static_cast<std::uint16_t>(std::alignment_of_v<T_COMPONENTS_AND_TAGS>)
+                        ,   std::is_base_of_v<mecs::component::double_buffer, T_COMPONENTS_AND_TAGS>
+                        ,   -1
+                    };
 
-                component_descriptor_v.m_BitNumber = m_RegistrationFreeBits.AllocBit();
-                m_mapComponentDescriptor.push(T_COMPONENT::type_guid_v, &component_descriptor_v);
+                    component_descriptor_v.m_BitNumber = m_ComponentRegistrationFreeBits.AllocBit();
+                    m_mapComponentDescriptor.push(T_COMPONENTS_AND_TAGS::type_guid_v, &component_descriptor_v);
+                }
             }
  
             template< typename...T_COMPONENTS_AND_TAGS >
@@ -1670,20 +1739,18 @@ namespace mecs
                 if( Instance.m_isInitialized == false )
                 {
                     Instance.m_isInitialized = true;
-                    for( auto E : system::query_v.m_All )
-                    {
-                        Instance.m_All.AddBit( m_mapComponentDescriptor.get(E)->m_BitNumber );
-                    }
 
-                    for( auto E : system::query_v.m_Any )
-                    {
-                        Instance.m_Any.AddBit( m_mapComponentDescriptor.get(E)->m_BitNumber );
-                    }
+                    //
+                    // Handle the Component Side
+                    //
+                    for( auto E : system::query_v.m_ComponentQuery.m_All )
+                        Instance.m_ComponentQuery.m_All.AddBit( m_mapComponentDescriptor.get(E)->m_BitNumber );
 
-                    for( auto E : system::query_v.m_None )
-                    {
-                        Instance.m_None.AddBit( m_mapComponentDescriptor.get(E)->m_BitNumber );
-                    }
+                    for( auto E : system::query_v.m_ComponentQuery.m_Any )
+                        Instance.m_ComponentQuery.m_Any.AddBit( m_mapComponentDescriptor.get(E)->m_BitNumber );
+
+                    for( auto E : system::query_v.m_ComponentQuery.m_None )
+                        Instance.m_ComponentQuery.m_None.AddBit( m_mapComponentDescriptor.get(E)->m_BitNumber );
 
                     for( int i=0; i<function::list_v.size(); ++i )
                     {
@@ -1692,58 +1759,75 @@ namespace mecs
                         if( function::const_list_v[i] == false ) Instance.m_Write.AddBit(BitNum);
                     }
 
-                    // All arguments are a must
-                    Instance.m_All.Add(Instance.m_Function);
+                    // Function argument are a must have
+                    Instance.m_ComponentQuery.m_All.Add(Instance.m_Function);
+
+                    //
+                    // Handle the tag side
+                    //
+                    for( auto E : system::query_v.m_TagQuery.m_All )
+                        Instance.m_TagQuery.m_All.AddBit( m_mapTagDescriptor.get(E) );
+
+                    for( auto E : system::query_v.m_TagQuery.m_Any )
+                        Instance.m_TagQuery.m_Any.AddBit( m_mapTagDescriptor.get(E) );
+
+                    for( auto E : system::query_v.m_TagQuery.m_None )
+                        Instance.m_TagQuery.m_None.AddBit( m_mapTagDescriptor.get(E) );
                 }
                 
                 //
                 // Do query
                 //
                 Instance.m_lResults.clear();
-                for( const auto& E : m_lQueryTable.ViewTo(m_nQueryTables) )
+                for( const auto& TagE : m_TagDBase.m_lTagEntries.ViewTo(m_TagDBase.m_nTagEntries) )
                 {
-                    if( false == E.m_Bits.Query( Instance.m_All, Instance.m_Any, Instance.m_None ) ) continue;
+                    if( false == TagE.m_Bits.Query( Instance.m_TagQuery.m_All, Instance.m_TagQuery.m_Any, Instance.m_TagQuery.m_None ) ) continue;
 
-                    //
-                    // Create new entry for this query
-                    //
-                    auto&       Entry       = Instance.m_lResults.append();
-                    Entry.m_pGroup          = const_cast<group::instance*>(E.m_pGroup);
-
-                    const auto& Group       = *E.m_pGroup;
-                    const auto& lOffsets    = Group.m_GroupDescriptor.m_lComponentOffsets;
-                    const auto& lCTypeGuid  = Group.m_GroupDescriptor.m_lComponentTypeGuids;
-                    const int   Size        = Group.m_GroupDescriptor.m_nComponents;
-                    int         F           = 0;
-                    for( int i=0; i<Size; ++i)
+                    for( auto& GroupE : TagE.m_lGroups.ViewTo(TagE.m_nGroups) )
                     {
-                        if( lCTypeGuid[i] == function::sorted_list_v[F] )
+                        if( false == GroupE.m_Bits.Query( Instance.m_ComponentQuery.m_All, Instance.m_ComponentQuery.m_Any, Instance.m_ComponentQuery.m_None ) ) continue;
+
+                        //
+                        // Create new entry for this query
+                        //
+                        auto&       Entry       = Instance.m_lResults.append();
+                        Entry.m_pGroup          = const_cast<component::group::instance*>( GroupE.m_pGroup);
+
+                        const auto& Group       = *GroupE.m_pGroup;
+                        const auto& lOffsets    = Group.m_GroupDescriptor.m_lComponentOffsets;
+                        const auto& lCTypeGuid  = Group.m_GroupDescriptor.m_lComponentTypeGuids;
+                        const int   Size        = Group.m_GroupDescriptor.m_nComponents;
+                        int         F           = 0;
+                        for( int i=0; i<Size; ++i)
                         {
-                            // Are we a double buffer component?
-                            if( lOffsets[ i ].m_HasT1 )
+                            if( lCTypeGuid[i] == function::sorted_list_v[F] )
                             {
-                                // First find the base for this double buffer component
-                                int iBase = (i > 0)? (lCTypeGuid[i-1] == function::sorted_list_v[F]? (i-1) : i) : 0;
+                                // Are we a double buffer component?
+                                if( lOffsets[ i ].m_HasT1 )
+                                {
+                                    // First find the base for this double buffer component
+                                    int iBase = (i > 0)? (lCTypeGuid[i-1] == function::sorted_list_v[F]? (i-1) : i) : 0;
 
-                                // Are we looking for T0?
-                                if( function::const_list_v[F] ) iBase += lOffsets[ iBase ].m_T0;
-                                else                            iBase += ( 1 - lOffsets[ iBase ].m_T0);
+                                    // Are we looking for T0?
+                                    if( function::const_list_v[F] ) iBase += lOffsets[ iBase ].m_T0;
+                                    else                            iBase += ( 1 - lOffsets[ iBase ].m_T0);
 
-                                // Okay ready to set the offsets now
-                                Entry.m_lRemaps[F + function::remap_v[F]] = lOffsets[ iBase ].m_Offset;
+                                    // Okay ready to set the offsets now
+                                    Entry.m_lRemaps[F + function::remap_v[F]] = lOffsets[ iBase ].m_Offset;
+                                }
+                                else
+                                {
+                                    Entry.m_lRemaps[F + function::remap_v[F]] = lOffsets[ i ].m_Offset;
+                                }
+
+                                // Move to next component
+                                F++;
+                                if(F==function::list_v.size()) break;
                             }
-                            else
-                            {
-                                Entry.m_lRemaps[F + function::remap_v[F]] = lOffsets[ i ].m_Offset;
-                            }
-
-                            // Move to next component
-                            F++;
-                            if(F==function::list_v.size()) break;
                         }
+                        xassert(F==function::list_v.size());
+                        Entry.m_nRemaps = static_cast<std::uint8_t>(function::list_v.size()); 
                     }
-                    xassert(F==function::list_v.size());
-                    Entry.m_nRemaps = static_cast<std::uint8_t>(function::list_v.size()); 
                 }
             }
 
@@ -1760,18 +1844,19 @@ namespace mecs
                                                                                            + xcore::bits::RoundToNextPowOfTwo(  1000000ull));
             constexpr static std::size_t                                max_groups_count_v = 1024;
 
-            std::atomic<group::instance*>                                           m_pGroupHead                {nullptr};
-            std::uint32_t                                                           m_nQueryTables              {0};
-            group::page_mgr                                                         m_PageMgr                   {};
-            details::map<entity::guid, entity::tmp_ref, max_entity_count_v>         m_mapEntity                 {};
-            details::map<group::guid,  group::instance*,    max_groups_count_v>     m_mapGroup                  {};
-            details::map<group::guid,  const group::descriptor*, max_groups_count_v> m_mapGroupDescriptor        {};
-            details::map<type_guid,    const component::descriptor*, 256>           m_mapComponentDescriptor    {};
-            xcore::array<details::query_table_entry, max_groups_count_v>            m_lQueryTable               {};
-            bool                                                                    m_bFrameStarted             { false };
-            bool                                                                    m_bPause                    { false };
-            int                                                                     m_FrameNumber               { 0 };
-            query::filter_bits                                                      m_RegistrationFreeBits      {xcore::not_null};
+            component::group::page_mgr                                                  m_PageMgr                       {};
+            details::map<entity::guid, entity::tmp_ref, max_entity_count_v>             m_mapEntity                     {};
+            details::dbase                                                              m_TagDBase                      {};
+            details::map<type_guid, component::group::instance*, max_groups_count_v>    m_mapGroupPerTag                {};
+            details::map<component::group::guid,  const component::group::descriptor*, max_groups_count_v>    m_mapGroupDescriptor            {};
+            details::map<type_guid, const component::descriptor*, 256>                  m_mapComponentDescriptor        {};
+            details::map<type_guid, std::uint8_t, 256>                                  m_mapTagDescriptor              {};
+            details::map<type_guid, details::dbase::tag_entry*, 256>                    m_mapTagLookup                  {};
+            bool                                                                        m_bFrameStarted                 { false };
+            bool                                                                        m_bPause                        { false };
+            int                                                                         m_FrameNumber                   { 0 };
+            query::filter_bits                                                          m_ComponentRegistrationFreeBits {xcore::not_null};
+            query::filter_bits                                                          m_TagRegistrationFreeBits       {xcore::not_null};
         };
     }
 
