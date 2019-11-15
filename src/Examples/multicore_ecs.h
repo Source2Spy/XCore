@@ -1,6 +1,556 @@
 
 namespace mecs
 {
+    //---------------------------------------------------------------------------------
+    // TOOLS
+    //---------------------------------------------------------------------------------
+    namespace tools
+    {
+        //---------------------------------------------------------------------------------
+        // TOOLS::map_fixed
+        //---------------------------------------------------------------------------------
+        template< typename T_KEY, typename T_VALUE, std::size_t T_MAXSIZE_V > 
+        struct map_fixed
+        {
+            constexpr static auto max_size_v = T_MAXSIZE_V;
+
+            struct entry
+            {
+                T_KEY               m_Key   {};
+                T_VALUE             m_Value {};
+                entry*              m_pNext {nullptr};        // Next for cases where collisions happen
+            };
+                
+            struct lock
+            {
+                xcore::lock::semaphore  m_Lock;
+                entry*                  m_pEntry{ nullptr };
+            };
+
+            map_fixed()
+            {
+                for( int i=1; i<m_Entries.size(); ++i )
+                {
+                    m_Entries[i-1].m_pNext = &m_Entries[i];
+                }
+
+                m_Entries.back().m_pNext = nullptr;
+                m_pFreeNodes.store( &m_Entries[0], std::memory_order_relaxed );
+            }
+
+            template< typename T_CALLBACK >
+            auto& push( T_KEY Key, T_CALLBACK&& Callback ) noexcept
+            {
+                assert(Key.isValid());
+
+                // Allocate an overflow entry
+                auto pNode = m_pFreeNodes.load(std::memory_order_relaxed);
+                do 
+                {
+                    // Run out of free entries!
+                    xassert(pNode);
+
+                    if( m_pFreeNodes.compare_exchange_weak( pNode, pNode->m_pNext ) )
+                        break;
+                } while ( true );
+
+                // Lock our entry
+                auto&           MapEntry    = m_Map[Key.m_Value % max_size_v];
+                xcore::lock::scope( MapEntry.m_Lock );
+
+                // Do we have a collision? 
+                // Make sure we have not collisions with any one
+                xassert_block_basic()
+                {
+                    for( auto p = MapEntry.m_pEntry; p ; p = p->m_pNext )
+                    {
+                        xassert( Key.m_Value != p->m_Key.m_Value );
+                    }
+                }
+
+                // Setup the node
+                pNode->m_Key        = Key;
+                pNode->m_pNext      = MapEntry.m_pEntry;
+                Callback(*pNode);           // should set ( pNode->m_Value = ... )
+                MapEntry.m_pEntry   = pNode;
+
+                return *pNode;
+            }
+
+            template< typename T > 
+            const bool find( T_KEY Key, T&& CallBack ) noexcept
+            {
+                assert(Key.isValid());
+
+                auto&           MapEntry    = m_Map[Key.m_Value % max_size_v];
+                xcore::lock::scope( const_cast<const lock&>( MapEntry.m_Lock ) );
+
+                for( auto p = MapEntry.m_pEntry; p; p = p->m_pNext )
+                {
+                    if( p->m_Key == Key ) 
+                    {
+                        CallBack( *p );
+                        return true;
+                    }
+                }
+
+                return false;
+            }
+
+            template< typename T > 
+            const bool pop( T_KEY Key, T&& CallBack ) noexcept
+            {
+                assert(Key.isValid());
+
+                auto&           MapEntry    = m_Map[Key.m_Value % max_size_v];
+                xcore::lock::scope( const_cast<const lock&>( MapEntry.m_Lock ) );
+
+                xassert( MapEntry.m_pEntry );
+                for( auto p = &MapEntry.m_pEntry; (**p).m_pNext; p = &p->m_pNext )
+                {
+                    if( (**p).m_Key == Key ) 
+                    {
+                        *p = (**p).m_pNext;
+                        CallBack( **p );
+                        return true;
+                    }
+                }
+
+                return false;
+            }
+
+            std::atomic<entry*>                         m_pFreeNodes    { nullptr };        // Link list of overflow entries
+            xcore::unique_span<lock>                    m_Map           { T_MAXSIZE_V };
+            xcore::unique_span<entry>                   m_Entries       { T_MAXSIZE_V };    // 10% overflow
+        };
+
+        //---------------------------------------------------------------------------------
+        // TOOLS::map
+        //---------------------------------------------------------------------------------
+        template< typename T_KEY, typename T_VALUE, std::size_t T_MAXSIZE_V > 
+        struct map
+        {
+            constexpr static auto max_size_v = T_MAXSIZE_V;
+
+            map()
+            {
+                for( int i=1; i<m_Extras.size(); ++i )
+                {
+                    m_Extras[i-1].m_pNext = &m_Extras[i];
+                }
+
+                m_Extras.back().m_pNext = nullptr;
+                m_pFreeOverflow.store( &m_Extras[0] );
+            }
+
+            auto& push( T_KEY Key, T_VALUE&& Data ) noexcept
+            {
+                assert(Key.isValid());
+
+                auto&           MapEntry    = m_Map[Key.m_Value % max_size_v];
+                auto            Local       = MapEntry.m_Lock.load(std::memory_order_relaxed);
+
+                //
+                // Lock
+                //
+                do 
+                {
+                    if( Local.m_isLocked == true ) 
+                    {
+                        // Spin....
+                        Local       = MapEntry.m_Lock.load(std::memory_order_relaxed);
+                        continue;
+                    }
+
+                    if( MapEntry.m_Lock.compare_exchange_weak(Local, lock{ true, Local.m_isValid } ) )
+                        break;
+
+                } while( true );
+
+                //
+                // Set new data
+                //
+
+                // Do we have a collision? 
+                if( Local.m_isValid )
+                {
+                    // Make sure we have not collisions with any one
+                    xassert_block_basic()
+                    {
+                        xassert( Key.m_Value != MapEntry.m_Key.m_Value );
+                        for( auto p = MapEntry.m_pNext; p ; p = p->m_pNext )
+                        {
+                            xassert( Key.m_Value != MapEntry.m_Key.m_Value );
+                        }
+                    }
+
+                    // Allocate an overflow entry
+                    auto pNode = m_pFreeOverflow.load(std::memory_order_relaxed);
+                    do 
+                    {
+                        // Run out of free entries!
+                        xassert(pNode);
+
+                        if( m_pFreeOverflow.compare_exchange_weak( pNode, pNode->m_pNext ) )
+                            break;
+                    } while ( true );
+
+                    // Link new node
+                    pNode->m_pNext = MapEntry.m_pNext;
+                    MapEntry.m_pNext = pNode;
+
+                    // Copy data
+                    pNode->m_Key    = Key;
+                    pNode->m_Value  = std::move(Data);
+                }
+                else
+                {
+                    MapEntry.m_Key   = Key;
+                    MapEntry.m_Value = std::move(Data);
+                }
+
+                //
+                // Unlock
+                //
+                MapEntry.m_Lock.store( lock{ false, true } );
+
+                return MapEntry;
+            }
+
+            template< typename T > 
+            const T_VALUE& getOrCreate( T_KEY Key, T&& SafeCreateCallBack ) noexcept
+            {
+                assert(Key.isValid());
+
+                auto&           MapEntry    = m_Map[Key.m_Value % max_size_v];
+                auto            Local       = MapEntry.m_Lock.load(std::memory_order_relaxed);
+
+                //
+                // Lock
+                //
+                do 
+                {
+                    if( Local.m_isLocked == true ) 
+                    {
+                        // Spin....
+                        Local       = MapEntry.m_Lock.load(std::memory_order_relaxed);
+                        continue;
+                    }
+
+                    if( MapEntry.m_Lock.compare_exchange_weak(Local, lock{ true, Local.m_isValid } ) )
+                        break;
+
+                } while( true );
+
+                //
+                // Search for the node
+                //
+                T_VALUE*      pResult     = nullptr;
+
+                if( Local.m_isValid )
+                {
+                    if( Key.m_Value == MapEntry.m_Key.m_Value )
+                    {
+                        pResult = &MapEntry.m_Value;
+                    }
+                    else
+                    {
+                        for( auto p = MapEntry.m_pNext; p; p = p->m_pNext )
+                        {
+                            if( Key.m_Value == p->m_Key.m_Value ) 
+                            {
+                                pResult = &p->m_Value;
+                                break;
+                            }
+
+                        }
+                    }
+                }
+
+                if( pResult == nullptr )
+                {
+                    // Do we have a collision? 
+                    if( Local.m_isValid )
+                    {
+                        // Make sure we have not collisions with any one
+                        xassert_block_basic()
+                        {
+                            xassert( Key.m_Value != MapEntry.m_Key.m_Value );
+                            for( auto p = MapEntry.m_pNext; p ; p = p->m_pNext )
+                            {
+                                xassert( Key.m_Value != MapEntry.m_Key.m_Value );
+                            }
+                        }
+
+                        // Allocate an overflow entry
+                        auto pNode = m_pFreeOverflow.load(std::memory_order_relaxed);
+                        do 
+                        {
+                            // Run out of free entries!
+                            xassert(pNode);
+
+                            if( m_pFreeOverflow.compare_exchange_weak( pNode, pNode->m_pNext ) )
+                                break;
+                        } while ( true );
+
+                        // Link new node
+                        pNode->m_pNext = MapEntry.m_pNext;
+                        MapEntry.m_pNext = pNode;
+
+                        // Copy data
+                        pNode->m_Key   = Key;
+                        pNode->m_Value = SafeCreateCallBack();
+
+                        pResult = &pNode->m_Value;
+                    }
+                    else
+                    {
+                        MapEntry.m_Key   = Key;
+                        MapEntry.m_Value = SafeCreateCallBack();
+
+                        pResult = &MapEntry.m_Value;
+                    }
+                }
+
+                //
+                // Unlock
+                //
+                MapEntry.m_Lock.store( lock{ false, true } );
+
+                return *pResult;
+            }
+
+            template< typename T_CALLBACK >
+            void pop( T_KEY Key, T_CALLBACK&& CallBack = [](T_VALUE&){} ) noexcept
+            {
+                assert(Key.isValid());
+
+                auto&           MapEntry    = m_Map[Key.m_Value % max_size_v];
+                auto            Local       = MapEntry.m_Lock.load(std::memory_order_relaxed);
+
+                //
+                // Lock
+                //
+                do 
+                {
+                    if( Local.m_isLocked == true ) 
+                    {
+                        // Spin....
+                        Local       = MapEntry.m_Lock.load(std::memory_order_relaxed);
+                        continue;
+                    }
+
+                    if( MapEntry.m_Lock.compare_exchange_weak(Local, lock{ true, Local.m_isValid } ) )
+                        break;
+
+                } while( true );
+
+                //
+                // Remove node
+                //
+
+                // Better have that node
+                xassert(Local.m_isValid);
+                entry* pCleanUp = nullptr;
+
+                if( Key.m_Value == MapEntry.m_Key.m_Value  )
+                {
+                    CallBack(MapEntry.m_Value);
+                    if( MapEntry.m_pNext )
+                    {
+                        pCleanUp = MapEntry.m_pNext;
+
+                        MapEntry.m_Key      = MapEntry.m_pNext->m_Key;
+                        MapEntry.m_Value    = std::move( MapEntry.m_pNext->m_Value );
+                        MapEntry.m_pNext    = MapEntry.m_pNext->m_pNext;
+                    }
+                    else
+                    {
+                        MapEntry.m_Lock.store( lock{ false, false }, std::memory_order_relaxed );
+                        return;
+                    }
+                }
+                else
+                {
+                    for( entry* p = &MapEntry; p->m_pNext; p = p->m_pNext )
+                    {
+                        if( Key.m_Value == p->m_pNext->m_Key.m_Value )
+                        {
+                            CallBack(p->m_pNext->m_Value);
+                            pCleanUp    = p->m_pNext;
+                            p->m_pNext  = p->m_pNext->m_pNext;
+                            break;
+                        }
+                    }
+                }
+
+                if( pCleanUp )
+                {
+                    pCleanUp->m_pNext = m_pFreeOverflow.load(std::memory_order_relaxed);
+                    while( m_pFreeOverflow.compare_exchange_weak( pCleanUp->m_pNext, pCleanUp) == false );
+                }
+                
+                //
+                // Unlock
+                //
+                MapEntry.m_Lock.store( lock{ false, true } );
+            }
+
+            T_VALUE* find(T_KEY Key) const noexcept
+            {
+                assert(Key.isValid());
+                auto&   MapEntry    = m_Map[Key.m_Value % max_size_v];
+                auto    Local       = MapEntry.m_Lock.load(std::memory_order_relaxed);
+
+                //
+                // Lock
+                //
+                do 
+                {
+                    if( Local.m_isValid == false ) return nullptr; 
+                    if( Local.m_isLocked == true ) 
+                    {
+                        // Spin....
+                        Local       = MapEntry.m_Lock.load(std::memory_order_relaxed);
+                        continue;
+                    }
+
+                    if( MapEntry.m_Lock.compare_exchange_weak(Local, lock{ true, true } ) )
+                        break;
+
+                } while( true );
+
+                //
+                // Search for the node
+                //
+                xassert( Local.m_isValid );
+                T_VALUE*      pResult     = nullptr;
+
+                if( Key.m_Value == MapEntry.m_Key.m_Value )
+                {
+                    pResult = &MapEntry.m_Value;
+                }
+                else
+                {
+                    for( auto p = MapEntry.m_pNext; p; p = p->m_pNext )
+                    {
+                        if( Key.m_Value == p->m_Key.m_Value ) 
+                        {
+                            pResult = &p->m_Value;
+                            break;
+                        }
+                    }
+                }
+                    
+                //
+                // Unlock
+                //
+                MapEntry.m_Lock.store( lock{ false, true } );
+                    
+                return pResult;
+            }
+
+            T_VALUE& get(T_KEY Key) noexcept
+            {
+                auto p = find(Key);
+                xassert(p);
+                return *p;
+            }
+
+            T_VALUE& get(T_KEY Key) const noexcept
+            {
+                auto p = find(Key);
+                xassert(p);
+                return *p;
+            }
+
+            template< typename T_CALLBACK >
+            bool getExlusive( T_KEY Key, T_CALLBACK&& CallBack ) noexcept
+            {
+                assert(Key.isValid());
+                auto&   MapEntry    = m_Map[Key.m_Value % max_size_v];
+                auto    Local       = MapEntry.m_Lock.load(std::memory_order_relaxed);
+
+                //
+                // Lock
+                //
+                do 
+                {
+                    if( Local.m_isValid == false ) return false; 
+                    if( Local.m_isLocked == true ) 
+                    {
+                        // Spin....
+                        Local       = MapEntry.m_Lock.load(std::memory_order_relaxed);
+                        continue;
+                    }
+
+                    if( MapEntry.m_Lock.compare_exchange_weak(Local, lock{ true, true } ) )
+                        break;
+
+                } while( true );
+
+                //
+                // Search for the node
+                //
+                xassert( Local.m_isValid );
+                T_VALUE*      pResult     = nullptr;
+
+                if( Key.m_Value == MapEntry.m_Key.m_Value )
+                {
+                    pResult = &MapEntry.m_Value;
+                }
+                else
+                {
+                    for( auto p = MapEntry.m_pNext; p; p = p->m_pNext )
+                    {
+                        if( Key.m_Value == p->m_Key.m_Value ) 
+                        {
+                            pResult = &p->m_Value;
+                            break;
+                        }
+                    }
+                }
+                    
+                if( pResult )
+                {
+                    CallBack(*pResult);
+                }
+
+                //
+                // Unlock
+                //
+                MapEntry.m_Lock.store( lock{ false, true } );
+                    
+                return !!pResult;
+            }
+
+            struct entry
+            {
+                T_KEY               m_Key   {};
+                T_VALUE             m_Value {};
+                entry*              m_pNext {nullptr};        // Next for cases where collisions happen
+            };
+                
+            struct alignas(std::uint16_t) lock
+            {
+                bool            m_isLocked  { false };
+                bool            m_isValid   { false };
+            };
+
+            struct lock_entry : entry
+            {
+                std::atomic<lock>   m_Lock{};
+            };
+
+            std::atomic<entry*>             m_pFreeOverflow { nullptr };                // Link list of overflow entries
+            xcore::unique_span<lock_entry>  m_Map           { T_MAXSIZE_V };
+            xcore::unique_span<entry>       m_Extras        { (T_MAXSIZE_V*10)/100 };   // 10% overflow
+        };
+    }
+
+    //---------------------------------------------------------------------------------
+    // COMPONENT
+    //---------------------------------------------------------------------------------
     namespace component
     {
         namespace group
@@ -46,14 +596,6 @@ namespace mecs
     //---------------------------------------------------------------------------------
     namespace entity
     {
-        using guid = xcore::guid::unit<64, struct ecs_entity_tag>;
-
-        struct instance
-        {
-            constexpr static type_guid type_guid_v{1ull};
-            entity::guid                m_Guid;         // This is 64 bits
-        };
-
         struct tmp_ref
         {
             constexpr bool isValid(void) const noexcept { return !!m_pGroupInstance; }
@@ -64,11 +606,21 @@ namespace mecs
             template< typename T >
             constexpr const T& getComponent(type_guid TypeGuid = T::type_guid_v) const noexcept;
 
-            //std::vector<properties_tuple> getProperties(void) const noexcept;
-
             component::group::instance*        m_pGroupInstance;
             component::group::local_index      m_LocalIndex;
             component::group::page_index       m_PageIndex;
+        };
+
+        constexpr static std::size_t                                max_entity_count_v = xcore::bits::RoundToNextPowOfTwo(100000000ull)
+                                                                    XCORE_CMD_ASSERT(  - xcore::bits::RoundToNextPowOfTwo(100000000ull)
+                                                                                       + xcore::bits::RoundToNextPowOfTwo(  1000000ull));
+        using guid      = xcore::guid::unit<64, struct ecs_entity_tag>;
+        using map_t     = tools::map_fixed< guid, tmp_ref, max_entity_count_v >;
+
+        struct instance
+        {
+            constexpr static type_guid type_guid_v{1ull};
+            map_t::entry*    m_pInstance;
         };
     }
 
@@ -442,7 +994,7 @@ namespace mecs
                 {}
 
             
-            void ConstructEntity( page* Page, group::local_index LocalIndex ) const noexcept
+            void ConstructEntity( page* Page, group::local_index LocalIndex, entity::map_t::entry* pEntry ) const noexcept
             {
                 std::byte* p = reinterpret_cast<std::byte*>(Page);
                 for( int i=0; i<m_nComponents; ++i )
@@ -450,6 +1002,7 @@ namespace mecs
                     auto&       E       = m_lComponentOffsets[i];
                     const auto  Index   = E.m_Offset + static_cast<std::uint32_t>(LocalIndex.m_Value) * E.m_Size;
                     m_lComponentDescriptors[i]->m_fnConstruct( &p[Index] );
+                    if( i == 0 ) reinterpret_cast< entity::instance* >( &p[Index] )->m_pInstance = pEntry;
                 }
             }
 
@@ -552,7 +1105,7 @@ namespace mecs
                 return nullptr;
             }
 
-            entity::tmp_ref CreateEntity( entity::guid Guid )
+            entity::tmp_ref CreateEntity( entity::map_t::entry* pMapEntry )
             {
                 const auto          Index           = m_NewCount++;
                 const local_index   RelativeIndex   { Index % m_GroupDescriptor.m_EntriesPerPage };
@@ -565,7 +1118,7 @@ namespace mecs
                     if (PageIndex < nPages)
                     {
                         // Create entry here
-                        m_GroupDescriptor.ConstructEntity( m_lPages[PageIndex.m_Value], RelativeIndex );
+                        m_GroupDescriptor.ConstructEntity( m_lPages[PageIndex.m_Value], RelativeIndex, pMapEntry );
                         break;
                     }
                     else if (PageIndex == nPages && RelativeIndex.m_Value == 0)
@@ -573,7 +1126,7 @@ namespace mecs
                         m_lPages[PageIndex.m_Value] = m_PageMgr.AllocPage();
 
                         m_nPages.store(page_index{static_cast<std::uint16_t>(nPages.m_Value+1)});
-                        m_GroupDescriptor.ConstructEntity( m_lPages[PageIndex.m_Value], RelativeIndex );
+                        m_GroupDescriptor.ConstructEntity( m_lPages[PageIndex.m_Value], RelativeIndex, pMapEntry );
                         break;
                     }
                     else
@@ -1085,424 +1638,6 @@ namespace mecs
                 std::uint8_t        m_BitIndex;
             };
 
-            template< typename T_KEY, typename T_VALUE, std::size_t T_MAXSIZE_V > 
-            struct map
-            {
-                constexpr static auto max_size_v = T_MAXSIZE_V;
-
-                map()
-                {
-                    for( int i=1; i<m_Extras.size(); ++i )
-                    {
-                        m_Extras[i-1].m_pNext = &m_Extras[i];
-                    }
-
-                    m_Extras.back().m_pNext = nullptr;
-                    m_pFreeOverflow.store( &m_Extras[0] );
-                }
-
-                void push( T_KEY Key, T_VALUE&& Data ) noexcept
-                {
-                    assert(Key.isValid());
-
-                    auto&           MapEntry    = m_Map[Key.m_Value % max_size_v];
-                    auto            Local       = MapEntry.m_Lock.load(std::memory_order_relaxed);
-
-                    //
-                    // Lock
-                    //
-                    do 
-                    {
-                        if( Local.m_isLocked == true ) 
-                        {
-                            // Spin....
-                            Local       = MapEntry.m_Lock.load(std::memory_order_relaxed);
-                            continue;
-                        }
-
-                        if( MapEntry.m_Lock.compare_exchange_weak(Local, lock{ true, Local.m_isValid } ) )
-                            break;
-
-                    } while( true );
-
-                    //
-                    // Set new data
-                    //
-
-                    // Do we have a collision? 
-                    if( Local.m_isValid )
-                    {
-                        // Make sure we have not collisions with any one
-                        xassert_block_basic()
-                        {
-                            xassert( Key.m_Value != MapEntry.m_Key.m_Value );
-                            for( auto p = MapEntry.m_pNext; p ; p = p->m_pNext )
-                            {
-                                xassert( Key.m_Value != MapEntry.m_Key.m_Value );
-                            }
-                        }
-
-                        // Allocate an overflow entry
-                        auto pNode = m_pFreeOverflow.load(std::memory_order_relaxed);
-                        do 
-                        {
-                            // Run out of free entries!
-                            xassert(pNode);
-
-                            if( m_pFreeOverflow.compare_exchange_weak( pNode, pNode->m_pNext ) )
-                                break;
-                        } while ( true );
-
-                        // Link new node
-                        pNode->m_pNext = MapEntry.m_pNext;
-                        MapEntry.m_pNext = pNode;
-
-                        // Copy data
-                        pNode->m_Key    = Key;
-                        pNode->m_Value  = std::move(Data);
-                    }
-                    else
-                    {
-                        MapEntry.m_Key   = Key;
-                        MapEntry.m_Value = std::move(Data);
-                    }
-
-                    //
-                    // Unlock
-                    //
-                    MapEntry.m_Lock.store( lock{ false, true } );
-                }
-
-                template< typename T > 
-                const T_VALUE& getOrCreate( T_KEY Key, T&& SafeCreateCallBack ) noexcept
-                {
-                    assert(Key.isValid());
-
-                    auto&           MapEntry    = m_Map[Key.m_Value % max_size_v];
-                    auto            Local       = MapEntry.m_Lock.load(std::memory_order_relaxed);
-
-                    //
-                    // Lock
-                    //
-                    do 
-                    {
-                        if( Local.m_isLocked == true ) 
-                        {
-                            // Spin....
-                            Local       = MapEntry.m_Lock.load(std::memory_order_relaxed);
-                            continue;
-                        }
-
-                        if( MapEntry.m_Lock.compare_exchange_weak(Local, lock{ true, Local.m_isValid } ) )
-                            break;
-
-                    } while( true );
-
-                    //
-                    // Search for the node
-                    //
-                    T_VALUE*      pResult     = nullptr;
-
-                    if( Local.m_isValid )
-                    {
-                        if( Key.m_Value == MapEntry.m_Key.m_Value )
-                        {
-                            pResult = &MapEntry.m_Value;
-                        }
-                        else
-                        {
-                            for( auto p = MapEntry.m_pNext; p; p = p->m_pNext )
-                            {
-                                if( Key.m_Value == p->m_Key.m_Value ) 
-                                {
-                                    pResult = &p->m_Value;
-                                    break;
-                                }
-
-                            }
-                        }
-                    }
-
-                    if( pResult == nullptr )
-                    {
-                        // Do we have a collision? 
-                        if( Local.m_isValid )
-                        {
-                            // Make sure we have not collisions with any one
-                            xassert_block_basic()
-                            {
-                                xassert( Key.m_Value != MapEntry.m_Key.m_Value );
-                                for( auto p = MapEntry.m_pNext; p ; p = p->m_pNext )
-                                {
-                                    xassert( Key.m_Value != MapEntry.m_Key.m_Value );
-                                }
-                            }
-
-                            // Allocate an overflow entry
-                            auto pNode = m_pFreeOverflow.load(std::memory_order_relaxed);
-                            do 
-                            {
-                                // Run out of free entries!
-                                xassert(pNode);
-
-                                if( m_pFreeOverflow.compare_exchange_weak( pNode, pNode->m_pNext ) )
-                                    break;
-                            } while ( true );
-
-                            // Link new node
-                            pNode->m_pNext = MapEntry.m_pNext;
-                            MapEntry.m_pNext = pNode;
-
-                            // Copy data
-                            pNode->m_Key   = Key;
-                            pNode->m_Value = SafeCreateCallBack();
-
-                            pResult = &pNode->m_Value;
-                        }
-                        else
-                        {
-                            MapEntry.m_Key   = Key;
-                            MapEntry.m_Value = SafeCreateCallBack();
-
-                            pResult = &MapEntry.m_Value;
-                        }
-                    }
-
-                    //
-                    // Unlock
-                    //
-                    MapEntry.m_Lock.store( lock{ false, true } );
-
-                    return *pResult;
-                }
-
-                template< typename T_CALLBACK >
-                void pop( T_KEY Key, T_CALLBACK&& CallBack = [](T_VALUE&){} ) noexcept
-                {
-                    assert(Key.isValid());
-
-                    auto&           MapEntry    = m_Map[Key.m_Value % max_size_v];
-                    auto            Local       = MapEntry.m_Lock.load(std::memory_order_relaxed);
-
-                    //
-                    // Lock
-                    //
-                    do 
-                    {
-                        if( Local.m_isLocked == true ) 
-                        {
-                            // Spin....
-                            Local       = MapEntry.m_Lock.load(std::memory_order_relaxed);
-                            continue;
-                        }
-
-                        if( MapEntry.m_Lock.compare_exchange_weak(Local, lock{ true, Local.m_isValid } ) )
-                            break;
-
-                    } while( true );
-
-                    //
-                    // Remove node
-                    //
-
-                    // Better have that node
-                    xassert(Local.m_isValid);
-                    entry* pCleanUp = nullptr;
-
-                    if( Key.m_Value == MapEntry.m_Key.m_Value  )
-                    {
-                        CallBack(MapEntry.m_Value);
-                        if( MapEntry.m_pNext )
-                        {
-                            pCleanUp = MapEntry.m_pNext;
-
-                            MapEntry.m_Key      = MapEntry.m_pNext->m_Key;
-                            MapEntry.m_Value    = std::move( MapEntry.m_pNext->m_Value );
-                            MapEntry.m_pNext    = MapEntry.m_pNext->m_pNext;
-                        }
-                        else
-                        {
-                            MapEntry.m_Lock.store( lock{ false, false }, std::memory_order_relaxed );
-                            return;
-                        }
-                    }
-                    else
-                    {
-                        for( entry* p = &MapEntry; p->m_pNext; p = p->m_pNext )
-                        {
-                            if( Key.m_Value == p->m_pNext->m_Key.m_Value )
-                            {
-                                CallBack(p->m_pNext->m_Value);
-                                pCleanUp    = p->m_pNext;
-                                p->m_pNext  = p->m_pNext->m_pNext;
-                                break;
-                            }
-                        }
-                    }
-
-                    if( pCleanUp )
-                    {
-                        pCleanUp->m_pNext = m_pFreeOverflow.load(std::memory_order_relaxed);
-                        while( m_pFreeOverflow.compare_exchange_weak( pCleanUp->m_pNext, pCleanUp) == false );
-                    }
-                
-                    //
-                    // Unlock
-                    //
-                    MapEntry.m_Lock.store( lock{ false, true } );
-                }
-
-                T_VALUE* find(T_KEY Key) const noexcept
-                {
-                    assert(Key.isValid());
-                    auto&   MapEntry    = m_Map[Key.m_Value % max_size_v];
-                    auto    Local       = MapEntry.m_Lock.load(std::memory_order_relaxed);
-
-                    //
-                    // Lock
-                    //
-                    do 
-                    {
-                        if( Local.m_isValid == false ) return nullptr; 
-                        if( Local.m_isLocked == true ) 
-                        {
-                            // Spin....
-                            Local       = MapEntry.m_Lock.load(std::memory_order_relaxed);
-                            continue;
-                        }
-
-                        if( MapEntry.m_Lock.compare_exchange_weak(Local, lock{ true, true } ) )
-                            break;
-
-                    } while( true );
-
-                    //
-                    // Search for the node
-                    //
-                    xassert( Local.m_isValid );
-                    T_VALUE*      pResult     = nullptr;
-
-                    if( Key.m_Value == MapEntry.m_Key.m_Value )
-                    {
-                        pResult = &MapEntry.m_Value;
-                    }
-                    else
-                    {
-                        for( auto p = MapEntry.m_pNext; p; p = p->m_pNext )
-                        {
-                            if( Key.m_Value == p->m_Key.m_Value ) 
-                            {
-                                pResult = &p->m_Value;
-                                break;
-                            }
-                        }
-                    }
-                    
-                    //
-                    // Unlock
-                    //
-                    MapEntry.m_Lock.store( lock{ false, true } );
-                    
-                    return pResult;
-                }
-
-                T_VALUE& get(T_KEY Key) noexcept
-                {
-                    auto p = find(Key);
-                    xassert(p);
-                    return *p;
-                }
-
-                T_VALUE& get(T_KEY Key) const noexcept
-                {
-                    auto p = find(Key);
-                    xassert(p);
-                    return *p;
-                }
-
-                template< typename T_CALLBACK >
-                bool getExlusive( T_KEY Key, T_CALLBACK&& CallBack ) noexcept
-                {
-                    assert(Key.isValid());
-                    auto&   MapEntry    = m_Map[Key.m_Value % max_size_v];
-                    auto    Local       = MapEntry.m_Lock.load(std::memory_order_relaxed);
-
-                    //
-                    // Lock
-                    //
-                    do 
-                    {
-                        if( Local.m_isValid == false ) return false; 
-                        if( Local.m_isLocked == true ) 
-                        {
-                            // Spin....
-                            Local       = MapEntry.m_Lock.load(std::memory_order_relaxed);
-                            continue;
-                        }
-
-                        if( MapEntry.m_Lock.compare_exchange_weak(Local, lock{ true, true } ) )
-                            break;
-
-                    } while( true );
-
-                    //
-                    // Search for the node
-                    //
-                    xassert( Local.m_isValid );
-                    T_VALUE*      pResult     = nullptr;
-
-                    if( Key.m_Value == MapEntry.m_Key.m_Value )
-                    {
-                        pResult = &MapEntry.m_Value;
-                    }
-                    else
-                    {
-                        for( auto p = MapEntry.m_pNext; p; p = p->m_pNext )
-                        {
-                            if( Key.m_Value == p->m_Key.m_Value ) 
-                            {
-                                pResult = &p->m_Value;
-                                break;
-                            }
-                        }
-                    }
-                    
-                    if( pResult )
-                    {
-                        CallBack(*pResult);
-                    }
-
-                    //
-                    // Unlock
-                    //
-                    MapEntry.m_Lock.store( lock{ false, true } );
-                    
-                    return !!pResult;
-                }
-
-                struct entry
-                {
-                    T_KEY               m_Key   {};
-                    T_VALUE             m_Value {};
-                    entry*              m_pNext {nullptr};        // Next for cases where collisions happen
-                };
-                
-                struct alignas(std::uint16_t) lock
-                {
-                    bool            m_isLocked  { false };
-                    bool            m_isValid   { false };
-                };
-
-                struct lock_entry : entry
-                {
-                    std::atomic<lock>   m_Lock{};
-                };
-
-                std::atomic<entry*>             m_pFreeOverflow { nullptr };                // Link list of overflow entries
-                xcore::unique_span<lock_entry>  m_Map           { T_MAXSIZE_V };
-                xcore::unique_span<entry>       m_Extras        { (T_MAXSIZE_V*10)/100 };   // 10% overflow
-            };
-
             #define CHECK_FUNCTION( FUNCTION_NAME )                                         \
             template<typename, typename T>                                                  \
             struct has_##FUNCTION_NAME                                                      \
@@ -1603,9 +1738,12 @@ namespace mecs
             inline
             entity::tmp_ref createEntity( component::group::instance& Group, entity::guid EntityGuid ) noexcept
             {
-                auto  EntityRef = Group.CreateEntity(EntityGuid);
-                m_mapEntity.push( EntityGuid, std::move(EntityRef) );
-                return EntityRef;
+                entity::tmp_ref Ref;
+                m_mapEntity.push( EntityGuid, [&]( entity::map_t::entry& E )
+                {
+                    Ref = E.m_Value = Group.CreateEntity(&E);
+                });
+                return Ref;
             }
 
             component::group::instance& getOrCreateGroup( const std::span<const type_guid>    lComponentTypesGuids
@@ -1870,23 +2008,19 @@ namespace mecs
             }
             */
  
-            constexpr static std::size_t                                max_entity_count_v = xcore::bits::RoundToNextPowOfTwo(100000000ull)
-                                                                        XCORE_CMD_ASSERT(  - xcore::bits::RoundToNextPowOfTwo(100000000ull)
-                                                                                           + xcore::bits::RoundToNextPowOfTwo(  1000000ull));
             constexpr static std::size_t                                max_groups_count_v = 1024;
 
-            using map_entity_t                  = details::map<entity::guid,            entity::tmp_ref,                        max_entity_count_v>;
-            using map_group_per_tag_t           = details::map<type_guid,               component::group::instance*,            max_groups_count_v>;
-            using map_group_descriptor_t        = details::map<component::group::guid,  const component::group::descriptor*,    max_groups_count_v>;
-            using map_component_descriptor_t    = details::map<type_guid,               const component::descriptor*,           256>;
-            using map_tag_descriptor_t          = details::map<type_guid,               std::uint8_t,                           256>;
-            using map_tag_lookup_t              = details::map<type_guid,               details::dbase::tag_entry*,             max_groups_count_v>;
+            using map_group_per_tag_t           = tools::map<type_guid,               component::group::instance*,            max_groups_count_v>;
+            using map_group_descriptor_t        = tools::map<component::group::guid,  const component::group::descriptor*,    max_groups_count_v>;
+            using map_component_descriptor_t    = tools::map<type_guid,               const component::descriptor*,           256>;
+            using map_tag_descriptor_t          = tools::map<type_guid,               std::uint8_t,                           256>;
+            using map_tag_lookup_t              = tools::map<type_guid,               details::dbase::tag_entry*,             max_groups_count_v>;
 
             bool                                        m_bFrameStarted                 { false };
             bool                                        m_bPause                        { false };
             int                                         m_FrameNumber                   { 0 };
             component::group::page_mgr                  m_PageMgr                       {};
-            map_entity_t                                m_mapEntity                     {};
+            entity::map_t                               m_mapEntity                     {};
             details::dbase                              m_TagDBase                      {};
             map_group_per_tag_t                         m_mapGroupPerTag                {};
             map_group_descriptor_t                      m_mapGroupDescriptor            {};
@@ -1963,7 +2097,7 @@ namespace mecs
                 ,   my_tag
             >();
 
-            World.AddGraphConnection<my_system>(World.m_StartSyncPoint, World.m_EndSyncPoint );
+            World.AddGraphConnection<my_system>( World.m_StartSyncPoint, World.m_EndSyncPoint );
 
             //
             // Create a bunch of entities

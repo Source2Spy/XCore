@@ -40,6 +40,70 @@ namespace xcore::lock
     };
 
     //------------------------------------------------------------------------------------------
+    // semaphore lock non-reentrant
+    //------------------------------------------------------------------------------------------
+    struct semaphore
+    {
+        struct thelock
+        {
+            mutable std::uint16_t        m_nReaders:15
+                                       , m_nWritters:1;
+        };
+
+        mutable std::atomic<thelock> m_Lock{thelock{0u,0u}};
+
+        // Writer lock
+        inline void lock( void ) noexcept
+        {
+            auto p = m_Lock.load( std::memory_order_relaxed );
+
+            do
+            {
+                if( p.m_nWritters || p.m_nReaders ) 
+                {
+                    // Spin...
+                    p = m_Lock.load( std::memory_order_relaxed );
+                }
+                else if( m_Lock.compare_exchange_weak( p, thelock{ p.m_nReaders, 1u } ) ) break;
+
+            } while(true);
+        }
+
+        // Writer unlock
+        inline void unlock( void ) noexcept
+        {
+            m_Lock.store( thelock{0,0}, std::memory_order_relaxed );
+        }
+
+        // Reader lock
+        inline void lock( void ) const noexcept
+        {
+            auto p = m_Lock.load( std::memory_order_relaxed );
+
+            do 
+            {
+                if( p.m_nWritters ) 
+                {
+                    // Spin...
+                    p = m_Lock.load( std::memory_order_relaxed );
+                }
+                else if( m_Lock.compare_exchange_weak( p, thelock{ p.m_nReaders+1u, 0u } ) ) break;
+
+            } while(true);
+        }
+
+        // Reader unlock
+        inline void unlock( void ) const noexcept
+        {
+            auto p = m_Lock.load( std::memory_order_relaxed );
+            while( false == m_Lock.compare_exchange_weak( p, thelock{ p.m_nReaders-1u, 0u } ) )
+            {
+                // Spin...
+            }
+        }
+    };
+
+    //------------------------------------------------------------------------------------------
     // scope the lock
     //------------------------------------------------------------------------------------------
     template< typename T >
