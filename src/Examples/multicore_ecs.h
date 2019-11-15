@@ -546,6 +546,231 @@ namespace mecs
             xcore::unique_span<lock_entry>  m_Map           { T_MAXSIZE_V };
             xcore::unique_span<entry>       m_Extras        { (T_MAXSIZE_V*10)/100 };   // 10% overflow
         };
+
+        //---------------------------------------------------------------------------------
+        // TOOLS::PAGE
+        //---------------------------------------------------------------------------------
+        struct alignas(128) page
+        {
+            std::byte    m_RawData[1024*16];
+        };
+
+        //---------------------------------------------------------------------------------
+        // TOOLS::PAGE MANAGER
+        //---------------------------------------------------------------------------------
+        struct page_mgr
+        {
+            struct next
+            {
+                next* m_pNext;
+            };
+
+            std::atomic<next*> m_pFreeHead{ nullptr };
+
+            page* AllocPage( void ) noexcept
+            {
+                next* pLocal = m_pFreeHead.load(std::memory_order_relaxed);
+                do 
+                {
+                    if(pLocal == nullptr) return new page;
+                } while( m_pFreeHead.compare_exchange_weak( pLocal, pLocal->m_pNext) == false );
+
+                return reinterpret_cast<page*>(pLocal);
+            }
+
+            void FreePage(page* pPage) noexcept
+            {
+                next* p      = reinterpret_cast<next*>(pPage);
+                p->m_pNext   = m_pFreeHead.load(std::memory_order_relaxed);
+                while (m_pFreeHead.compare_exchange_weak(p->m_pNext, p) == false);
+            }
+        };
+
+        //---------------------------------------------------------------------------------
+        // TOOLS::POOL
+        //---------------------------------------------------------------------------------
+        template< typename T, std::size_t MAX_PAGES >
+        struct pool
+        {
+            constexpr static auto entries_per_page_v = sizeof(page)/sizeof(T);
+
+            struct alignas(std::uint64_t) counts
+            {
+                std::uint32_t   m_nEntries;
+                std::uint16_t   m_nPages;
+                std::uint16_t   m_bLock;
+            };
+
+            constexpr pool( page_mgr& PageMgr ) noexcept : m_PageMgr{PageMgr}{}
+
+            template< typename...T_ARGS >
+            T& append( T_ARGS&&... Args ) noexcept
+            {
+                auto Counts    = m_Counts.load( std::memory_order_relaxed);
+                do 
+                {
+                    if( Counts.m_bLock )
+                    {
+                        Counts = m_Counts.load( std::memory_order_relaxed );
+                    }
+                    else if( Counts.m_nEntries < Counts.m_nPages*entries_per_page_v )
+                    {
+                        const counts NewCounts{ Counts.m_nEntries+1, Counts.m_nPages, 0 }; 
+                        
+                        if( m_Counts.compare_exchange_weak( Counts, NewCounts ) )
+                            return *new( &m_lPages[Counts.m_nPages-1]->m_RawData[(Counts.m_nEntries%entries_per_page_v)*sizeof(T)] ) 
+                                        T{std::forward<T_ARGS>(Args)...};
+                    }
+                    else if( Counts.m_nEntries == Counts.m_nPages*entries_per_page_v )
+                    {
+                        counts NewCounts{ Counts.m_nEntries+1, static_cast<std::uint16_t>(Counts.m_nPages+1), 1u }; 
+                        if( m_Counts.compare_exchange_weak( Counts, NewCounts ) )
+                        {
+                            auto p = m_PageMgr.AllocPage();
+                            m_lPages[NewCounts.m_nPages] = p;
+                            auto& E = *new( &p->m_RawData[(Counts.m_nEntries%entries_per_page_v)*sizeof(T)] ) 
+                                        T{std::forward<T_ARGS>(Args)...};
+
+                            // Release the lock
+                            NewCounts.m_bLock = 0;
+                            m_Counts.store( NewCounts );
+
+                            return E;
+                        }
+                    }
+
+                    // Spin Lock...
+                } while (true);
+
+                xassert(false);
+            }
+
+            void clear( void ) noexcept
+            {
+                counts Counts    = m_Counts.load( std::memory_order_relaxed);
+                do 
+                {
+                    if( Counts.m_bLock )
+                    {
+                        Counts = m_Counts.load( std::memory_order_relaxed );
+                    }
+                    else if( m_Counts.compare_exchange_weak( Counts, counts{ 0, 0, 1 } ) )
+                    {
+                        if constexpr (std::is_destructible_v<T>)
+                        {
+                            for( int i=0; i<Counts.m_nEntries; ++i )
+                            {
+                                std::destroy_at
+                                (
+                                    reinterpret_cast<T*>(&m_lPages[i/entries_per_page_v]->m_RawData[i%entries_per_page_v])
+                                );
+                            }                        
+                        }
+
+                        for( int i=0; i<Counts.m_Pages; ++i )
+                        {
+                            m_PageMgr.FreePage(m_lPages[i]);
+                        }
+
+                        m_Counts.store( counts{ 0, 0, 0 } );
+                    }
+
+                    // Spin Lock...
+                } while (true);
+
+                xassert(false);            
+            }
+
+            std::atomic<counts>             m_Counts    {counts{0,0,0}};
+            std::array<page*, MAX_PAGES>    m_lPages    {};
+            page_mgr&                       m_PageMgr;
+        };
+
+        //---------------------------------------------------------------------------------
+        // TOOLS::COMMAND POOL
+        //---------------------------------------------------------------------------------
+        template< typename T_CMD_VARIANT >
+        struct cmd_pool
+        {
+            struct cmd
+            {
+                T_CMD_VARIANT   m_Cmd;
+                cmd*            m_pNext;
+            };
+
+            cmd_pool( page_mgr& PageMgr ) : m_PageMgr{PageMgr} 
+            {
+            }
+
+            template< typename T, typename...T_ARGS >
+            T& NewAlloc( T_ARGS...Args ) noexcept
+            {
+                auto    Position    = m_Position.load(std::memory_order_relaxed);
+            START:
+                
+                // Check if we are locked... 
+                while( Position < sizeof(page*) ) 
+                {
+                    // If one means we have not initialize... so we begin the race of whom will initialize it
+                    if( Position == 1 )
+                    {
+                        // Try to win the right to do it
+                        if( m_Position.compare_exchange_weak( Position, 2 ) )
+                        {
+                            m_pPageHead = m_PageMgr.AllocPage();
+                            Position    = sizeof(page*);
+                            m_Position.store( Position );
+                            break;
+                        }
+                    }
+
+                    // See if someone has unlock us
+                    Position = m_Position.load(std::memory_order_relaxed);
+                }
+
+                auto*   p           = xcore::bits::Align( &m_pPageHead->m_Data[Position], std::alignment_of_v(T) );
+                if( p > &m_pPageHead->m_Data[sizeof(page)] )
+                {
+                    // Lock the command pool
+                    if( m_Position.compare_exchange_weak( Position, 0 ) == false ) goto START;
+
+                    // Need new page
+                    auto  pNewPage = m_PageMgr.AllocPage();
+                    auto& pNewNext = reinterpret_cast<page*&>(pNewPage->m_Data);
+                    pNewNext    = m_pPageHead;
+                    m_pPageHead = pNewPage;
+
+                    // Allocate our entry
+                    p                = xcore::bits::Align( &pNewPage->m_Data[sizeof(page*)], std::alignment_of_v(T) );
+                    auto NewPosition = reinterpret_cast<std::uint32_t>( p - m_pPageHead->m_Data );
+
+                    // Release the lock and set the new position
+                    m_Position.store( NewPosition );
+                }
+                else
+                {
+                    auto NewPosition = reinterpret_cast<std::uint32_t>( p - &m_pPageHead->m_Data[Position] );
+                    if( m_Position.compare_exchange_weak( Position, NewPosition ) == false ) goto START;
+                }
+
+                return *new(p) T{ std::forward<T_ARGS>(Args)... };
+            }
+
+            template< typename T, typename...T_ARGS >
+            T& NewCmd( T_ARGS...Args ) noexcept
+            {
+                auto& Cmd       = NewAlloc<cmd>();
+                auto& Requested = Cmd.m_Cmd.construct<T>( std::forward<T_ARGS>(Args)... );
+                Cmd.m_pNext = m_pCmdHead.load( std::memory_order_relaxed );
+                while( m_pCmdHead.compare_exchange_weak( Cmd.m_pNext, &Cmd ) );
+                return Cmd.m_Cmd;
+            }
+
+            page_mgr&                           m_PageMgr;
+            page*                               m_pPageHead     { nullptr };
+            std::atomic<cmd*>                   m_pCmdHead      { nullptr };
+            std::atomic<std::uint32_t>          m_Position      {1};                // 1 means that needs to be initialize
+        };
     }
 
     //---------------------------------------------------------------------------------
@@ -778,147 +1003,7 @@ namespace mecs
                     >(nullptr)
                 );
             };
-
         }
-
-        //---------------------------------------------------------------------------------
-        // GROUP::PAGE
-        //---------------------------------------------------------------------------------
-        struct alignas(128) page
-        {
-            std::byte    m_RawData[1024*16];
-        };
-
-        //---------------------------------------------------------------------------------
-        // GROUP::PAGE MANAGER
-        //---------------------------------------------------------------------------------
-        struct page_mgr
-        {
-            struct next
-            {
-                next* m_pNext;
-            };
-
-            std::atomic<next*> m_pFreeHead{ nullptr };
-
-            page* AllocPage( void ) noexcept
-            {
-                next* pLocal = m_pFreeHead.load(std::memory_order_relaxed);
-                do 
-                {
-                    if(pLocal == nullptr) return new page;
-                } while( m_pFreeHead.compare_exchange_weak( pLocal, pLocal->m_pNext) == false );
-
-                return reinterpret_cast<page*>(pLocal);
-            }
-
-            void FreePage(page* pPage) noexcept
-            {
-                next* p      = reinterpret_cast<next*>(pPage);
-                p->m_pNext   = m_pFreeHead.load(std::memory_order_relaxed);
-                while (m_pFreeHead.compare_exchange_weak(p->m_pNext, p) == false);
-            }
-        };
-
-        //---------------------------------------------------------------------------------
-        // GROUP::SIMPLE POOL
-        //---------------------------------------------------------------------------------
-        template< typename T, std::size_t MAX_PAGES >
-        struct pool
-        {
-            constexpr static auto entries_per_page_v = sizeof(page)/sizeof(T);
-
-            struct alignas(std::uint64_t) counts
-            {
-                std::uint32_t   m_nEntries;
-                std::uint16_t   m_nPages;
-                std::uint16_t   m_bLock;
-            };
-
-            constexpr pool( page_mgr& PageMgr ) noexcept : m_PageMgr{PageMgr}{}
-
-            template< typename...T_ARGS >
-            T& append( T_ARGS&&... Args ) noexcept
-            {
-                auto Counts    = m_Counts.load( std::memory_order_relaxed);
-                do 
-                {
-                    if( Counts.m_bLock )
-                    {
-                        Counts = m_Counts.load( std::memory_order_relaxed );
-                    }
-                    else if( Counts.m_nEntries < Counts.m_nPages*entries_per_page_v )
-                    {
-                        const counts NewCounts{ Counts.m_nEntries+1, Counts.m_nPages, 0 }; 
-                        
-                        if( m_Counts.compare_exchange_weak( Counts, NewCounts ) )
-                            return *new( &m_lPages[Counts.m_nPages-1]->m_RawData[(Counts.m_nEntries%entries_per_page_v)*sizeof(T)] ) 
-                                        T{std::forward<T_ARGS>(Args)...};
-                    }
-                    else if( Counts.m_nEntries == Counts.m_nPages*entries_per_page_v )
-                    {
-                        counts NewCounts{ Counts.m_nEntries+1, static_cast<std::uint16_t>(Counts.m_nPages+1), 1u }; 
-                        if( m_Counts.compare_exchange_weak( Counts, NewCounts ) )
-                        {
-                            auto p = m_PageMgr.AllocPage();
-                            m_lPages[NewCounts.m_nPages] = p;
-                            auto& E = *new( &p->m_RawData[(Counts.m_nEntries%entries_per_page_v)*sizeof(T)] ) 
-                                        T{std::forward<T_ARGS>(Args)...};
-
-                            // Release the lock
-                            NewCounts.m_bLock = 0;
-                            m_Counts.store( NewCounts );
-
-                            return E;
-                        }
-                    }
-
-                    // Spin Lock...
-                } while (true);
-
-                xassert(false);
-            }
-
-            void clear( void ) noexcept
-            {
-                counts Counts    = m_Counts.load( std::memory_order_relaxed);
-                do 
-                {
-                    if( Counts.m_bLock )
-                    {
-                        Counts = m_Counts.load( std::memory_order_relaxed );
-                    }
-                    else if( m_Counts.compare_exchange_weak( Counts, counts{ 0, 0, 1 } ) )
-                    {
-                        if constexpr (std::is_destructible_v<T>)
-                        {
-                            for( int i=0; i<Counts.m_nEntries; ++i )
-                            {
-                                std::destroy_at
-                                (
-                                    reinterpret_cast<T*>(&m_lPages[i/entries_per_page_v]->m_RawData[i%entries_per_page_v])
-                                );
-                            }                        
-                        }
-
-                        for( int i=0; i<Counts.m_Pages; ++i )
-                        {
-                            m_PageMgr.FreePage(m_lPages[i]);
-                        }
-
-                        m_Counts.store( counts{ 0, 0, 0 } );
-                    }
-
-                    // Spin Lock...
-                } while (true);
-
-                xassert(false);            
-            }
-
-            std::atomic<counts>             m_Counts    {counts{0,0,0}};
-            std::array<page*, MAX_PAGES>    m_lPages    {};
-            page_mgr&                       m_PageMgr;
-        };
 
         //---------------------------------------------------------------------------------
         // GROUP::ITERATOR
@@ -958,7 +1043,7 @@ namespace mecs
                 , m_EntriesPerPage          { [&]() constexpr
                                                 {
                                                     const std::uint32_t     SizeOfOne           = [&]() constexpr { std::uint32_t S = 0; for (auto p : lComponetDesc) S += p->m_Size; return S; }();
-                                                    const std::uint32_t     OriginalAddress     = std::alignment_of_v<page>;
+                                                    const std::uint32_t     OriginalAddress     = std::alignment_of_v<tools::page>;
                                                     std::uint32_t           WastedToAligment    = 0;
                                                     std::uint32_t           p                   = OriginalAddress;
 
@@ -968,13 +1053,13 @@ namespace mecs
                                                         p += pE->m_Size;
                                                     }
 
-                                                    return static_cast<std::uint16_t>((sizeof(page) - WastedToAligment) / SizeOfOne);
+                                                    return static_cast<std::uint16_t>((sizeof(tools::page) - WastedToAligment) / SizeOfOne);
                                                 }()
                                             }
                 , m_lComponentOffsets       { [&]() constexpr 
                                                 {
                                                     std::array<details::offsets, 64>      lComponentOffsets{};
-                                                    const std::uint32_t                   OriginalAddress     = std::alignment_of_v<page>;
+                                                    const std::uint32_t                   OriginalAddress     = std::alignment_of_v<tools::page>;
                                                     std::uint32_t                         p                   = OriginalAddress;
 
                                                     for (int i = 0; i < lComponetDesc.size(); i++)
@@ -987,14 +1072,14 @@ namespace mecs
                                                         D.m_Offset  = xcore::bits::Align( p, S.m_Aligment ) - OriginalAddress;
                                                         p          += m_EntriesPerPage * D.m_Size;
                                                     }
-                                                    assert((p - OriginalAddress) <= sizeof(page));
+                                                    assert((p - OriginalAddress) <= sizeof(tools::page));
                                                     return lComponentOffsets;
                                                 }()
                                             }
                 {}
 
             
-            void ConstructEntity( page* Page, group::local_index LocalIndex, entity::map_t::entry* pEntry ) const noexcept
+            void ConstructEntity( tools::page* Page, group::local_index LocalIndex, entity::map_t::entry* pEntry ) const noexcept
             {
                 std::byte* p = reinterpret_cast<std::byte*>(Page);
                 for( int i=0; i<m_nComponents; ++i )
@@ -1006,7 +1091,7 @@ namespace mecs
                 }
             }
 
-            void DestructEntity( page* Page, std::uint32_t LocalIndex ) const noexcept
+            void DestructEntity( tools::page* Page, std::uint32_t LocalIndex ) const noexcept
             {
                 std::byte* p = reinterpret_cast<std::byte*>(Page);
                 for( int i=0; i<m_nComponents; ++i )
@@ -1070,7 +1155,7 @@ namespace mecs
         //---------------------------------------------------------------------------------
         struct instance
         {
-            instance( page_mgr& PageMgr, const descriptor& GroupDescriptor ) noexcept
+            instance( tools::page_mgr& PageMgr, const descriptor& GroupDescriptor ) noexcept
                 : m_PageMgr             { PageMgr }
                 , m_GroupDescriptor     { GroupDescriptor }
                 , m_lDeleteEntries      { m_PageMgr }
@@ -1177,15 +1262,15 @@ namespace mecs
                 */
 
             constexpr static std::size_t max_pages_v = 1024*32;
-            using page_list = xcore::array<page*, max_pages_v>;
+            using page_list = xcore::array<tools::page*, max_pages_v>;
 
-            page_mgr&                                                                   m_PageMgr;
+            tools::page_mgr&                                                            m_PageMgr;
             std::atomic<std::uint32_t>                                                  m_NewCount          { 0 };
             std::uint32_t                                                               m_Count             { 0 };
             std::atomic<group::page_index>                                              m_nPages            { group::page_index{0} };
             page_list                                                                   m_lPages            {};
             const group::descriptor&                                                    m_GroupDescriptor;
-            pool<delete_entry,max_pages_v>                                              m_lDeleteEntries;
+            tools::pool<delete_entry,max_pages_v>                                       m_lDeleteEntries;
         };
 
         //---------------------------------------------------------------------------------
@@ -1443,6 +1528,139 @@ namespace mecs
             tag_query                   m_TagQuery              {};
         };
     }
+
+    //------------------------------------------------------------------------------------------
+    // COMMANDS - What kinds of things can the sync points do for us...
+    //------------------------------------------------------------------------------------------
+    /*
+    namespace commands
+    {
+        using command_pool = containers::cmd_pool<1024>;
+
+        namespace details
+        {
+            struct cmd_add_entity
+            {
+                entity::guid            m_Guid;
+                int                     m_Size;
+                component::type_guid*   m_pComponentTypes;
+                void*                   m_pNewComponentData;
+            };
+
+            struct cmd_modify_components
+            {
+                entity::guid            m_Guid;
+                int                     m_DelComponentCount     {0};
+                component::type_guid*   m_pDelComponentTypes    {nullptr};
+                int                     m_NewComponentCount     {0};
+                component::type_guid*   m_pNewComponentTypes    {nullptr};
+                void*                   m_pNewComponentData     { nullptr };
+            };
+
+            struct cmd_set_components
+            {
+                entity::guid            m_Guid;
+                component::type_guid*   m_pComponentTypes       { nullptr };
+                int                     m_ComponentCount        { 0 };
+                void*                   m_pNewComponentData     { nullptr };
+            };
+
+            using cmds = std::variant
+            <
+                  cmd_add_entity
+                , cmd_modify_components
+                , cmd_set_components
+            >;
+
+            template< typename T_CLASS, typename...T_ARGS >
+            struct set_component_handler
+            {
+                using component_tuple = std::tuple< T_ARGS... >;
+
+                T_CLASS& m_Ref;
+
+                template< typename T >
+                auto& getComponentData(void) noexcept
+                {
+                    return std::get<T&>(*reinterpret_cast<component_tuple*>(m_Ref.m_pNewComponentData));
+                }
+            };
+
+            struct modify_components_handler
+            {
+                cmd_modify_components&  m_Ref;
+                command_pool&           m_Pool;
+                command_pool::handle    m_Handel;
+
+                template< typename...T_COMPONENTS >
+                auto AddComponents( void ) noexcept
+                {
+                    using component_tuple = std::tuple<T_COMPONENTS...>;
+                    std::array  ComponentData{ T_COMPONENTS::factory::guid_component_type_v ... };
+
+                    m_Ref.m_NewComponentCount   = sizeof...(T_COMPONENTS);
+                    m_Ref.m_pNewComponentData   = &m_Pool.NewData<component_tuple>(m_Handel);
+                    m_Ref.m_pNewComponentTypes  = m_Pool.NewData<decltype(ComponentData)>(m_Handel, ComponentData).data();
+                    return details::set_component_handler<cmd_modify_components, T_COMPONENTS...>{ m_Ref };
+                }
+
+                template< typename...T_COMPONENTS >
+                void RemoveComponents(void) noexcept
+                {
+                    std::array  ComponentData{ T_COMPONENTS::factory::guid_component_type_v ... };
+                    m_Ref.m_DelComponentCount   = sizeof...(T_COMPONENTS);
+                    m_Ref.m_pDelComponentTypes  = m_Pool.NewData<decltype(ComponentData)>(m_Handel, ComponentData).data();
+                }
+            };
+        }
+
+        struct command_buffer
+        {
+            template< typename...T_COMPONENTS >
+            auto AddEntity(entity::guid Guid) noexcept
+            {
+                using component_tuple = std::tuple< T_COMPONENTS... >;
+
+                auto&       EntityCmd           = m_Pool.NewCmd<details::cmd_add_entity>(m_Handle);
+                std::array  ComponentData       { T_COMPONENTS::factory::guid_component_type_v ... };
+
+                EntityCmd.m_Guid                = Guid;
+                EntityCmd.m_pComponentTypes     = m_Pool.NewData<decltype(ComponentData)>(m_Handle, ComponentData).data();
+                EntityCmd.m_Size                = ComponentData.size();
+                EntityCmd.m_pData               = &m_Pool.NewData<component_tuple>(m_Handle);
+
+                return details::set_component_handler<details::cmd_add_entity, T_COMPONENTS...>{ EntityCmd };
+            }
+
+            auto EntityModifyComponets(entity::guid Guid) noexcept
+            {
+                auto& ModifyCmd = m_Pool.NewCmd<details::cmd_modify_components>(m_Handle);
+                ModifyCmd.m_Guid = Guid;
+                return details::modify_components_handler{ ModifyCmd, m_Pool, m_Handle };
+            }
+
+            template< typename...T_COMPONENTS >
+            void SetComponents(entity::guid Guid) noexcept
+            {
+                using component_tuple = std::tuple< T_COMPONENTS... >;
+
+                auto&       SetCmd      = m_Pool.NewCmd<details::cmd_set_components>(m_Handle);
+                std::array  ComponentData{ T_COMPONENTS::factory::guid_component_type_v ... };
+
+                SetCmd.m_Guid                   = Guid;
+                SetCmd.m_ComponentCount         = sizeof...(T_COMPONENTS);
+                SetCmd.m_pComponentTypes        = m_Pool.NewData<decltype(ComponentData)>(m_Handle, ComponentData).data();
+                SetCmd.m_pNewComponentData      = &m_Pool.NewData<component_tuple>(m_Handle);
+
+                return details::set_component_handler<details::cmd_set_components, T_COMPONENTS...>{ SetCmd };
+            }
+
+            command_pool&           m_Pool;
+            command_pool::handle    m_Handle;
+        };
+    }
+            */
+
 
     //---------------------------------------------------------------------------------
     // SYSTEM - System execute logic for components
@@ -2019,7 +2237,7 @@ namespace mecs
             bool                                        m_bFrameStarted                 { false };
             bool                                        m_bPause                        { false };
             int                                         m_FrameNumber                   { 0 };
-            component::group::page_mgr                  m_PageMgr                       {};
+            tools::page_mgr                             m_PageMgr                       {};
             entity::map_t                               m_mapEntity                     {};
             details::dbase                              m_TagDBase                      {};
             map_group_per_tag_t                         m_mapGroupPerTag                {};
