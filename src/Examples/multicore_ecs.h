@@ -1265,6 +1265,7 @@ namespace mecs
             using page_list = xcore::array<tools::page*, max_pages_v>;
 
             tools::page_mgr&                                                            m_PageMgr;
+            xcore::lock::semaphore                                                      m_SemaphoreLock     {};
             std::atomic<std::uint32_t>                                                  m_NewCount          { 0 };
             std::uint32_t                                                               m_Count             { 0 };
             std::atomic<group::page_index>                                              m_nPages            { group::page_index{0} };
@@ -1744,7 +1745,25 @@ namespace mecs
                 virtual void qt_onRun( void ) noexcept override
                 {
                     m_World.DoQuery<user_system_t>(m_Query);
+                    
+                    // If there is nothing to do then lets bail out
+                    if( m_Query.m_lResults.size() == 0 )
+                        return;
+
+                    // Lock all the groups that we need to work with so that no one tries to add/remove entities
+                    for( const auto& E : m_Query.m_lResults )
+                    {
+                        E.m_pGroup->m_SemaphoreLock.lock();
+                    }
+                    
+                    // Allow the system to compute
                     ForEach( reinterpret_cast< typename system_function_t::args_t* >(nullptr) );
+
+                    // unlock all the groups that we need to work with so that no one tries to add/remove entities
+                    for( const auto& E : m_Query.m_lResults )
+                    {
+                        E.m_pGroup->m_SemaphoreLock.unlock();
+                    }
                 }
             };
         }
