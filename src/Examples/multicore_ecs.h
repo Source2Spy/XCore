@@ -1152,6 +1152,35 @@ namespace mecs
 
         //---------------------------------------------------------------------------------
         // GROUP::INSTANCE
+        // The contract for events sent to a group.
+        //      All events sent to a group must respect the order in which the local thread
+        //      Issue the command. However it can be intermix with other events sent from
+        //      other threads. 
+        //      Deletion of entities should happen at the memory barriers. 
+        //          The Guid of an entity is clear at the end of the frame.
+        //          It is the responsibility of a system to check for the validity of an entity.
+        //
+        // Key Commands for a group:
+        //
+        //  Add Entity - This appends an entity to the back of the entity list as a temporary storage.
+        //               The official insertion will be done at the barrier. Here is where we will 
+        //               Add the entity to the world.
+        //  Del Entity - This is queued as a message and it wont execute until the memory barrier.
+        //               Entities at the back of the list may be moved in the holes. 
+        //               World will get updated base on the new location of the entity.
+        //               The World will keep an active reference of the entity until the end of the frame.
+        //               Then the world will remove the real entity. This allows temporary reference to 
+        //               Entities to exists until the end of the frame. If the user needs a longer reference
+        //               to an entity it should store the guid.
+        //  Remove/Add Component - This will require that both groups will be locked at the same time in the memory
+        //                         Barrier. One of the groups will be added in the other one will be erase.
+        //                         The world will update its entity pointer at the memory barrier.
+        //  getComponent - Will access the component for writing/reading. This can happen in a the system update.
+        //                 However if this happens the group should be locked as read/write. Which means that if the
+        //                 user gets a entity::tmp_ref it must write lock the group.
+        // Other details:
+        // System should specify the group which components are going to be reading and which are going to be written.
+        // The memory barrier can only work when there is no reading or written systems.
         //---------------------------------------------------------------------------------
         struct instance
         {
@@ -1694,8 +1723,20 @@ namespace mecs
                 void ForEach( std::tuple<T_ARGS...>* ) noexcept
                 {
                     using pool_tuple = typename std::tuple< std::remove_reference_t<T_ARGS>*... >;
-                    xcore::scheduler::channel Channel( xconst_universal_str("ForEach") );
 
+                    // If there is nothing to do then lets bail out
+                    if( m_Query.m_lResults.size() == 0 )
+                        return;
+
+                    // Lock all the groups that we need to work with so that no one tries to add/remove entities
+                    for( const auto& E : m_Query.m_lResults )
+                    {
+                        // TODO: Must lock each component base on r/w also must lock the group
+                        E.m_pGroup->m_SemaphoreLock.lock();
+                    }
+
+                    // Do all the groups
+                    xcore::scheduler::channel Channel( xconst_universal_str("ForEach") );
                     for (auto& R : m_Query.m_lResults )
                     {
                         auto&               Group           = *R.m_pGroup;
@@ -1740,24 +1781,6 @@ namespace mecs
                     }
 
                     Channel.join();
-                }
-
-                virtual void qt_onRun( void ) noexcept override
-                {
-                    m_World.DoQuery<user_system_t>(m_Query);
-                    
-                    // If there is nothing to do then lets bail out
-                    if( m_Query.m_lResults.size() == 0 )
-                        return;
-
-                    // Lock all the groups that we need to work with so that no one tries to add/remove entities
-                    for( const auto& E : m_Query.m_lResults )
-                    {
-                        E.m_pGroup->m_SemaphoreLock.lock();
-                    }
-                    
-                    // Allow the system to compute
-                    ForEach( reinterpret_cast< typename system_function_t::args_t* >(nullptr) );
 
                     // unlock all the groups that we need to work with so that no one tries to add/remove entities
                     for( const auto& E : m_Query.m_lResults )
@@ -1765,13 +1788,21 @@ namespace mecs
                         E.m_pGroup->m_SemaphoreLock.unlock();
                     }
                 }
+
+                virtual void qt_onRun( void ) noexcept override
+                {
+                    m_World.DoQuery<user_system_t>(m_Query);
+                    
+                    // Allow the system to compute
+                    ForEach( reinterpret_cast< typename system_function_t::args_t* >(nullptr) );
+                }
             };
         }
 
         struct instance : xcore::scheduler::job<4>
         {
             using                   parent_t        = xcore::scheduler::job<4>;
-            constexpr static auto   system_name_v   = xconst_universal_str("System");
+            constexpr static auto   system_name_v   = xconst_universal_str("mecs::System");
 
             constexpr instance(xcore::scheduler::definition Def) noexcept 
                 : parent_t{ Def | xcore::scheduler::triggers::DONT_CLEAN_COUNT }
@@ -2311,6 +2342,7 @@ namespace mecs
 
         struct my_system : system::instance
         {
+            constexpr static auto   system_name_v   = xconst_universal_str("my_system");
             constexpr static query::define
             <
                 query::all<simple>

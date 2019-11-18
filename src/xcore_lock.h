@@ -40,31 +40,41 @@ namespace xcore::lock
     };
 
     //------------------------------------------------------------------------------------------
-    // semaphore lock non-reentrant
+    // semaphore lock non-reentrant (Gives priority to writers)
     //------------------------------------------------------------------------------------------
     struct semaphore
     {
         struct thelock
         {
-            mutable std::uint16_t        m_nReaders:15
-                                       , m_nWritters:1;
+            std::uint16_t           m_nReaders:10   // max(1024) readers, How many readers are waiting to read
+                                ,   m_nWritters:5   // max(32)   writers, How many writers are waiting to write
+                                ,   m_isLocked:1;   // Is it currently locked?
         };
 
-        mutable std::atomic<thelock> m_Lock{thelock{0u,0u}};
+        mutable std::atomic<thelock> m_Lock{thelock{0u,0u,0u}};
+
+        int   getWriterCount() const noexcept { return m_Lock.load( std::memory_order_relaxed ).m_nWritters; }
+        int   getReaderCount() const noexcept { return m_Lock.load( std::memory_order_relaxed ).m_nReaders;  }
+        bool  isLocked()       const noexcept { return m_Lock.load( std::memory_order_relaxed ).m_isLocked;  }
 
         // Writer lock
         inline void lock( void ) noexcept
         {
             auto p = m_Lock.load( std::memory_order_relaxed );
+            do 
+            { 
+                xassert( p.m_nWritters < ((1u<<5)-2u) ); 
+            } while( false == m_Lock.compare_exchange_weak( p, thelock{ p.m_nReaders, p.m_nWritters+1u, 1u } ) );
 
-            do
+            if( p.m_isLocked ) do
             {
-                if( p.m_nWritters || p.m_nReaders ) 
+                if( p.m_isLocked ) 
                 {
+
                     // Spin...
                     p = m_Lock.load( std::memory_order_relaxed );
                 }
-                else if( m_Lock.compare_exchange_weak( p, thelock{ p.m_nReaders, 1u } ) ) break;
+                else if( m_Lock.compare_exchange_weak( p, thelock{ p.m_nReaders, p.m_nWritters, 1u } ) ) break;
 
             } while(true);
         }
@@ -72,22 +82,27 @@ namespace xcore::lock
         // Writer unlock
         inline void unlock( void ) noexcept
         {
-            m_Lock.store( thelock{0,0}, std::memory_order_relaxed );
+            auto p = m_Lock.load( std::memory_order_relaxed );
+            while( false == m_Lock.compare_exchange_weak( p, thelock{ p.m_nReaders, p.m_nWritters-1u, 0u } ) );
         }
 
         // Reader lock
         inline void lock( void ) const noexcept
         {
             auto p = m_Lock.load( std::memory_order_relaxed );
-
             do 
+            { 
+                xassert( p.m_nReaders < ((1u<<10)-2u) ); 
+            } while( false == m_Lock.compare_exchange_weak( p, thelock{ p.m_nReaders+1u, p.m_nWritters, (p.m_nWritters == 0) ? 1u : p.m_isLocked } ) );
+
+            if( p.m_isLocked || p.m_nWritters ) do 
             {
-                if( p.m_nWritters ) 
+                if( p.m_isLocked || p.m_nWritters ) 
                 {
                     // Spin...
                     p = m_Lock.load( std::memory_order_relaxed );
                 }
-                else if( m_Lock.compare_exchange_weak( p, thelock{ p.m_nReaders+1u, 0u } ) ) break;
+                else if( m_Lock.compare_exchange_weak( p, thelock{ p.m_nReaders, 0u, 1u } ) ) break;
 
             } while(true);
         }
@@ -96,10 +111,7 @@ namespace xcore::lock
         inline void unlock( void ) const noexcept
         {
             auto p = m_Lock.load( std::memory_order_relaxed );
-            while( false == m_Lock.compare_exchange_weak( p, thelock{ p.m_nReaders-1u, 0u } ) )
-            {
-                // Spin...
-            }
+            while( false == m_Lock.compare_exchange_weak( p, thelock{ p.m_nReaders-1u, p.m_nWritters, 0u } ) );
         }
     };
 
