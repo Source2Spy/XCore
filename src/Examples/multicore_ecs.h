@@ -1299,6 +1299,7 @@ namespace mecs
             std::uint32_t                                                               m_Count             { 0 };
             std::atomic<group::page_index>                                              m_nPages            { group::page_index{0} };
             page_list                                                                   m_lPages            {};
+            std::array<xcore::lock::semaphore, 64>                                      m_ComponentLocks    {};
             const group::descriptor&                                                    m_GroupDescriptor;
             tools::pool<delete_entry,max_pages_v>                                       m_lDeleteEntries;
         };
@@ -1372,6 +1373,10 @@ namespace mecs
             {
                 for( int i=0; i<m_Bits.size(); ++i ) m_Bits[i] |= Bits.m_Bits[i];
             }
+            inline bool getBit( int Index ) const noexcept
+            {
+                return !!((m_Bits[Index/64] >> (Index%64))&1);
+            }
 
             constexpr bool Query( filter_bits All, filter_bits Any, filter_bits None ) const noexcept
             {
@@ -1431,7 +1436,7 @@ namespace mecs
                 static_assert( (std::is_reference_v<T_ARGS> && ...) );
                 return std::array
                 {
-                    std::is_const_v<T_ARGS> ...
+                    std::is_const_v<std::remove_reference_t<T_ARGS>> ...
                 };
             }
 
@@ -1527,7 +1532,9 @@ namespace mecs
         struct result_entry
         {
             component::group::instance*                         m_pGroup;
-            std::array<std::uint16_t,15>                        m_lRemaps;  // Offsets into the actual page where the component is
+            std::array<std::uint16_t,15>                        m_lRemaps;      // Offsets into the actual page where the component is
+            std::array<std::uint8_t,15>                         m_lLockRemaps;  // Offsets into the actual page where the component is
+            std::span<const bool>                               m_isWrite;
             std::uint8_t                                        m_nRemaps;
         };
 
@@ -1733,6 +1740,18 @@ namespace mecs
                     {
                         // TODO: Must lock each component base on r/w also must lock the group
                         E.m_pGroup->m_SemaphoreLock.lock();
+                        
+                        auto LockComponent = [&]( int I ) constexpr noexcept
+                        {
+                            const auto iComp = E.m_lLockRemaps[I];
+                            if( E.m_isWrite[I] ) 
+                                E.m_pGroup->m_ComponentLocks[iComp].lock();
+                            else
+                                const_cast<const xcore::lock::semaphore&>( E.m_pGroup->m_ComponentLocks[iComp] ).lock(); 
+                        };
+
+                        (( LockComponent(xcore::types::tuple_t2i_v< T_ARGS, system_function_t::args_t >) )
+                        , ...);
                     }
 
                     // Do all the groups
@@ -1786,6 +1805,18 @@ namespace mecs
                     for( const auto& E : m_Query.m_lResults )
                     {
                         E.m_pGroup->m_SemaphoreLock.unlock();
+
+                        auto UnlockComponent = [&]( int I ) constexpr noexcept
+                        {
+                            const auto iComp = E.m_lLockRemaps[I];
+                            if( E.m_isWrite[I] ) 
+                                E.m_pGroup->m_ComponentLocks[iComp].unlock();
+                            else
+                                const_cast<const xcore::lock::semaphore&>( E.m_pGroup->m_ComponentLocks[iComp] ).unlock(); 
+                        };
+
+                        (( UnlockComponent(xcore::types::tuple_t2i_v< T_ARGS, system_function_t::args_t >) )
+                        , ...);
                     }
                 }
 
@@ -2248,12 +2279,16 @@ namespace mecs
                                     else                            iBase += ( 1 - lOffsets[ iBase ].m_T0);
 
                                     // Okay ready to set the offsets now
-                                    Entry.m_lRemaps[F + function::remap_v[F]] = lOffsets[ iBase ].m_Offset;
+                                    Entry.m_lRemaps[F + function::remap_v[F]]     = lOffsets[ iBase ].m_Offset;
+                                    Entry.m_lLockRemaps[F + function::remap_v[F]] = iBase;
                                 }
                                 else
                                 {
-                                    Entry.m_lRemaps[F + function::remap_v[F]] = lOffsets[ i ].m_Offset;
+                                    Entry.m_lRemaps[F + function::remap_v[F]]     = lOffsets[ i ].m_Offset;
+                                    Entry.m_lLockRemaps[F + function::remap_v[F]] = F;
                                 }
+
+                                Entry.m_isWrite = function::const_list_v;
 
                                 // Move to next component
                                 F++;
