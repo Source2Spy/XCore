@@ -149,10 +149,10 @@ namespace xcore
 //-------------------------------------------------------------------------------------------------------
 // Macros to detail with error codes and such
 //-------------------------------------------------------------------------------------------------------
-#define xerr_code_s(A,B)  [&]() -> auto& { using t = decltype(A); constexpr static xcore::error::code Code{ A, B, __FILE__, 0 }; xassert(false == (xcore::err::g_bBreakOnError && xcore::err::getBreakOnError<t>())); return Code; }()
-#define xerr_failure_s(B) xerr_code_s( xcore::err::states::FAILURE, B )
+#define xerr_code_s(CODE,STRING)  [&]() -> auto& { using t = decltype(CODE); constexpr static xcore::error::code Code{ CODE, STRING, __FILE__, 0 }; xassert(false == (xcore::err::g_bBreakOnError && xcore::err::getBreakOnError<t>())); return Code; }()
+#define xerr_failure_s(STRING) xerr_code_s( xcore::err::states::FAILURE, STRING )
 
-#define xerr_code(E,A,B)  std::move(E = [&]() -> auto& { using t = decltype(A); constexpr static xcore::error::code Code{ A, B, __FILE__, 0 }; xassert(false == (xcore::err::g_bBreakOnError && xcore::err::getBreakOnError<t>())); return Code; }())
-#define xerr_failure(E,B) xerr_code( E, xcore::err::states::FAILURE, B )
+#define xerr_code(ERROR_VAR,CODE,STRING)  std::move(ERROR_VAR = [&]() -> auto& { using t = decltype(CODE); constexpr static xcore::error::code Code{ CODE, STRING, __FILE__, 0 }; xassert(false == (xcore::err::g_bBreakOnError && xcore::err::getBreakOnError<t>())); return Code; }())
+#define xerr_failure(ERROR_VAR,STRING) xerr_code( ERROR_VAR, xcore::err::states::FAILURE, STRING )
 
 #endif

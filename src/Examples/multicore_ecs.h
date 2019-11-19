@@ -1727,13 +1727,14 @@ namespace mecs
                 { user_system_t::setupName(user_system_t::system_name_v); }
 
                 template< typename...T_ARGS >
-                void ForEach( std::tuple<T_ARGS...>* ) noexcept
+                xcore::err ForEach( std::tuple<T_ARGS...>* ) noexcept
                 {
                     using pool_tuple = typename std::tuple< std::remove_reference_t<T_ARGS>*... >;
+                    xcore::err Error;
 
                     // If there is nothing to do then lets bail out
                     if( m_Query.m_lResults.size() == 0 )
-                        return;
+                        return Error;
 
                     // Lock all the groups that we need to work with so that no one tries to add/remove entities
                     for( const auto& E : m_Query.m_lResults )
@@ -1741,17 +1742,20 @@ namespace mecs
                         // TODO: Must lock each component base on r/w also must lock the group
                         E.m_pGroup->m_SemaphoreLock.lock();
                         
-                        auto LockComponent = [&]( int I ) constexpr noexcept
+                        auto LockComponent = [&]( int I ) constexpr noexcept -> xcore::err
                         {
                             const auto iComp = E.m_lLockRemaps[I];
                             if( E.m_isWrite[I] ) 
-                                E.m_pGroup->m_ComponentLocks[iComp].lock();
-                            else
-                                const_cast<const xcore::lock::semaphore&>( E.m_pGroup->m_ComponentLocks[iComp] ).lock(); 
+                                return E.m_pGroup->m_ComponentLocks[iComp].ExclusiveLock();
+
+                            const_cast<const xcore::lock::semaphore&>( E.m_pGroup->m_ComponentLocks[iComp] ).lock(); 
+                            return {};
                         };
 
-                        (( LockComponent(xcore::types::tuple_t2i_v< T_ARGS, system_function_t::args_t >) )
-                        , ...);
+                        if( (LockComponent(xcore::types::tuple_t2i_v< T_ARGS, system_function_t::args_t >).isError(Error) && ...) )
+                        {
+                            return Error;
+                        }
                     }
 
                     // Do all the groups
@@ -1810,7 +1814,7 @@ namespace mecs
                         {
                             const auto iComp = E.m_lLockRemaps[I];
                             if( E.m_isWrite[I] ) 
-                                E.m_pGroup->m_ComponentLocks[iComp].unlock();
+                                E.m_pGroup->m_ComponentLocks[iComp].ExclusiveUnlock();
                             else
                                 const_cast<const xcore::lock::semaphore&>( E.m_pGroup->m_ComponentLocks[iComp] ).unlock(); 
                         };
@@ -1818,6 +1822,8 @@ namespace mecs
                         (( UnlockComponent(xcore::types::tuple_t2i_v< T_ARGS, system_function_t::args_t >) )
                         , ...);
                     }
+
+                    return Error;
                 }
 
                 virtual void qt_onRun( void ) noexcept override
@@ -1825,7 +1831,7 @@ namespace mecs
                     m_World.DoQuery<user_system_t>(m_Query);
                     
                     // Allow the system to compute
-                    ForEach( reinterpret_cast< typename system_function_t::args_t* >(nullptr) );
+                    ForEach( reinterpret_cast< typename system_function_t::args_t* >(nullptr) ).CheckError();
                 }
             };
         }

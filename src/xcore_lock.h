@@ -83,7 +83,10 @@ namespace xcore::lock
         inline void unlock( void ) noexcept
         {
             auto p = m_Lock.load( std::memory_order_relaxed );
-            while( false == m_Lock.compare_exchange_weak( p, thelock{ p.m_nReaders, p.m_nWritters-1u, 0u } ) );
+            do 
+            {
+                xassert(p.m_isLocked);
+            } while( false == m_Lock.compare_exchange_weak( p, thelock{ p.m_nReaders, p.m_nWritters-1u, 0u } ) );
         }
 
         // Reader lock
@@ -111,7 +114,30 @@ namespace xcore::lock
         inline void unlock( void ) const noexcept
         {
             auto p = m_Lock.load( std::memory_order_relaxed );
-            while( false == m_Lock.compare_exchange_weak( p, thelock{ p.m_nReaders-1u, p.m_nWritters, 0u } ) );
+            do 
+            {
+                xassert(p.m_isLocked);
+            } while( false == m_Lock.compare_exchange_weak( p, thelock{ p.m_nReaders-1u, p.m_nWritters, 0u } ) );
+        }
+
+        inline xcore::err ExclusiveLock( void ) const noexcept
+        {
+            auto p = m_Lock.load( std::memory_order_relaxed );
+            do 
+            {
+                if( (false == p.m_isLocked) || p.m_nReaders || p.m_nWritters ) return xerr_failure_s( "Fail to exclusively lock. There were users using the xcore::semaphore");
+            } while( false == m_Lock.compare_exchange_weak( p, thelock{ 0, 0, 1u } ) );
+
+            return {};
+        }
+
+        inline void ExclusiveUnlock( void ) const noexcept
+        {
+            auto p = m_Lock.load( std::memory_order_relaxed );
+            do 
+            {
+                xassert(p.m_isLocked);
+            } while( false == m_Lock.compare_exchange_weak( p, thelock{ p.m_nReaders, p.m_nWritters, 0u } ) );
         }
     };
 
