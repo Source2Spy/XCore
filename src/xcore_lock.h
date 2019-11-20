@@ -57,29 +57,26 @@ namespace xcore::lock
         inline void lock( void ) noexcept
         {
             auto p = m_Lock.load( std::memory_order_relaxed );
-
             do 
             { 
                 xassert( p.m_nWaitingWritters < ((1u<<5)-2u) ); 
                 if( p.m_nLocks )
                 {
-                    if ( m_Lock.compare_exchange_weak( p, thelock{ p.m_nLocks, p.m_nWaitingWritters+1u, p.m_isLockWriter } ) ) break;
+                    if ( m_Lock.compare_exchange_weak( p, thelock{ p.m_nLocks, p.m_nWaitingWritters+1u, p.m_isLockWriter } ) ) do
+                    {
+                        if( p.m_nLocks ) 
+                        {
+                            // Spin...
+                            p = m_Lock.load( std::memory_order_relaxed );
+                        }
+                        else if( m_Lock.compare_exchange_weak( p, thelock{ p.m_nLocks+1u, p.m_nWaitingWritters, 1u } ) ) return;
+
+                    } while(true);
                 }
-                else if( m_Lock.compare_exchange_weak( p, thelock{ 1u, p.m_nWaitingWritters+1u, 1u } ) ) break;
+                else if( m_Lock.compare_exchange_weak( p, thelock{ 1u, p.m_nWaitingWritters+1u, 1u } ) ) return;
 
             } while( true );
-
-            if( p.m_nLocks ) do
-            {
-                if( p.m_nLocks ) 
-                {
-
-                    // Spin...
-                    p = m_Lock.load( std::memory_order_relaxed );
-                }
-                else if( m_Lock.compare_exchange_weak( p, thelock{ p.m_nLocks+1u, p.m_nWaitingWritters, 1u } ) ) break;
-
-            } while(true);
+            xassert(false);
         }
 
         // Writer unlock
