@@ -1745,14 +1745,13 @@ namespace mecs
                         auto LockComponent = [&]( int I ) constexpr noexcept -> xcore::err
                         {
                             const auto iComp = E.m_lLockRemaps[I];
+                            auto&      CLock = E.m_pGroup->m_ComponentLocks[iComp];
                             if( E.m_isWrite[I] ) 
-                                return E.m_pGroup->m_ComponentLocks[iComp].ExclusiveLock();
-
-                            const_cast<const xcore::lock::semaphore&>( E.m_pGroup->m_ComponentLocks[iComp] ).lock(); 
-                            return {};
+                                return CLock.ExclusiveWriteLock();
+                            return CLock.ExclusiveReadLock();
                         };
 
-                        if( (LockComponent(xcore::types::tuple_t2i_v< T_ARGS, system_function_t::args_t >).isError(Error) && ...) )
+                        if( (LockComponent(xcore::types::tuple_t2i_v< T_ARGS, system_function_t::args_t >).isError(Error) || ...) )
                         {
                             return Error;
                         }
@@ -1813,10 +1812,11 @@ namespace mecs
                         auto UnlockComponent = [&]( int I ) constexpr noexcept
                         {
                             const auto iComp = E.m_lLockRemaps[I];
+                            auto&      CLock = E.m_pGroup->m_ComponentLocks[iComp];
                             if( E.m_isWrite[I] ) 
-                                E.m_pGroup->m_ComponentLocks[iComp].ExclusiveUnlock();
+                                CLock.unlock();
                             else
-                                const_cast<const xcore::lock::semaphore&>( E.m_pGroup->m_ComponentLocks[iComp] ).unlock(); 
+                                const_cast<const xcore::lock::semaphore&>( CLock ).unlock(); 
                         };
 
                         (( UnlockComponent(xcore::types::tuple_t2i_v< T_ARGS, system_function_t::args_t >) )

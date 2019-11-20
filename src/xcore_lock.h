@@ -46,35 +46,38 @@ namespace xcore::lock
     {
         struct thelock
         {
-            std::uint16_t           m_nReaders:10   // max(1024) readers, How many readers are waiting to read
-                                ,   m_nWritters:5   // max(32)   writers, How many writers are waiting to write
-                                ,   m_isLocked:1;   // Is it currently locked?
+            std::uint16_t           m_nLocks:10             // max(1024) number of locks currently in action. Readers can lock many times, writers only ones
+                                ,   m_nWaitingWritters:5    // max(32)   number of waiting to lock writers
+                                ,   m_isLockWriter:1;       // What type of lock is in action? Reading or writing?
         };
 
         mutable std::atomic<thelock> m_Lock{thelock{0u,0u,0u}};
-
-        int   getWriterCount() const noexcept { return m_Lock.load( std::memory_order_relaxed ).m_nWritters; }
-        int   getReaderCount() const noexcept { return m_Lock.load( std::memory_order_relaxed ).m_nReaders;  }
-        bool  isLocked()       const noexcept { return m_Lock.load( std::memory_order_relaxed ).m_isLocked;  }
 
         // Writer lock
         inline void lock( void ) noexcept
         {
             auto p = m_Lock.load( std::memory_order_relaxed );
+
             do 
             { 
-                xassert( p.m_nWritters < ((1u<<5)-2u) ); 
-            } while( false == m_Lock.compare_exchange_weak( p, thelock{ p.m_nReaders, p.m_nWritters+1u, 1u } ) );
+                xassert( p.m_nWaitingWritters < ((1u<<5)-2u) ); 
+                if( p.m_nLocks )
+                {
+                    if ( m_Lock.compare_exchange_weak( p, thelock{ p.m_nLocks, p.m_nWaitingWritters+1u, p.m_isLockWriter } ) ) break;
+                }
+                else if( m_Lock.compare_exchange_weak( p, thelock{ 1u, p.m_nWaitingWritters+1u, 1u } ) ) break;
 
-            if( p.m_isLocked ) do
+            } while( true );
+
+            if( p.m_nLocks ) do
             {
-                if( p.m_isLocked ) 
+                if( p.m_nLocks ) 
                 {
 
                     // Spin...
                     p = m_Lock.load( std::memory_order_relaxed );
                 }
-                else if( m_Lock.compare_exchange_weak( p, thelock{ p.m_nReaders, p.m_nWritters, 1u } ) ) break;
+                else if( m_Lock.compare_exchange_weak( p, thelock{ p.m_nLocks+1u, p.m_nWaitingWritters, 1u } ) ) break;
 
             } while(true);
         }
@@ -85,8 +88,10 @@ namespace xcore::lock
             auto p = m_Lock.load( std::memory_order_relaxed );
             do 
             {
-                xassert(p.m_isLocked);
-            } while( false == m_Lock.compare_exchange_weak( p, thelock{ p.m_nReaders, p.m_nWritters-1u, 0u } ) );
+                xassert( p.m_isLockWriter );
+                xassert( p.m_nWaitingWritters > 0 );
+                xassert( p.m_nLocks == 1u );
+            } while( false == m_Lock.compare_exchange_weak( p, thelock{ 0u, p.m_nWaitingWritters-1u, 0u } ) );
         }
 
         // Reader lock
@@ -94,18 +99,13 @@ namespace xcore::lock
         {
             auto p = m_Lock.load( std::memory_order_relaxed );
             do 
-            { 
-                xassert( p.m_nReaders < ((1u<<10)-2u) ); 
-            } while( false == m_Lock.compare_exchange_weak( p, thelock{ p.m_nReaders+1u, p.m_nWritters, (p.m_nWritters == 0) ? 1u : p.m_isLocked } ) );
-
-            if( p.m_isLocked || p.m_nWritters ) do 
             {
-                if( p.m_isLocked || p.m_nWritters ) 
+                if( p.m_nWaitingWritters ) 
                 {
                     // Spin...
                     p = m_Lock.load( std::memory_order_relaxed );
                 }
-                else if( m_Lock.compare_exchange_weak( p, thelock{ p.m_nReaders, 0u, 1u } ) ) break;
+                else if( m_Lock.compare_exchange_weak( p, thelock{ p.m_nLocks+1u, 0u, 0u } ) ) break;
 
             } while(true);
         }
@@ -116,28 +116,31 @@ namespace xcore::lock
             auto p = m_Lock.load( std::memory_order_relaxed );
             do 
             {
-                xassert(p.m_isLocked);
-            } while( false == m_Lock.compare_exchange_weak( p, thelock{ p.m_nReaders-1u, p.m_nWritters, 0u } ) );
+                xassert( p.m_isLockWriter == false );
+                xassert( p.m_nLocks > 0u );
+            } while( false == m_Lock.compare_exchange_weak( p, thelock{ p.m_nLocks-1u, p.m_nWaitingWritters, 0u } ) );
         }
 
-        inline xcore::err ExclusiveLock( void ) const noexcept
+        inline xcore::err ExclusiveWriteLock( void ) noexcept
         {
             auto p = m_Lock.load( std::memory_order_relaxed );
             do 
             {
-                if( (false == p.m_isLocked) || p.m_nReaders || p.m_nWritters ) return xerr_failure_s( "Fail to exclusively lock. There were users using the xcore::semaphore");
-            } while( false == m_Lock.compare_exchange_weak( p, thelock{ 0, 0, 1u } ) );
+                if( p.m_nLocks || p.m_nWaitingWritters ) return xerr_failure_s( "Fail to exclusively lock for writing. There are other locks pending in xcore::semaphore");
+            } while( false == m_Lock.compare_exchange_weak( p, thelock{ 1u, 1u, 1u } ) );
 
             return {};
         }
 
-        inline void ExclusiveUnlock( void ) const noexcept
+        inline xcore::err ExclusiveReadLock( void ) const noexcept
         {
             auto p = m_Lock.load( std::memory_order_relaxed );
             do 
             {
-                xassert(p.m_isLocked);
-            } while( false == m_Lock.compare_exchange_weak( p, thelock{ p.m_nReaders, p.m_nWritters, 0u } ) );
+                if( p.m_nWaitingWritters ) return xerr_failure_s( "Fail to exclusively lock for reading. There is a writer pending using the xcore::semaphore");
+            } while( false == m_Lock.compare_exchange_weak( p, thelock{ p.m_nLocks+1u, 0u, 0u } ) );
+
+            return {};
         }
     };
 
