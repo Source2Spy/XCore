@@ -1927,6 +1927,8 @@ namespace mecs
                         // TODO: Must lock each component base on r/w also must lock the group
                         E.m_pGroup->MemoryBarrierSync( Syncpoint );
                     }
+
+                    m_Query.m_lResults.clear();
                 }
 
                 template< typename...T_ARGS >

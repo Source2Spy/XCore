@@ -93,9 +93,10 @@ namespace mecs_examples
     //------------------------------------------------------------------------------------
     namespace test2
     {
-        struct other
+        struct life
         {
-            constexpr static mecs::type_guid type_guid_v{ "other" };
+            constexpr static mecs::type_guid type_guid_v{ "life" };
+            int m_Live{10};
         };
 
         struct spawner
@@ -125,7 +126,7 @@ namespace mecs_examples
                     {
                         createEntity( Group, []( mecs::entity::tmp_ref Ref ) constexpr
                         {
-                            (void)Ref.getComponent<other>();
+                            (void)Ref.getComponent<life>();
                         });
                         
                     }
@@ -135,16 +136,38 @@ namespace mecs_examples
             }
         };
 
+        struct life_system : mecs::system::instance
+        {
+            constexpr static auto   system_name_v   = xconst_universal_str("life_system");
+            constexpr static mecs::query::define
+            <
+                mecs::query::all<life>
+            > query_v{};
+            
+            using parent_t = mecs::system::instance;
+            using parent_t::parent_t;
+
+            void Update( mecs::entity::instance& Entity, life& S ) noexcept
+            {
+                S.m_Live--;
+                if( S.m_Live == 0 ) 
+                {
+                    deleteEntity(Entity);
+                }
+            }
+        };
+
         void Test()
         {
             mecs::world::instance World;
             World.registerComponents
             <
-                    other
+                    life
                 ,   spawner
             >();
 
             World.AddGraphConnection<spawner_system>( World.m_StartSyncPoint, World.m_EndSyncPoint );
+            World.AddGraphConnection<life_system>   ( World.m_StartSyncPoint, World.m_EndSyncPoint );
 
             //
             // Create a bunch of entities
@@ -156,7 +179,7 @@ namespace mecs_examples
                 auto& Spawner = Ref.getComponent<spawner>();
 
                 Spawner.m_Count  = 100;
-                Spawner.m_gGroup = World.getOrCreateGroup<other>().m_Guid;
+                Spawner.m_gGroup = World.getOrCreateGroup<life>().m_Guid;
             });
 
             //
