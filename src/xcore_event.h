@@ -8,7 +8,7 @@
 //      {
 //      public:
 //           void UpdateDelegates( void ) {  m_MyEvent.NotifyAll(22, 0.123f); }    // Call all delegates for this event err
-//           x_message::event<int,float> m_MyEvent {};                             // Define an event err that we will emitted from this class 
+//           xcore::event::event<int,float> m_MyEvent {};                             // Define an event err that we will emitted from this class 
 //      };
 //      
 //      class other
@@ -17,7 +17,7 @@
 //                  other           ( body& Body )      { m_MyEventDelegate.Connect( Body.m_MyEvent ); }
 //      protected:
 //          void    msgHandleEvent  ( int a, float b )  { std::cout << a << " " << b; }                     // Handle my messages here
-//          x_message::event<int,float>::delegate m_MyEventDelegate   { this, &other::msgHandleEvent };     // Define the delegate
+//          xcore::event<int,float>::delegate m_MyEventDelegate   { this, &other::msgHandleEvent };     // Define the delegate
 //      };
 //      
 //      int main( void )

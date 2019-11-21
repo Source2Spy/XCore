@@ -5,6 +5,35 @@
 namespace xcore::types
 {
     //-------------------------------------------------------------------------------------------------------
+    // Select the first type of a parameter list
+    //-------------------------------------------------------------------------------------------------------
+    namespace details
+    {
+        template< class...Args> struct select_first;
+        template< class A, class ...Args> struct select_first<A,Args...>{ using type = A;};
+    }
+    template<typename... Ts> using select_first_t = typename details::select_first<Ts...>::type;
+
+    //-------------------------------------------------------------------------------------------------------
+    // Select the last type of a parameter list
+    //-------------------------------------------------------------------------------------------------------
+    namespace details
+    {
+        template<typename T> struct tag { using type = T; };
+        template<typename... Ts> struct select_last { using type = typename decltype((tag<Ts>{}, ...))::type; };
+    }
+    template<typename... Ts> using select_last_t = typename details::select_last<Ts...>::type;
+
+    //-------------------------------------------------------------------------------------------------------
+    // Select the first parameter in a parameter list
+    //-------------------------------------------------------------------------------------------------------
+    template<typename T, typename... T_ARGS>
+    constexpr T& PickFirstArgument( T&& First, T_ARGS&&...) noexcept
+    {
+        return First;
+    }
+
+    //-------------------------------------------------------------------------------------------------------
     // int base on size
     //-------------------------------------------------------------------------------------------------------
     template< std::size_t T_SIZE_BYTES >

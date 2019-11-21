@@ -718,6 +718,7 @@ namespace mecs
                         if( m_Position.compare_exchange_weak( Position, 2 ) )
                         {
                             m_pPageHead = m_PageMgr.AllocPage();
+                            reinterpret_cast<page*&>(*m_pPageHead) = nullptr;
                             Position    = sizeof(page*);
                             m_Position.store( Position );
                             break;
@@ -762,8 +763,20 @@ namespace mecs
                 auto& Cmd       = NewAlloc<cmd>();
                 auto& Requested = Cmd.m_Cmd.emplace<T>( std::forward<T_ARGS>(Args)... );
                 Cmd.m_pNext = m_pCmdHead.load( std::memory_order_relaxed );
-                while( m_pCmdHead.compare_exchange_weak( Cmd.m_pNext, &Cmd ) );
+                while( false == m_pCmdHead.compare_exchange_weak( Cmd.m_pNext, &Cmd ) );
                 return Requested;
+            }
+
+            void clear( void )
+            {
+                // We keep one page and return the rest 
+                for( auto p = reinterpret_cast<page**>(m_pPageHead->m_RawData); *p; p = &(*p) )
+                {
+                    m_PageMgr.FreePage(*p);
+                }
+
+                m_pCmdHead.store(nullptr,std::memory_order_relaxed);
+                m_Position.store(sizeof(page*),std::memory_order_relaxed);
             }
 
             page_mgr&                           m_PageMgr;
@@ -771,6 +784,16 @@ namespace mecs
             std::atomic<cmd*>                   m_pCmdHead      { nullptr };
             std::atomic<std::uint32_t>          m_Position      {1};                // 1 means that needs to be initialize
         };
+    }
+
+
+    //---------------------------------------------------------------------------------
+    // SETTINGS
+    //---------------------------------------------------------------------------------
+    namespace settings
+    {
+        constexpr static std::size_t max_systems_v              = 256;
+        constexpr static std::size_t max_ingroup_components_v   = 64;
     }
 
     //---------------------------------------------------------------------------------
@@ -788,7 +811,6 @@ namespace mecs
     }
 
     using type_guid = xcore::guid::unit<64, struct component_type_guid_tag >;
-    constexpr static std::size_t max_ingroup_components_v = 64;
 
     namespace world { struct instance; }
 
@@ -855,6 +877,55 @@ namespace mecs
             inline bool     isZombie    ( void ) const noexcept{ return reinterpret_cast<std::size_t>(m_pInstance)&1; }
             tmp_ref         getTmpRef   ( void ) const noexcept{ return getPointer().m_Value; }
             map_t::entry&   getPointer  ( void ) const noexcept{ return *reinterpret_cast<map_t::entry*>(reinterpret_cast<std::size_t>(m_pInstance) & (~std::size_t(1))); }
+        };
+    }
+
+    //---------------------------------------------------------------------------------
+    // SYNC_POINT - A sync point establish a moment in time where systems can be run. You can
+    //              also build complex graphs this way.
+    //---------------------------------------------------------------------------------
+    namespace sync_point
+    {
+        struct instance;
+
+        struct events
+        {
+            using done  = xcore::types::make_unique< xcore::event::type<sync_point::instance&>, struct done_tag >;
+            using start = xcore::types::make_unique< xcore::event::type<>, struct start_tag >;
+
+            start m_Start;
+            done  m_Done;
+        };
+
+        struct instance : xcore::scheduler::trigger<settings::max_systems_v>
+        {
+            events          m_Events;
+            bool            m_bDisable = false;
+            int             m_FreethCount;
+            std::uint32_t   m_Tick{ 0 };
+
+            void FreezCount() noexcept
+            {
+                m_FreethCount = m_NotificationCounter.load();
+            }
+
+            virtual void qt_onTriggered ( void ) noexcept override
+            {
+                m_NotificationCounter = m_FreethCount;
+                m_Events.m_Done.NotifyAll(*this);
+                m_Tick++;
+                if(m_bDisable == false)
+                {
+                    m_Events.m_Start.NotifyAll();
+                    xcore::scheduler::trigger<settings::max_systems_v>::qt_onTriggered();
+                }
+            }
+
+            ~instance()
+            {
+                m_NotificationCounter = 0;
+            }
+
         };
     }
 
@@ -1051,6 +1122,9 @@ namespace mecs
                     delete_entity
                 >;
 
+
+                inline void clear( void ) noexcept { m_lCmds.clear(); }
+
                 command_list(tools::page_mgr& Mgr) : m_lCmds{Mgr} {}
 
                 tools::cmd_pool<commands>   m_lCmds;
@@ -1159,11 +1233,11 @@ namespace mecs
             }
 
 
-            const std::uint16_t                                                         m_EntriesPerPage;
-            const std::uint16_t                                                         m_nComponents;
-            const std::array<type_guid, max_ingroup_components_v>                       m_lComponentTypeGuids;
-            const std::array<const component::descriptor*, max_ingroup_components_v>    m_lComponentDescriptors;
-            const std::array<details::offsets, max_ingroup_components_v>                m_lComponentOffsets;
+            const std::uint16_t                                                                     m_EntriesPerPage;
+            const std::uint16_t                                                                     m_nComponents;
+            const std::array<type_guid, settings::max_ingroup_components_v>                         m_lComponentTypeGuids;
+            const std::array<const component::descriptor*, settings::max_ingroup_components_v>      m_lComponentDescriptors;
+            const std::array<details::offsets, settings::max_ingroup_components_v>                  m_lComponentOffsets;
         };
 
         //---------------------------------------------------------------------------------
@@ -1340,32 +1414,74 @@ namespace mecs
                     
             }
 
-            void MemoryBarrierSync( void )
+            void MemoryBarrierSync( sync_point::instance& SyncPoint )
             {
-            /*
-                const auto currCount = m_Count.load(std::memory_order_relaxed);
-                const auto newCount  = m_NewCount.load(std::memory_order_relaxed);
+                //
+                // Aboid updating multiple times for a given sync_point done
+                //
+                if( m_pLastSyncPoint == &SyncPoint && m_LastTick == SyncPoint.m_Tick )
+                    return;
 
-                if( m_Events.m_CreatedEntity.hasSubscribers() )
+                // Save state of previous update to make sure no one ask us to update twice
+                m_pLastSyncPoint = &SyncPoint;
+                m_LastTick       = SyncPoint.m_Tick;
+
+                //
+                // Make sure to lock for writing
+                //
+                xcore::lock::scope Lock(std::as_const(*this).m_SemaphoreLock);
+
+                //
+                // Consume all commands
+                //
+                const auto newCount = m_NewCount.load( std::memory_order_relaxed ); 
+                      auto topCount = m_Count + newCount - 1; 
+                for( auto p = m_CmdList.m_lCmds.m_pCmdHead.load(std::memory_order_relaxed); p; p = p->m_pNext )
                 {
-                    for( int i = 0; i<newCount; ++i )
+                    std::visit( [&](auto&& Arg)
                     {
-                        const auto          Index           { i + currCount };
-                        entity::tmp_ref     TmpRef          
-                        { 
-                            this
-                            , local_index   RelativeIndex   { Index % m_GroupDescriptor.m_EntriesPerPage };
-                            , page_index    PageIndex       { static_cast<std::uint16_t>(Index / m_GroupDescriptor.m_EntriesPerPage) };
-                        }
+                        using t = std::decay_t<decltype(Arg)>;
 
-                        m_Events.m_CreatedEntity.NotifyAll(TmpRef);
-                    }
+                        if constexpr ( std::is_same_v<t,details::command_list::delete_entity> )
+                        {
+                            const auto iTopPage  = topCount/m_GroupDescriptor.m_EntriesPerPage;
+                            const auto iTopIndex = topCount%m_GroupDescriptor.m_EntriesPerPage;
+                            if( iTopPage == Arg.m_PageIndex.m_Value && iTopIndex == Arg.m_PageIndex.m_Value ) return;
+
+                            // Move components to new location
+                            for( int i=0; i<m_GroupDescriptor.m_nComponents; i++ )
+                            {
+                                const auto& ComponentDetails = m_GroupDescriptor.m_lComponentOffsets[i];
+                                auto*       pDestinaltion    = &m_lPages[Arg.m_PageIndex.m_Value]->m_RawData[ ComponentDetails.m_Offset + Arg.m_LocalIndex.m_Value * ComponentDetails.m_Size ];
+                                const auto* pSource          = &m_lPages[iTopPage]               ->m_RawData[ ComponentDetails.m_Offset + iTopIndex                * ComponentDetails.m_Size ];
+                                std::memcpy( pDestinaltion, pSource, ComponentDetails.m_Size );
+                            }
+
+                            // Update the moved entity reference
+                            {
+                                const auto& ComponentDetails = m_GroupDescriptor.m_lComponentOffsets[0];
+                                const auto& MovedEntity      = reinterpret_cast<entity::instance&>( m_lPages[Arg.m_PageIndex.m_Value]->m_RawData[ ComponentDetails.m_Offset + Arg.m_LocalIndex.m_Value * ComponentDetails.m_Size ] );
+                                assert( MovedEntity.isZombie() == false );
+                                MovedEntity.m_pInstance->m_Value.m_LocalIndex = Arg.m_LocalIndex;
+                                MovedEntity.m_pInstance->m_Value.m_PageIndex  = Arg.m_PageIndex;
+                            }
+
+                            // Update the top count
+                            topCount--;
+                        }
+                        else static_assert( xcore::types::always_false_v<t>, "One of the commands is not cover here" );
+
+                    }, p->m_Cmd );
                 }
 
-                // Executed any added/remove component commands
-                // First delete all entries 
-                // Copy entries to new locations
-                */
+                // Clear all the commands
+                m_CmdList.clear();
+
+                //
+                // Make sure all the counts are reset
+                //
+                m_Count = topCount;
+                m_NewCount.store(0,std::memory_order_relaxed );
             }
 
             constexpr static std::size_t max_pages_v = 1024*32;
@@ -1382,6 +1498,8 @@ namespace mecs
             std::array<xcore::lock::semaphore, 64>                                      m_ComponentLocks    {};
             events                                                                      m_Events            {};
             const group::descriptor&                                                    m_GroupDescriptor;
+            sync_point::instance*                                                       m_pLastSyncPoint    { nullptr };
+            std::uint32_t                                                               m_LastTick          { 0 };
         };
 
         //---------------------------------------------------------------------------------
@@ -1782,8 +1900,6 @@ namespace mecs
     //---------------------------------------------------------------------------------
     namespace system
     {
-        constexpr static std::size_t max_systems_v = 256;
-
         namespace details
         {
             //---------------------------------------------------------------------------------
@@ -1796,11 +1912,22 @@ namespace mecs
                 using system_function_t = query::system_function<T_SYSTEM>;
                 using user_system_t::user_system_t;
 
-                query::instance     m_Query;
+                query::instance                     m_Query;
+                sync_point::events::done::delegate  m_DoneDelegate{ this, &custom_system::msgDone };
 
                 custom_system( world::instance& World ) noexcept 
                     : T_SYSTEM { World, user_system_t::system_name_v }
                 {}
+
+                void msgDone( sync_point::instance& Syncpoint ) noexcept
+                {
+                    // Lock all the groups that we need to work with so that no one tries to add/remove entities
+                    for( const auto& E : m_Query.m_lResults )
+                    {
+                        // TODO: Must lock each component base on r/w also must lock the group
+                        E.m_pGroup->MemoryBarrierSync( Syncpoint );
+                    }
+                }
 
                 template< typename...T_ARGS >
                 xcore::err ForEach( std::tuple<T_ARGS...>* ) noexcept
@@ -1954,51 +2081,6 @@ namespace mecs
     }
 
     //---------------------------------------------------------------------------------
-    // SYNC_POINT - A sync point establish a moment in time where systems can be run. You can
-    //              also build complex graphs this way.
-    //---------------------------------------------------------------------------------
-    namespace sync_point
-    {
-        struct events
-        {
-            using done  = xcore::types::make_unique< xcore::event::type<>, struct done_tag >;
-            using start = xcore::types::make_unique< xcore::event::type<>, struct start_tag >;
-
-            start m_Start;
-            done  m_Done;
-        };
-
-        struct instance : xcore::scheduler::trigger<system::max_systems_v>
-        {
-            events  m_Events;
-            bool    m_bDisable = false;
-            int     m_FreethCount;
-
-            void FreezCount() noexcept
-            {
-                m_FreethCount = m_NotificationCounter.load();
-            }
-
-            virtual void qt_onTriggered ( void ) noexcept override
-            {
-                m_NotificationCounter = m_FreethCount;
-                m_Events.m_Done.NotifyAll();                
-                if(m_bDisable == false)
-                {
-                    m_Events.m_Start.NotifyAll();
-                    xcore::scheduler::trigger<system::max_systems_v>::qt_onTriggered();
-                }
-            }
-
-            ~instance()
-            {
-                m_NotificationCounter = 0;
-            }
-
-        };
-    }
-
-    //---------------------------------------------------------------------------------
     // WORLD
     //---------------------------------------------------------------------------------
     namespace world
@@ -2089,7 +2171,7 @@ namespace mecs
             sync_point::instance    m_StartSyncPoint;
             sync_point::instance    m_EndSyncPoint;
 
-            void msgSyncPointDone()
+            void msgSyncPointDone( sync_point::instance& SyncPoint )
             {
                 auto& Scheduler = xcore::get().m_Scheduler;
                 EndFrameUpdate();
@@ -2137,7 +2219,10 @@ namespace mecs
                 //
                 for( const auto& TagE : m_TagDBase.m_lTagEntries.ViewTo(m_TagDBase.m_nTagEntries) )
                     for( auto& GroupE : TagE.m_lGroups.ViewTo(TagE.m_nGroups) )
+                    {
                         GroupE.m_pGroup->m_Count = GroupE.m_pGroup->m_NewCount.load(std::memory_order_relaxed);
+                        GroupE.m_pGroup->m_NewCount.store( 0, std::memory_order_relaxed );
+                    }
 
                 //
                 // Get started
@@ -2216,7 +2301,7 @@ namespace mecs
                     auto&               GroupEntry          = *new( &TagEntry.m_lGroups[TagEntry.m_nGroups++] ) details::dbase::tag_entry::group_entry {};
                     auto                nComponents         = lComponentTypesGuids.size();
                     
-                    xcore::array<const component::descriptor*, max_ingroup_components_v> lComponetDesc;
+                    xcore::array<const component::descriptor*, settings::max_ingroup_components_v> lComponetDesc;
                     for( int i=0; i<nComponents; ++i )
                     {
                         auto& C = lComponentTypesGuids[i];
@@ -2321,6 +2406,9 @@ namespace mecs
                 // Set the start trigger
                 StartSynpoint.AddJobToBeTrigger(*pSystem);
                 StartSynpoint.FreezCount();
+
+                // Connect to the first syncpoint in the list
+                pSystem->m_DoneDelegate.Connect( xcore::types::PickFirstArgument( std::forward<T_ARGS>(EndSyncPoints) ... ).m_Events.m_Done );
 
                 return *pSystem;
             }
@@ -2440,11 +2528,9 @@ namespace mecs
                 //
                 // Notify that we are deleting an entity
                 //
-                {
-                    auto& Group = *Entity.m_pInstance->m_Value.m_pGroupInstance;
-                    if( Group.m_Events.m_DeletedEntity.hasSubscribers() )
-                        Group.m_Events.m_DeletedEntity.NotifyAll(Entity.m_pInstance->m_Value);
-                }
+                auto& Group = *Entity.m_pInstance->m_Value.m_pGroupInstance;
+                if( Group.m_Events.m_DeletedEntity.hasSubscribers() )
+                    Group.m_Events.m_DeletedEntity.NotifyAll(Entity.m_pInstance->m_Value);
 
                 //
                 // Add entity into list to be completely deleted at the end of the frame
@@ -2460,6 +2546,11 @@ namespace mecs
                 //
                 // Mark entity as officially deleted
                 //
+
+                // This entity is completely gone at this point
+                Group.m_GroupDescriptor.DestructEntity( Group.m_lPages[Entity.m_pInstance->m_Value.m_PageIndex.m_Value], Entity.m_pInstance->m_Value.m_LocalIndex.m_Value );
+
+                // Make sure we mark the tmp_ref as invalid
                 Entity.m_pInstance->m_Value.clear();
 
                 // Mark entity as dead/zombie
