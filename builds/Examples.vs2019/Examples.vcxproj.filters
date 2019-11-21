@@ -303,16 +303,10 @@
     <ClInclude Include="..\..\src\xcore_vector.h">
       <Filter>xCore</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\src\Examples\ecs.h">
-      <Filter>Examples\wip examples</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\src\Examples\helpers.h">
       <Filter>Examples\wip examples</Filter>
     </ClInclude>
     <ClInclude Include="..\..\src\Examples\pool.h">
-      <Filter>Examples\wip examples</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\Examples\ecs_examples.h">
       <Filter>Examples\wip examples</Filter>
     </ClInclude>
     <ClInclude Include="..\..\src\Examples\cmdPool.h">
@@ -322,6 +316,9 @@
       <Filter>Examples\wip examples</Filter>
     </ClInclude>
     <ClInclude Include="..\..\src\Examples\multicore_ecs.h">
+      <Filter>Examples\wip examples</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\Examples\multicore_ecs_examples.h">
       <Filter>Examples\wip examples</Filter>
     </ClInclude>
   </ItemGroup>

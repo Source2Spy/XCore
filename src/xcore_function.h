@@ -130,14 +130,15 @@ namespace xcore::function
     // Description:
     //      Replacement for std::function
     //      This version should inline much more aggressively than the std::function
-    //      Additionally you can specify the max size of the container.
-    //      Size is specify in terms on; How Many Bytes = sizeof(void*) * T_SIZE
+    //      This class is guaranteed not to allocated.
+    //      You can specify the max size of the container.
+    //      T_BUFFER_PTRSIZE means: sizeof(std::size_t)*T_BUFFER_PTRSIZE == bytes can be used
     // Example: 
     //      xcore::function::buffer<3,void(void) t{[&](){ std::cout << "Hello"; });
     //------------------------------------------------------------------------------
-    template< int T_SIZE, typename T_LAMBDA > class buffer;
-    template< int T_SIZE, typename T_RET, typename ... T_ARG >
-    class buffer< T_SIZE, T_RET(T_ARG ...) > final
+    template< int T_BUFFER_PTRSIZE, typename T_LAMBDA > class buffer;
+    template< int T_BUFFER_PTRSIZE, typename T_RET, typename ... T_ARG >
+    class buffer< T_BUFFER_PTRSIZE, T_RET(T_ARG ...) > final
     {
     public:
 
@@ -153,7 +154,7 @@ namespace xcore::function
 
             // If this xassert kicks in then our storage may be too small
             static_assert(sizeof(m_Storage) >= sizeof(functor<T_LAMBDA>), "Storage Size for xfunction_buff is too small, increase m_Storage if you have to");
-            static_assert(sizeof(*this) == sizeof(void*) * (T_SIZE + 1), "The storage if this class may need tweaking since it looks like is waste full");
+            static_assert(sizeof(*this) == sizeof(void*) * (T_BUFFER_PTRSIZE + 1), "The storage if this class may need tweaking since it looks like is waste full");
             static_assert(std::alignment_of_v<T_LAMBDA> <= std::alignment_of_v<void*>, "");
 
             // Call the constructor
@@ -183,9 +184,55 @@ namespace xcore::function
 
     protected:
 
-        invoker_ptr     m_Invoker{ nullptr };       // Pointer to the Invoke function ones all the t_type magic has happen
-        void*           m_Storage[T_SIZE]{};        // Keep the data used to call the function
+        invoker_ptr     m_Invoker{ nullptr };           // Pointer to the Invoke function ones all the t_type magic has happen
+        void*           m_Storage[T_BUFFER_PTRSIZE]{};  // Keep the data used to call the function
     };
+
+    //------------------------------------------------------------------------------
+    // Description:
+    //      Function view is very similar to xfunction except this is used when the
+    //      lambda is going to be call in the same context. In other words when the
+    //      lambda is short lived (no pass the current context). View as always are
+    //      generally faster than owners.
+    // Reference:
+    //      https://vittorioromeo.info/index.html
+    //------------------------------------------------------------------------------
+    template< typename T_LAMBDA > class view;
+    template< typename T_RET, typename ... T_ARG >
+    class view< T_RET( T_ARG ... ) > final
+    {
+    public:
+    
+        constexpr view( void ) noexcept = default;
+    
+        template< typename T_LAMBDA >
+        inline view( T_LAMBDA&& Lambda ) noexcept : m_pLambdaRef( reinterpret_cast<std::byte*>( &Lambda ) )
+        {
+            // Make sure that the lambda given by the user matches the expected signature
+            using fa = traits< std::remove_reference_t<T_LAMBDA> >;
+            using fb = traits< make_t<noexcept(T_LAMBDA), T_RET, T_ARG ... > >;
+            static_assert( traits_compare<fa,fb>::value );
+        
+            // static_assert( std::is_same< fa, fb::type >::value, "Wrong signature" );
+            m_Invoker = []( std::byte* pLambda, T_ARG... Args ) constexpr noexcept(noexcept(T_LAMBDA)) -> T_RET
+            {
+                return std::invoke( reinterpret_cast<T_LAMBDA&>(*pLambda), std::forward<T_ARG>(Args)... );
+            };
+        }
+    
+        constexpr T_RET operator()( T_ARG... Args ) const noexcept
+        {
+            return m_Invoker( m_pLambdaRef, std::forward<T_ARG>(Args)... );
+        }
+    
+    protected:
+    
+        using fn_ptr_type     = T_RET(*)( std::byte*, T_ARG ... );
+    
+        std::byte*         m_pLambdaRef    {};
+        fn_ptr_type        m_Invoker       {};
+    };
+
 }
 
 namespace xcore

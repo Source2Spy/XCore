@@ -32,23 +32,21 @@
 
 namespace xcore::event
 {
-    //---------------------------------------------------------------------------
-    // Generic event class able to deal with return types and not returns types
-    //---------------------------------------------------------------------------
+
     template< typename T_RET, class ...T_ARGS >
-    class type_rtn_any
+    class type_rtn_any;
+
+    namespace details
     {
-    public:
-
-        using self = type_rtn_any;
-
         //---------------------------------------------------------------------------
-        // Delegates that can listen to this event type
+        // Delegates that can listen to events
         //---------------------------------------------------------------------------
+        template< typename T_RET, class ...T_ARGS >
         class delegate
         {
             template< typename T, class ...T_ARGS >
-            using fn = T_RET(T::*)(T_ARGS...);
+            using fn    = T_RET(T::*)(T_ARGS...);
+            using event = type_rtn_any<T_RET, T_ARGS...>;
 
         public:
 
@@ -75,7 +73,7 @@ namespace xcore::event
                 {}
 
             template< typename T_THIS >
-            constexpr delegate(T_THIS* This, const fn<T_THIS, T_ARGS...> Function, self& Event)
+            constexpr delegate(T_THIS* This, const fn<T_THIS, T_ARGS...> Function, event& Event)
                 : m_Call
                 { [Function](void* pThis, T_ARGS ... Args) -> T_RET
                     {
@@ -124,7 +122,7 @@ namespace xcore::event
                 }
             }
 
-            inline void Connect(self& Event) noexcept
+            inline void Connect(event& Event) noexcept
             {
                 auto pPtr = lock();
 
@@ -151,13 +149,13 @@ namespace xcore::event
                     if (Lockp & mask_bit_v) continue;
 
                     Lockp |= mask_bit_v;
-                    if (m_pEvent.compare_exchange_weak(local, reinterpret_cast<self*>(Lockp)))
+                    if (m_pEvent.compare_exchange_weak(local, reinterpret_cast<event*>(Lockp)))
                         return local;
 
                 } while (true);
             }
 
-            inline void unlock(self* pPtr) noexcept
+            inline void unlock(event* pPtr) noexcept
             {
                 xassert((reinterpret_cast<std::size_t>(pPtr)& mask_bit_v) == 0);
                 m_pEvent.store(pPtr);
@@ -169,13 +167,25 @@ namespace xcore::event
 
             constexpr static std::size_t                                mask_bit_v = (1 << 0);
 
-            std::atomic<self*>              m_pEvent{ nullptr };
-            delegate* m_pNext{ nullptr };
-            delegate* m_pPrev{ nullptr };
+            std::atomic<event*>             m_pEvent{ nullptr };
+            delegate*                       m_pNext{ nullptr };
+            delegate*                       m_pPrev{ nullptr };
             const callback                  m_Call;
             int                             m_Offset{ 0 };
-            friend self;
+            friend event;
         };
+    }
+
+    //---------------------------------------------------------------------------
+    // Generic event class able to deal with return types and not returns types
+    //---------------------------------------------------------------------------
+    template< typename T_RET, class ...T_ARGS >
+    class type_rtn_any
+    {
+    public:
+
+        using self      = type_rtn_any;
+        using delegate  = details::delegate<T_RET, T_ARGS...>;
 
     public:
 
@@ -227,6 +237,8 @@ namespace xcore::event
             }
         }
 
+        constexpr bool hasSubscribers( void ) const noexcept { return m_pHead; } 
+
     private:
 
         inline void Connect(delegate & Delegate) noexcept
@@ -266,6 +278,8 @@ namespace xcore::event
 
         mutable xcore::lock::spin       m_Lock{};
         delegate* m_pHead{ nullptr };
+
+        friend delegate;
     };
 
     //---------------------------------------------------------------------------

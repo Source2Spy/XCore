@@ -728,28 +728,28 @@ namespace mecs
                     Position = m_Position.load(std::memory_order_relaxed);
                 }
 
-                auto*   p           = xcore::bits::Align( &m_pPageHead->m_Data[Position], std::alignment_of_v(T) );
-                if( p > &m_pPageHead->m_Data[sizeof(page)] )
+                auto* p = xcore::bits::Align( &m_pPageHead->m_RawData[Position], std::alignment_of_v<T> );
+                if( (p + sizeof(T)) > &m_pPageHead->m_RawData[sizeof(page)] )
                 {
                     // Lock the command pool
                     if( m_Position.compare_exchange_weak( Position, 0 ) == false ) goto START;
 
                     // Need new page
                     auto  pNewPage = m_PageMgr.AllocPage();
-                    auto& pNewNext = reinterpret_cast<page*&>(pNewPage->m_Data);
+                    auto& pNewNext = reinterpret_cast<page*&>(pNewPage->m_RawData);
                     pNewNext    = m_pPageHead;
                     m_pPageHead = pNewPage;
 
                     // Allocate our entry
-                    p                = xcore::bits::Align( &pNewPage->m_Data[sizeof(page*)], std::alignment_of_v(T) );
-                    auto NewPosition = reinterpret_cast<std::uint32_t>( p - m_pPageHead->m_Data );
+                    p                = xcore::bits::Align( &pNewPage->m_RawData[sizeof(page*)], std::alignment_of_v<T> );
+                    auto NewPosition = xcore::types::static_cast_safe<std::uint32_t>( p - m_pPageHead->m_RawData ) + static_cast<std::uint32_t>(sizeof(T));
 
                     // Release the lock and set the new position
                     m_Position.store( NewPosition );
                 }
                 else
                 {
-                    auto NewPosition = reinterpret_cast<std::uint32_t>( p - &m_pPageHead->m_Data[Position] );
+                    auto NewPosition  = xcore::types::static_cast_safe<std::uint32_t>( p - m_pPageHead->m_RawData ) + static_cast<std::uint32_t>(sizeof(T));
                     if( m_Position.compare_exchange_weak( Position, NewPosition ) == false ) goto START;
                 }
 
@@ -760,10 +760,10 @@ namespace mecs
             T& NewCmd( T_ARGS...Args ) noexcept
             {
                 auto& Cmd       = NewAlloc<cmd>();
-                auto& Requested = Cmd.m_Cmd.construct<T>( std::forward<T_ARGS>(Args)... );
+                auto& Requested = Cmd.m_Cmd.emplace<T>( std::forward<T_ARGS>(Args)... );
                 Cmd.m_pNext = m_pCmdHead.load( std::memory_order_relaxed );
                 while( m_pCmdHead.compare_exchange_weak( Cmd.m_pNext, &Cmd ) );
-                return Cmd.m_Cmd;
+                return Requested;
             }
 
             page_mgr&                           m_PageMgr;
@@ -823,13 +823,18 @@ namespace mecs
     {
         struct tmp_ref
         {
-            constexpr bool isValid(void) const noexcept { return !!m_pGroupInstance; }
+            constexpr bool isValid(void) const noexcept { return m_PageIndex.m_Value == 0xffff; }
 
             template< typename T >
             T& getComponent(type_guid TypeGuid = T::type_guid_v) noexcept;
 
             template< typename T >
             constexpr const T& getComponent(type_guid TypeGuid = T::type_guid_v) const noexcept;
+
+            void clear( void )
+            {
+                m_LocalIndex.m_Value = 0xffff;
+            }
 
             component::group::instance*        m_pGroupInstance;
             component::group::local_index      m_LocalIndex;
@@ -846,6 +851,10 @@ namespace mecs
         {
             constexpr static type_guid type_guid_v{1ull};
             map_t::entry*    m_pInstance;
+
+            inline bool     isZombie    ( void ) const noexcept{ return reinterpret_cast<std::size_t>(m_pInstance)&1; }
+            tmp_ref         getTmpRef   ( void ) const noexcept{ return getPointer().m_Value; }
+            map_t::entry&   getPointer  ( void ) const noexcept{ return *reinterpret_cast<map_t::entry*>(reinterpret_cast<std::size_t>(m_pInstance) & (~std::size_t(1))); }
         };
     }
 
@@ -1029,6 +1038,23 @@ namespace mecs
                               , m_HasT1:1;      // HasT1    - Does this component has a double buffer?
             };
 
+            struct command_list
+            {
+                struct delete_entity
+                {
+                    component::group::local_index      m_LocalIndex;
+                    component::group::page_index       m_PageIndex;
+                };
+
+                using commands = std::variant
+                <
+                    delete_entity
+                >;
+
+                command_list(tools::page_mgr& Mgr) : m_lCmds{Mgr} {}
+
+                tools::cmd_pool<commands>   m_lCmds;
+            };
         }
 
         //---------------------------------------------------------------------------------
@@ -1140,7 +1166,9 @@ namespace mecs
             const std::array<details::offsets, max_ingroup_components_v>                m_lComponentOffsets;
         };
 
-
+        //---------------------------------------------------------------------------------
+        // GROUP::EVENTS
+        //---------------------------------------------------------------------------------
         struct events
         {
             // onNewEntities...      (which new entities where created this frame)
@@ -1148,6 +1176,16 @@ namespace mecs
             // onUpdatedEntities...  (Some system may have change this entity (Had write access to it))
             // onMovedInEntities...  (Some new entity got moved in here, from another group)
             // onMovedOutEntities... (By Adding or Removing Componets)
+
+            using created_entity    = xcore::types::make_unique< xcore::event::type<entity::tmp_ref>, struct new_entity_tag >;
+            using deleted_entity    = xcore::types::make_unique< xcore::event::type<entity::tmp_ref>, struct delete_entity_tag >;
+            using updated_entity    = xcore::types::make_unique< xcore::event::type<entity::instance&>, struct updated_entity_tag >;
+            using updated_component = xcore::types::make_unique< xcore::event::type<entity::instance&>, struct updated_component_tag >;
+            using added_component   = xcore::types::make_unique< xcore::event::type<entity::instance&>, struct added_component_tag >;
+            using removed_component = xcore::types::make_unique< xcore::event::type<entity::instance&>, struct removed_component_tag >;
+
+            created_entity   m_CreatedEntity;
+            deleted_entity   m_DeletedEntity;
         };
 
         //---------------------------------------------------------------------------------
@@ -1184,10 +1222,11 @@ namespace mecs
         //---------------------------------------------------------------------------------
         struct instance
         {
-            instance( tools::page_mgr& PageMgr, const descriptor& GroupDescriptor ) noexcept
-                : m_PageMgr             { PageMgr }
+            instance( group::guid Guid, tools::page_mgr& PageMgr, const descriptor& GroupDescriptor ) noexcept
+                : m_Guid                { Guid }
+                , m_PageMgr             { PageMgr }
                 , m_GroupDescriptor     { GroupDescriptor }
-                , m_lDeleteEntries      { m_PageMgr }
+                , m_CmdList             { m_PageMgr }
                 {}
 
             constexpr   auto        size()                  const   noexcept { return m_Count; }
@@ -1219,7 +1258,7 @@ namespace mecs
                 return nullptr;
             }
 
-            entity::tmp_ref CreateEntity( entity::map_t::entry* pMapEntry )
+            entity::tmp_ref AllocEntity( entity::map_t::entry* pMapEntry ) noexcept
             {
                 const auto          Index           = m_NewCount++;
                 const local_index   RelativeIndex   { Index % m_GroupDescriptor.m_EntriesPerPage };
@@ -1252,16 +1291,16 @@ namespace mecs
 
                 } while (true);
 
+                // Set officially the value for the entity
                 return { this, local_index{RelativeIndex}, page_index{PageIndex} };
             }
 
+            /*
             struct delete_entry
             {
                 page_index  m_PageIndex;
                 local_index m_LocalEntry;
             };
-
-            /*
             void DeleteEntity( entity::tmp_ref Entry ) noexcept
             {
                 auto& Entity = *reinterpret_cast<entity::instance*>
@@ -1290,18 +1329,59 @@ namespace mecs
             }
                 */
 
+            void DeleteEntity( entity::instance& Entity ) noexcept
+            {
+                assert(Entity.isZombie() == false);
+
+                auto& Cmd   = m_CmdList.m_lCmds.NewCmd<details::command_list::delete_entity>();
+                auto TmpRef = Entity.getTmpRef();
+                Cmd.m_LocalIndex = TmpRef.m_LocalIndex;
+                Cmd.m_PageIndex  = TmpRef.m_PageIndex;
+                    
+            }
+
+            void MemoryBarrierSync( void )
+            {
+            /*
+                const auto currCount = m_Count.load(std::memory_order_relaxed);
+                const auto newCount  = m_NewCount.load(std::memory_order_relaxed);
+
+                if( m_Events.m_CreatedEntity.hasSubscribers() )
+                {
+                    for( int i = 0; i<newCount; ++i )
+                    {
+                        const auto          Index           { i + currCount };
+                        entity::tmp_ref     TmpRef          
+                        { 
+                            this
+                            , local_index   RelativeIndex   { Index % m_GroupDescriptor.m_EntriesPerPage };
+                            , page_index    PageIndex       { static_cast<std::uint16_t>(Index / m_GroupDescriptor.m_EntriesPerPage) };
+                        }
+
+                        m_Events.m_CreatedEntity.NotifyAll(TmpRef);
+                    }
+                }
+
+                // Executed any added/remove component commands
+                // First delete all entries 
+                // Copy entries to new locations
+                */
+            }
+
             constexpr static std::size_t max_pages_v = 1024*32;
             using page_list = xcore::array<tools::page*, max_pages_v>;
 
+            group::guid                                                                 m_Guid;
             tools::page_mgr&                                                            m_PageMgr;
+            details::command_list                                                       m_CmdList;
             xcore::lock::semaphore                                                      m_SemaphoreLock     {};
             std::atomic<std::uint32_t>                                                  m_NewCount          { 0 };
             std::uint32_t                                                               m_Count             { 0 };
             std::atomic<group::page_index>                                              m_nPages            { group::page_index{0} };
             page_list                                                                   m_lPages            {};
             std::array<xcore::lock::semaphore, 64>                                      m_ComponentLocks    {};
+            events                                                                      m_Events            {};
             const group::descriptor&                                                    m_GroupDescriptor;
-            tools::pool<delete_entry,max_pages_v>                                       m_lDeleteEntries;
         };
 
         //---------------------------------------------------------------------------------
@@ -1472,8 +1552,6 @@ namespace mecs
             constexpr static std::array const_list_v    { details::ConstArray( reinterpret_cast<args_t*>(nullptr) ) };
             constexpr static std::array sorted_list_v   { details::TypeArray ( reinterpret_cast<sorted_args_t*>(nullptr) ) };
             constexpr static std::array remap_v         { details::remap<list_v.size()>( list_v, sorted_list_v ) };
-
-            static_assert(sorted_list_v[0].m_Value < sorted_list_v[1].m_Value);
         };
 
         //---------------------------------------------------------------------------------
@@ -1719,12 +1797,10 @@ namespace mecs
                 using user_system_t::user_system_t;
 
                 query::instance     m_Query;
-                world::instance&    m_World;
 
                 custom_system( world::instance& World ) noexcept 
-                    : m_World       { World }
-                    , T_SYSTEM      {}
-                { user_system_t::setupName(user_system_t::system_name_v); }
+                    : T_SYSTEM { World, user_system_t::system_name_v }
+                {}
 
                 template< typename...T_ARGS >
                 xcore::err ForEach( std::tuple<T_ARGS...>* ) noexcept
@@ -1828,7 +1904,7 @@ namespace mecs
 
                 virtual void qt_onRun( void ) noexcept override
                 {
-                    m_World.DoQuery<user_system_t>(m_Query);
+                    user_system_t::m_World.DoQuery<user_system_t>(m_Query);
                     
                     // Allow the system to compute
                     ForEach( reinterpret_cast< typename system_function_t::args_t* >(nullptr) ).CheckError();
@@ -1836,18 +1912,44 @@ namespace mecs
             };
         }
 
+        //---------------------------------------------------------------------------------
+        // SYSTEM::INSTANCE 
+        //---------------------------------------------------------------------------------
         struct instance : xcore::scheduler::job<4>
         {
             using                   parent_t        = xcore::scheduler::job<4>;
             constexpr static auto   system_name_v   = xconst_universal_str("mecs::System");
 
-            constexpr instance(xcore::scheduler::definition Def) noexcept 
+            instance( world::instance& World, xcore::string::const_universal Str, xcore::scheduler::definition Def = {} ) noexcept 
                 : parent_t{ Def | xcore::scheduler::triggers::DONT_CLEAN_COUNT }
-            {}
+                , m_World{World}
+                {setupName(Str);}
 
-            constexpr instance(void) noexcept
-                : parent_t( xcore::scheduler::definition::Flags(xcore::scheduler::triggers::DONT_CLEAN_COUNT) )
-            {}
+            template<typename K = world::instance>
+            void deleteEntity( entity::instance& Entity )
+            {
+                reinterpret_cast<K&>(m_World).deleteEntity( Entity );
+            }
+
+            template< typename T, typename K = world::instance >
+            bool getGroup( component::group::guid gGroup, T&& CallBack ) noexcept
+            {
+                return reinterpret_cast<K&>(m_World).m_mapGroupPerTag.getExlusive( gGroup, [&](component::group::instance*& pGroup )
+                {
+                    const auto& Semaphore = pGroup->m_SemaphoreLock;
+                    Semaphore.lock();
+                    CallBack( *pGroup );
+                    Semaphore.unlock();
+                });
+            }
+
+            template<typename K = world::instance>
+            void createEntity( component::group::instance& Group, xcore::function::view<void(entity::tmp_ref)> UserFunction, entity::guid Guid = entity::guid{xcore::not_null} ) noexcept
+            {
+                reinterpret_cast<K&>(m_World).createEntity( Group, UserFunction, Guid );
+            }
+
+            world::instance&    m_World;
         };
     }
 
@@ -2041,14 +2143,20 @@ namespace mecs
             }
 
             inline
-            entity::tmp_ref createEntity( component::group::instance& Group, entity::guid EntityGuid ) noexcept
+            void createEntity( component::group::instance& Group, xcore::function::view<void(entity::tmp_ref)> UserFunction, entity::guid EntityGuid = mecs::entity::guid{xcore::not_null} ) noexcept
             {
                 entity::tmp_ref Ref;
                 m_mapEntity.push( EntityGuid, [&]( entity::map_t::entry& E )
                 {
-                    Ref = E.m_Value = Group.CreateEntity(&E);
+                    Ref = E.m_Value = Group.AllocEntity(&E);
                 });
-                return Ref;
+
+                // Let the user do whatever he needs to do
+                UserFunction(Ref);
+
+                // Notify anyone it needs to know that there is a new entity
+                if( Group.m_Events.m_CreatedEntity.hasSubscribers() )
+                    Group.m_Events.m_CreatedEntity.NotifyAll(Ref);
             }
 
             component::group::instance& getOrCreateGroup( const std::span<const type_guid>    lComponentTypesGuids
@@ -2067,7 +2175,7 @@ namespace mecs
                     return Key; 
                  }() };
                 const auto          TagGuid             = type_guid{ [&] {std::uint64_t Key = 0; for (auto E : lTagTypesGuids)       Key += E.m_Value; return Key; }() };
-                const auto          TagGroupGuid        = type_guid{ ComponentGroupGuid.m_Value + TagGuid.m_Value };
+                const auto          TagGroupGuid        = component::group::guid{ ComponentGroupGuid.m_Value + TagGuid.m_Value };
 
                 return *m_mapGroupPerTag.getOrCreate( TagGroupGuid, [&]
                 {
@@ -2093,7 +2201,7 @@ namespace mecs
                     //                             XCORE_PERF_ZONE_SCOPED_N("getOrCreateGroup::Wasting Time")
                     auto&               GroupEntry          = *new( &TagEntry.m_lGroups[TagEntry.m_nGroups++] ) details::dbase::tag_entry::group_entry {};
                     auto                nComponents         = lComponentTypesGuids.size();
- 
+                    
                     xcore::array<const component::descriptor*, max_ingroup_components_v> lComponetDesc;
                     for( int i=0; i<nComponents; ++i )
                     {
@@ -2135,7 +2243,8 @@ namespace mecs
 
                     GroupEntry.m_pGroup = new component::group::instance
                     { 
-                          m_PageMgr
+                          TagGroupGuid
+                        , m_PageMgr
                         , *pGroupDesc
                     };
 
@@ -2307,19 +2416,45 @@ namespace mecs
                 }
             }
 
-            /*
-            void DeleteEntity( entity::guid Guid ) noexcept
+            void deleteEntity( entity::instance& Entity ) noexcept
             {
-                m_mapEntity.pop( Guid, [&]( entity::tmp_ref TmpRef )
+                if( Entity.isZombie() ) return;
+
+                // Mark for deletion in the group
+                Entity.m_pInstance->m_Value.m_pGroupInstance->DeleteEntity( Entity );
+
+                //
+                // Notify that we are deleting an entity
+                //
                 {
-                    TmpRef.m_pGroupInstance->DeleteEntity(TmpRef);
-                });
+                    auto& Group = *Entity.m_pInstance->m_Value.m_pGroupInstance;
+                    if( Group.m_Events.m_DeletedEntity.hasSubscribers() )
+                        Group.m_Events.m_DeletedEntity.NotifyAll(Entity.m_pInstance->m_Value);
+                }
+
+                //
+                // Add entity into list to be completely deleted at the end of the frame
+                //
+                {
+                    auto pHead = m_EntityFreeList.load(std::memory_order_relaxed);
+                    auto pNext = reinterpret_cast<entity::map_t::entry*&>( Entity.m_pInstance->m_Value.m_pGroupInstance );
+
+                    pNext = pHead;
+                    while( false == m_EntityFreeList.compare_exchange_weak( pNext, Entity.m_pInstance) );
+                }
+
+                //
+                // Mark entity as officially deleted
+                //
+                Entity.m_pInstance->m_Value.clear();
+
+                // Mark entity as dead/zombie
+                reinterpret_cast<std::size_t&>(Entity.m_pInstance) |= 1;
             }
-            */
- 
+
             constexpr static std::size_t                                max_groups_count_v = 1024;
 
-            using map_group_per_tag_t           = tools::map<type_guid,               component::group::instance*,            max_groups_count_v>;
+            using map_group_per_tag_t           = tools::map<component::group::guid,  component::group::instance*,            max_groups_count_v>;
             using map_group_descriptor_t        = tools::map<component::group::guid,  const component::group::descriptor*,    max_groups_count_v>;
             using map_component_descriptor_t    = tools::map<type_guid,               const component::descriptor*,           256>;
             using map_tag_descriptor_t          = tools::map<type_guid,               std::uint8_t,                           256>;
@@ -2338,6 +2473,7 @@ namespace mecs
             map_tag_lookup_t                            m_mapTagLookup                  {};
             query::filter_bits                          m_ComponentRegistrationFreeBits {xcore::not_null};
             query::filter_bits                          m_TagRegistrationFreeBits       {xcore::not_null};
+            std::atomic<entity::map_t::entry*>          m_EntityFreeList                {nullptr};                       
         };
     }
 
@@ -2356,86 +2492,6 @@ namespace mecs
         constexpr const T& tmp_ref::getComponent(type_guid TypeGuid) const noexcept
         {
             return *reinterpret_cast<T*>(m_pGroupInstance->getComponent(*this, TypeGuid));
-        }
-    }
-
-    //------------------------------------------------------------------------------------
-    // Test
-    //------------------------------------------------------------------------------------
-    namespace test
-    {
-        struct simple
-        {
-            constexpr static type_guid type_guid_v{"simple"};
-            int m_Value{ 22 };
-        };
-
-        struct double_buff : component::double_buffer
-        {
-            constexpr static type_guid type_guid_v{ "double_buff" };
-            int m_Value{ 123 };
-        };
-
-        struct my_tag : component::tag 
-        {
-            constexpr static type_guid type_guid_v{ "my_tag" };
-        };
-
-        struct my_system : system::instance
-        {
-            constexpr static auto   system_name_v   = xconst_universal_str("my_system");
-            constexpr static query::define
-            <
-                query::all<simple>
-              , query::none<my_tag>
-            > query_v{};
-
-            constexpr
-            void Update( const double_buff& Buff, simple& Simple ) const noexcept
-            {
-                Simple.m_Value += Buff.m_Value;
-            }
-        };
-
-        void Test()
-        {
-            mecs::world::instance World;
-            World.registerComponents
-            <
-                    simple
-                ,   double_buff
-                ,   my_tag
-            >();
-
-            World.AddGraphConnection<my_system>( World.m_StartSyncPoint, World.m_EndSyncPoint );
-
-            //
-            // Create a bunch of entities
-            //
-            {
-                xcore::scheduler::channel MyChannel(xconst_universal_str("Create Entities"));
-                auto& Group = World.getOrCreateGroup<simple,double_buff,my_tag>();
-
-                for(int i=0; i<xcore::get().m_Scheduler.getWorkerCount(); i++)
-                    MyChannel.SubmitJob([&]
-                    {
-                        while (Group.newSize() < 10000000ull XCORE_CMD_ASSERT( - 9500000ull ) )
-                        {
-                            auto    tmpEntityRef = World.createEntity( Group, entity::guid{xcore::not_null} );
-                            auto&   Entity = tmpEntityRef.getComponent<entity::instance>();
-                            auto&   Simple = tmpEntityRef.getComponent<simple>();
-                            auto&   Double = tmpEntityRef.getComponent<double_buff>();
-                            assert(Simple.m_Value == 22);
-                            assert(Double.m_Value == 123);
-                        }
-                    });
-
-                MyChannel.join();
-            }
-
-            World.Start();
-
-            int b = 0;
         }
     }
 }

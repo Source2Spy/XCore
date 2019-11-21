@@ -24,7 +24,7 @@
 #include "xcore_compression_examples.h"
 #include "xcore_serializer_examples.h"
 
-#include "ecs_examples.h"
+#include "multicore_ecs_examples.h"
 
 namespace xcore::examples
 {
@@ -55,7 +55,7 @@ namespace xcore::examples
         if (1)
         {
             // xcore::serializer::examples::Test();
-            mecs::test::Test();
+            mecs_examples::test2::Test();
         }
     }
 }
