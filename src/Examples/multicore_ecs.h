@@ -39,7 +39,7 @@ namespace mecs
             }
 
             template< typename T_CALLBACK >
-            auto& push( T_KEY Key, T_CALLBACK&& Callback ) noexcept
+            auto& alloc( T_KEY Key, T_CALLBACK&& Callback ) noexcept
             {
                 assert(Key.isValid());
 
@@ -83,7 +83,7 @@ namespace mecs
                 assert(Key.isValid());
 
                 auto&           MapEntry    = m_Map[Key.m_Value % max_size_v];
-                xcore::lock::scope( const_cast<const lock&>( MapEntry.m_Lock ) );
+                xcore::lock::scope( const_cast<const xcore::lock::semaphore&>( MapEntry.m_Lock ) );
 
                 for( auto p = MapEntry.m_pEntry; p; p = p->m_pNext )
                 {
@@ -98,20 +98,20 @@ namespace mecs
             }
 
             template< typename T > 
-            const bool pop( T_KEY Key, T&& CallBack ) noexcept
+            const bool free( T_KEY Key, T&& CallBack = [](entry&){} ) noexcept
             {
                 assert(Key.isValid());
 
                 auto&           MapEntry    = m_Map[Key.m_Value % max_size_v];
-                xcore::lock::scope( const_cast<const lock&>( MapEntry.m_Lock ) );
+                xcore::lock::scope( const_cast<const xcore::lock::semaphore&>( MapEntry.m_Lock ) );
 
                 xassert( MapEntry.m_pEntry );
-                for( auto p = &MapEntry.m_pEntry; (**p).m_pNext; p = &p->m_pNext )
+                for( auto p = &MapEntry.m_pEntry; *p; p = &(*p)->m_pNext )
                 {
                     if( (**p).m_Key == Key ) 
                     {
-                        *p = (**p).m_pNext;
                         CallBack( **p );
+                        *p = (**p).m_pNext;
                         return true;
                     }
                 }
@@ -833,7 +833,7 @@ namespace mecs
 
             void clear( void )
             {
-                m_LocalIndex.m_Value = 0xffff;
+                m_PageIndex.m_Value = 0xffff;
             }
 
             component::group::instance*        m_pGroupInstance;
@@ -2100,9 +2100,14 @@ namespace mecs
             {
                 m_bFrameStarted = false;
 
-                for( const auto& TagE : m_TagDBase.m_lTagEntries.ViewTo(m_TagDBase.m_nTagEntries) )
-                    for( auto& GroupE : TagE.m_lGroups.ViewTo(TagE.m_nGroups) )
-                        GroupE.m_pGroup->m_Count = GroupE.m_pGroup->m_NewCount.load(std::memory_order_relaxed);
+                //
+                // Clean up all deleted entities
+                //
+                for( auto pNext = m_EntityFreeList.load(std::memory_order_relaxed); pNext; pNext = reinterpret_cast<entity::map_t::entry*>(pNext->m_Value.m_pGroupInstance))
+                {
+                    m_mapEntity.free( pNext->m_Key, [](auto&){} );
+                }
+                m_EntityFreeList.store( nullptr, std::memory_order_relaxed );
             }
 
             const sync_point::events::done::delegate m_SyncPointDoneDelegate{ this, &instance::msgSyncPointDone, m_EndSyncPoint.m_Events.m_Done };
@@ -2127,8 +2132,17 @@ namespace mecs
 
             void Start( void )
             {
+                //
+                // Make sure that the scene is ready to go
+                //
+                for( const auto& TagE : m_TagDBase.m_lTagEntries.ViewTo(m_TagDBase.m_nTagEntries) )
+                    for( auto& GroupE : TagE.m_lGroups.ViewTo(TagE.m_nGroups) )
+                        GroupE.m_pGroup->m_Count = GroupE.m_pGroup->m_NewCount.load(std::memory_order_relaxed);
+
+                //
+                // Get started
+                //
                 auto& Scheduler = xcore::get().m_Scheduler;
-                EndFrameUpdate();
                 Scheduler.AddJobToQuantumWorld(*this);
                 Scheduler.MainThreadStartsWorking();
             }
@@ -2146,7 +2160,7 @@ namespace mecs
             void createEntity( component::group::instance& Group, xcore::function::view<void(entity::tmp_ref)> UserFunction, entity::guid EntityGuid = mecs::entity::guid{xcore::not_null} ) noexcept
             {
                 entity::tmp_ref Ref;
-                m_mapEntity.push( EntityGuid, [&]( entity::map_t::entry& E )
+                m_mapEntity.alloc( EntityGuid, [&]( entity::map_t::entry& E )
                 {
                     Ref = E.m_Value = Group.AllocEntity(&E);
                 });
@@ -2436,8 +2450,8 @@ namespace mecs
                 // Add entity into list to be completely deleted at the end of the frame
                 //
                 {
-                    auto pHead = m_EntityFreeList.load(std::memory_order_relaxed);
-                    auto pNext = reinterpret_cast<entity::map_t::entry*&>( Entity.m_pInstance->m_Value.m_pGroupInstance );
+                    auto  pHead = m_EntityFreeList.load(std::memory_order_relaxed);
+                    auto& pNext = reinterpret_cast<entity::map_t::entry*&>( Entity.m_pInstance->m_Value.m_pGroupInstance );
 
                     pNext = pHead;
                     while( false == m_EntityFreeList.compare_exchange_weak( pNext, Entity.m_pInstance) );
