@@ -2180,11 +2180,15 @@ namespace xcore::textfile::version_2
                             if( m_File.getC(c).isError(Error) ) return Error;
                             if( c == '.' )
                             {
-                                if( isInt == false ) return xerr_failure( Error, "I found an error loading a floating point number");
-
+                                // Continue reading as a float
                                 isInt = false;
-                                Buffer[Size++] = c;                    
-                                if( m_File.getC(c).isError(Error) ) return Error;
+                                do 
+                                {
+                                    Buffer[Size++] = c;                    
+                                    if( m_File.getC(c).isError(Error) ) return Error;
+                                    
+                                } while( string::isCharDigit(c) || c == 'e' || c == 'E' || c == '-' );
+                                break;
                             }
                         }
 
