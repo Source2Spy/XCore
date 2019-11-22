@@ -68,7 +68,7 @@ namespace mecs_examples
                     {
                         while (Group.newSize() < 10000000ull XCORE_CMD_ASSERT( - 9500000ull ) )
                         {
-                            World.createEntity( Group, [](mecs::entity::tmp_ref tmpEntityRef) constexpr
+                            World.createEntity( Group, [](mecs::entity::tmp_ref tmpEntityRef)
                             {
                                 auto&   Entity = tmpEntityRef.getComponent<mecs::entity::instance>();
                                 auto&   Simple = tmpEntityRef.getComponent<simple>();
@@ -120,11 +120,11 @@ namespace mecs_examples
 
             void Update( mecs::entity::instance& Entity, spawner& S ) noexcept
             {
-                getGroup( S.m_gGroup, [&](mecs::component::group::instance& Group ) 
+                getGroup( S.m_gGroup, [&](mecs::component::group::instance& Group ) noexcept
                 {
                     for( int i=0; i<S.m_Count; ++i )
                     {
-                        createEntity( Group, []( mecs::entity::tmp_ref Ref ) constexpr
+                        createEntity( Group, []( mecs::entity::tmp_ref Ref ) noexcept
                         {
                             (void)Ref.getComponent<life>();
                         });
@@ -174,7 +174,7 @@ namespace mecs_examples
             //
             auto&   Group        = World.getOrCreateGroup<spawner>();
 
-            World.createEntity( Group, [&](mecs::entity::tmp_ref Ref) constexpr
+            World.createEntity( Group, [&](mecs::entity::tmp_ref Ref) noexcept
             {
                 auto& Spawner = Ref.getComponent<spawner>();
 

@@ -770,7 +770,7 @@ namespace mecs
             void clear( void )
             {
                 // We keep one page and return the rest 
-                for( auto p = reinterpret_cast<page**>(m_pPageHead->m_RawData); *p; p = &(*p) )
+                if(m_pPageHead) for( auto p = reinterpret_cast<page**>(m_pPageHead->m_RawData); *p; p = &(*p) )
                 {
                     m_PageMgr.FreePage(*p);
                 }
