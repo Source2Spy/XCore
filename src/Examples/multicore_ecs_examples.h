@@ -89,7 +89,6 @@ namespace mecs_examples
                 {
                     auto&   Entity = tmpEntityRef.getComponent<mecs::entity::instance>();
                     auto&   Double = tmpEntityRef.getComponent<double_buff>();
-                    assert(Simple.m_Value == 22);
                     assert(Double.m_Value == 123);
                 });
             }
@@ -199,7 +198,6 @@ namespace mecs_examples
             // Get started
             //
             World.Start();
-
         }
 
     }

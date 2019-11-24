@@ -1013,11 +1013,6 @@ namespace mecs
 
             //---------------------------------------------------------------------------------
 
-            struct default_tag : component::tag
-            {
-                constexpr static type_guid type_guid_v{ 1ull };
-            };
-
             template< typename T_A, typename T_B >
             struct compare
             {
@@ -2246,7 +2241,7 @@ namespace mecs
             instance()
             {
                 m_Definition.m_Triggers = xcore::scheduler::triggers::DONT_CLEAN_COUNT;
-                registerComponents<entity::instance,component::group::details::default_tag>();
+                registerComponents<entity::instance>();
                 m_EndSyncPoint.AddJobToBeTrigger(*this);
                 m_EndSyncPoint.FreezCount();
                 m_EndSyncPoint.m_bDisable = true;
