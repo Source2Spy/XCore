@@ -1369,40 +1369,6 @@ namespace mecs
                 return { this, local_index{RelativeIndex}, page_index{PageIndex} };
             }
 
-            /*
-            struct delete_entry
-            {
-                page_index  m_PageIndex;
-                local_index m_LocalEntry;
-            };
-            void DeleteEntity( entity::tmp_ref Entry ) noexcept
-            {
-                auto& Entity = *reinterpret_cast<entity::instance*>
-                (
-                    &m_lPages[Entry.m_PageIndex.m_Value]->m_RawData
-                    [
-                          m_GroupDescriptor.m_lComponentOffsets[0].m_Offset 
-                        + m_GroupDescriptor.m_lComponentOffsets[0].m_Size 
-                        * static_cast<std::uint32_t>(Entry.m_LocalIndex.m_Value)
-                    ]
-                );
-
-                auto Guid       = Entity.m_Guid;
-                auto Flags      = Entity.m_SystemFlags.load(std::memory_order_relaxed);
-                auto NewFlags   = Flags;
-
-                do 
-                {
-                    NewFlags = Flags;
-                    NewFlags.m_isDeleted = true;
-                } while( Entity.m_SystemFlags.compare_exchange_weak( Flags, NewFlags) == false );
-
-                auto& Del = m_lDeleteEntries.append();
-                Del.m_PageIndex  = Entry.m_PageIndex;
-                Del.m_LocalEntry = Entry.m_LocalIndex;
-            }
-                */
-
             void DeleteEntity( entity::instance& Entity ) noexcept
             {
                 assert(Entity.isZombie() == false);
@@ -1487,6 +1453,14 @@ namespace mecs
             constexpr static std::size_t max_pages_v = 1024*32;
             using page_list = xcore::array<tools::page*, max_pages_v>;
 
+            struct component_lock_entry
+            {
+                std::uint8_t    m_nWritters{0};
+                std::uint8_t    m_nReaders{0};
+            };
+
+            using component_lock_list_t = xcore::lock::object<std::array<component_lock_entry,64>,xcore::lock::semaphore>;
+
             group::guid                                                                 m_Guid;
             tools::page_mgr&                                                            m_PageMgr;
             details::command_list                                                       m_CmdList;
@@ -1495,7 +1469,7 @@ namespace mecs
             std::uint32_t                                                               m_Count             { 0 };
             std::atomic<group::page_index>                                              m_nPages            { group::page_index{0} };
             page_list                                                                   m_lPages            {};
-            std::array<xcore::lock::semaphore, 64>                                      m_ComponentLocks    {};
+            component_lock_list_t                                                       m_lComponentLocks   {};
             events                                                                      m_Events            {};
             const group::descriptor&                                                    m_GroupDescriptor;
             sync_point::instance*                                                       m_pLastSyncPoint    { nullptr };
@@ -1944,16 +1918,61 @@ namespace mecs
                     // Lock all the groups that we need to work with so that no one tries to add/remove entities
                     for( const auto& E : m_Query.m_lResults )
                     {
+                        auto& Group = const_cast<component::group::instance&>(*E.m_pGroup);
+
                         // TODO: Must lock each component base on r/w also must lock the group
-                        E.m_pGroup->m_SemaphoreLock.lock();
+
+                        // We lock as read only even if one of our components is going to write to it since really what we are saying is that we 
+                        // are going to use the group. Unlock will happen when we are done using this group.
+                        std::as_const(Group.m_SemaphoreLock).lock();
                         
+                        // Now we are going to tell the system which components in fact we are going to use. 
+                        // This is mainly for debugging purposes to make sure that we don't have two system writing to the same component
+                        static_assert( std::is_const_v<decltype(Group)> == false, "We need to lock here as read only" );
+                        xcore::lock::scope Lk( Group.m_lComponentLocks );
+                        auto& ComponentLockArray = Group.m_lComponentLocks.get();
+
                         auto LockComponent = [&]( int I ) constexpr noexcept -> xcore::err
                         {
                             const auto iComp = E.m_lLockRemaps[I];
-                            auto&      CLock = E.m_pGroup->m_ComponentLocks[iComp];
-                            if( E.m_isWrite[I] ) 
-                                return CLock.ExclusiveWriteLock();
-                            return CLock.ExclusiveReadLock();
+                            auto&      CLock = ComponentLockArray[iComp];
+
+                            if( E.m_isWrite[I] )
+                            {
+                                // Deal with warnings of writing a component while erasing it
+                                if(I==0)
+                                {
+                                    for( int i=0; i<Group.m_GroupDescriptor.m_nComponents; i++ )
+                                    {
+                                        if( ComponentLockArray[i].m_nWritters )
+                                        {
+                                            if( i == 0 )
+                                            {
+                                                // TODO: WARNING: Chance of double erase here
+                                            }
+                                            else
+                                            {
+                                                // TODO: WARNING someone may be trying to delete an entity while a system is writing to it
+                                            }
+                                        }
+                                    }
+                                }
+                                else if(ComponentLockArray[0].m_nWritters)
+                                {
+                                    // TODO: WARNING, A system is trying to write to one of the components while another system may be erasing the entity
+                                }
+
+                                if(CLock.m_nWritters) return xerr_failure_s("I found two systems trying to write to the same component");
+                                if(CLock.m_nReaders)  return xerr_failure_s("I found a systems that is trying to write to a component while other systems where trying to read it [1]");
+                                CLock.m_nWritters++;
+                            }
+                            else
+                            {
+                                if(CLock.m_nWritters)  return xerr_failure_s("I found a systems that is trying to write to a component while other systems where trying to read it [2]");
+                                CLock.m_nReaders++;
+                            }
+
+                            return {};
                         };
 
                         if( (LockComponent(xcore::types::tuple_t2i_v< T_ARGS, system_function_t::args_t >).isError(Error) || ...) )
@@ -2009,23 +2028,39 @@ namespace mecs
 
                     Channel.join();
 
+                    //
                     // unlock all the groups that we need to work with so that no one tries to add/remove entities
+                    //
                     for( const auto& E : m_Query.m_lResults )
                     {
-                        E.m_pGroup->m_SemaphoreLock.unlock();
+                        auto& Group = const_cast<component::group::instance&>(*E.m_pGroup);
+
+                        // Release each of the components that we locked before
+                        static_assert( std::is_const_v<decltype(Group)> == false, "We need to lock here as read only" );
+                        xcore::lock::scope Lk( Group.m_lComponentLocks );
+                        auto& ComponentLockArray = Group.m_lComponentLocks.get();
 
                         auto UnlockComponent = [&]( int I ) constexpr noexcept
                         {
                             const auto iComp = E.m_lLockRemaps[I];
-                            auto&      CLock = E.m_pGroup->m_ComponentLocks[iComp];
-                            if( E.m_isWrite[I] ) 
-                                CLock.unlock();
+                            auto&      CLock = ComponentLockArray[iComp];
+                            if( E.m_isWrite[I] )
+                            {
+                                xassert(CLock.m_nWritters);
+                                CLock.m_nWritters--;
+                            }
                             else
-                                const_cast<const xcore::lock::semaphore&>( CLock ).unlock(); 
+                            {
+                                xassert(CLock.m_nReaders);
+                                CLock.m_nReaders--;
+                            }
                         };
 
                         (( UnlockComponent(xcore::types::tuple_t2i_v< T_ARGS, system_function_t::args_t >) )
                         , ...);
+
+                        // We officially release this group
+                        std::as_const(Group.m_SemaphoreLock).unlock();
                     }
 
                     return Error;

@@ -53,6 +53,8 @@ namespace xcore::lock
 
         mutable std::atomic<thelock> m_Lock{thelock{0u,0u,0u}};
 
+        inline bool isLockedDebug(void) const noexcept { return m_Lock.load(std::memory_order_relaxed).m_nLocks; }
+
         // Writer lock
         inline void lock( void ) noexcept
         {
