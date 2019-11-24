@@ -793,7 +793,8 @@ namespace mecs
     namespace settings
     {
         constexpr static std::size_t max_systems_v              = 256;
-        constexpr static std::size_t max_ingroup_components_v   = 64;
+        constexpr static std::size_t max_components_in_entity_v = 64;
+        constexpr static std::size_t max_tags_in_entity_v       = 64;
     }
 
     //---------------------------------------------------------------------------------
@@ -1083,6 +1084,14 @@ namespace mecs
                     >(nullptr)
                 );
             };
+
+            template<>
+            struct guid_arrays_from_types_with_duplication<>
+            {
+                constexpr static std::span<const type_guid> component_guid_list_v {};
+                constexpr static std::span<const type_guid> tag_guid_list_v       {};
+            };
+
         }
 
         //---------------------------------------------------------------------------------
@@ -1235,9 +1244,9 @@ namespace mecs
 
             const std::uint16_t                                                                     m_EntriesPerPage;
             const std::uint16_t                                                                     m_nComponents;
-            const std::array<type_guid, settings::max_ingroup_components_v>                         m_lComponentTypeGuids;
-            const std::array<const component::descriptor*, settings::max_ingroup_components_v>      m_lComponentDescriptors;
-            const std::array<details::offsets, settings::max_ingroup_components_v>                  m_lComponentOffsets;
+            const std::array<type_guid,                     settings::max_components_in_entity_v>   m_lComponentTypeGuids;
+            const std::array<const component::descriptor*,  settings::max_components_in_entity_v>   m_lComponentDescriptors;
+            const std::array<details::offsets,              settings::max_components_in_entity_v>   m_lComponentOffsets;
         };
 
         //---------------------------------------------------------------------------------
@@ -1474,6 +1483,7 @@ namespace mecs
             const group::descriptor&                                                    m_GroupDescriptor;
             sync_point::instance*                                                       m_pLastSyncPoint    { nullptr };
             std::uint32_t                                                               m_LastTick          { 0 };
+            void*                                                                       m_pDataBaseRef      { nullptr };
         };
 
         //---------------------------------------------------------------------------------
@@ -2113,6 +2123,12 @@ namespace mecs
                 reinterpret_cast<K&>(m_World).createEntity( Group, UserFunction, Guid );
             }
 
+            template< typename K = world::instance, typename T_TUPLE_ADD_COMPONENTS_OR_TAGS, typename T_TUPLE_REMOVE_COMPONENTS_OR_TAGS, typename T_CALLBACK >
+            void moveEntityBy( entity::instance& Entity, T_CALLBACK&& CallBack ) noexcept
+            {
+                reinterpret_cast<K&>(m_World).moveEntityBy<T_TUPLE_ADD_COMPONENTS_OR_TAGS,T_TUPLE_REMOVE_COMPONENTS_OR_TAGS>( Entity, std::forward<T_CALLBACK&&>(CallBack) );
+            }
+
             world::instance&    m_World;
         };
     }
@@ -2146,12 +2162,12 @@ namespace mecs
                         component::group::instance*                 m_pGroup{nullptr};
                     };
 
-                    type_guid                                       m_Guid;         // Tag UID (Sum of all individual tags)
-                    query::filter_bits                              m_Bits;         // Tag bitsets (Unique bit set for each tag)
-                    std::uint32_t                                   m_nGroups;      
-                    xcore::array<group_entry,32>                    m_lGroups;
-                    std::uint32_t                                   m_nTags;      
-                    xcore::array<type_guid,64>                      m_lTagGuids;    // Individual tag guids that make this entry
+                    type_guid                                                   m_Guid;         // Tag UID (Sum of all individual tags)
+                    query::filter_bits                                          m_Bits;         // Tag bitsets (Unique bit set for each tag)
+                    std::uint32_t                                               m_nGroups;      
+                    xcore::array<group_entry,32>                                m_lGroups;
+                    std::uint32_t                                               m_nTags;      
+                    xcore::array<type_guid,settings::max_tags_in_entity_v>      m_lTagGuids;    // Individual tag guids that make this entry
                 };
 
                 std::uint32_t                                       m_nTagEntries;
@@ -2338,7 +2354,7 @@ namespace mecs
                     auto&               GroupEntry          = *new( &TagEntry.m_lGroups[TagEntry.m_nGroups++] ) details::dbase::tag_entry::group_entry {};
                     auto                nComponents         = lComponentTypesGuids.size();
                     
-                    xcore::array<const component::descriptor*, settings::max_ingroup_components_v> lComponetDesc;
+                    xcore::array<const component::descriptor*, settings::max_components_in_entity_v> lComponetDesc;
                     for( int i=0; i<nComponents; ++i )
                     {
                         auto& C = lComponentTypesGuids[i];
@@ -2593,6 +2609,125 @@ namespace mecs
                 // Mark entity as dead/zombie
                 reinterpret_cast<std::size_t&>(Entity.m_pInstance) |= 1;
             }
+
+            template< typename...T_ADD_COMPONENTS_OR_TAGS, typename...T_REMOVE_COMPONENTS_OR_TAGS >
+            component::group::instance& getOrCreateGroupBy( 
+                    component::group::instance&                 Group
+                ,   std::tuple<T_ADD_COMPONENTS_OR_TAGS...>*
+                ,   std::tuple<T_REMOVE_COMPONENTS_OR_TAGS...>*
+                ) noexcept
+            {
+                constexpr static auto ModifyComponentList = []( 
+                        std::span<type_guid>        OutputList
+                    ,   std::span<const type_guid>  CurrentList
+                    ,   std::span<const type_guid>  AddList
+                    ,   std::span<const type_guid>  RemoveList ) noexcept -> int
+                {
+                    int nComponents = 0;
+                    for( int i=0, a=0 ;;)
+                    {
+                        if( a == AddList.size() )
+                        {
+                            for( ;i<CurrentList.size(); ++i )
+                                OutputList[nComponents++] = CurrentList[i++];
+                            break;
+                        }
+                        else if( i == CurrentList.size() )
+                        {
+                            for( ;a<AddList.size(); ++a )
+                                OutputList[nComponents++] = AddList[a++];
+                            break;
+                        }
+
+                        if( CurrentList[i] > AddList[a] )
+                        {
+                            OutputList[nComponents++] = AddList[a++];
+                        }
+                        else
+                        {
+                            if( CurrentList[a] == AddList[i] )
+                            {
+                                //TODO: WARNING User is trying to add a duplicate component. We should issue a warning
+                            }
+
+                            OutputList[nComponents++] = CurrentList[i++];
+                        }
+                    }
+
+                    // Delete components
+                    if( RemoveList.size() )
+                    {
+                        int n=0;
+                        for( int i=0, r=0;;  )
+                        {
+                            if( r == RemoveList.size() )
+                            {
+                                while( i<nComponents )
+                                    OutputList[n++] = OutputList[i++];
+                                break;
+                            }
+
+                            if( CurrentList[i] < RemoveList[r] ) { ++r;  continue; }
+                            if( CurrentList[i] > RemoveList[r] ) { OutputList[n++] = OutputList[i]; }
+                            ++i;
+                        }
+                        nComponents = n;
+                    }
+
+                    return nComponents;
+                };
+
+                using add_t     = typename component::group::details::guid_arrays_from_types_with_duplication<T_ADD_COMPONENTS_OR_TAGS...>;
+                using remove_t  = typename component::group::details::guid_arrays_from_types_with_duplication<T_REMOVE_COMPONENTS_OR_TAGS...>;
+
+                auto&   GroupDescriptor          = Group.m_GroupDescriptor;
+                auto&   CurrentTagEntry          = *reinterpret_cast<details::dbase::tag_entry*>(Group.m_pDataBaseRef);
+
+                std::array<type_guid, settings::max_components_in_entity_v >    Components;
+                std::array<type_guid, settings::max_tags_in_entity_v >          Tags;
+
+                const int nComponents = ModifyComponentList(    Components
+                                                            ,   std::span{ std::as_const(GroupDescriptor.m_lComponentTypeGuids).data(), GroupDescriptor.m_nComponents }
+                                                            ,   add_t.component_guid_list_v
+                                                            ,   remove_t.component_guid_list_v );
+
+                const int nTags       = ModifyComponentList(    Tags
+                                                            ,   std::span{ std::as_const(CurrentTagEntry.m_lTagGuids).data(), CurrentTagEntry.m_nTags }
+                                                            ,   add_t.tag_guid_list_v
+                                                            ,   remove_t.tag_guid_list_v );
+
+                // Add components
+                auto& NewGroup = getOrCreateGroup( std::span{Components.data(), nComponents}, std::span{Tags.data(), nTags} );
+
+                if( &NewGroup == &Group )
+                {
+                    // TODO: WARNING, This move resulted in no operation!
+                }
+
+                return NewGroup;
+
+                /*
+
+                // Create the new entity
+                auto TmpRef = NewGroup.AllocEntity(Entity.m_pInstance);
+
+                // Copy the old entity
+
+                // Old group delete the entity
+                Group.DeleteEntity( Entity );
+
+                // let the user know what jut happen
+                CallBack(TmpRef);
+                */
+            }
+
+            template< typename T_TUPLE_ADD_COMPONENTS_OR_TAGS, typename T_TUPLE_REMOVE_COMPONENTS_OR_TAGS >
+            inline component::group::instance& getOrCreateGroupBy( component::group::instance& Group ) noexcept
+            {
+                return getOrCreateGroupBy(Group, (T_TUPLE_ADD_COMPONENTS_OR_TAGS*)nullptr, (T_TUPLE_REMOVE_COMPONENTS_OR_TAGS*)nullptr );
+            }
+
+
 
             constexpr static std::size_t                                max_groups_count_v = 1024;
 

@@ -80,7 +80,21 @@ namespace mecs_examples
                     });
 
                 MyChannel.join();
+
+                //
+                // Check if we can add some other kind of entity
+                //
+                auto& NewGroup = World.getOrCreateGroupBy<std::tuple<simple>, std::tuple<simple>>( Group );
+                World.createEntity( NewGroup, [](mecs::entity::tmp_ref tmpEntityRef)
+                {
+                    auto&   Entity = tmpEntityRef.getComponent<mecs::entity::instance>();
+                    auto&   Simple = tmpEntityRef.getComponent<simple>();
+                    auto&   Double = tmpEntityRef.getComponent<double_buff>();
+                    assert(Simple.m_Value == 22);
+                    assert(Double.m_Value == 123);
+                });
             }
+
 
             World.Start();
 

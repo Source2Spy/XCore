@@ -56,7 +56,7 @@ namespace xcore::examples
         {
             // xcore::serializer::examples::Test();
             mecs_examples::test1::Test();
-            mecs_examples::test2::Test();
+            //mecs_examples::test2::Test();
         }
     }
 }
