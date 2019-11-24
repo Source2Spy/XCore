@@ -952,6 +952,14 @@ namespace mecs
 
             //---------------------------------------------------------------------------------
 
+            template<>
+            constexpr auto MakeArrayTypeGuids( std::tuple<>* ) noexcept
+            {
+                return std::span<type_guid>{ nullptr, std::size_t{0u} };
+            }  
+
+            //---------------------------------------------------------------------------------
+
             template< typename T_COMPONENT >
             std::enable_if_t
             <
@@ -1029,8 +1037,7 @@ namespace mecs
                         < 
                             compare, xcore::types::tuple_cat_t
                             < 
-                                  std::tuple<entity::instance>
-                                , decltype(FilterOutTags<std::decay_t<T_COMPONENTS_AND_TAGS>>())...
+                                decltype(FilterOutTags<std::decay_t<T_COMPONENTS_AND_TAGS>>())...
                             >
                         >*
                     >(nullptr)
@@ -1043,8 +1050,7 @@ namespace mecs
                         < 
                             compare, xcore::types::tuple_cat_t
                             <
-                                  std::tuple<default_tag>
-                                , decltype(FilterOutComponents<std::decay_t<T_COMPONENTS_AND_TAGS>>())...
+                                decltype(FilterOutComponents<std::decay_t<T_COMPONENTS_AND_TAGS>>())...
                             >
                         >*
                     >(nullptr)
@@ -1063,8 +1069,7 @@ namespace mecs
                         < 
                             compare, xcore::types::tuple_cat_t
                             < 
-                                  std::tuple<entity::instance>
-                                , decltype(FilterOutTagsExtendDoubleBuffer<T_COMPONENTS_AND_TAGS>())...
+                                decltype(FilterOutTagsExtendDoubleBuffer<T_COMPONENTS_AND_TAGS>())...
                             >
                         >*
                     >(nullptr)
@@ -1077,21 +1082,12 @@ namespace mecs
                         < 
                             compare, xcore::types::tuple_cat_t
                             <
-                                  std::tuple<default_tag>
-                                , decltype(FilterOutComponents<T_COMPONENTS_AND_TAGS>())...
+                                decltype(FilterOutComponents<T_COMPONENTS_AND_TAGS>())...
                             >
                         >*
                     >(nullptr)
                 );
             };
-
-            template<>
-            struct guid_arrays_from_types_with_duplication<>
-            {
-                constexpr static std::span<const type_guid> component_guid_list_v {};
-                constexpr static std::span<const type_guid> tag_guid_list_v       {};
-            };
-
         }
 
         //---------------------------------------------------------------------------------
@@ -1316,7 +1312,7 @@ namespace mecs
             inline      auto        newSize()               const   noexcept { return m_NewCount.load(std::memory_order_relaxed); }
 
             inline
-            void* getComponent(const entity::tmp_ref& Ref, type_guid TypeGuid) noexcept
+            void* findComponent(const entity::tmp_ref& Ref, type_guid TypeGuid) noexcept
             {
                 if( auto pOffset = m_GroupDescriptor.findMutableOffset(Ref,TypeGuid); pOffset )
                 {
@@ -1329,7 +1325,7 @@ namespace mecs
             }
 
             inline
-            void* getComponent(const entity::tmp_ref& Ref, type_guid TypeGuid) const noexcept
+            void* findComponent(const entity::tmp_ref& Ref, type_guid TypeGuid) const noexcept
             {
                 if( auto pOffset = m_GroupDescriptor.findReadOnlyOffset(Ref,TypeGuid); pOffset )
                 {
@@ -2328,25 +2324,24 @@ namespace mecs
                  }() };
                 const auto          TagGuid             = type_guid{ [&] {std::uint64_t Key = 0; for (auto E : lTagTypesGuids)       Key += E.m_Value; return Key; }() };
                 const auto          TagGroupGuid        = component::group::guid{ ComponentGroupGuid.m_Value + TagGuid.m_Value };
+                auto&               TagEntry            = *m_mapTagLookup.getOrCreate( TagGuid,[&]()
+                {
+                    auto& Entry = m_TagDBase.m_lTagEntries[ m_TagDBase.m_nTagEntries++ ];
+                    Entry.m_Guid      = TagGuid;
+                    Entry.m_nGroups   = 0;
+                    Entry.m_nTags     = 0;
+
+                    for( auto E : lTagTypesGuids )
+                    {
+                        Entry.m_Bits.AddBit( m_mapTagDescriptor.get(E) );
+                        Entry.m_lTagGuids[ Entry.m_nTags++ ] = E;
+                    }
+
+                    return &Entry;
+                });
 
                 return *m_mapGroupPerTag.getOrCreate( TagGroupGuid, [&]
                 {
-                    auto& TagEntry = *m_mapTagLookup.getOrCreate( TagGuid,[&]()
-                    {
-                        auto& Entry = m_TagDBase.m_lTagEntries[ m_TagDBase.m_nTagEntries++ ];
-                        Entry.m_Guid      = TagGuid;
-                        Entry.m_nGroups   = 0;
-                        Entry.m_nTags     = 0;
-
-                        for( auto E : lTagTypesGuids )
-                        {
-                            Entry.m_Bits.AddBit( m_mapTagDescriptor.get(E) );
-                            Entry.m_lTagGuids[ Entry.m_nTags++ ] = E;
-                        }
-
-                        return &Entry;
-                    });
-
                     //
                     // Create a new group if we need to
                     //
@@ -2399,6 +2394,8 @@ namespace mecs
                         , m_PageMgr
                         , *pGroupDesc
                     };
+
+                    GroupEntry.m_pGroup->m_pDataBaseRef = &TagEntry;
 
                     return GroupEntry.m_pGroup;
                 });
@@ -2628,13 +2625,13 @@ namespace mecs
                     {
                         if( a == AddList.size() )
                         {
-                            for( ;i<CurrentList.size(); ++i )
+                            while( i < CurrentList.size() )
                                 OutputList[nComponents++] = CurrentList[i++];
                             break;
                         }
                         else if( i == CurrentList.size() )
                         {
-                            for( ;a<AddList.size(); ++a )
+                            while( a < AddList.size() )
                                 OutputList[nComponents++] = AddList[a++];
                             break;
                         }
@@ -2645,12 +2642,15 @@ namespace mecs
                         }
                         else
                         {
-                            if( CurrentList[a] == AddList[i] )
+                            if( CurrentList[i] == AddList[a] )
                             {
                                 //TODO: WARNING User is trying to add a duplicate component. We should issue a warning
+                                i++;
                             }
-
-                            OutputList[nComponents++] = CurrentList[i++];
+                            else
+                            {
+                                OutputList[nComponents++] = CurrentList[i++];
+                            }
                         }
                     }
 
@@ -2666,10 +2666,17 @@ namespace mecs
                                     OutputList[n++] = OutputList[i++];
                                 break;
                             }
+                            else if( i == (nComponents - r) ) break;
 
-                            if( CurrentList[i] < RemoveList[r] ) { ++r;  continue; }
-                            if( CurrentList[i] > RemoveList[r] ) { OutputList[n++] = OutputList[i]; }
-                            ++i;
+                            if( CurrentList[i] > RemoveList[r] ) 
+                            { 
+                                ++r;
+                            }
+                            else 
+                            {
+                                if( CurrentList[i] < RemoveList[r] ) OutputList[n++] = OutputList[i];
+                                ++i;
+                            }
                         }
                         nComponents = n;
                     }
@@ -2677,8 +2684,8 @@ namespace mecs
                     return nComponents;
                 };
 
-                using add_t     = typename component::group::details::guid_arrays_from_types_with_duplication<T_ADD_COMPONENTS_OR_TAGS...>;
-                using remove_t  = typename component::group::details::guid_arrays_from_types_with_duplication<T_REMOVE_COMPONENTS_OR_TAGS...>;
+                constexpr static component::group::details::guid_arrays_from_types_with_duplication<T_ADD_COMPONENTS_OR_TAGS...>    add_v;
+                constexpr static component::group::details::guid_arrays_from_types_with_duplication<T_REMOVE_COMPONENTS_OR_TAGS...> remove_v;
 
                 auto&   GroupDescriptor          = Group.m_GroupDescriptor;
                 auto&   CurrentTagEntry          = *reinterpret_cast<details::dbase::tag_entry*>(Group.m_pDataBaseRef);
@@ -2688,16 +2695,17 @@ namespace mecs
 
                 const int nComponents = ModifyComponentList(    Components
                                                             ,   std::span{ std::as_const(GroupDescriptor.m_lComponentTypeGuids).data(), GroupDescriptor.m_nComponents }
-                                                            ,   add_t.component_guid_list_v
-                                                            ,   remove_t.component_guid_list_v );
+                                                            ,   add_v.component_guid_list_v
+                                                            ,   remove_v.component_guid_list_v );
 
                 const int nTags       = ModifyComponentList(    Tags
                                                             ,   std::span{ std::as_const(CurrentTagEntry.m_lTagGuids).data(), CurrentTagEntry.m_nTags }
-                                                            ,   add_t.tag_guid_list_v
-                                                            ,   remove_t.tag_guid_list_v );
+                                                            ,   add_v.tag_guid_list_v
+                                                            ,   remove_v.tag_guid_list_v );
 
                 // Add components
-                auto& NewGroup = getOrCreateGroup( std::span{Components.data(), nComponents}, std::span{Tags.data(), nTags} );
+                auto& NewGroup = getOrCreateGroup( std::span<const type_guid>{Components.data(), static_cast<std::size_t>(nComponents)}
+                                                 , std::span<const type_guid>{Tags.data(), static_cast<std::size_t>(nTags) } );
 
                 if( &NewGroup == &Group )
                 {
@@ -2762,13 +2770,17 @@ namespace mecs
         template< typename T >
         T& tmp_ref::getComponent(type_guid TypeGuid) noexcept
         {
-            return *reinterpret_cast<T*>(m_pGroupInstance->getComponent(*this, TypeGuid));
+            auto p = reinterpret_cast<T*>(m_pGroupInstance->findComponent(*this, TypeGuid));
+            assert(p);
+            return *p;
         }
 
         template< typename T >
         constexpr const T& tmp_ref::getComponent(type_guid TypeGuid) const noexcept
         {
-            return *reinterpret_cast<T*>(m_pGroupInstance->getComponent(*this, TypeGuid));
+            auto p = reinterpret_cast<T*>(m_pGroupInstance->findComponent(*this, TypeGuid));
+            assert(p);
+            return *p;
         }
     }
 }
