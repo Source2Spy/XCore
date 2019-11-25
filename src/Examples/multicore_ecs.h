@@ -14,11 +14,14 @@ namespace mecs
         {
             constexpr static auto max_size_v = T_MAXSIZE_V;
 
+            struct lock;
+
             struct entry
             {
                 T_KEY               m_Key   {};
-                T_VALUE             m_Value {};
-                entry*              m_pNext {nullptr};        // Next for cases where collisions happen
+                T_VALUE             m_Value {};              // TODO: These pointers below could be converted to indices to save memory
+                entry*              m_pNext {nullptr};       // Next for cases where collisions happen
+                lock*               m_pLock {nullptr};       // Pointer back to its lock
             };
                 
             struct lock
@@ -71,6 +74,7 @@ namespace mecs
                 // Setup the node
                 pNode->m_Key        = Key;
                 pNode->m_pNext      = MapEntry.m_pEntry;
+                pNode->m_pLock      = &MapEntry;
                 Callback(*pNode);           // should set ( pNode->m_Value = ... )
                 MapEntry.m_pEntry   = pNode;
 
@@ -827,10 +831,12 @@ namespace mecs
         {
             using fn_construct  = void(void*) noexcept;
             using fn_destruct   = void(void*) noexcept;
+            using fn_move       = void(void*dst,void*src) noexcept;
 
             const type_guid         m_Guid;
             fn_construct* const     m_fnConstruct;
             fn_construct* const     m_fnDestruct;
+            fn_move*      const     m_fnMove;  
             //property::table&  m_PropertyTable;
             const std::uint16_t     m_Size;
             const std::uint16_t     m_Aligment;
@@ -1178,27 +1184,39 @@ namespace mecs
                                             }
                 {}
 
-            
+            void ConstructOnlyEntityComponent( tools::page* Page, group::local_index LocalIndex, entity::map_t::entry* pEntry ) const noexcept
+            {
+                // we don't construct the entity case here
+                auto&       E       = m_lComponentOffsets[0];
+                const auto  Index   = E.m_Offset + static_cast<std::uint32_t>(LocalIndex.m_Value) * E.m_Size;
+                reinterpret_cast<entity::instance*>( &Page->m_RawData[Index] )->m_pInstance = pEntry;
+            }
+
+            void ConstructOnlyComponent( tools::page* Page, group::local_index LocalIndex, int iComponent ) const noexcept
+            {
+                // we don't construct the entity case here
+                xassert(iComponent!=0);
+                auto&       E       = m_lComponentOffsets[iComponent];
+                const auto  Index   = E.m_Offset + static_cast<std::uint32_t>(LocalIndex.m_Value) * E.m_Size;
+                m_lComponentDescriptors[iComponent]->m_fnConstruct( &Page->m_RawData[Index] );
+            }
+
             void ConstructEntity( tools::page* Page, group::local_index LocalIndex, entity::map_t::entry* pEntry ) const noexcept
             {
-                std::byte* p = reinterpret_cast<std::byte*>(Page);
-                for( int i=0; i<m_nComponents; ++i )
+                ConstructOnlyEntityComponent( Page, LocalIndex, pEntry );
+                for( int i=1; i<m_nComponents; ++i )
                 {
-                    auto&       E       = m_lComponentOffsets[i];
-                    const auto  Index   = E.m_Offset + static_cast<std::uint32_t>(LocalIndex.m_Value) * E.m_Size;
-                    m_lComponentDescriptors[i]->m_fnConstruct( &p[Index] );
-                    if( i == 0 ) reinterpret_cast< entity::instance* >( &p[Index] )->m_pInstance = pEntry;
+                    ConstructOnlyComponent(Page,LocalIndex,i);
                 }
             }
 
             void DestructEntity( tools::page* Page, std::uint32_t LocalIndex ) const noexcept
             {
-                std::byte* p = reinterpret_cast<std::byte*>(Page);
                 for( int i=0; i<m_nComponents; ++i )
                 {
                     auto&       E       = m_lComponentOffsets[i];
                     const auto  Index   = E.m_Offset + LocalIndex * E.m_Size;
-                    m_lComponentDescriptors[i]->m_fnDestruct( &p[Index] );
+                    m_lComponentDescriptors[i]->m_fnDestruct( &Page->m_RawData[Index] );
                 }
             }
 
@@ -1378,6 +1396,8 @@ namespace mecs
                 Cmd.m_LocalIndex = TmpRef.m_LocalIndex;
                 Cmd.m_PageIndex  = TmpRef.m_PageIndex;
                     
+                // Mark entity as dead/zombie
+                reinterpret_cast<std::size_t&>(Entity.m_pInstance) |= 1;
             }
 
             void MemoryBarrierSync( sync_point::instance& SyncPoint )
@@ -1412,6 +1432,11 @@ namespace mecs
                         {
                             const auto iTopPage  = topCount/m_GroupDescriptor.m_EntriesPerPage;
                             const auto iTopIndex = topCount%m_GroupDescriptor.m_EntriesPerPage;
+
+                            // This entity is completely gone at this point
+                            m_GroupDescriptor.DestructEntity( m_lPages[Arg.m_PageIndex.m_Value], Arg.m_LocalIndex.m_Value );
+
+                            // Do we need to move any component to the location of the deleted entity?
                             if( iTopPage == Arg.m_PageIndex.m_Value && iTopIndex == Arg.m_PageIndex.m_Value ) return;
 
                             // Move components to new location
@@ -2108,6 +2133,26 @@ namespace mecs
                 });
             }
 
+            template< typename T_TUPLE_ADD_COMPONENTS_AND_TAGS, typename T_TUPLE_REMOVE_COMPONENTS_AND_TAGS, typename T_CALLBACK, typename K = world::instance >
+            void getGroupBy( entity::instance& Entity, T_CALLBACK&& CallBack ) const noexcept
+            {
+                auto& Group = reinterpret_cast<K&>(m_World).getOrCreateGroupBy
+                                ( *Entity.getTmpRef().m_pGroupInstance, (T_TUPLE_ADD_COMPONENTS_AND_TAGS*)nullptr, (T_TUPLE_REMOVE_COMPONENTS_AND_TAGS*)nullptr );
+
+                {
+                    const auto& Semaphore = Group.m_SemaphoreLock;
+                    Semaphore.lock();
+                    CallBack( Group );
+                    Semaphore.unlock();
+                };
+            }
+
+            template< typename T_CALLBACK, typename K = world::instance >
+            void moveEntityToGroup( component::group::instance& Group, entity::instance& Entity, T_CALLBACK&& CallBack ) const noexcept
+            {
+                reinterpret_cast<K&>(m_World).moveEntityToGroup(Group, Entity, std::forward<T_CALLBACK&&>(CallBack) );
+            }
+
             template<typename K = world::instance>
             void createEntity( component::group::instance& Group, xcore::function::view<void(entity::tmp_ref)> UserFunction, entity::guid Guid = entity::guid{xcore::not_null} ) noexcept
             {
@@ -2418,6 +2463,7 @@ namespace mecs
                             T_COMPONENTS_AND_TAGS::type_guid_v
                         ,   [](void* p) noexcept { new(p) T_COMPONENTS_AND_TAGS{}; }
                         ,   [](void* p) noexcept { std::destroy_at( reinterpret_cast<T_COMPONENTS_AND_TAGS*>(p) ); }
+                        ,   [](void* d, void* s) noexcept { *reinterpret_cast<T_COMPONENTS_AND_TAGS*>(d) = std::move(*reinterpret_cast<T_COMPONENTS_AND_TAGS*>(s)); }
                             // //property::table&  m_PropertyTable;
                         ,   static_cast<std::uint16_t>(sizeof(T_COMPONENTS_AND_TAGS))
                         ,   static_cast<std::uint16_t>(std::alignment_of_v<T_COMPONENTS_AND_TAGS>)
@@ -2567,39 +2613,36 @@ namespace mecs
             {
                 if( Entity.isZombie() ) return;
 
+                auto& Node   = *Entity.m_pInstance;
+                auto  TmpRef =  Node.m_Value;
+
                 // Mark for deletion in the group
-                Entity.m_pInstance->m_Value.m_pGroupInstance->DeleteEntity( Entity );
+                TmpRef.m_pGroupInstance->DeleteEntity( Entity );
 
                 //
                 // Notify that we are deleting an entity
                 //
-                auto& Group = *Entity.m_pInstance->m_Value.m_pGroupInstance;
+                auto& Group = *TmpRef.m_pGroupInstance;
                 if( Group.m_Events.m_DeletedEntity.hasSubscribers() )
-                    Group.m_Events.m_DeletedEntity.NotifyAll(Entity.m_pInstance->m_Value);
+                    Group.m_Events.m_DeletedEntity.NotifyAll(TmpRef);
 
                 //
                 // Add entity into list to be completely deleted at the end of the frame
                 //
                 {
                     auto  pHead = m_EntityFreeList.load(std::memory_order_relaxed);
-                    auto& pNext = reinterpret_cast<entity::map_t::entry*&>( Entity.m_pInstance->m_Value.m_pGroupInstance );
+                    auto& pNext = reinterpret_cast<entity::map_t::entry*&>( Node.m_Value.m_pGroupInstance );
 
                     pNext = pHead;
-                    while( false == m_EntityFreeList.compare_exchange_weak( pNext, Entity.m_pInstance) );
+                    while( false == m_EntityFreeList.compare_exchange_weak( pNext, &Node) );
                 }
 
                 //
                 // Mark entity as officially deleted
                 //
 
-                // This entity is completely gone at this point
-                Group.m_GroupDescriptor.DestructEntity( Group.m_lPages[Entity.m_pInstance->m_Value.m_PageIndex.m_Value], Entity.m_pInstance->m_Value.m_LocalIndex.m_Value );
-
                 // Make sure we mark the tmp_ref as invalid
-                Entity.m_pInstance->m_Value.clear();
-
-                // Mark entity as dead/zombie
-                reinterpret_cast<std::size_t&>(Entity.m_pInstance) |= 1;
+                Node.m_Value.clear();
             }
 
             template< typename...T_ADD_COMPONENTS_OR_TAGS, typename...T_REMOVE_COMPONENTS_OR_TAGS >
@@ -2708,20 +2751,6 @@ namespace mecs
                 }
 
                 return NewGroup;
-
-                /*
-
-                // Create the new entity
-                auto TmpRef = NewGroup.AllocEntity(Entity.m_pInstance);
-
-                // Copy the old entity
-
-                // Old group delete the entity
-                Group.DeleteEntity( Entity );
-
-                // let the user know what jut happen
-                CallBack(TmpRef);
-                */
             }
 
             template< typename T_TUPLE_ADD_COMPONENTS_OR_TAGS, typename T_TUPLE_REMOVE_COMPONENTS_OR_TAGS >
@@ -2730,7 +2759,85 @@ namespace mecs
                 return getOrCreateGroupBy(Group, (T_TUPLE_ADD_COMPONENTS_OR_TAGS*)nullptr, (T_TUPLE_REMOVE_COMPONENTS_OR_TAGS*)nullptr );
             }
 
+            void moveEntityToGroup( component::group::instance& NewGroup, entity::instance& Entity, xcore::function::view<void(entity::tmp_ref)> Callback )
+            {
+                // This entity has been mark for deletion.... there is nothing we can accomplish here 
+                xassert( Entity.isZombie() == false );
 
+                auto  OldTmpRef = Entity.m_pInstance->m_Value;
+                auto& OldGroup  = *OldTmpRef.m_pGroupInstance;
+
+                // If we are going to move it to the same group there is nothing to do
+                if( &NewGroup == &OldGroup ) return;
+
+                auto& NewGDescriptor = NewGroup.m_GroupDescriptor;
+                auto& OldGDescriptor = OldGroup.m_GroupDescriptor;
+
+                // Allocate our new entity in the new group
+                auto  NewTmpRef      = NewGroup.AllocEntity( Entity.m_pInstance );
+                    
+                //
+                // Move/construct the components over 
+                //
+                NewGDescriptor.ConstructOnlyEntityComponent( NewGroup.m_lPages[NewTmpRef.m_PageIndex.m_Value], NewTmpRef.m_LocalIndex, Entity.m_pInstance );
+                for( int inew=1, iold=1; inew < NewGDescriptor.m_nComponents; )
+                {
+                    if( iold == OldGDescriptor.m_nComponents ) 
+                    {
+                        do 
+                        {
+                            NewGDescriptor.ConstructOnlyComponent( NewGroup.m_lPages[NewTmpRef.m_PageIndex.m_Value], NewTmpRef.m_LocalIndex, inew );
+                            inew++;
+                        } while (inew < NewGDescriptor.m_nComponents);
+                        break;
+                    }
+
+                    if( NewGDescriptor.m_lComponentTypeGuids[inew] < OldGDescriptor.m_lComponentTypeGuids[iold] )
+                    {
+                        // New group has a component that the old group did not so we need to construct this entry
+                        NewGDescriptor.ConstructOnlyComponent( NewGroup.m_lPages[NewTmpRef.m_PageIndex.m_Value], NewTmpRef.m_LocalIndex, inew );
+                        inew++;
+                    }
+                    else if( NewGDescriptor.m_lComponentTypeGuids[inew] > OldGDescriptor.m_lComponentTypeGuids[iold] )
+                    {
+                        // We are missing this component so skip it
+                        iold++;
+                    }
+                    else
+                    {
+                        const auto& NewOffsets = NewGDescriptor.m_lComponentOffsets[inew];
+                        const auto& OldOffsets = OldGDescriptor.m_lComponentOffsets[iold];
+                        auto&       MoveFn     = NewGDescriptor.m_lComponentDescriptors[inew]->m_fnMove;
+                        void*       pSrc       = &OldGroup.m_lPages[OldTmpRef.m_PageIndex.m_Value]->m_RawData[OldOffsets.m_Offset + iold * OldOffsets.m_Size ];
+                        void*       pDst       = &NewGroup.m_lPages[NewTmpRef.m_PageIndex.m_Value]->m_RawData[NewOffsets.m_Offset + inew * NewOffsets.m_Size ];
+
+                        // Move this component to new location
+                        MoveFn( pDst, pSrc );
+
+                        // Get ready for next component
+                        inew++;
+                        iold++;
+                    }
+                }
+
+                //
+                // Release the new entity. We must lock it before making any changes
+                //
+                {
+                    xcore::lock::scope Lock( Entity.m_pInstance->m_pLock->m_Lock );
+                    Entity.m_pInstance->m_Value = NewTmpRef;
+                }
+
+                //
+                // Let the user know that there is has been officially moved
+                //
+                Callback(NewTmpRef);
+
+                //
+                // Lets tell the system to delete the old component
+                //
+                OldGroup.DeleteEntity( Entity );
+            }
 
             constexpr static std::size_t                                max_groups_count_v = 1024;
 

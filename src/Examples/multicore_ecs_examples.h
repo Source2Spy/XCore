@@ -80,17 +80,6 @@ namespace mecs_examples
                     });
 
                 MyChannel.join();
-
-                //
-                // Check if we can add some other kind of entity
-                //
-                auto& NewGroup = World.getOrCreateGroupBy<std::tuple<>, std::tuple<simple>>( Group );
-                World.createEntity( NewGroup, [](mecs::entity::tmp_ref tmpEntityRef)
-                {
-                    auto&   Entity = tmpEntityRef.getComponent<mecs::entity::instance>();
-                    auto&   Double = tmpEntityRef.getComponent<double_buff>();
-                    assert(Double.m_Value == 123);
-                });
             }
 
 
@@ -99,6 +88,7 @@ namespace mecs_examples
             int b = 0;
         }
     }
+
 
     //------------------------------------------------------------------------------------
     // Test2
@@ -199,7 +189,98 @@ namespace mecs_examples
             //
             World.Start();
         }
+    }
 
+
+    //------------------------------------------------------------------------------------
+    // Test3
+    //------------------------------------------------------------------------------------
+    namespace test3
+    {
+        struct simple
+        {
+            constexpr static mecs::type_guid type_guid_v{"simple"};
+            int m_Value{ 22 };
+        };
+
+        struct double_buff : mecs::component::double_buffer
+        {
+            constexpr static mecs::type_guid type_guid_v{ "double_buff" };
+            int m_Value{ 123 };
+        };
+
+        struct my_tag : mecs::component::tag 
+        {
+            constexpr static mecs::type_guid type_guid_v{ "my_tag" };
+        };
+
+        struct my_system : mecs::system::instance
+        {
+            constexpr static auto   system_name_v   = xconst_universal_str("my_system");
+            constexpr static mecs::query::define
+            <
+                mecs::query::all<simple>
+              , mecs::query::none<my_tag>
+            > query_v{};
+
+            using parent_t = mecs::system::instance;
+            using parent_t::parent_t;
+
+            void Update( mecs::entity::instance& Entity, const double_buff& Buff, simple& Simple ) const noexcept
+            {
+                getGroupBy< std::tuple<>, std::tuple<double_buff> >( Entity, [&](mecs::component::group::instance& Group )
+                {
+                    moveEntityToGroup( Group, Entity, [&](mecs::entity::tmp_ref Ref)
+                    {
+                        // ... something to do?
+                    });
+                });
+            }
+        };
+
+        void Test()
+        {
+            mecs::world::instance World;
+            World.registerComponents
+            <
+                    simple
+                ,   double_buff
+                ,   my_tag
+            >();
+
+            World.AddGraphConnection<my_system>( World.m_StartSyncPoint, World.m_EndSyncPoint );
+
+            //
+            // Create a bunch of entities
+            //
+            {
+                auto& Group = World.getOrCreateGroup<simple,double_buff,my_tag>();
+                while (Group.newSize() < 1000 )
+                {
+                    World.createEntity( Group, [](mecs::entity::tmp_ref tmpEntityRef)
+                    {
+                        auto&   Entity = tmpEntityRef.getComponent<mecs::entity::instance>();
+                        auto&   Simple = tmpEntityRef.getComponent<simple>();
+                        auto&   Double = tmpEntityRef.getComponent<double_buff>();
+                        assert(Simple.m_Value == 22);
+                        assert(Double.m_Value == 123);
+                    });
+                }
+
+                //
+                // Check if we can add some other kind of entity
+                //
+                auto& NewGroup = World.getOrCreateGroupBy<std::tuple<>, std::tuple<simple>>( Group );
+                World.createEntity( NewGroup, [](mecs::entity::tmp_ref tmpEntityRef)
+                {
+                    auto&   Entity = tmpEntityRef.getComponent<mecs::entity::instance>();
+                    auto&   Double = tmpEntityRef.getComponent<double_buff>();
+                    assert(Double.m_Value == 123);
+                });
+            }
+
+            World.Start();
+        }
     }
 
 }
