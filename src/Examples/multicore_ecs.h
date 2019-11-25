@@ -604,11 +604,12 @@ namespace mecs
                 using pool_t = pool<T,MAX_PAGES>;
 
                 pool_t*             m_pPool;
-                int                 m_nEntries;
-                int                 m_nPages;
-                int                 m_Index;
-                pool_iterator   operator    ++ (void)                   noexcept;
-                bool            operator    != (std::nullptr_t) const   noexcept;
+                std::uint32_t       m_nEntries;
+                std::uint16_t       m_nPages;
+                std::uint16_t       m_Index;
+                pool_iterator   operator    ++  (void)                   noexcept;
+                bool            operator    !=  (std::nullptr_t) const   noexcept;
+                T&              operator    *   (void)                   noexcept;
             };
         }
         
@@ -626,6 +627,7 @@ namespace mecs
 
             constexpr pool( page_mgr& PageMgr ) noexcept : m_PageMgr{PageMgr}{}
 
+            std::uint32_t                           size() const noexcept{ return m_Counts.load( std::memory_order_relaxed).m_nEntries; }
             details::pool_iterator<T,MAX_PAGES>     begin() noexcept{ counts Counts = m_Counts.load( std::memory_order_relaxed); return { this, Counts.m_nEntries, Counts.m_nPages, 0 }; }
             std::nullptr_t                          end() const noexcept { return nullptr; }
 
@@ -684,7 +686,7 @@ namespace mecs
                     {
                         if constexpr (std::is_destructible_v<T>)
                         {
-                            for( int i=0; i<Counts.m_nEntries; ++i )
+                            for( std::uint32_t i=0; i<Counts.m_nEntries; ++i )
                             {
                                 std::destroy_at
                                 (
@@ -693,7 +695,7 @@ namespace mecs
                             }                        
                         }
 
-                        for( int i=0; i<Counts.m_Pages; ++i )
+                        for( int i=0; i<Counts.m_nPages; ++i )
                         {
                             m_PageMgr.FreePage(m_lPages[i]);
                         }
@@ -732,6 +734,12 @@ namespace mecs
             bool pool_iterator<T,MAX_PAGES>::operator !=  (std::nullptr_t) const noexcept
             {
                 return m_nEntries;
+            }
+
+            template< typename T, std::size_t MAX_PAGES >
+            T& pool_iterator<T,MAX_PAGES>::operator * (void) noexcept
+            {
+                return reinterpret_cast<T*>(m_pPool->m_lPages[m_nPages])[m_Index];
             }
         }
 
@@ -1228,15 +1236,21 @@ namespace mecs
                                             }
                 {}
 
-            void ConstructOnlyEntityComponent( tools::page* Page, group::local_index LocalIndex, entity::map_t::entry* pEntry ) const noexcept
+            
+            inline entity::instance& getEntity( tools::page* Page, group::local_index LocalIndex ) const noexcept
             {
-                // we don't construct the entity case here
                 auto&       E       = m_lComponentOffsets[0];
                 const auto  Index   = E.m_Offset + static_cast<std::uint32_t>(LocalIndex.m_Value) * E.m_Size;
-                reinterpret_cast<entity::instance*>( &Page->m_RawData[Index] )->m_pInstance = pEntry;
+                return *reinterpret_cast<entity::instance*>( &Page->m_RawData[Index] );
             }
 
-            void ConstructOnlyComponent( tools::page* Page, group::local_index LocalIndex, int iComponent ) const noexcept
+            inline void ConstructOnlyEntityComponent( tools::page* Page, group::local_index LocalIndex, entity::map_t::entry* pEntry ) const noexcept
+            {
+                // we don't construct the entity case here
+                getEntity( Page, LocalIndex ).m_pInstance = pEntry;
+            }
+
+            inline void ConstructOnlyComponent( tools::page* Page, group::local_index LocalIndex, int iComponent ) const noexcept
             {
                 // we don't construct the entity case here
                 xassert(iComponent!=0);
@@ -1245,7 +1259,7 @@ namespace mecs
                 m_lComponentDescriptors[iComponent]->m_fnConstruct( &Page->m_RawData[Index] );
             }
 
-            void ConstructEntity( tools::page* Page, group::local_index LocalIndex, entity::map_t::entry* pEntry ) const noexcept
+            inline void ConstructEntity( tools::page* Page, group::local_index LocalIndex, entity::map_t::entry* pEntry ) const noexcept
             {
                 ConstructOnlyEntityComponent( Page, LocalIndex, pEntry );
                 for( int i=1; i<m_nComponents; ++i )
@@ -1254,7 +1268,7 @@ namespace mecs
                 }
             }
 
-            void DestructEntity( tools::page* Page, std::uint32_t LocalIndex ) const noexcept
+            inline void DestructEntity( tools::page* Page, std::uint32_t LocalIndex ) const noexcept
             {
                 for( int i=0; i<m_nComponents; ++i )
                 {
@@ -1444,10 +1458,90 @@ namespace mecs
                 reinterpret_cast<std::size_t&>(Entity.m_pInstance) |= 1;
             }
 
-            void MemoryBarrierSync( sync_point::instance& SyncPoint )
+            void DeletePendingEntries( void ) noexcept
+            {
+                auto topCount = m_Count;
+                
+                // Are we erasing everything?
+                if( m_DeleteList.size() == topCount )
+                {
+                    local_index     I{0};
+                    page_index      P{0};
+                    while(topCount--)
+                    {
+                        m_GroupDescriptor.DestructEntity( m_lPages[P.m_Value], I.m_Value );
+                        I.m_Value++;
+                        if( I.m_Value == m_GroupDescriptor.m_EntriesPerPage )
+                        {
+                            P.m_Value++;
+                            I.m_Value = 0;
+                        }
+                    }
+
+                    // We have no entries
+                    m_Count = 0;
+                }
+                else
+                {
+                    std::uint16_t   iTopPage    = static_cast<std::uint16_t>(topCount/m_GroupDescriptor.m_EntriesPerPage);
+                    std::uint16_t   iTopIndex   = static_cast<std::uint16_t>(topCount%m_GroupDescriptor.m_EntriesPerPage);
+                    auto FindRealTop = [&]
+                    {
+                        do  
+                        {
+                            iTopIndex--;
+                            if( iTopIndex == 0xffff )
+                            {
+                                xassert(iTopPage);
+                                iTopPage--;
+                                iTopIndex = m_GroupDescriptor.m_EntriesPerPage-1;
+                            }
+                        } while( m_GroupDescriptor.getEntity( m_lPages[iTopPage], local_index{iTopIndex} ).isZombie() );
+                    };
+
+                    // Find the real top
+                    FindRealTop();
+                    
+                    for( auto E : m_DeleteList )
+                    {
+                        // This entity is completely gone at this point
+                        m_GroupDescriptor.DestructEntity( m_lPages[E.m_PageIndex.m_Value], E.m_LocalIndex.m_Value );
+
+                        // Do we need to move any component to the location of the deleted entity?
+                        if( const auto Index = E.m_PageIndex.m_Value * m_GroupDescriptor.m_EntriesPerPage + E.m_PageIndex.m_Value;
+                            Index >= iTopIndex ) continue;
+
+                        // Move components to new location
+                        for( int i=0; i<m_GroupDescriptor.m_nComponents; i++ )
+                        {
+                            const auto& ComponentDetails = m_GroupDescriptor.m_lComponentOffsets[i];
+                            auto*       pDestinaltion    = &m_lPages[E.m_PageIndex.m_Value]->m_RawData[ ComponentDetails.m_Offset + E.m_LocalIndex.m_Value * ComponentDetails.m_Size ];
+                            const auto* pSource          = &m_lPages[iTopPage]             ->m_RawData[ ComponentDetails.m_Offset + iTopIndex              * ComponentDetails.m_Size ];
+                            std::memcpy( pDestinaltion, pSource, ComponentDetails.m_Size );
+                        }
+
+                        // Update the moved entity reference
+                        {
+                            const auto& ComponentDetails = m_GroupDescriptor.m_lComponentOffsets[0];
+                            const auto& MovedEntity      = reinterpret_cast<entity::instance&>( m_lPages[E.m_PageIndex.m_Value]->m_RawData[ ComponentDetails.m_Offset + E.m_LocalIndex.m_Value * ComponentDetails.m_Size ] );
+                            assert( MovedEntity.isZombie() == false );
+                            MovedEntity.m_pInstance->m_Value.m_LocalIndex = E.m_LocalIndex;
+                            MovedEntity.m_pInstance->m_Value.m_PageIndex  = E.m_PageIndex;
+                        }
+
+                        // Update the top count
+                        FindRealTop();
+                    }
+                }
+
+                // Clear all the list
+                m_DeleteList.clear();
+            }
+
+            void MemoryBarrierSync( sync_point::instance& SyncPoint ) noexcept
             {
                 //
-                // Aboid updating multiple times for a given sync_point done
+                // Avoid updating multiple times for a given sync_point done
                 //
                 if( m_pLastSyncPoint == &SyncPoint && m_LastTick == SyncPoint.m_Tick )
                     return;
@@ -1459,60 +1553,18 @@ namespace mecs
                 //
                 // Make sure to lock for writing
                 //
-                xcore::lock::scope Lock(std::as_const(*this).m_SemaphoreLock);
+                xcore::lock::scope Lock(m_SemaphoreLock);
 
                 //
-                // Consume all commands
+                // Officially add all the new entries
                 //
-                const auto newCount = m_NewCount.load( std::memory_order_relaxed ); 
-                      auto topCount = m_Count + newCount - 1;
-                
-                // Find real top
-
-
-                // compute the rest
-
-                for( auto p : m_DeleteList )
-                {
-                    const auto iTopPage  = topCount/m_GroupDescriptor.m_EntriesPerPage;
-                    const auto iTopIndex = topCount%m_GroupDescriptor.m_EntriesPerPage;
-
-                    // This entity is completely gone at this point
-                    m_GroupDescriptor.DestructEntity( m_lPages[Arg.m_PageIndex.m_Value], Arg.m_LocalIndex.m_Value );
-
-                    // Do we need to move any component to the location of the deleted entity?
-                    if( iTopPage == Arg.m_PageIndex.m_Value && iTopIndex == Arg.m_PageIndex.m_Value ) return;
-
-                    // Move components to new location
-                    for( int i=0; i<m_GroupDescriptor.m_nComponents; i++ )
-                    {
-                        const auto& ComponentDetails = m_GroupDescriptor.m_lComponentOffsets[i];
-                        auto*       pDestinaltion    = &m_lPages[Arg.m_PageIndex.m_Value]->m_RawData[ ComponentDetails.m_Offset + Arg.m_LocalIndex.m_Value * ComponentDetails.m_Size ];
-                        const auto* pSource          = &m_lPages[iTopPage]               ->m_RawData[ ComponentDetails.m_Offset + iTopIndex                * ComponentDetails.m_Size ];
-                        std::memcpy( pDestinaltion, pSource, ComponentDetails.m_Size );
-                    }
-
-                    // Update the moved entity reference
-                    {
-                        const auto& ComponentDetails = m_GroupDescriptor.m_lComponentOffsets[0];
-                        const auto& MovedEntity      = reinterpret_cast<entity::instance&>( m_lPages[Arg.m_PageIndex.m_Value]->m_RawData[ ComponentDetails.m_Offset + Arg.m_LocalIndex.m_Value * ComponentDetails.m_Size ] );
-                        assert( MovedEntity.isZombie() == false );
-                        MovedEntity.m_pInstance->m_Value.m_LocalIndex = Arg.m_LocalIndex;
-                        MovedEntity.m_pInstance->m_Value.m_PageIndex  = Arg.m_PageIndex;
-                    }
-
-                    // Update the top count
-                    topCount--;
-                }
-
-                // Clear all the list
-                m_DeleteList.clear();
-
-                //
-                // Make sure all the counts are reset
-                //
-                m_Count = topCount;
+                m_Count += m_NewCount.load(std::memory_order_relaxed);
                 m_NewCount.store(0,std::memory_order_relaxed );
+
+                //
+                // Delete all pending entities
+                //
+                DeletePendingEntries();
             }
 
             constexpr static std::size_t max_pages_v = 1024*32;
@@ -1528,8 +1580,7 @@ namespace mecs
 
             group::guid                                                                 m_Guid;
             tools::page_mgr&                                                            m_PageMgr;
-            pool<delete_entity>                                                         m_DeleteList;
-//            details::command_list                                                       m_CmdList;
+            tools::pool<details::delete_entity,max_pages_v>                             m_DeleteList;
             xcore::lock::semaphore                                                      m_SemaphoreLock     {};
             std::atomic<std::uint32_t>                                                  m_NewCount          { 0 };
             std::uint32_t                                                               m_Count             { 0 };
