@@ -594,6 +594,25 @@ namespace mecs
         // TOOLS::POOL
         //---------------------------------------------------------------------------------
         template< typename T, std::size_t MAX_PAGES >
+        struct pool;
+
+        namespace details
+        {
+            template< typename T, std::size_t MAX_PAGES >
+            struct pool_iterator
+            {
+                using pool_t = pool<T,MAX_PAGES>;
+
+                pool_t*             m_pPool;
+                int                 m_nEntries;
+                int                 m_nPages;
+                int                 m_Index;
+                pool_iterator   operator    ++ (void)                   noexcept;
+                bool            operator    != (std::nullptr_t) const   noexcept;
+            };
+        }
+        
+        template< typename T, std::size_t MAX_PAGES >
         struct pool
         {
             constexpr static auto entries_per_page_v = sizeof(page)/sizeof(T);
@@ -606,6 +625,9 @@ namespace mecs
             };
 
             constexpr pool( page_mgr& PageMgr ) noexcept : m_PageMgr{PageMgr}{}
+
+            details::pool_iterator<T,MAX_PAGES>     begin() noexcept{ counts Counts = m_Counts.load( std::memory_order_relaxed); return { this, Counts.m_nEntries, Counts.m_nPages, 0 }; }
+            std::nullptr_t                          end() const noexcept { return nullptr; }
 
             template< typename...T_ARGS >
             T& append( T_ARGS&&... Args ) noexcept
@@ -689,6 +711,29 @@ namespace mecs
             std::array<page*, MAX_PAGES>    m_lPages    {};
             page_mgr&                       m_PageMgr;
         };
+
+        namespace details
+        {
+            template< typename T, std::size_t MAX_PAGES >
+            pool_iterator<T,MAX_PAGES> pool_iterator<T,MAX_PAGES>::operator++ (void) noexcept
+            {
+                m_nEntries--;
+                m_Index++;
+                if (m_Index == pool_t::entries_per_page_v)
+                {
+                    m_nPages++;
+                    m_Index = 0;
+                    _mm_prefetch((const char*)m_pPool->m_lPages[m_nPages], _MM_HINT_NTA);
+                }
+                return *this;
+            }
+
+            template< typename T, std::size_t MAX_PAGES >
+            bool pool_iterator<T,MAX_PAGES>::operator !=  (std::nullptr_t) const noexcept
+            {
+                return m_nEntries;
+            }
+        }
 
         //---------------------------------------------------------------------------------
         // TOOLS::COMMAND POOL
@@ -789,7 +834,6 @@ namespace mecs
             std::atomic<std::uint32_t>          m_Position      {1};                // 1 means that needs to be initialize
         };
     }
-
 
     //---------------------------------------------------------------------------------
     // SETTINGS
@@ -1115,14 +1159,14 @@ namespace mecs
                               , m_HasT1:1;      // HasT1    - Does this component has a double buffer?
             };
 
+            struct delete_entity
+            {
+                component::group::local_index      m_LocalIndex;
+                component::group::page_index       m_PageIndex;
+            };
+
             struct command_list
             {
-                struct delete_entity
-                {
-                    component::group::local_index      m_LocalIndex;
-                    component::group::page_index       m_PageIndex;
-                };
-
                 using commands = std::variant
                 <
                     delete_entity
@@ -1318,7 +1362,7 @@ namespace mecs
                 : m_Guid                { Guid }
                 , m_PageMgr             { PageMgr }
                 , m_GroupDescriptor     { GroupDescriptor }
-                , m_CmdList             { m_PageMgr }
+                , m_DeleteList          { m_PageMgr }
                 {}
 
             constexpr   auto        size()                  const   noexcept { return m_Count; }
@@ -1391,10 +1435,10 @@ namespace mecs
             {
                 assert(Entity.isZombie() == false);
 
-                auto& Cmd   = m_CmdList.m_lCmds.NewCmd<details::command_list::delete_entity>();
-                auto TmpRef = Entity.getTmpRef();
-                Cmd.m_LocalIndex = TmpRef.m_LocalIndex;
-                Cmd.m_PageIndex  = TmpRef.m_PageIndex;
+                auto& Entry         = m_DeleteList.append();
+                auto TmpRef         = Entity.getTmpRef();
+                Entry.m_LocalIndex  = TmpRef.m_LocalIndex;
+                Entry.m_PageIndex   = TmpRef.m_PageIndex;
                     
                 // Mark entity as dead/zombie
                 reinterpret_cast<std::size_t&>(Entity.m_pInstance) |= 1;
@@ -1421,52 +1465,48 @@ namespace mecs
                 // Consume all commands
                 //
                 const auto newCount = m_NewCount.load( std::memory_order_relaxed ); 
-                      auto topCount = m_Count + newCount - 1; 
-                for( auto p = m_CmdList.m_lCmds.m_pCmdHead.load(std::memory_order_relaxed); p; p = p->m_pNext )
+                      auto topCount = m_Count + newCount - 1;
+                
+                // Find real top
+
+
+                // compute the rest
+
+                for( auto p : m_DeleteList )
                 {
-                    std::visit( [&](auto&& Arg)
+                    const auto iTopPage  = topCount/m_GroupDescriptor.m_EntriesPerPage;
+                    const auto iTopIndex = topCount%m_GroupDescriptor.m_EntriesPerPage;
+
+                    // This entity is completely gone at this point
+                    m_GroupDescriptor.DestructEntity( m_lPages[Arg.m_PageIndex.m_Value], Arg.m_LocalIndex.m_Value );
+
+                    // Do we need to move any component to the location of the deleted entity?
+                    if( iTopPage == Arg.m_PageIndex.m_Value && iTopIndex == Arg.m_PageIndex.m_Value ) return;
+
+                    // Move components to new location
+                    for( int i=0; i<m_GroupDescriptor.m_nComponents; i++ )
                     {
-                        using t = std::decay_t<decltype(Arg)>;
+                        const auto& ComponentDetails = m_GroupDescriptor.m_lComponentOffsets[i];
+                        auto*       pDestinaltion    = &m_lPages[Arg.m_PageIndex.m_Value]->m_RawData[ ComponentDetails.m_Offset + Arg.m_LocalIndex.m_Value * ComponentDetails.m_Size ];
+                        const auto* pSource          = &m_lPages[iTopPage]               ->m_RawData[ ComponentDetails.m_Offset + iTopIndex                * ComponentDetails.m_Size ];
+                        std::memcpy( pDestinaltion, pSource, ComponentDetails.m_Size );
+                    }
 
-                        if constexpr ( std::is_same_v<t,details::command_list::delete_entity> )
-                        {
-                            const auto iTopPage  = topCount/m_GroupDescriptor.m_EntriesPerPage;
-                            const auto iTopIndex = topCount%m_GroupDescriptor.m_EntriesPerPage;
+                    // Update the moved entity reference
+                    {
+                        const auto& ComponentDetails = m_GroupDescriptor.m_lComponentOffsets[0];
+                        const auto& MovedEntity      = reinterpret_cast<entity::instance&>( m_lPages[Arg.m_PageIndex.m_Value]->m_RawData[ ComponentDetails.m_Offset + Arg.m_LocalIndex.m_Value * ComponentDetails.m_Size ] );
+                        assert( MovedEntity.isZombie() == false );
+                        MovedEntity.m_pInstance->m_Value.m_LocalIndex = Arg.m_LocalIndex;
+                        MovedEntity.m_pInstance->m_Value.m_PageIndex  = Arg.m_PageIndex;
+                    }
 
-                            // This entity is completely gone at this point
-                            m_GroupDescriptor.DestructEntity( m_lPages[Arg.m_PageIndex.m_Value], Arg.m_LocalIndex.m_Value );
-
-                            // Do we need to move any component to the location of the deleted entity?
-                            if( iTopPage == Arg.m_PageIndex.m_Value && iTopIndex == Arg.m_PageIndex.m_Value ) return;
-
-                            // Move components to new location
-                            for( int i=0; i<m_GroupDescriptor.m_nComponents; i++ )
-                            {
-                                const auto& ComponentDetails = m_GroupDescriptor.m_lComponentOffsets[i];
-                                auto*       pDestinaltion    = &m_lPages[Arg.m_PageIndex.m_Value]->m_RawData[ ComponentDetails.m_Offset + Arg.m_LocalIndex.m_Value * ComponentDetails.m_Size ];
-                                const auto* pSource          = &m_lPages[iTopPage]               ->m_RawData[ ComponentDetails.m_Offset + iTopIndex                * ComponentDetails.m_Size ];
-                                std::memcpy( pDestinaltion, pSource, ComponentDetails.m_Size );
-                            }
-
-                            // Update the moved entity reference
-                            {
-                                const auto& ComponentDetails = m_GroupDescriptor.m_lComponentOffsets[0];
-                                const auto& MovedEntity      = reinterpret_cast<entity::instance&>( m_lPages[Arg.m_PageIndex.m_Value]->m_RawData[ ComponentDetails.m_Offset + Arg.m_LocalIndex.m_Value * ComponentDetails.m_Size ] );
-                                assert( MovedEntity.isZombie() == false );
-                                MovedEntity.m_pInstance->m_Value.m_LocalIndex = Arg.m_LocalIndex;
-                                MovedEntity.m_pInstance->m_Value.m_PageIndex  = Arg.m_PageIndex;
-                            }
-
-                            // Update the top count
-                            topCount--;
-                        }
-                        else static_assert( xcore::types::always_false_v<t>, "One of the commands is not cover here" );
-
-                    }, p->m_Cmd );
+                    // Update the top count
+                    topCount--;
                 }
 
-                // Clear all the commands
-                m_CmdList.clear();
+                // Clear all the list
+                m_DeleteList.clear();
 
                 //
                 // Make sure all the counts are reset
@@ -1488,7 +1528,8 @@ namespace mecs
 
             group::guid                                                                 m_Guid;
             tools::page_mgr&                                                            m_PageMgr;
-            details::command_list                                                       m_CmdList;
+            pool<delete_entity>                                                         m_DeleteList;
+//            details::command_list                                                       m_CmdList;
             xcore::lock::semaphore                                                      m_SemaphoreLock     {};
             std::atomic<std::uint32_t>                                                  m_NewCount          { 0 };
             std::uint32_t                                                               m_Count             { 0 };
@@ -1501,33 +1542,6 @@ namespace mecs
             std::uint32_t                                                               m_LastTick          { 0 };
             void*                                                                       m_pDataBaseRef      { nullptr };
         };
-
-        //---------------------------------------------------------------------------------
-        // GROUP::ITERATOR FUNCTIONS
-        //---------------------------------------------------------------------------------
-        /*
-        inline
-        iterator iterator::operator++ (void) noexcept
-        {
-            m_LocalIndex.m_Value++;
-            if (m_LocalIndex.m_Value == m_pGroupInstance->m_EntriesPerPage)
-            {
-                m_PageIndex.m_Value++;
-                m_LocalIndex.m_Value = 0;
-                if (m_PageIndex.m_Value < m_pGroupInstance->m_lPages.size())
-                    _mm_prefetch((const char*)m_pGroupInstance->m_lPages[m_PageIndex.m_Value], _MM_HINT_NTA);
-            }
-            return *this;
-        }
-
-        inline constexpr
-        bool iterator::operator !=  (std::nullptr_t) const noexcept
-        {
-            const auto l = m_pGroupInstance->m_lPages.size() - 1;
-            return !(l == m_PageIndex.m_Value
-                 && (m_pGroupInstance->m_Count - l * m_pGroupInstance->m_EntriesPerPage) == m_LocalIndex.m_Value);
-        }
-        */
     }
 
     //---------------------------------------------------------------------------------
