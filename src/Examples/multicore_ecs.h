@@ -655,7 +655,7 @@ namespace mecs
                         if( m_Counts.compare_exchange_weak( Counts, NewCounts ) )
                         {
                             auto p = m_PageMgr.AllocPage();
-                            m_lPages[NewCounts.m_nPages] = p;
+                            m_lPages[Counts.m_nPages] = p;
                             auto& E = *new( &p->m_RawData[(Counts.m_nEntries%entries_per_page_v)*sizeof(T)] ) 
                                         T{std::forward<T_ARGS>(Args)...};
 
@@ -682,9 +682,9 @@ namespace mecs
                     {
                         Counts = m_Counts.load( std::memory_order_relaxed );
                     }
-                    else if( m_Counts.compare_exchange_weak( Counts, counts{ 0, 0, 1 } ) )
+                    else if( m_Counts.compare_exchange_weak( Counts, counts{ Counts.m_nEntries, Counts.m_nPages, 1 } ) )
                     {
-                        if constexpr (std::is_destructible_v<T>)
+                        if constexpr (false == std::is_trivially_destructible_v<T>)
                         {
                             for( std::uint32_t i=0; i<Counts.m_nEntries; ++i )
                             {
@@ -701,12 +701,11 @@ namespace mecs
                         }
 
                         m_Counts.store( counts{ 0, 0, 0 } );
+                        break;
                     }
 
                     // Spin Lock...
                 } while (true);
-
-                xassert(false);            
             }
 
             std::atomic<counts>             m_Counts    {counts{0,0,0}};
@@ -1270,7 +1269,8 @@ namespace mecs
 
             inline void DestructEntity( tools::page* Page, std::uint32_t LocalIndex ) const noexcept
             {
-                for( int i=0; i<m_nComponents; ++i )
+                // Entity component does not need any destructor
+                for( int i=1; i<m_nComponents; ++i )
                 {
                     auto&       E       = m_lComponentOffsets[i];
                     const auto  Index   = E.m_Offset + LocalIndex * E.m_Size;
@@ -1460,10 +1460,11 @@ namespace mecs
 
             void DeletePendingEntries( void ) noexcept
             {
-                auto topCount = m_Count;
-                
+                auto        topCount  = m_Count;
+                const auto  WaterMark = topCount - m_DeleteList.size();
+
                 // Are we erasing everything?
-                if( m_DeleteList.size() == topCount )
+                if( WaterMark == 0 )
                 {
                     local_index     I{0};
                     page_index      P{0};
@@ -1478,8 +1479,7 @@ namespace mecs
                         }
                     }
 
-                    // We have no entries
-                    m_Count = 0;
+                    xassert( (m_GroupDescriptor.m_EntriesPerPage * P.m_Value + I.m_Value ) == m_Count );
                 }
                 else
                 {
@@ -1508,8 +1508,8 @@ namespace mecs
                         m_GroupDescriptor.DestructEntity( m_lPages[E.m_PageIndex.m_Value], E.m_LocalIndex.m_Value );
 
                         // Do we need to move any component to the location of the deleted entity?
-                        if( const auto Index = E.m_PageIndex.m_Value * m_GroupDescriptor.m_EntriesPerPage + E.m_PageIndex.m_Value;
-                            Index >= iTopIndex ) continue;
+                        if( const std::uint32_t Index = E.m_PageIndex.m_Value * m_GroupDescriptor.m_EntriesPerPage + E.m_PageIndex.m_Value;
+                            Index >= WaterMark ) continue;
 
                         // Move components to new location
                         for( int i=0; i<m_GroupDescriptor.m_nComponents; i++ )
@@ -1536,6 +1536,9 @@ namespace mecs
 
                 // Clear all the list
                 m_DeleteList.clear();
+
+                // Set the new count of entries
+                m_Count = WaterMark;
             }
 
             void MemoryBarrierSync( sync_point::instance& SyncPoint ) noexcept
