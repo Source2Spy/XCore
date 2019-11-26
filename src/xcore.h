@@ -127,6 +127,9 @@ namespace xcore::property{ using namespace ::property; }
 #include "xcore_math_shapes.h"
 namespace xcore { using namespace xcore::math; }
 
+// Random
+#include "xcore_random.h"
+
 // Cmdline
 #include "xcore_cmdline.h"
 
@@ -161,6 +164,8 @@ namespace xcore { using namespace xcore::math; }
 #include "Implementation/xcore_math_bbox_inline.h"
 #include "Implementation/xcore_math_plane_inline.h"
 #include "Implementation/xcore_math_irect_inline.h"
+
+#include "Implementation/xcore_random_inline.h"
 
 #include "Implementation/xcore_cmdline_inline.h"
 #include "Implementation/xcore_file_inline.h"

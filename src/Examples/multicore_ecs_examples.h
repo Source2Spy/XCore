@@ -226,16 +226,15 @@ namespace mecs_examples
             using parent_t = mecs::system::instance;
             using parent_t::parent_t;
 
-            void Update( mecs::entity::instance& Entity, const double_buff& Buff, simple& Simple ) const noexcept
+            xcore::random::small_generator R;
+            void Update( mecs::entity::instance& Entity, const double_buff& Buff, simple& Simple ) noexcept
             {
-                // This is the equivalent of removing a component (double_buff) from an entity
-                getGroupBy< std::tuple<>, std::tuple<double_buff> >( Entity, [&](mecs::component::group::instance& Group )
-                {
-                    moveEntityToGroup( Group, Entity, [&](mecs::entity::tmp_ref Ref)
+                // This is the equivalent of removing a component (double_buff) from the entity
+                if( (R.RandU32() % 10)  == 0 )
+                    getGroupBy< std::tuple<>, std::tuple<double_buff> >( Entity, [&](mecs::component::group::instance& Group )
                     {
-                        // ... something to do?
+                        moveEntityToGroup( Group, Entity );
                     });
-                });
             }
         };
 
@@ -256,7 +255,7 @@ namespace mecs_examples
             //
             {
                 auto& Group = World.getOrCreateGroup<simple,double_buff,my_tag>();
-                while (Group.newSize() < 1000 )
+                while (Group.newSize() < 100000 )
                 {
                     World.createEntity( Group, [](mecs::entity::tmp_ref tmpEntityRef)
                     {
@@ -281,6 +280,7 @@ namespace mecs_examples
             }
 
             World.Start();
+            for( int i=0; i<10000; i++) World.Resume();
         }
     }
 

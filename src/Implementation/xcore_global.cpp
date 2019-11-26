@@ -98,7 +98,7 @@ void xcore::Init( xcore::global::state& G ) noexcept
 
 //-----------------------------------------------------------------------------------------------
 
-void xcore::Init( const char* pAppName ) noexcept
+void xcore::Init( const char* pAppName, int nWorkers ) noexcept
 {
     xassert(pAppName);
 
@@ -122,7 +122,7 @@ void xcore::Init( const char* pAppName ) noexcept
     //
     // Initialize
     //
-    get().m_Scheduler.Init();
+    get().m_Scheduler.Init(nWorkers);
 }
 
 //------------------------------------------------------------------------------

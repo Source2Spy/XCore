@@ -64,6 +64,7 @@
     <ClInclude Include="..\..\src\Implementation\xcore_math_vector3d_inline.h" />
     <ClInclude Include="..\..\src\Implementation\xcore_math_vector3_inline.h" />
     <ClInclude Include="..\..\src\Implementation\xcore_math_vector4_inline.h" />
+    <ClInclude Include="..\..\src\Implementation\xcore_random_inline.h" />
     <ClInclude Include="..\..\src\Implementation\xcore_scheduler_inline.h" />
     <ClInclude Include="..\..\src\Implementation\xcore_serializer_inline.h" />
     <ClInclude Include="..\..\src\Implementation\xcore_string_inline.h" />
@@ -102,6 +103,7 @@
     <ClInclude Include="..\..\src\xcore_memory.h" />
     <ClInclude Include="..\..\src\xcore_profiler.h" />
     <ClInclude Include="..\..\src\xcore_ptr.h" />
+    <ClInclude Include="..\..\src\xcore_random.h" />
     <ClInclude Include="..\..\src\xcore_rtti.h" />
     <ClInclude Include="..\..\src\xcore_scheduler_channel.h" />
     <ClInclude Include="..\..\src\xcore_scheduler_job.h" />

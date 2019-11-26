@@ -85,10 +85,10 @@ namespace xcore::global
 //------------------------------------------------------------------------------------------
 namespace xcore
 {
-                void            Init            ( global::state& G )            noexcept;
-                void            Init            ( const char* pAppName )        noexcept;
-                void            Kill            ( void )                        noexcept;
-    constexpr   global::state&  get             ( void )                        noexcept { return (global::state::ms_Instance.index()) ? *std::get<1>(global::state::ms_Instance) : *std::get<0>(global::state::ms_Instance); }
+                void            Init            ( global::state& G )                        noexcept;
+                void            Init            ( const char* pAppName, int nWorkers = -1 ) noexcept;
+                void            Kill            ( void )                                    noexcept;
+    constexpr   global::state&  get             ( void )                                    noexcept { return (global::state::ms_Instance.index()) ? *std::get<1>(global::state::ms_Instance) : *std::get<0>(global::state::ms_Instance); }
 }
 
 #endif

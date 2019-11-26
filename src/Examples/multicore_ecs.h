@@ -628,7 +628,7 @@ namespace mecs
             constexpr pool( page_mgr& PageMgr ) noexcept : m_PageMgr{PageMgr}{}
 
             std::uint32_t                           size() const noexcept{ return m_Counts.load( std::memory_order_relaxed).m_nEntries; }
-            details::pool_iterator<T,MAX_PAGES>     begin() noexcept{ counts Counts = m_Counts.load( std::memory_order_relaxed); return { this, Counts.m_nEntries, Counts.m_nPages, 0 }; }
+            details::pool_iterator<T,MAX_PAGES>     begin() noexcept{ counts Counts = m_Counts.load( std::memory_order_relaxed); return { this, Counts.m_nEntries, 0, 0 }; }
             std::nullptr_t                          end() const noexcept { return nullptr; }
 
             template< typename...T_ARGS >
@@ -1238,6 +1238,7 @@ namespace mecs
             
             inline entity::instance& getEntity( tools::page* Page, group::local_index LocalIndex ) const noexcept
             {
+                xassert(LocalIndex.m_Value < m_EntriesPerPage );
                 auto&       E       = m_lComponentOffsets[0];
                 const auto  Index   = E.m_Offset + static_cast<std::uint32_t>(LocalIndex.m_Value) * E.m_Size;
                 return *reinterpret_cast<entity::instance*>( &Page->m_RawData[Index] );
@@ -1462,15 +1463,15 @@ namespace mecs
 
             void DeletePendingEntries( void ) noexcept
             {
-                auto        topCount  = m_Count;
-                const auto  WaterMark = topCount - m_DeleteList.size();
+                std::uint32_t   nDelete     = m_DeleteList.size();
+                const auto      WaterMark   = m_Count - nDelete;
 
                 // Are we erasing everything?
                 if( WaterMark == 0 )
                 {
                     local_index     I{0};
                     page_index      P{0};
-                    while(topCount--)
+                    while( nDelete-- )
                     {
                         m_GroupDescriptor.DestructEntity( m_lPages[P.m_Value], I.m_Value );
                         I.m_Value++;
@@ -1485,12 +1486,21 @@ namespace mecs
                 }
                 else
                 {
-                    std::uint16_t   iTopPage    = static_cast<std::uint16_t>(topCount/m_GroupDescriptor.m_EntriesPerPage);
-                    std::uint16_t   iTopIndex   = static_cast<std::uint16_t>(topCount%m_GroupDescriptor.m_EntriesPerPage);
-                    auto FindRealTop = [&]
+                    std::uint16_t   iTopPage    = static_cast<std::uint16_t>(m_Count/m_GroupDescriptor.m_EntriesPerPage);
+                    std::uint16_t   iTopIndex   = static_cast<std::uint16_t>(m_Count%m_GroupDescriptor.m_EntriesPerPage);
+                    xassert( (iTopPage * m_GroupDescriptor.m_EntriesPerPage + iTopIndex) == m_Count );
+                    xassert( ((static_cast<std::uint32_t>(iTopPage) * m_GroupDescriptor.m_EntriesPerPage + iTopIndex)) >= WaterMark );
+
+                    auto ProcessFromTheTop = [&]
                     {
                         do  
                         {
+                            xassert_block_basic()
+                            {
+                                auto Index = (static_cast<std::uint32_t>(iTopPage) * m_GroupDescriptor.m_EntriesPerPage + iTopIndex);
+                                xassert(Index >= WaterMark );
+                            }
+
                             iTopIndex--;
                             if( iTopIndex == 0xffff )
                             {
@@ -1498,20 +1508,35 @@ namespace mecs
                                 iTopPage--;
                                 iTopIndex = m_GroupDescriptor.m_EntriesPerPage-1;
                             }
-                        } while( m_GroupDescriptor.getEntity( m_lPages[iTopPage], local_index{iTopIndex} ).isZombie() );
+
+                            if( false == m_GroupDescriptor.getEntity( m_lPages[iTopPage], local_index{iTopIndex} ).isZombie() ) break;
+
+                            m_GroupDescriptor.DestructEntity( m_lPages[iTopPage], iTopIndex );
+                            --nDelete;
+
+                        } while( nDelete );
                     };
 
                     // Find the real top
-                    FindRealTop();
-                    
+                    ProcessFromTheTop();
+
                     for( auto E : m_DeleteList )
                     {
-                        // This entity is completely gone at this point
-                        m_GroupDescriptor.DestructEntity( m_lPages[E.m_PageIndex.m_Value], E.m_LocalIndex.m_Value );
+                        if( E.m_PageIndex.m_Value >= iTopPage )
+                        {
+                            if( E.m_PageIndex.m_Value > iTopPage || E.m_LocalIndex.m_Value > iTopIndex ) 
+                            {
+                                xassert( m_GroupDescriptor.getEntity( m_lPages[E.m_PageIndex.m_Value], E.m_LocalIndex ).isZombie() );
+                                continue;
+                            }
+                        }
 
-                        // Do we need to move any component to the location of the deleted entity?
-                        if( const std::uint32_t Index = E.m_PageIndex.m_Value * m_GroupDescriptor.m_EntriesPerPage + E.m_PageIndex.m_Value;
-                            Index >= WaterMark ) continue;
+                        if( nDelete-- == 0 ) break;
+                        xassert( (static_cast<std::uint32_t>(iTopPage) * m_GroupDescriptor.m_EntriesPerPage + iTopIndex) >= WaterMark );
+
+                        // This entity is completely gone at this point
+                        xassert( m_GroupDescriptor.getEntity( m_lPages[E.m_PageIndex.m_Value], E.m_LocalIndex ).isZombie() );
+                        m_GroupDescriptor.DestructEntity( m_lPages[E.m_PageIndex.m_Value], E.m_LocalIndex.m_Value );
 
                         // Move components to new location
                         for( int i=0; i<m_GroupDescriptor.m_nComponents; i++ )
@@ -1525,14 +1550,30 @@ namespace mecs
                         // Update the moved entity reference
                         {
                             const auto& ComponentDetails = m_GroupDescriptor.m_lComponentOffsets[0];
-                            const auto& MovedEntity      = reinterpret_cast<entity::instance&>( m_lPages[E.m_PageIndex.m_Value]->m_RawData[ ComponentDetails.m_Offset + E.m_LocalIndex.m_Value * ComponentDetails.m_Size ] );
+                            const auto& MovedEntity      = m_GroupDescriptor.getEntity( m_lPages[E.m_PageIndex.m_Value], E.m_LocalIndex );
                             assert( MovedEntity.isZombie() == false );
                             MovedEntity.m_pInstance->m_Value.m_LocalIndex = E.m_LocalIndex;
                             MovedEntity.m_pInstance->m_Value.m_PageIndex  = E.m_PageIndex;
                         }
 
                         // Update the top count
-                        FindRealTop();
+                        ProcessFromTheTop();
+                    }
+
+                    xassert_block_basic()
+                    {
+                        local_index     I{0};
+                        page_index      P{0};
+                        for( auto E = WaterMark; E--; )
+                        {
+                            xassert( false == m_GroupDescriptor.getEntity( m_lPages[P.m_Value], I ).isZombie() );
+                            I.m_Value++;
+                            if( I.m_Value == m_GroupDescriptor.m_EntriesPerPage )
+                            {
+                                P.m_Value++;
+                                I.m_Value = 0;
+                            }
+                        }
                     }
                 }
 
@@ -2217,22 +2258,16 @@ namespace mecs
                 };
             }
 
-            template< typename T_CALLBACK, typename K = world::instance >
-            void moveEntityToGroup( component::group::instance& Group, entity::instance& Entity, T_CALLBACK&& CallBack ) const noexcept
+            template< typename K = world::instance >
+            void moveEntityToGroup( component::group::instance& Group, entity::instance& Entity, xcore::function::view<void(entity::tmp_ref)> CallBack = [](entity::tmp_ref){}) const noexcept
             {
-                reinterpret_cast<K&>(m_World).moveEntityToGroup(Group, Entity, std::forward<T_CALLBACK&&>(CallBack) );
+                reinterpret_cast<K&>(m_World).moveEntityToGroup(Group, Entity, CallBack );
             }
 
             template<typename K = world::instance>
             void createEntity( component::group::instance& Group, xcore::function::view<void(entity::tmp_ref)> UserFunction, entity::guid Guid = entity::guid{xcore::not_null} ) noexcept
             {
                 reinterpret_cast<K&>(m_World).createEntity( Group, UserFunction, Guid );
-            }
-
-            template< typename K = world::instance, typename T_TUPLE_ADD_COMPONENTS_OR_TAGS, typename T_TUPLE_REMOVE_COMPONENTS_OR_TAGS, typename T_CALLBACK >
-            void moveEntityBy( entity::instance& Entity, T_CALLBACK&& CallBack ) noexcept
-            {
-                reinterpret_cast<K&>(m_World).moveEntityBy<T_TUPLE_ADD_COMPONENTS_OR_TAGS,T_TUPLE_REMOVE_COMPONENTS_OR_TAGS>( Entity, std::forward<T_CALLBACK&&>(CallBack) );
             }
 
             world::instance&    m_World;
@@ -2386,14 +2421,14 @@ namespace mecs
                 //
                 // Get started
                 //
-                auto& Scheduler = xcore::get().m_Scheduler;
-                Scheduler.AddJobToQuantumWorld(*this);
-                Scheduler.MainThreadStartsWorking();
+                Resume();
             }
 
             void Resume( void )
             {
-            
+                auto& Scheduler = xcore::get().m_Scheduler;
+                Scheduler.AddJobToQuantumWorld(*this);
+                Scheduler.MainThreadStartsWorking();
             }
 
             void Stop( void )
@@ -2895,10 +2930,15 @@ namespace mecs
                 }
 
                 //
+                // Lets tell the system to delete the old component
+                //
+                OldGroup.DeleteEntity( Entity );
+
+                //
                 // Release the new entity. We must lock it before making any changes
                 //
                 {
-                    xcore::lock::scope Lock( Entity.m_pInstance->m_pLock->m_Lock );
+                    xcore::lock::scope Lock( Entity.getPointer().m_pLock->m_Lock );
                     Entity.m_pInstance->m_Value = NewTmpRef;
                 }
 
@@ -2909,11 +2949,6 @@ namespace mecs
 
                 if( NewGroup.m_Events.m_MovedInEntity.hasSubscribers() )
                     NewGroup.m_Events.m_MovedInEntity.NotifyAll(NewTmpRef);
-
-                //
-                // Lets tell the system to delete the old component
-                //
-                OldGroup.DeleteEntity( Entity );
             }
 
             constexpr static std::size_t                                max_groups_count_v = 1024;
