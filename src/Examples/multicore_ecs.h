@@ -1329,13 +1329,15 @@ namespace mecs
 
             using created_entity    = xcore::types::make_unique< xcore::event::type<entity::tmp_ref>, struct new_entity_tag >;
             using deleted_entity    = xcore::types::make_unique< xcore::event::type<entity::tmp_ref>, struct delete_entity_tag >;
-            using updated_entity    = xcore::types::make_unique< xcore::event::type<entity::instance&>, struct updated_entity_tag >;
-            using updated_component = xcore::types::make_unique< xcore::event::type<entity::instance&>, struct updated_component_tag >;
-            using added_component   = xcore::types::make_unique< xcore::event::type<entity::instance&>, struct added_component_tag >;
-            using removed_component = xcore::types::make_unique< xcore::event::type<entity::instance&>, struct removed_component_tag >;
+            using move_out_entity   = xcore::types::make_unique< xcore::event::type<entity::tmp_ref>, struct move_out_entity_tag >;
+            using move_in_entity    = xcore::types::make_unique< xcore::event::type<entity::tmp_ref>, struct move_in_entity_tag >;
+           // using updated_entity    = xcore::types::make_unique< xcore::event::type<entity::instance&>, struct updated_entity_tag >;
+           // using updated_component = xcore::types::make_unique< xcore::event::type<entity::instance&>, struct updated_component_tag >;
 
             created_entity   m_CreatedEntity;
             deleted_entity   m_DeletedEntity;
+            move_out_entity  m_MovedOutEntity;
+            move_in_entity   m_MovedInEntity;
         };
 
         //---------------------------------------------------------------------------------
@@ -2827,7 +2829,7 @@ namespace mecs
                 return getOrCreateGroupBy(Group, (T_TUPLE_ADD_COMPONENTS_OR_TAGS*)nullptr, (T_TUPLE_REMOVE_COMPONENTS_OR_TAGS*)nullptr );
             }
 
-            void moveEntityToGroup( component::group::instance& NewGroup, entity::instance& Entity, xcore::function::view<void(entity::tmp_ref)> Callback )
+            void moveEntityToGroup( component::group::instance& NewGroup, entity::instance& Entity, xcore::function::view<void(entity::tmp_ref)> Callback = [](entity::tmp_ref){} )
             {
                 // This entity has been mark for deletion.... there is nothing we can accomplish here 
                 xassert( Entity.isZombie() == false );
@@ -2837,6 +2839,10 @@ namespace mecs
 
                 // If we are going to move it to the same group there is nothing to do
                 if( &NewGroup == &OldGroup ) return;
+
+                // Let anyone that is interested know
+                if( OldGroup.m_Events.m_MovedOutEntity.hasSubscribers() )
+                    OldGroup.m_Events.m_MovedOutEntity.NotifyAll(OldTmpRef);
 
                 auto& NewGDescriptor = NewGroup.m_GroupDescriptor;
                 auto& OldGDescriptor = OldGroup.m_GroupDescriptor;
@@ -2900,6 +2906,9 @@ namespace mecs
                 // Let the user know that there is has been officially moved
                 //
                 Callback(NewTmpRef);
+
+                if( NewGroup.m_Events.m_MovedInEntity.hasSubscribers() )
+                    NewGroup.m_Events.m_MovedInEntity.NotifyAll(NewTmpRef);
 
                 //
                 // Lets tell the system to delete the old component

@@ -228,6 +228,7 @@ namespace mecs_examples
 
             void Update( mecs::entity::instance& Entity, const double_buff& Buff, simple& Simple ) const noexcept
             {
+                // This is the equivalent of removing a component (double_buff) from an entity
                 getGroupBy< std::tuple<>, std::tuple<double_buff> >( Entity, [&](mecs::component::group::instance& Group )
                 {
                     moveEntityToGroup( Group, Entity, [&](mecs::entity::tmp_ref Ref)
