@@ -229,10 +229,11 @@ namespace mecs_examples
             using parent_t::parent_t;
 
             xcore::random::small_generator R;
+
             void Update( mecs::entity::instance& Entity, const double_buff& Buff, simple& Simple ) noexcept
             {
                 // This is the equivalent of removing a component (double_buff) from the entity
-                if( (R.RandU32() % 1)  == 0 )
+                if( (R.RandU32() % 10)  == 0 )
                     getGroupBy< std::tuple<>, std::tuple<double_buff> >( Entity, [&](mecs::component::group::instance& Group )
                     {
                         moveEntityToGroup( Group, Entity );
@@ -256,7 +257,7 @@ namespace mecs_examples
             //
             // Allocate a bunch of pages
             //
-            //World.m_PageMgr.PreallocatePages( 20000 );
+            World.m_PageMgr.PreallocatePages( 20000 );
 
             //
             // Create a bunch of entities

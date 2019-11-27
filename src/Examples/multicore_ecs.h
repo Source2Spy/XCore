@@ -569,6 +569,12 @@ namespace mecs
                 next* m_pNext;
             };
 
+            page_mgr( void ) noexcept
+            {
+                XCORE_PERF_PLOT_CONFIG("Total Pages", tracy::PlotFormatType::Number )
+                XCORE_PERF_PLOT_CONFIG("Free Pages",  tracy::PlotFormatType::Number )
+            }
+
             page* AllocPage( void ) noexcept
             {
                 next* pLocal = m_pFreeHead.load(std::memory_order_relaxed);
@@ -577,13 +583,13 @@ namespace mecs
                     if(pLocal == nullptr)
                     {
                         m_TotalPages++;
-                        XCORE_PERF_PLOT("Total Pages", static_cast<std::int64_t>(m_TotalPages.load(std::memory_order_relaxed)) )
+                        XCORE_PERF_PLOT("Total Pages", static_cast<int64_t>(m_TotalPages.load(std::memory_order_relaxed)) )
                         return new page;
                     }
                 } while( m_pFreeHead.compare_exchange_weak( pLocal, pLocal->m_pNext) == false );
 
                 m_FreePages--;
-                XCORE_PERF_PLOT("Free Pages",  static_cast<std::int64_t>(m_FreePages.load(std::memory_order_relaxed)) )
+                XCORE_PERF_PLOT("Free Pages",  static_cast<int64_t>(m_FreePages.load(std::memory_order_relaxed)) )
                 return reinterpret_cast<page*>(pLocal);
             }
 
@@ -599,8 +605,8 @@ namespace mecs
             void PreallocatePages( int nPages ) noexcept
             {
                 for( int i=0; i<nPages; ++i ) FreePage( new page );
-                XCORE_PERF_PLOT("Total Pages", static_cast<std::int64_t>(m_TotalPages.load(std::memory_order_relaxed)) )
-                XCORE_PERF_PLOT("Free Pages",  static_cast<std::int64_t>(m_FreePages.load(std::memory_order_relaxed)) )
+                XCORE_PERF_PLOT("Total Pages", static_cast<int64_t>(m_TotalPages.load(std::memory_order_relaxed)) )
+                XCORE_PERF_PLOT("Free Pages",  static_cast<int64_t>(m_FreePages.load(std::memory_order_relaxed)) )
             }
 
             std::atomic<next*>          m_pFreeHead     { nullptr };
@@ -1456,7 +1462,7 @@ namespace mecs
                     else
                     {
                         // We will have to wait...
-                        XCORE_PERF_ZONE_SCOPED_N("CreateEntity::Wasting Time")
+                        XCORE_PERF_ZONE_SCOPED_NC( "CreateEntity::Wasting Time", tracy::Color::ColorType::Red )
                         XCORE_CMD_PROFILER( while (PageIndex >= m_nPages.load(std::memory_order_relaxed)); )
                     }
 
@@ -1631,6 +1637,21 @@ namespace mecs
                 // Delete all pending entities
                 //
                 DeletePendingEntries();
+
+                //
+                // Free any pages that we are not using any more
+                //
+                {
+                    const std::uint16_t nPages      = m_nPages.load( std::memory_order_relaxed ).m_Value;
+                    const std::uint16_t NeededPages = m_Count / m_GroupDescriptor.m_EntriesPerPage + 1u;
+                
+                    for( auto i=NeededPages; i<nPages; i++ )
+                    {
+                        m_PageMgr.FreePage( m_lPages[i] );
+                    }
+
+                    m_nPages.store( group::page_index{NeededPages}, std::memory_order_relaxed );
+                }
             }
 
             constexpr static std::size_t max_pages_v = 1024*32;
@@ -2410,8 +2431,8 @@ namespace mecs
                 XCORE_PERF_FRAME_MARK_END("mecs::Frame")
 
 
-                XCORE_PERF_PLOT("Total Pages", static_cast<std::int64_t>(m_PageMgr.m_TotalPages.load(std::memory_order_relaxed)) )
-                XCORE_PERF_PLOT("Free Pages",  static_cast<std::int64_t>(m_PageMgr.m_FreePages.load(std::memory_order_relaxed)) )
+                XCORE_PERF_PLOT("Total Pages", static_cast<int64_t>(m_PageMgr.m_TotalPages.load(std::memory_order_relaxed)) )
+                XCORE_PERF_PLOT("Free Pages",  static_cast<int64_t>(m_PageMgr.m_FreePages.load(std::memory_order_relaxed)) )
             }
 
             const sync_point::events::done::delegate m_SyncPointDoneDelegate{ this, &instance::msgSyncPointDone, m_EndSyncPoint.m_Events.m_Done };
@@ -2485,6 +2506,8 @@ namespace mecs
             component::group::instance& getOrCreateGroup( const std::span<const type_guid>    lComponentTypesGuids
                                                         , const std::span<const type_guid>    lTagTypesGuids ) noexcept
             {
+                XCORE_PERF_ZONE_SCOPED()
+
                 bool                bHasEntity          = false;
                 const auto          ComponentGroupGuid  = component::group::guid{ [&] 
                 {
@@ -2498,7 +2521,7 @@ namespace mecs
                  }() };
                 const auto          TagGuid             = type_guid{ [&] {std::uint64_t Key = 0; for (auto E : lTagTypesGuids) Key += E.m_Value; return Key + entity::instance::type_guid_v.m_Value; }() };
                 const auto          TagGroupGuid        = component::group::guid{ ComponentGroupGuid.m_Value + TagGuid.m_Value };
-                auto&               TagEntry            = *m_mapTagLookup.getOrCreate( TagGuid,[&]()
+                auto&               TagEntry            = *m_mapTagLookup.getOrCreate( TagGuid,[&]() constexpr noexcept
                 {
                     auto& Entry = m_TagDBase.m_lTagEntries[ m_TagDBase.m_nTagEntries++ ];
                     Entry.m_Guid      = TagGuid;
@@ -2641,6 +2664,7 @@ namespace mecs
             template<typename T_SYSTEM >
             void DoQuery( query::instance& Instance ) const noexcept
             {
+                XCORE_PERF_ZONE_SCOPED()
                 using system    = T_SYSTEM;
                 using function  = query::system_function<T_SYSTEM>;
 
@@ -2745,6 +2769,7 @@ namespace mecs
 
             void deleteEntity( entity::instance& Entity ) noexcept
             {
+                XCORE_PERF_ZONE_SCOPED()
                 if( Entity.isZombie() ) return;
 
                 auto& Node   = *Entity.m_pInstance;
@@ -2786,11 +2811,12 @@ namespace mecs
                 ,   std::tuple<T_REMOVE_COMPONENTS_OR_TAGS...>*
                 ) noexcept
             {
+                XCORE_PERF_ZONE_SCOPED()
                 constexpr static auto ModifyComponentList = []( 
                         std::span<type_guid>        OutputList
                     ,   std::span<const type_guid>  CurrentList
                     ,   std::span<const type_guid>  AddList
-                    ,   std::span<const type_guid>  RemoveList ) noexcept -> int
+                    ,   std::span<const type_guid>  RemoveList ) constexpr noexcept -> int
                 {
                     int nComponents = 0;
                     for( int i=0, a=0 ;;)
@@ -2895,6 +2921,7 @@ namespace mecs
 
             void moveEntityToGroup( component::group::instance& NewGroup, entity::instance& Entity, xcore::function::view<void(entity::tmp_ref)> Callback = [](entity::tmp_ref){} )
             {
+                XCORE_PERF_ZONE_SCOPED()
                 // This entity has been mark for deletion.... there is nothing we can accomplish here 
                 xassert( Entity.isZombie() == false );
 

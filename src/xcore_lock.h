@@ -13,8 +13,10 @@ namespace xcore::lock
 
         inline void lock( void ) noexcept
         {
-            while(m_qFlag.test_and_set(std::memory_order_acquire))
+            if(m_qFlag.test_and_set(std::memory_order_acquire))
             {
+                XCORE_PERF_ZONE_SCOPED_NC( "Lock is Spinning and waiting", tracy::Color::ColorType::Red );
+                while(m_qFlag.test_and_set(std::memory_order_acquire));
                 // spin!!
             }
             XCORE_CMD_ASSERT( xassert(m_bLocked==false); m_bLocked=true; )
@@ -64,21 +66,26 @@ namespace xcore::lock
                 xassert( p.m_nWaitingWritters < ((1u<<5)-2u) ); 
                 if( p.m_nLocks )
                 {
-                    if ( m_Lock.compare_exchange_weak( p, thelock{ p.m_nLocks, p.m_nWaitingWritters+1u, p.m_isLockWriter } ) ) do
+                    if ( m_Lock.compare_exchange_weak( p, thelock{ p.m_nLocks, p.m_nWaitingWritters+1u, p.m_isLockWriter } ) ) 
                     {
-                        if( p.m_nLocks ) 
+                        XCORE_PERF_ZONE_SCOPED_NC( "Waiting to access for writing", tracy::Color::ColorType::Red );
+                        do
                         {
-                            // Spin...
-                            p = m_Lock.load( std::memory_order_relaxed );
-                        }
-                        else if( m_Lock.compare_exchange_weak( p, thelock{ p.m_nLocks+1u, p.m_nWaitingWritters, 1u } ) ) return;
+                            if( p.m_nLocks ) 
+                            {
+                                // Spin...
+                                p = m_Lock.load( std::memory_order_relaxed );
+                            }
+                            else if( m_Lock.compare_exchange_weak( p, thelock{ p.m_nLocks+1u, p.m_nWaitingWritters, 1u } ) ) goto LOCKED;
 
-                    } while(true);
+                        } while(true);
+                    }
                 }
-                else if( m_Lock.compare_exchange_weak( p, thelock{ 1u, p.m_nWaitingWritters+1u, 1u } ) ) return;
+                else if( m_Lock.compare_exchange_weak( p, thelock{ 1u, p.m_nWaitingWritters+1u, 1u } ) ) goto LOCKED;
 
             } while( true );
-            xassert(false);
+        
+        LOCKED:;
         }
 
         // Writer unlock
@@ -101,8 +108,12 @@ namespace xcore::lock
             {
                 if( p.m_nWaitingWritters ) 
                 {
-                    // Spin...
-                    p = m_Lock.load( std::memory_order_relaxed );
+                    XCORE_PERF_ZONE_SCOPED_NC( "Waiting to access for reading", tracy::Color::ColorType::Red )
+                    do 
+                    {
+                        // Spin...
+                        p = m_Lock.load( std::memory_order_relaxed );
+                    } while (p.m_nWaitingWritters);
                 }
                 else if( m_Lock.compare_exchange_weak( p, thelock{ p.m_nLocks+1u, 0u, 0u } ) ) break;
 

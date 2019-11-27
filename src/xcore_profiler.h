@@ -34,6 +34,7 @@
 #define XCORE_PERF_LOCK_MARK(varname)                                   LockMark(varname) (void)varname;
                
 #define XCORE_PERF_PLOT(name, val)                                      TracyPlot(name, val)
+#define XCORE_PERF_PLOT_CONFIG(name,type)                               TracyPlotConfig(name,type)
                
 #define XCORE_PERF_MESSAGE(txt, size)                                   TracyMessage(txt, size)
 #define XCORE_PERF_MESSAGE_L(txt)                                       TracyMessageL(txt)
@@ -56,6 +57,14 @@
                
 #define XCORE_PERF_ALLOC_S(ptr, size, depth)                            TracyAllocS(ptr, size, depth)
 #define XCORE_PERF_FREE_S(ptr, depth)                                   TracyFreeS(ptr, depth)
+
+#ifdef _XCORE_PROFILE
+    #define XCORE_PERF_CUSTOM_LOCK_DEF(type, varname)         tracy::LockableCtx varname{ [] () -> const tracy::SourceLocationData* { static const tracy::SourceLocationData srcloc { nullptr, #type " " #varname, __FILE__, __LINE__, 0 }; return &srcloc; }() };
+    #define XCORE_PERF_CUSTOM_SHARE_LOCK_DEF(type, varname)   mutable tracy::SharedLockableCtx varname{ [] () -> const tracy::SourceLocationData* { static const tracy::SourceLocationData srcloc { nullptr, #type " " #varname, __FILE__, __LINE__, 0 }; return &srcloc; }() };
+#else
+    #define XCORE_PERF_CUSTOM_LOCK_DEF(type, varname)
+    #define XCORE_PERF_CUSTOM_SHARE_LOCK_DEF(type, varname)
+#endif
 
 namespace xcore::profile { using namespace ::tracy; };
 
