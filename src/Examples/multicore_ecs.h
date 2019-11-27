@@ -569,16 +569,21 @@ namespace mecs
                 next* m_pNext;
             };
 
-            std::atomic<next*> m_pFreeHead{ nullptr };
-
             page* AllocPage( void ) noexcept
             {
                 next* pLocal = m_pFreeHead.load(std::memory_order_relaxed);
                 do 
                 {
-                    if(pLocal == nullptr) return new page;
+                    if(pLocal == nullptr)
+                    {
+                        m_TotalPages++;
+                        XCORE_PERF_PLOT("Total Pages", static_cast<std::int64_t>(m_TotalPages.load(std::memory_order_relaxed)) )
+                        return new page;
+                    }
                 } while( m_pFreeHead.compare_exchange_weak( pLocal, pLocal->m_pNext) == false );
 
+                m_FreePages--;
+                XCORE_PERF_PLOT("Free Pages",  static_cast<std::int64_t>(m_FreePages.load(std::memory_order_relaxed)) )
                 return reinterpret_cast<page*>(pLocal);
             }
 
@@ -587,7 +592,20 @@ namespace mecs
                 next* p      = reinterpret_cast<next*>(pPage);
                 p->m_pNext   = m_pFreeHead.load(std::memory_order_relaxed);
                 while (m_pFreeHead.compare_exchange_weak(p->m_pNext, p) == false);
+                m_FreePages++;
+                XCORE_PERF_PLOT("Free Pages",  static_cast<std::int64_t>(m_FreePages.load(std::memory_order_relaxed)) )
             }
+
+            void PreallocatePages( int nPages ) noexcept
+            {
+                for( int i=0; i<nPages; ++i ) FreePage( new page );
+                XCORE_PERF_PLOT("Total Pages", static_cast<std::int64_t>(m_TotalPages.load(std::memory_order_relaxed)) )
+                XCORE_PERF_PLOT("Free Pages",  static_cast<std::int64_t>(m_FreePages.load(std::memory_order_relaxed)) )
+            }
+
+            std::atomic<next*>          m_pFreeHead     { nullptr };
+            std::atomic<std::uint32_t>  m_TotalPages    { 0 };
+            std::atomic<std::uint32_t>  m_FreePages     { 0 };
         };
 
         //---------------------------------------------------------------------------------
@@ -2390,6 +2408,10 @@ namespace mecs
                 m_EntityFreeList.store( nullptr, std::memory_order_relaxed );
 
                 XCORE_PERF_FRAME_MARK_END("mecs::Frame")
+
+
+                XCORE_PERF_PLOT("Total Pages", static_cast<std::int64_t>(m_PageMgr.m_TotalPages.load(std::memory_order_relaxed)) )
+                XCORE_PERF_PLOT("Free Pages",  static_cast<std::int64_t>(m_PageMgr.m_FreePages.load(std::memory_order_relaxed)) )
             }
 
             const sync_point::events::done::delegate m_SyncPointDoneDelegate{ this, &instance::msgSyncPointDone, m_EndSyncPoint.m_Events.m_Done };

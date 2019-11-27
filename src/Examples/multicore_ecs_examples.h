@@ -232,7 +232,7 @@ namespace mecs_examples
             void Update( mecs::entity::instance& Entity, const double_buff& Buff, simple& Simple ) noexcept
             {
                 // This is the equivalent of removing a component (double_buff) from the entity
-                if( (R.RandU32() % 10)  == 0 )
+                if( (R.RandU32() % 1)  == 0 )
                     getGroupBy< std::tuple<>, std::tuple<double_buff> >( Entity, [&](mecs::component::group::instance& Group )
                     {
                         moveEntityToGroup( Group, Entity );
@@ -252,6 +252,11 @@ namespace mecs_examples
             >();
 
             World.AddGraphConnection<my_system>( World.m_StartSyncPoint, World.m_EndSyncPoint );
+
+            //
+            // Allocate a bunch of pages
+            //
+            //World.m_PageMgr.PreallocatePages( 20000 );
 
             //
             // Create a bunch of entities
