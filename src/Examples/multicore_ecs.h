@@ -2433,6 +2433,7 @@ namespace mecs
 
             void Resume( void )
             {
+                XCORE_PERF_FRAME_MARK()
                 auto& Scheduler = xcore::get().m_Scheduler;
                 Scheduler.AddJobToQuantumWorld(*this);
                 Scheduler.MainThreadStartsWorking();

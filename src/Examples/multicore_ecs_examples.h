@@ -290,7 +290,10 @@ namespace mecs_examples
             }
 
             World.Start();
-            for( int i=0; i<100; i++) World.Resume();
+            for( int i=0; i<100; i++) 
+            {
+                World.Resume();
+            }
         }
     }
 
