@@ -304,4 +304,137 @@ namespace mecs_examples
         }
     }
 
+    //------------------------------------------------------------------------------------
+    // Test4
+    // Tutorial from the internet: https://www.youtube.com/watch?v=ILfUuBLfzGI&t=789s
+    //------------------------------------------------------------------------------------
+    namespace test4
+    {
+        namespace component
+        {
+            struct level
+            {
+                constexpr static mecs::type_guid type_guid_v{"level component"};
+                float               m_Value;
+            };
+
+            struct translation_2d
+            {
+                constexpr static mecs::type_guid type_guid_v{"translation component"};
+                xcore::vector2     m_Value;
+            };
+
+            struct render_mesh : mecs::component::shared
+            {
+                constexpr static mecs::type_guid type_guid_v{"render_mesh_com"};
+        
+                // mesh                     m_Mesh;
+                // material_instance        m_MaterialInstance;
+                // int                      m_SubMesh;
+                // int                      m_Layer;
+                // shadow_cascading_mode    m_CastShadows;
+                // bool                     m_bReceiveShadows;
+            };
+
+            struct local_to_world
+            {
+                constexpr static mecs::type_guid type_guid_v{"local_to_world_com"};
+                xcore::matrix4  m_L2W;
+            };
+
+            struct move_speed
+            {
+                constexpr static mecs::type_guid type_guid_v{"move_speed"};
+                float m_Value;
+            };
+
+        }
+
+        namespace system
+        {
+            struct level_up : mecs::system::instance
+            {
+                constexpr static auto   system_name_v   = xconst_universal_str("level up system");
+                constexpr static mecs::query::define<> query_v{};
+
+                using parent_t = mecs::system::instance;
+                using parent_t::parent_t;
+
+                void Update( component::level& Level ) noexcept
+                {
+                    Level.m_Value += 1.0f * getTime().m_DeltaTime;
+                }
+            };
+
+            struct mover : mecs::system::instance
+            {
+                constexpr static auto   system_name_v   = xconst_universal_str("mover_sys");
+                constexpr static mecs::query::define<> query_v{};
+
+                using parent_t = mecs::system::instance;
+                using parent_t::parent_t;
+
+                void Update( component::translation_2d& Translation, component::move_speed& MoveSpeed ) noexcept
+                {
+                    Translation.m_Value.m_Y += MoveSpeed.m_Value * getTime().m_DeltaTime;
+                    if(Translation.m_Value.m_Y >  5.0f ) MoveSpeed.m_Value = -xcore::Abs(MoveSpeed.m_Value);
+                    if(Translation.m_Value.m_Y < -5.0f ) MoveSpeed.m_Value = +xcore::Abs(MoveSpeed.m_Value);
+                }
+            };
+        }
+        
+        void Test()
+        {
+            XCORE_PERF_ZONE_SCOPED()
+            mecs::world::instance World;
+            World.registerComponents
+            <
+                    component::level
+                ,   component::translation_2d
+                ,   component::render_mesh
+                ,   component::local_to_world
+                ,   component::render_mesh
+                ,   component::move_speed
+            >();
+
+            World.AddGraphConnection<system::level_up>( World.m_StartSyncPoint, World.m_EndSyncPoint );
+            World.AddGraphConnection<system::mover>( World.m_StartSyncPoint, World.m_EndSyncPoint );
+
+            //
+            // Create a bunch of entities
+            //
+            {
+                xcore::random::small_generator Rnd;
+                auto& Group = World.getOrCreateGroup
+                <
+                        component::level
+                    ,   component::translation_2d
+                    ,   component::render_mesh
+                    ,   component::local_to_world
+                    ,   component::render_mesh
+                    ,   component::move_speed
+                >();
+
+                for( int i=0; i<100000; ++i )
+                {
+                    World.createEntity( Group, [&](mecs::entity::tmp_ref tmpRef)
+                    {
+                        tmpRef.getComponent<component::level>().m_Value             = Rnd.RandF32(10,20);
+                        tmpRef.getComponent<component::move_speed>().m_Value        = Rnd.RandF32(1.0f,2.0f);
+                        tmpRef.getComponent<component::translation_2d>().m_Value    = xcore::vector2(Rnd.RandF32(-8.0f,8.0f), Rnd.RandF32(-5.0f,5.0f));
+                    });
+                }
+            }
+
+            //
+            // Start the game
+            //
+            World.Start();
+            for( int i=0; i<100; i++) 
+            {
+                World.Resume();
+            }
+        }
+    }
+
 }

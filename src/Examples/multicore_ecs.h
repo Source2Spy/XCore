@@ -878,6 +878,8 @@ namespace mecs
         constexpr static std::size_t max_systems_v              = 256;
         constexpr static std::size_t max_components_in_entity_v = 64;
         constexpr static std::size_t max_tags_in_entity_v       = 64;
+        constexpr static float       fixed_deltatime_size_v     = 16/1000.0f;
+
     }
 
     //---------------------------------------------------------------------------------
@@ -905,6 +907,7 @@ namespace mecs
     {
         struct double_buffer{};
         struct tag {};
+        struct shared{};
 
         struct descriptor
         {
@@ -2291,6 +2294,12 @@ namespace mecs
                 reinterpret_cast<K&>(m_World).deleteEntity( Entity );
             }
 
+            template<typename K = world::instance>
+            xforceinline auto& getTime( void ) const noexcept
+            {
+                return reinterpret_cast<const K&>(m_World).m_Time;
+            }
+
             template< typename T, typename K = world::instance >
             xforceinline bool getGroup( component::group::guid gGroup, T&& CallBack ) noexcept
             {
@@ -2417,6 +2426,68 @@ namespace mecs
         }
 
         //---------------------------------------------------------------------------------
+        // WORLD::time
+        //---------------------------------------------------------------------------------
+        struct time
+        {
+            constexpr static float fix_step = 16/1000.0f;
+
+            float m_DeltaTime           = 0;
+            float m_FixDeltaTime        = 0;
+            float m_FixTotalDeltaTime   = 0;
+            float m_FixAccumulation     = 0;
+            int   m_FixSteps            = 0;
+
+            std::chrono::time_point<std::chrono::high_resolution_clock> m_Start;
+            void clear(void) noexcept 
+            {
+                m_DeltaTime         = 0;
+                m_FixSteps          = 1;
+                m_FixAccumulation   = 0;
+            }
+
+            void Start(void) noexcept
+            {
+                m_Start               = std::chrono::high_resolution_clock::now();
+                m_DeltaTime           = 0;
+                m_FixDeltaTime        = 0;
+                m_FixTotalDeltaTime   = 0;
+                m_FixAccumulation     = 0;
+                m_FixSteps            = 0;
+            }
+
+            void UpdateDeltaTimeRoundTrip(void) noexcept
+            {
+                const auto                      End  = std::chrono::high_resolution_clock::now();
+                std::chrono::duration<double>   Diff = End - m_Start;
+
+                m_Start             = End;
+                m_DeltaTime         = std::chrono::duration_cast<std::chrono::duration<float>>(Diff).count();
+                m_FixDeltaTime      = settings::fixed_deltatime_size_v;
+                m_FixAccumulation  += m_DeltaTime;
+                m_FixSteps          = 0;
+
+                while( m_FixAccumulation >= settings::fixed_deltatime_size_v )
+                {
+                    m_FixSteps++;
+                    m_FixAccumulation -= settings::fixed_deltatime_size_v;
+                }
+
+                constexpr static auto max_steps = 5;
+                if( m_FixSteps >= max_steps ) 
+                {
+                    m_FixSteps          = max_steps;
+                    m_FixTotalDeltaTime = m_DeltaTime = settings::fixed_deltatime_size_v * m_FixSteps;
+                    m_FixAccumulation   = 0;
+                }
+                else
+                {
+                    m_FixTotalDeltaTime = m_FixSteps * settings::fixed_deltatime_size_v;
+                }
+            }
+        };
+
+        //---------------------------------------------------------------------------------
         // WORLD::instance
         //---------------------------------------------------------------------------------
         struct instance : xcore::scheduler::job<1>
@@ -2487,13 +2558,29 @@ namespace mecs
                     }
 
                 //
+                // Begin Time
+                //
+                m_Time.Start();
+
+                //
                 // Get started
                 //
-                Resume();
+                XCORE_PERF_FRAME_MARK()
+                auto& Scheduler = xcore::get().m_Scheduler;
+                Scheduler.AddJobToQuantumWorld(*this);
+                Scheduler.MainThreadStartsWorking();
             }
 
             void Resume( void )
             {
+                //
+                // Update Time
+                //
+                m_Time.UpdateDeltaTimeRoundTrip();
+
+                //
+                // Get started
+                //
                 XCORE_PERF_FRAME_MARK()
                 auto& Scheduler = xcore::get().m_Scheduler;
                 Scheduler.AddJobToQuantumWorld(*this);
@@ -3047,6 +3134,7 @@ namespace mecs
             query::filter_bits                          m_TagRegistrationFreeBits       {xcore::not_null};
             std::atomic<entity::map_t::entry*>          m_EntityFreeList                {nullptr};
             std::uint64_t                               m_FrameNumber                   {0};
+            time                                        m_Time;
         };
     }
 
