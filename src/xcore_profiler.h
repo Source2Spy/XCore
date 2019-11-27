@@ -19,9 +19,9 @@
 #define XCORE_PERF_ZONE_NAME(txt, size)                                 ZoneName(txt, size)
                
 #define XCORE_PERF_FRAME_MARK()                                         FrameMark
-#define XCORE_PERF_FRAME_MARK_NAME(name)                                FrameMarkNamed(X)
-#define XCORE_PERF_FRAME_MARK_START(name)                               FrameMarkStart(X)
-#define XCORE_PERF_FRAME_MARK_END(name)                                 FrameMarkEnd(X)
+#define XCORE_PERF_FRAME_MARK_NAME(name)                                FrameMarkNamed(name)
+#define XCORE_PERF_FRAME_MARK_START(name)                               FrameMarkStart(name)
+#define XCORE_PERF_FRAME_MARK_END(name)                                 FrameMarkEnd(name)
                
 #define XCORE_PERF_FRAME_IMAGE(image, width, height, offset, flip)      FrameImage(image, width, height, offset, flip)
                

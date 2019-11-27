@@ -46,6 +46,7 @@ namespace mecs_examples
 
         void Test()
         {
+            XCORE_PERF_ZONE_SCOPED()
             mecs::world::instance World;
             World.registerComponents
             <
@@ -84,8 +85,7 @@ namespace mecs_examples
 
 
             World.Start();
-
-            int b = 0;
+            for( int i=0; i<100; i++) World.Resume();
         }
     }
 
@@ -161,6 +161,7 @@ namespace mecs_examples
 
         void Test()
         {
+            XCORE_PERF_ZONE_SCOPED()
             mecs::world::instance World;
             World.registerComponents
             <
@@ -180,7 +181,7 @@ namespace mecs_examples
             {
                 auto& Spawner = Ref.getComponent<spawner>();
 
-                Spawner.m_Count  = 100;
+                Spawner.m_Count  = 10;
                 Spawner.m_gGroup = World.getOrCreateGroup<life>().m_Guid;
             });
 
@@ -188,6 +189,7 @@ namespace mecs_examples
             // Get started
             //
             World.Start();
+            for( int i=0; i<100; i++) World.Resume();
         }
     }
 
@@ -240,6 +242,7 @@ namespace mecs_examples
 
         void Test()
         {
+            XCORE_PERF_ZONE_SCOPED()
             mecs::world::instance World;
             World.registerComponents
             <
@@ -254,18 +257,25 @@ namespace mecs_examples
             // Create a bunch of entities
             //
             {
+                xcore::scheduler::channel MyChannel(xconst_universal_str("Create Entities"));
                 auto& Group = World.getOrCreateGroup<simple,double_buff,my_tag>();
-                while (Group.newSize() < 100000 )
-                {
-                    World.createEntity( Group, [](mecs::entity::tmp_ref tmpEntityRef)
+                for(int i=0; i<xcore::get().m_Scheduler.getWorkerCount(); i++)
+                    MyChannel.SubmitJob([&]
                     {
-                        auto&   Entity = tmpEntityRef.getComponent<mecs::entity::instance>();
-                        auto&   Simple = tmpEntityRef.getComponent<simple>();
-                        auto&   Double = tmpEntityRef.getComponent<double_buff>();
-                        assert(Simple.m_Value == 22);
-                        assert(Double.m_Value == 123);
+                        while (Group.newSize() < 10000000ull XCORE_CMD_ASSERT( - 9500000ull ) )
+                        {
+                            World.createEntity( Group, [](mecs::entity::tmp_ref tmpEntityRef)
+                            {
+                                auto&   Entity = tmpEntityRef.getComponent<mecs::entity::instance>();
+                                auto&   Simple = tmpEntityRef.getComponent<simple>();
+                                auto&   Double = tmpEntityRef.getComponent<double_buff>();
+                                assert(Simple.m_Value == 22);
+                                assert(Double.m_Value == 123);
+                            });
+                        }
                     });
-                }
+
+                MyChannel.join();
 
                 //
                 // Check if we can add some other kind of entity
@@ -280,7 +290,7 @@ namespace mecs_examples
             }
 
             World.Start();
-            for( int i=0; i<10000; i++) World.Resume();
+            for( int i=0; i<100; i++) World.Resume();
         }
     }
 

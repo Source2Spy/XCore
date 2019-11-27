@@ -1586,6 +1586,8 @@ namespace mecs
 
             void MemoryBarrierSync( sync_point::instance& SyncPoint ) noexcept
             {
+                XCORE_PERF_ZONE_SCOPED()
+
                 //
                 // Avoid updating multiple times for a given sync_point done
                 //
@@ -2374,6 +2376,8 @@ namespace mecs
 
             void EndFrameUpdate( void )
             {
+                XCORE_PERF_ZONE_SCOPED()
+
                 m_bFrameStarted = false;
 
                 //
@@ -2384,6 +2388,8 @@ namespace mecs
                     m_mapEntity.free( pNext->m_Key, [](auto&){} );
                 }
                 m_EntityFreeList.store( nullptr, std::memory_order_relaxed );
+
+                XCORE_PERF_FRAME_MARK_END("mecs::Frame")
             }
 
             const sync_point::events::done::delegate m_SyncPointDoneDelegate{ this, &instance::msgSyncPointDone, m_EndSyncPoint.m_Events.m_Done };
@@ -2402,8 +2408,9 @@ namespace mecs
 
             virtual void qt_onRun( void ) noexcept override
             {
+                XCORE_PERF_FRAME_MARK_START("mecs::Frame")
                 m_bFrameStarted = true;
-                printf("Hello world\n");
+                m_FrameNumber++;
             }
 
             void Start( void )
@@ -2461,13 +2468,12 @@ namespace mecs
                     std::uint64_t Key = 0; 
                     for (auto E : lComponentTypesGuids) 
                     {
-                        if( E == entity::instance::type_guid_v ) bHasEntity = true;
+                        xassert( E != entity::instance::type_guid_v );
                         Key += E.m_Value;
                     }
-                    if(bHasEntity == false) Key += entity::instance::type_guid_v.m_Value; 
-                    return Key; 
+                    return Key + entity::instance::type_guid_v.m_Value; 
                  }() };
-                const auto          TagGuid             = type_guid{ [&] {std::uint64_t Key = 0; for (auto E : lTagTypesGuids)       Key += E.m_Value; return Key; }() };
+                const auto          TagGuid             = type_guid{ [&] {std::uint64_t Key = 0; for (auto E : lTagTypesGuids) Key += E.m_Value; return Key + entity::instance::type_guid_v.m_Value; }() };
                 const auto          TagGroupGuid        = component::group::guid{ ComponentGroupGuid.m_Value + TagGuid.m_Value };
                 auto&               TagEntry            = *m_mapTagLookup.getOrCreate( TagGuid,[&]()
                 {
@@ -2847,7 +2853,7 @@ namespace mecs
                                                             ,   remove_v.tag_guid_list_v );
 
                 // Add components
-                auto& NewGroup = getOrCreateGroup( std::span<const type_guid>{Components.data(), static_cast<std::size_t>(nComponents)}
+                auto& NewGroup = getOrCreateGroup( std::span<const type_guid>{Components.data()+1, static_cast<std::size_t>(nComponents-1)}
                                                  , std::span<const type_guid>{Tags.data(), static_cast<std::size_t>(nTags) } );
 
                 if( &NewGroup == &Group )
@@ -2961,7 +2967,6 @@ namespace mecs
 
             bool                                        m_bFrameStarted                 { false };
             bool                                        m_bPause                        { false };
-            int                                         m_FrameNumber                   { 0 };
             tools::page_mgr                             m_PageMgr                       {};
             entity::map_t                               m_mapEntity                     {};
             details::dbase                              m_TagDBase                      {};
@@ -2972,7 +2977,8 @@ namespace mecs
             map_tag_lookup_t                            m_mapTagLookup                  {};
             query::filter_bits                          m_ComponentRegistrationFreeBits {xcore::not_null};
             query::filter_bits                          m_TagRegistrationFreeBits       {xcore::not_null};
-            std::atomic<entity::map_t::entry*>          m_EntityFreeList                {nullptr};                       
+            std::atomic<entity::map_t::entry*>          m_EntityFreeList                {nullptr};
+            std::uint64_t                               m_FrameNumber                   {0};
         };
     }
 
