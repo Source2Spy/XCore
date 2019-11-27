@@ -67,7 +67,7 @@ namespace mecs_examples
                 for(int i=0; i<xcore::get().m_Scheduler.getWorkerCount(); i++)
                     MyChannel.SubmitJob([&]
                     {
-                        while (Group.newSize() < 10000000ull XCORE_CMD_ASSERT( - 9500000ull ) )
+                        while (Group.newSize() < 10000000ull XCORE_CMD_ASSERT( / 10 ) )
                         {
                             World.createEntity( Group, [](mecs::entity::tmp_ref tmpEntityRef)
                             {
@@ -265,10 +265,11 @@ namespace mecs_examples
             {
                 xcore::scheduler::channel MyChannel(xconst_universal_str("Create Entities"));
                 auto& Group = World.getOrCreateGroup<simple,double_buff,my_tag>();
+
                 for(int i=0; i<xcore::get().m_Scheduler.getWorkerCount(); i++)
                     MyChannel.SubmitJob([&]
                     {
-                        while (Group.newSize() < 10000000ull XCORE_CMD_ASSERT( - 9500000ull ) )
+                        while (Group.newSize() < 300000ull XCORE_CMD_ASSERT( / 10 ) )
                         {
                             World.createEntity( Group, [](mecs::entity::tmp_ref tmpEntityRef)
                             {

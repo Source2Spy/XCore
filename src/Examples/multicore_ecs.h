@@ -2165,42 +2165,55 @@ namespace mecs
                     {
                         auto&               Group           = *R.m_pGroup;
                         auto                TotalEntries    = Group.m_Count;
-                        const auto          EntriesPerPage  = Group.m_GroupDescriptor.m_EntriesPerPage;
 
-                        for( auto& Page : Group.m_lPages.ViewTo(Group.m_nPages.load(std::memory_order_relaxed).m_Value) )
+                        if( TotalEntries == 0 ) continue;
+
+                        auto                Index           = 0;
+                        auto                GetPools        = [&]( int Index )->pool_tuple
                         {
-                            auto        pPage = reinterpret_cast<std::byte*>( Page->m_RawData );
-                            const auto  iEnd  = std::min( static_cast<std::uint16_t>(TotalEntries), EntriesPerPage );
-                            TotalEntries -= iEnd;
-                            Channel.SubmitJob( [ &R, iEnd, pPage, this ]
+                            return { reinterpret_cast<std::remove_reference_t<T_ARGS>*>
+                            ( &Group.m_lPages[Index]->m_RawData
+                                [ 
+                                    R.m_lRemaps[ xcore::types::tuple_t2i_v< T_ARGS, system_function_t::args_t > ] 
+                                ]
+                            ) ... };
+                        };
+
+                        while( TotalEntries )
+                        {
+                            const auto  nEntities  = std::min( (int)5000, (int)TotalEntries );
+
+                            Channel.SubmitJob( [ &Group, Index, nEntities, &GetPools, this ]
                             {
                                 XCORE_PERF_ZONE_SCOPED_N("ForEach::LightJob")
 
-                                const pool_tuple Pools
-                                {
-                                    reinterpret_cast<std::remove_reference_t<T_ARGS>*>
-                                    ( &pPage
-                                        [ 
-                                            R.m_lRemaps[ xcore::types::tuple_t2i_v< T_ARGS, system_function_t::args_t > ] 
-                                        ]
-                                    ) ...
-                                };
+                                auto     I{ static_cast<std::uint16_t>( Index % Group.m_GroupDescriptor.m_EntriesPerPage) };
+                                auto     P{ static_cast<std::uint16_t>( Index / Group.m_GroupDescriptor.m_EntriesPerPage) };
+                                auto     Pools = GetPools(P);
+                                auto     n = nEntities;
 
-                                for( auto i = 0; i < iEnd; ++i )
+                                while( n-- )
                                 {
-                                    // Call the system update function
                                     user_system_t::Update
                                     ( 
                                         std::get
                                         <
                                             std::remove_reference_t<T_ARGS>*
-                                        >(Pools)[i] ... 
+                                        >(Pools)[I] ... 
                                     );
+
+                                    I++;
+                                    if( I == Group.m_GroupDescriptor.m_EntriesPerPage )
+                                    {
+                                        P++;
+                                        I = 0;
+                                        Pools = GetPools(P);
+                                    }
                                 }
                             });
 
-                            // Just in case we added new entries and new pages got added
-                            if( iEnd == TotalEntries ) break;
+                            Index        += nEntities;
+                            TotalEntries -= nEntities;
                         }
                     }
 
