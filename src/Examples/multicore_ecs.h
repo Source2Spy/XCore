@@ -81,7 +81,7 @@ namespace mecs
                 return *pNode;
             }
 
-            template< typename T > 
+            template< typename T > xforceinline
             const bool find( T_KEY Key, T&& CallBack ) noexcept
             {
                 assert(Key.isValid());
@@ -101,7 +101,7 @@ namespace mecs
                 return false;
             }
 
-            template< typename T > 
+            template< typename T >  xforceinline
             const bool free( T_KEY Key, T&& CallBack = [](entry&){} ) noexcept
             {
                 assert(Key.isValid());
@@ -454,6 +454,7 @@ namespace mecs
                 return pResult;
             }
 
+            xforceinline
             T_VALUE& get(T_KEY Key) noexcept
             {
                 auto p = find(Key);
@@ -461,6 +462,7 @@ namespace mecs
                 return *p;
             }
 
+            xforceinline
             T_VALUE& get(T_KEY Key) const noexcept
             {
                 auto p = find(Key);
@@ -575,6 +577,7 @@ namespace mecs
                 XCORE_PERF_PLOT_CONFIG("Free Pages",  tracy::PlotFormatType::Number )
             }
 
+            xforceinline
             page* AllocPage( void ) noexcept
             {
                 next* pLocal = m_pFreeHead.load(std::memory_order_relaxed);
@@ -593,6 +596,7 @@ namespace mecs
                 return reinterpret_cast<page*>(pLocal);
             }
 
+            xforceinline
             void FreePage(page* pPage) noexcept
             {
                 next* p      = reinterpret_cast<next*>(pPage);
@@ -656,7 +660,7 @@ namespace mecs
             std::nullptr_t                          end() const noexcept { return nullptr; }
 
             template< typename...T_ARGS >
-            T& append( T_ARGS&&... Args ) noexcept
+            xforceinline T& append( T_ARGS&&... Args ) noexcept
             {
                 auto Counts    = m_Counts.load( std::memory_order_relaxed);
                 do 
@@ -740,7 +744,7 @@ namespace mecs
         namespace details
         {
             template< typename T, std::size_t MAX_PAGES >
-            pool_iterator<T,MAX_PAGES> pool_iterator<T,MAX_PAGES>::operator++ (void) noexcept
+            xforceinline pool_iterator<T,MAX_PAGES> pool_iterator<T,MAX_PAGES>::operator++ (void) noexcept
             {
                 m_nEntries--;
                 m_Index++;
@@ -754,13 +758,13 @@ namespace mecs
             }
 
             template< typename T, std::size_t MAX_PAGES >
-            bool pool_iterator<T,MAX_PAGES>::operator !=  (std::nullptr_t) const noexcept
+            xforceinline bool pool_iterator<T,MAX_PAGES>::operator !=  (std::nullptr_t) const noexcept
             {
                 return m_nEntries;
             }
 
             template< typename T, std::size_t MAX_PAGES >
-            T& pool_iterator<T,MAX_PAGES>::operator * (void) noexcept
+            xforceinline T& pool_iterator<T,MAX_PAGES>::operator * (void) noexcept
             {
                 return reinterpret_cast<T*>(m_pPool->m_lPages[m_nPages])[m_Index];
             }
@@ -1260,7 +1264,7 @@ namespace mecs
                 {}
 
             
-            inline entity::instance& getEntity( tools::page* Page, group::local_index LocalIndex ) const noexcept
+            xforceinline entity::instance& getEntity( tools::page* Page, group::local_index LocalIndex ) const noexcept
             {
                 xassert(LocalIndex.m_Value < m_EntriesPerPage );
                 auto&       E       = m_lComponentOffsets[0];
@@ -1268,13 +1272,13 @@ namespace mecs
                 return *reinterpret_cast<entity::instance*>( &Page->m_RawData[Index] );
             }
 
-            inline void ConstructOnlyEntityComponent( tools::page* Page, group::local_index LocalIndex, entity::map_t::entry* pEntry ) const noexcept
+            xforceinline void ConstructOnlyEntityComponent( tools::page* Page, group::local_index LocalIndex, entity::map_t::entry* pEntry ) const noexcept
             {
                 // we don't construct the entity case here
                 getEntity( Page, LocalIndex ).m_pInstance = pEntry;
             }
 
-            inline void ConstructOnlyComponent( tools::page* Page, group::local_index LocalIndex, int iComponent ) const noexcept
+            xforceinline void ConstructOnlyComponent( tools::page* Page, group::local_index LocalIndex, int iComponent ) const noexcept
             {
                 // we don't construct the entity case here
                 xassert(iComponent!=0);
@@ -1283,7 +1287,7 @@ namespace mecs
                 m_lComponentDescriptors[iComponent]->m_fnConstruct( &Page->m_RawData[Index] );
             }
 
-            inline void ConstructEntity( tools::page* Page, group::local_index LocalIndex, entity::map_t::entry* pEntry ) const noexcept
+            xforceinline void ConstructEntity( tools::page* Page, group::local_index LocalIndex, entity::map_t::entry* pEntry ) const noexcept
             {
                 ConstructOnlyEntityComponent( Page, LocalIndex, pEntry );
                 for( int i=1; i<m_nComponents; ++i )
@@ -1292,7 +1296,7 @@ namespace mecs
                 }
             }
 
-            inline void DestructEntity( tools::page* Page, std::uint32_t LocalIndex ) const noexcept
+            xforceinline void DestructEntity( tools::page* Page, std::uint32_t LocalIndex ) const noexcept
             {
                 // Entity component does not need any destructor
                 for( int i=1; i<m_nComponents; ++i )
@@ -1303,7 +1307,7 @@ namespace mecs
                 }
             }
 
-            constexpr const details::offsets* findMutableOffset( const entity::tmp_ref& Ref, type_guid TypeGuid ) const noexcept
+            xforceinline constexpr const details::offsets* findMutableOffset( const entity::tmp_ref& Ref, type_guid TypeGuid ) const noexcept
             {
                 for (int i = 0; i <m_nComponents; ++i)
                 {
@@ -1319,7 +1323,7 @@ namespace mecs
                 return nullptr;
             }
 
-            constexpr const details::offsets* findReadOnlyOffset( const entity::tmp_ref& Ref, type_guid TypeGuid ) const noexcept
+            xforceinline constexpr const details::offsets* findReadOnlyOffset( const entity::tmp_ref& Ref, type_guid TypeGuid ) const noexcept
             {
                 for (int i = 0; i <m_nComponents; ++i)
                 {
@@ -1409,7 +1413,7 @@ namespace mecs
             constexpr   auto        size()                  const   noexcept { return m_Count; }
             inline      auto        newSize()               const   noexcept { return m_NewCount.load(std::memory_order_relaxed); }
 
-            inline
+            xforceinline
             void* findComponent(const entity::tmp_ref& Ref, type_guid TypeGuid) noexcept
             {
                 if( auto pOffset = m_GroupDescriptor.findMutableOffset(Ref,TypeGuid); pOffset )
@@ -1422,7 +1426,7 @@ namespace mecs
                 return nullptr;
             }
 
-            inline
+            xforceinline
             void* findComponent(const entity::tmp_ref& Ref, type_guid TypeGuid) const noexcept
             {
                 if( auto pOffset = m_GroupDescriptor.findReadOnlyOffset(Ref,TypeGuid); pOffset )
@@ -1472,6 +1476,7 @@ namespace mecs
                 return { this, local_index{RelativeIndex}, page_index{PageIndex} };
             }
 
+            xforceinline
             void DeleteEntity( entity::instance& Entity ) noexcept
             {
                 assert(Entity.isZombie() == false);
@@ -1698,7 +1703,7 @@ namespace mecs
             constexpr filter_bits(std::nullptr_t)    noexcept : m_Bits{ 0ull, 0ull}{}
             constexpr filter_bits(xcore::not_null_t) noexcept : m_Bits{~0ull,~0ull}{}
 
-            constexpr int AllocBit( void ) noexcept
+            xforceinline constexpr int AllocBit( void ) noexcept
             {
                 for( auto& E : m_Bits ) 
                 {
@@ -1714,21 +1719,21 @@ namespace mecs
                 return -1;
             }
 
-            inline void AddBit( int Index ) noexcept
+            xforceinline void AddBit( int Index ) noexcept
             {
                 m_Bits[Index/64] |= (1ull<<(Index%64));
             }
 
-            inline void Add( filter_bits Bits ) noexcept
+            xforceinline void Add( filter_bits Bits ) noexcept
             {
                 for( int i=0; i<m_Bits.size(); ++i ) m_Bits[i] |= Bits.m_Bits[i];
             }
-            inline bool getBit( int Index ) const noexcept
+            xforceinline bool getBit( int Index ) const noexcept
             {
                 return !!((m_Bits[Index/64] >> (Index%64))&1);
             }
 
-            constexpr bool Query( filter_bits All, filter_bits Any, filter_bits None ) const noexcept
+            xforceinline constexpr bool Query( filter_bits All, filter_bits Any, filter_bits None ) const noexcept
             {
                 bool    bAny1 = false;
                 bool    bAny2 = false;
@@ -2281,13 +2286,13 @@ namespace mecs
                 {setupName(Str);}
 
             template<typename K = world::instance>
-            void deleteEntity( entity::instance& Entity )
+            xforceinline void deleteEntity( entity::instance& Entity )
             {
                 reinterpret_cast<K&>(m_World).deleteEntity( Entity );
             }
 
             template< typename T, typename K = world::instance >
-            bool getGroup( component::group::guid gGroup, T&& CallBack ) noexcept
+            xforceinline bool getGroup( component::group::guid gGroup, T&& CallBack ) noexcept
             {
                 return reinterpret_cast<K&>(m_World).m_mapGroupPerTag.getExlusive( gGroup, [&](component::group::instance*& pGroup )
                 {
@@ -2299,7 +2304,7 @@ namespace mecs
             }
 
             template< typename T_TUPLE_ADD_COMPONENTS_AND_TAGS, typename T_TUPLE_REMOVE_COMPONENTS_AND_TAGS, typename T_CALLBACK, typename K = world::instance >
-            void getGroupBy( entity::instance& Entity, T_CALLBACK&& CallBack ) const noexcept
+            xforceinline void getGroupBy( entity::instance& Entity, T_CALLBACK&& CallBack ) const noexcept
             {
                 auto& Group = reinterpret_cast<K&>(m_World).getOrCreateGroupBy
                                 ( *Entity.getTmpRef().m_pGroupInstance, (T_TUPLE_ADD_COMPONENTS_AND_TAGS*)nullptr, (T_TUPLE_REMOVE_COMPONENTS_AND_TAGS*)nullptr );
@@ -2313,13 +2318,13 @@ namespace mecs
             }
 
             template< typename K = world::instance >
-            void moveEntityToGroup( component::group::instance& Group, entity::instance& Entity, xcore::function::view<void(entity::tmp_ref)> CallBack = [](entity::tmp_ref){}) const noexcept
+            xforceinline void moveEntityToGroup( component::group::instance& Group, entity::instance& Entity, xcore::function::view<void(entity::tmp_ref)> CallBack = [](entity::tmp_ref){}) const noexcept
             {
                 reinterpret_cast<K&>(m_World).moveEntityToGroup(Group, Entity, CallBack );
             }
 
             template<typename K = world::instance>
-            void createEntity( component::group::instance& Group, xcore::function::view<void(entity::tmp_ref)> UserFunction, entity::guid Guid = entity::guid{xcore::not_null} ) noexcept
+            xforceinline void createEntity( component::group::instance& Group, xcore::function::view<void(entity::tmp_ref)> UserFunction, entity::guid Guid = entity::guid{xcore::not_null} ) noexcept
             {
                 reinterpret_cast<K&>(m_World).createEntity( Group, UserFunction, Guid );
             }
@@ -2499,7 +2504,7 @@ namespace mecs
             {
             }
 
-            inline
+            xforceinline
             void createEntity( component::group::instance& Group, xcore::function::view<void(entity::tmp_ref)> UserFunction, entity::guid EntityGuid = mecs::entity::guid{xcore::not_null} ) noexcept
             {
                 entity::tmp_ref Ref;
@@ -2612,7 +2617,7 @@ namespace mecs
             }
 
             template< typename...T_COMPONENTS_AND_TAGS >
-            inline component::group::instance& getOrCreateGroup( void ) noexcept
+            xforceinline component::group::instance& getOrCreateGroup( void ) noexcept
             {
                 constexpr static component::group::details::guid_arrays_from_types_with_duplication<T_COMPONENTS_AND_TAGS...> arrays_v;
                 return getOrCreateGroup( arrays_v.component_guid_list_v, arrays_v.tag_guid_list_v );
@@ -2927,7 +2932,7 @@ namespace mecs
             }
 
             template< typename T_TUPLE_ADD_COMPONENTS_OR_TAGS, typename T_TUPLE_REMOVE_COMPONENTS_OR_TAGS >
-            inline component::group::instance& getOrCreateGroupBy( component::group::instance& Group ) noexcept
+            xforceinline component::group::instance& getOrCreateGroupBy( component::group::instance& Group ) noexcept
             {
                 return getOrCreateGroupBy(Group, (T_TUPLE_ADD_COMPONENTS_OR_TAGS*)nullptr, (T_TUPLE_REMOVE_COMPONENTS_OR_TAGS*)nullptr );
             }
