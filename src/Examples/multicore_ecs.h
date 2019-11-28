@@ -2073,9 +2073,11 @@ namespace mecs
                 using world_instance_t  = std::decay_t< decltype(user_system_t::m_World) >;
 
                 query::instance                                             m_Query;
+                sync_point::events::start::delegate                         m_SyncPointStartDelegate{       &custom_system::msgSyncPointStart };
                 sync_point::events::done::delegate                          m_SyncPointDoneDelegate { this, &custom_system::msgSyncPointDone  };
-                sync_point::events::start::delegate                         m_SyncPointStartDelegate{ this, &custom_system::msgSyncPointStart };
                 typename world_instance_t::events::world_start::delegate    m_WorldStartDelegate    {       &custom_system::msgWorldStart     };
+                typename world_instance_t::events::frame_start::delegate    m_FrameStartDelegate    {       &custom_system::msgFrameStart     };
+                typename world_instance_t::events::frame_done::delegate     m_FrameDoneDelegate     {       &custom_system::msgFrameDone      };
 
                 using user_system_t::user_system_t;
 
@@ -2083,21 +2085,12 @@ namespace mecs
                     : T_SYSTEM { World, user_system_t::system_name_v }
                 {}
 
-                void msgSyncPointStart( sync_point::instance& Syncpoint ) noexcept
-                {
-                    // Call the user function if he overwrote it
-                    if constexpr ( &T_SYSTEM::msgSyncPointStart != &instance::msgSyncPointStart )
-                    {
-                        T_SYSTEM::msgSyncPointStart();
-                    }
-                }
-
                 void msgSyncPointDone( sync_point::instance& Syncpoint ) noexcept
                 {
                     // Call the user function if he overwrote it
                     if constexpr ( &T_SYSTEM::msgSyncPointDone != &instance::msgSyncPointDone )
                     {
-                        T_SYSTEM::msgSyncPointDone();
+                        T_SYSTEM::msgSyncPointDone(Syncpoint);
                     }
 
                     // Lock all the groups that we need to work with so that no one tries to add/remove entities
@@ -2305,9 +2298,9 @@ namespace mecs
             constexpr static auto                   system_name_v   = xconst_universal_str("mecs::System");
             constexpr static mecs::query::define<>  query_v         {};
 
-            // Messages that we can handle these can be overwritten by the use
-            inline void msgSyncPointDone    ( void ){}
-            inline void msgSyncPointStart   ( void ){}
+            // Messages that we can handle these can be overwritten by the user
+            inline void msgSyncPointDone    ( sync_point::instance& ){}
+            inline void msgSyncPointStart   ( sync_point::instance& ){}
             inline void msgWorldStart       ( void ){}
             inline void msgFrameStart       ( void ){}
             inline void msgFrameDone        ( void ){}
@@ -2612,6 +2605,11 @@ namespace mecs
                     }
 
                 //
+                // Notify All
+                //
+                m_Events.m_WorldStart.NotifyAll();
+
+                //
                 // Begin Time
                 //
                 m_Time.Start();
@@ -2816,27 +2814,33 @@ namespace mecs
                 StartSynpoint.FreezCount();
 
                 //
-                // Register messages as needed
+                // Register to SyncPoint messages as needed
                 //
 
-                // Connect to the first syncpoint in the list
+                // This message is a must have since we need to deal with the memory barrier
                 pSystem->m_SyncPointDoneDelegate.Connect( xcore::types::PickFirstArgument( std::forward<T_ARGS>(EndSyncPoints) ... ).m_Events.m_Done );
 
-                // Register the world start message if the user needs it
+                if constexpr ( &custom_system_t::msgSyncPointStart != &system::instance::msgSyncPointStart )
+                {
+                    pSystem->m_WorldStartDelegate.setupThis( *pSystem );
+                    pSystem->m_SyncPointStartDelegate.Connect( StartSynpoint.m_Events.m_Start );
+                }
+
+                //
+                // Register to World Instances messages
+                //
                 if constexpr ( &custom_system_t::msgWorldStart != &system::instance::msgWorldStart )
                 {
                     pSystem->m_WorldStartDelegate.setupThis( *pSystem );
                     pSystem->m_WorldStartDelegate.Connect( m_Events.m_WorldStart );
                 }
 
-                // Register the world start message if the user needs it
                 if constexpr ( &custom_system_t::msgFrameStart != &system::instance::msgFrameStart )
                 {
                     pSystem->m_FrameStartDelegate.setupThis( *pSystem );
                     pSystem->m_FrameStartDelegate.Connect( m_Events.m_FrameStart );
                 }
 
-                // Register the world start message if the user needs it
                 if constexpr ( &custom_system_t::msgFrameDone != &system::instance::msgFrameDone )
                 {
                     pSystem->m_FrameEndDelegate.setupThis( *pSystem );
