@@ -34,18 +34,17 @@ namespace xcore::string
         {
             xassume( Dest  );
             xassume( pSrc  );
-            xassume( Count.m_Value > 0 );
             xassume( Dest.size() > Count.m_Value );
 
-			if(Count.m_Value)
-			{
-				Dest[Count.m_Value] = 0;
-				do
-				{
-					Count.m_Value--;
-					Dest[Count.m_Value] = pSrc[Count.m_Value];
-				} while (Count.m_Value);
-			}
+            if(Count.m_Value)
+            {
+                Dest[Count.m_Value] = 0;
+                do
+                {
+                    Count.m_Value--;
+                    Dest[Count.m_Value] = pSrc[Count.m_Value];
+                } while (Count.m_Value);
+            }
     
             return units<T_C1>{ Count.m_Value };
         }

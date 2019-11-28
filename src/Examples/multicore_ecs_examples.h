@@ -347,7 +347,6 @@ namespace mecs_examples
                 constexpr static mecs::type_guid type_guid_v{"move_speed"};
                 float m_Value;
             };
-
         }
 
         namespace system
@@ -368,7 +367,6 @@ namespace mecs_examples
             struct mover : mecs::system::instance
             {
                 constexpr static auto   system_name_v   = xconst_universal_str("mover_sys");
-                constexpr static mecs::query::define<> query_v{};
 
                 using parent_t = mecs::system::instance;
                 using parent_t::parent_t;
@@ -378,10 +376,6 @@ namespace mecs_examples
                     Translation.m_Value.m_Y += MoveSpeed.m_Value * getTime().m_DeltaTime;
                     if(Translation.m_Value.m_Y >  5.0f ) MoveSpeed.m_Value = -xcore::Abs(MoveSpeed.m_Value);
                     if(Translation.m_Value.m_Y < -5.0f ) MoveSpeed.m_Value = +xcore::Abs(MoveSpeed.m_Value);
-                }
-
-                void msgWorldStart( void )
-                {
                 }
             };
         }
