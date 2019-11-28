@@ -58,6 +58,7 @@ namespace xcore::examples
             mecs_examples::test1::Test();
             mecs_examples::test2::Test();
             mecs_examples::test3::Test();
+            mecs_examples::test4::Test();
         }
     }
 }

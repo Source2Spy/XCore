@@ -327,6 +327,9 @@
     <ClInclude Include="..\..\src\Implementation\xcore_random_inline.h">
       <Filter>xCore\Implementation</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\src\Examples\multicore_ecs_examples_boids.h">
+      <Filter>Examples\wip examples</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\src\Examples\main.cpp" />

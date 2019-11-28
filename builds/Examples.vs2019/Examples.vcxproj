@@ -29,6 +29,7 @@
     <ClInclude Include="..\..\src\Examples\helpers.h" />
     <ClInclude Include="..\..\src\Examples\multicore_ecs.h" />
     <ClInclude Include="..\..\src\Examples\multicore_ecs_examples.h" />
+    <ClInclude Include="..\..\src\Examples\multicore_ecs_examples_boids.h" />
     <ClInclude Include="..\..\src\Examples\pool.h" />
     <ClInclude Include="..\..\src\Examples\xcore_cmdline_example.h" />
     <ClInclude Include="..\..\src\Examples\xcore_compression_examples.h" />

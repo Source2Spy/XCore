@@ -67,7 +67,7 @@ namespace mecs_examples
                 for(int i=0; i<xcore::get().m_Scheduler.getWorkerCount(); i++)
                     MyChannel.SubmitJob([&]
                     {
-                        while (Group.newSize() < 10000000ull XCORE_CMD_ASSERT( / 10 ) )
+                        while (Group.newSize() < 10000000ull XCORE_CMD_ASSERT( / 100 ) )
                         {
                             World.createEntity( Group, [](mecs::entity::tmp_ref tmpEntityRef)
                             {
@@ -269,7 +269,7 @@ namespace mecs_examples
                 for(int i=0; i<xcore::get().m_Scheduler.getWorkerCount(); i++)
                     MyChannel.SubmitJob([&]
                     {
-                        while (Group.newSize() < 300000ull XCORE_CMD_ASSERT( / 10 ) )
+                        while (Group.newSize() < 300000ull XCORE_CMD_ASSERT( / 100 ) )
                         {
                             World.createEntity( Group, [](mecs::entity::tmp_ref tmpEntityRef)
                             {
@@ -306,7 +306,7 @@ namespace mecs_examples
 
     //------------------------------------------------------------------------------------
     // Test4
-    // Tutorial from the internet: https://www.youtube.com/watch?v=ILfUuBLfzGI&t=789s
+    // Tutorial from the INTERNET: https://www.youtube.com/watch?v=ILfUuBLfzGI&t=789s
     //------------------------------------------------------------------------------------
     namespace test4
     {
@@ -355,8 +355,7 @@ namespace mecs_examples
             {
                 constexpr static auto   system_name_v   = xconst_universal_str("level up system");
 
-                using parent_t = mecs::system::instance;
-                using parent_t::parent_t;
+                using mecs::system::instance::instance;
 
                 void Update( component::level& Level ) noexcept
                 {
@@ -368,8 +367,7 @@ namespace mecs_examples
             {
                 constexpr static auto   system_name_v   = xconst_universal_str("mover_sys");
 
-                using parent_t = mecs::system::instance;
-                using parent_t::parent_t;
+                using mecs::system::instance::instance;
 
                 void Update( component::translation_2d& Translation, component::move_speed& MoveSpeed ) noexcept
                 {
@@ -433,5 +431,6 @@ namespace mecs_examples
             }
         }
     }
-
 }
+
+#include "multicore_ecs_examples_boids.h"
