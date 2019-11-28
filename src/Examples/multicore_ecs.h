@@ -980,7 +980,7 @@ namespace mecs
         struct events
         {
             using done  = xcore::types::make_unique< xcore::event::type<sync_point::instance&>, struct done_tag >;
-            using start = xcore::types::make_unique< xcore::event::type<>, struct start_tag >;
+            using start = xcore::types::make_unique< xcore::event::type<sync_point::instance&>, struct start_tag >;
 
             start m_Start;
             done  m_Done;
@@ -1005,7 +1005,7 @@ namespace mecs
                 m_Tick++;
                 if(m_bDisable == false)
                 {
-                    m_Events.m_Start.NotifyAll();
+                    m_Events.m_Start.NotifyAll( *this );
                     xcore::scheduler::trigger<settings::max_systems_v>::qt_onTriggered();
                 }
             }
@@ -2070,17 +2070,36 @@ namespace mecs
             {
                 using user_system_t     = T_SYSTEM;
                 using system_function_t = query::system_function<T_SYSTEM>;
-                using user_system_t::user_system_t;
+                using world_instance_t  = std::decay_t< decltype(user_system_t::m_World) >;
 
-                query::instance                     m_Query;
-                sync_point::events::done::delegate  m_DoneDelegate{ this, &custom_system::msgDone };
+                query::instance                                             m_Query;
+                sync_point::events::done::delegate                          m_SyncPointDoneDelegate { this, &custom_system::msgSyncPointDone  };
+                sync_point::events::start::delegate                         m_SyncPointStartDelegate{ this, &custom_system::msgSyncPointStart };
+                typename world_instance_t::events::world_start::delegate    m_WorldStartDelegate    {       &custom_system::msgWorldStart     };
+
+                using user_system_t::user_system_t;
 
                 custom_system( world::instance& World ) noexcept 
                     : T_SYSTEM { World, user_system_t::system_name_v }
                 {}
 
-                void msgDone( sync_point::instance& Syncpoint ) noexcept
+                void msgSyncPointStart( sync_point::instance& Syncpoint ) noexcept
                 {
+                    // Call the user function if he overwrote it
+                    if constexpr ( &T_SYSTEM::msgSyncPointStart != &instance::msgSyncPointStart )
+                    {
+                        T_SYSTEM::msgSyncPointStart();
+                    }
+                }
+
+                void msgSyncPointDone( sync_point::instance& Syncpoint ) noexcept
+                {
+                    // Call the user function if he overwrote it
+                    if constexpr ( &T_SYSTEM::msgSyncPointDone != &instance::msgSyncPointDone )
+                    {
+                        T_SYSTEM::msgSyncPointDone();
+                    }
+
                     // Lock all the groups that we need to work with so that no one tries to add/remove entities
                     for( const auto& E : m_Query.m_lResults )
                     {
@@ -2280,14 +2299,20 @@ namespace mecs
         //---------------------------------------------------------------------------------
         struct instance : xcore::scheduler::job<4>
         {
-            using                   parent_t        = xcore::scheduler::job<4>;
-            constexpr static auto   system_name_v   = xconst_universal_str("mecs::System");
+            using                                   parent_t        = xcore::scheduler::job<4>;
 
-            instance( world::instance& World, xcore::string::const_universal Str, xcore::scheduler::definition Def = {} ) noexcept 
-                : parent_t{ Def | xcore::scheduler::triggers::DONT_CLEAN_COUNT }
-                , m_World{World}
-                {setupName(Str);}
+            // Defaults that can be overwritten by the user
+            constexpr static auto                   system_name_v   = xconst_universal_str("mecs::System");
+            constexpr static mecs::query::define<>  query_v         {};
 
+            // Messages that we can handle these can be overwritten by the use
+            inline void msgSyncPointDone    ( void ){}
+            inline void msgSyncPointStart   ( void ){}
+            inline void msgWorldStart       ( void ){}
+            inline void msgFrameStart       ( void ){}
+            inline void msgFrameDone        ( void ){}
+
+            // Functions
             template<typename K = world::instance>
             xforceinline void deleteEntity( entity::instance& Entity )
             {
@@ -2338,6 +2363,12 @@ namespace mecs
                 reinterpret_cast<K&>(m_World).createEntity( Group, UserFunction, Guid );
             }
 
+            instance( world::instance& World, xcore::string::const_universal Str, xcore::scheduler::definition Def = {} ) noexcept 
+                : parent_t{ Def | xcore::scheduler::triggers::DONT_CLEAN_COUNT }
+                , m_World{World}
+                {setupName(Str);}
+
+            // TODO: This will be private
             world::instance&    m_World;
         };
     }
@@ -2488,12 +2519,28 @@ namespace mecs
         };
 
         //---------------------------------------------------------------------------------
+        // WORLD::events
+        //---------------------------------------------------------------------------------
+        struct events
+        {
+            using world_start   = xcore::types::make_unique< xcore::event::type<>, struct world_start_tag >;
+            using frame_start   = xcore::types::make_unique< xcore::event::type<>, struct frame_start_tag >;
+            using frame_done    = xcore::types::make_unique< xcore::event::type<>, struct frame_done_tag >;
+
+            world_start m_WorldStart;
+            frame_start m_FrameStart;
+            frame_done  m_FrameDone;
+        };
+
+        //---------------------------------------------------------------------------------
         // WORLD::instance
         //---------------------------------------------------------------------------------
         struct instance : xcore::scheduler::job<1>
         {
             sync_point::instance    m_StartSyncPoint;
             sync_point::instance    m_EndSyncPoint;
+
+            using events = mecs::world::events;
 
             void msgSyncPointDone( sync_point::instance& SyncPoint )
             {
@@ -2517,9 +2564,15 @@ namespace mecs
                 }
                 m_EntityFreeList.store( nullptr, std::memory_order_relaxed );
 
+                //
+                // Let everyone know that we are done
+                //
+                m_Events.m_FrameDone.NotifyAll();
+
+                //
+                // Deal with profiler
+                //
                 XCORE_PERF_FRAME_MARK_END("mecs::Frame")
-
-
                 XCORE_PERF_PLOT("Total Pages", static_cast<int64_t>(m_PageMgr.m_TotalPages.load(std::memory_order_relaxed)) )
                 XCORE_PERF_PLOT("Free Pages",  static_cast<int64_t>(m_PageMgr.m_FreePages.load(std::memory_order_relaxed)) )
             }
@@ -2543,6 +2596,7 @@ namespace mecs
                 XCORE_PERF_FRAME_MARK_START("mecs::Frame")
                 m_bFrameStarted = true;
                 m_FrameNumber++;
+                m_Events.m_FrameStart.NotifyAll();
             }
 
             void Start( void )
@@ -2750,7 +2804,8 @@ namespace mecs
                 static_assert(sizeof...(EndSyncPoints) > 0, "You must pass at least one end Sync_point");
                 static_assert(std::is_base_of_v<sync_point::instance, std::common_type_t<T_ARGS...>>, "All the end sync_points must be non const sync_points");
             
-                auto pSystem = new system::details::custom_system<T_SYSTEM>{*this};
+                using custom_system_t  = system::details::custom_system<T_SYSTEM>;
+                auto pSystem = new custom_system_t{*this};
 
                 // Add all end triggers
                 ( EndSyncPoints.JobWillNotifyMe(*pSystem), ... );
@@ -2760,8 +2815,33 @@ namespace mecs
                 StartSynpoint.AddJobToBeTrigger(*pSystem);
                 StartSynpoint.FreezCount();
 
+                //
+                // Register messages as needed
+                //
+
                 // Connect to the first syncpoint in the list
-                pSystem->m_DoneDelegate.Connect( xcore::types::PickFirstArgument( std::forward<T_ARGS>(EndSyncPoints) ... ).m_Events.m_Done );
+                pSystem->m_SyncPointDoneDelegate.Connect( xcore::types::PickFirstArgument( std::forward<T_ARGS>(EndSyncPoints) ... ).m_Events.m_Done );
+
+                // Register the world start message if the user needs it
+                if constexpr ( &custom_system_t::msgWorldStart != &system::instance::msgWorldStart )
+                {
+                    pSystem->m_WorldStartDelegate.setupThis( *pSystem );
+                    pSystem->m_WorldStartDelegate.Connect( m_Events.m_WorldStart );
+                }
+
+                // Register the world start message if the user needs it
+                if constexpr ( &custom_system_t::msgFrameStart != &system::instance::msgFrameStart )
+                {
+                    pSystem->m_FrameStartDelegate.setupThis( *pSystem );
+                    pSystem->m_FrameStartDelegate.Connect( m_Events.m_FrameStart );
+                }
+
+                // Register the world start message if the user needs it
+                if constexpr ( &custom_system_t::msgFrameDone != &system::instance::msgFrameDone )
+                {
+                    pSystem->m_FrameEndDelegate.setupThis( *pSystem );
+                    pSystem->m_FrameEndDelegate.Connect( m_Events.m_FrameDone );
+                }
 
                 return *pSystem;
             }
@@ -3134,7 +3214,8 @@ namespace mecs
             query::filter_bits                          m_TagRegistrationFreeBits       {xcore::not_null};
             std::atomic<entity::map_t::entry*>          m_EntityFreeList                {nullptr};
             std::uint64_t                               m_FrameNumber                   {0};
-            time                                        m_Time;
+            time                                        m_Time                          {};
+            events                                      m_Events                        {};
         };
     }
 
