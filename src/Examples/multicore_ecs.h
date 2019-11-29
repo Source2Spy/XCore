@@ -619,6 +619,252 @@ namespace mecs
         };
 
         //---------------------------------------------------------------------------------
+        // TOOLS::PAGE PAGE MANAGER
+        //---------------------------------------------------------------------------------
+        template< std::size_t T_MAX_PAGES_V, std::size_t T_CUSTOM_PAGE_SIZE >
+        struct page_page_mgr
+        {
+            union custom_page
+            {
+                custom_page*    m_pNext;
+                std::byte       m_RawData[T_CUSTOM_PAGE_SIZE];
+            };
+
+            constexpr static std::size_t custom_pages_per_page_v = size(page) / sizeof(custom_page);
+
+            struct page_info
+            {
+                page*          m_pPage      { nullptr };
+                custom_page*   m_pFreeHead  { nullptr };
+                std::uint16_t  m_nFree      { 0 };
+            };
+
+            page_mgr&                                   m_PageMgr;
+            std::vector<page_info>                      m_lPages    {};
+            xcore::lock::spin                           m_Lock      {};
+            int                                         m_AllocIndex{-1}
+
+            custom_page* AllocCustomPage( void ) noexcept
+            {
+                xcore::lock::scope Lk(m_Lock);
+
+                if( m_AllocIndex < 0 )
+                {
+                    m_AllocIndex = 0;
+
+                    auto pPage = m_PageMgr.AllocPage();
+                    auto pCustomPage = reinterpret_cast<custom_page*>(pPage);
+                    auto& Entry = m_lPages.push_front{ { pPage, pCustomPage+1, custom_pages_per_page_v-1 } };
+
+                    // Link list all the entries
+                    for( int i=1; i<(custom_pages_per_page_v-2); i++ )
+                    {
+                        pCustomPage[i].m_pNext = &pCustomPage[i+1];
+                    }
+                    pCustomPage[custom_pages_per_page_v-1].m_pNext = nullptr;
+
+                    return pCustomPage;
+                }
+                else
+                {
+                    xassert(m_lPages[m_AllocIndex].m_nFree);
+                    m_lPages[m_AllocIndex].m_nFree--;
+                    auto pCustomPage = m_lPages[m_AllocIndex].m_pFreeHead;
+                    m_lPages[m_AllocIndex].m_pFreeHead = pCustomPage->m_pNext;
+                    if( m_lPages[m_AllocIndex].m_nFree == 0 ) m_AllocIndex--;
+                    else
+                    {
+                        if( m_AllocIndex )
+                        {
+                            // Swap the priorities
+                            if( m_lPages[m_AllocIndex].m_nFree > m_lPages[m_AllocIndex-1].m_nFree )
+                            {
+                                swap( m_lPages[m_AllocIndex], m_lPages[m_AllocIndex-1] );
+                                m_AllocIndex--;
+                            }
+                        }
+                    }
+                    return pCustomPage;
+                }
+            }
+
+            custom_page* FreeCustomPage( custom_page* pCustomPage ) noexcept
+            {
+                xcore::lock::scope Lk(m_Lock);
+
+                
+                for( int i=0; i<m_lPages.size(); ++i )
+                {
+                    if( static_cast<std::size_t>(pCustomPage) >= static_cast<std::size_t>(m_lPages[i].m_pPage) &&
+                        static_cast<std::size_t>(pCustomPage) <  static_cast<std::size_t>(&m_lPages[i].m_pPage->m_RawData[size(custom_page)]) )
+                    {
+                        pCustomPage->m_pNext = m_lPages[i].m_pFreeHead;
+                        m_lPages[i].m_pFreeHead; = pCustomPage;
+                        m_lPages[i].m_nFree++;
+
+                        if( i > 0 && m_lPages[i-1].m_nFree < m_lPages[i].m_nFree )
+                        {
+                            swap( m_lPages[m_AllocIndex], m_lPages[m_AllocIndex+1] );
+                            if( m_AllocIndex == i ) 
+                            {
+                                m_AllocIndex--;
+                                if( m_lPages[m_AllocIndex].m_nFree == custom_pages_per_page_v )
+                            }
+                        }
+                    }
+                }
+            }
+
+            xforceinline
+            void FreePage(page* pPage) noexcept
+            {
+                next* p      = reinterpret_cast<next*>(pPage);
+                p->m_pNext   = m_pFreeHead.load(std::memory_order_relaxed);
+                while (m_pFreeHead.compare_exchange_weak(p->m_pNext, p) == false);
+                m_FreePages++;
+                XCORE_PERF_PLOT("Free Pages",  static_cast<std::int64_t>(m_FreePages.load(std::memory_order_relaxed)) )
+            }
+
+            void PreallocatePages( int nPages ) noexcept
+            {
+                for( int i=0; i<nPages; ++i ) FreePage( new page );
+                XCORE_PERF_PLOT("Total Pages", static_cast<int64_t>(m_TotalPages.load(std::memory_order_relaxed)) )
+                XCORE_PERF_PLOT("Free Pages",  static_cast<int64_t>(m_FreePages.load(std::memory_order_relaxed)) )
+            }
+        };
+
+        template< typename T, std::size_t T_MAX_PAGE_COUNT_V,typename T_PAGE_PAGE_MGR >
+        struct vector_pool
+        {
+            using page_page_mgr_t = T_PAGE_PAGE_MGR;
+            using page            = T_PAGE_PAGE_MGR::custom_page;
+
+            constexpr static std::size_t  max_page_count_v   = T_MAX_PAGE_COUNT_V;
+            constexpr static std::size_t  entries_per_page_v = sizeof(page)/sizeof(T);
+
+            template< typename...T_ARGS >
+            T* AllocEntry( T_ARGS&&...Args ) noexcept
+            {
+                auto Count = m_Count.load(std::memory_order_relaxed);
+                do 
+                {
+                    if( Count.m_bLock ) 
+                    {
+                        while( Count.m_bLock ) 
+                        {
+                            // spin!!
+                            Count = m_Count.load(std::memory_order_relaxed);
+                        }
+                    }
+
+                    if( m_nPages * entries_per_page_v == Count.m_Count )
+                    {
+                        if( false == m_Count.compare_exchange_weak( Count, { Count.m_Count, 1} ) continue;
+                        m_lPages[m_nPages++] = m_PageMgr.AllocPage();
+                        m_Count.store( { Count.m_Count+1, 0}, std::memory_order_relaxed );
+                    }
+                    else
+                    {
+                        if( false == m_Count.compare_exchange_weak( Count, { Count.m_Count + 1, 0} ) continue;
+                    }
+
+                    break;
+
+                } while (true);
+                
+                Count.m_Count++;
+                const auto iPage  = Count.m_Count / entries_per_page_v;
+                const auto iIndex = Count.m_Count % entries_per_page_v;
+
+                return new( &m_lPages[iPage].m_RawData[iIndex] ) T{ std::forward<T_ARGS>(Args) };
+            }
+
+            void DeleteEntry( std::uint32_t Entry ) noexcept
+            {
+                auto Count = m_Count.load(std::memory_order_relaxed);
+                do 
+                {
+                    if( Count.m_bLock ) 
+                    {
+                        while( Count.m_bLock ) 
+                        {
+                            // spin!!
+                            Count = m_Count.load(std::memory_order_relaxed);
+                        }
+                    }
+
+                    // always lock on destruction
+                    if( false == m_Count.compare_exchange_weak( Count, { Count.m_Count, 1} ) continue;
+
+                    const auto NewCount = Count.m_Count - 1;
+
+                    if( m_nPages * entries_per_page_v > NewCount )
+                    {
+                        if constexpr ( false == std::is_trivially_destructible_v )
+                            std::destroy_at( reinterpret_cast<T*>(&m_lPages[--m_nPages].m_RawData[0]) );
+                        m_PageMgr.FreePage(m_lPages[--m_nPages]);
+                    }
+                    else
+                    {
+                        if constexpr ( false == std::is_trivially_destructible_v )
+                            std::destroy_at( reinterpret_cast<T*>(&m_lPages[NewCount/entries_per_page_v].m_RawData[NewCount%entries_per_page_v]) );
+                    }
+
+                    m_Count.store( { NewCount, 0}, std::memory_order_relaxed );
+                    break;
+
+                } while (true);
+            }
+
+            void DeleteAllEntries( void ) noexcept
+            {
+                auto Count = m_Count.load(std::memory_order_relaxed);
+                do 
+                {
+                    if( Count.m_bLock ) 
+                    {
+                        while( Count.m_bLock ) 
+                        {
+                            // spin!!
+                            Count = m_Count.load(std::memory_order_relaxed);
+                        }
+                    }
+
+                    // always lock on destruction
+                    if( false == m_Count.compare_exchange_weak( Count, { Count.m_Count, 1} ) continue;
+
+                    if constexpr ( false == std::is_trivially_destructible_v )
+                    {
+                        int         iPage = 0;
+                        const auto  Count = Count.m_Count;
+                        for( std::uint32_t I = entries_per_page_v; I<Count; I+=entries_per_page_v, ++iPage )
+                        {
+                            std::destroy( &reinterpret_cast<T*>(&m_lPages[iPage].m_RawData[0]),
+                                          &reinterpret_cast<T*>(&m_lPages[iPage].m_RawData[entries_per_page_v] );
+                        }
+                        std::destroy( &reinterpret_cast<T*>(&m_lPages[iPage].m_RawData[0]),
+                                      &reinterpret_cast<T*>(&m_lPages[iPage].m_RawData[Count%entries_per_page_v] );
+                    }
+
+                    m_Count.store( { 0, 0}, std::memory_order_relaxed );
+                    break;
+
+                } while (true);
+            }
+
+            struct count
+            {
+                std::uint32_t           m_Count:31,
+                                        m_Lock:1;
+            };
+
+            std::uint16_t                           m_nPages        { 0 };
+            std::array< page*, max_page_count_v >   m_lPages;
+            std::atomic<count>                      m_Count         { 0,0 };
+            T_PAGE_PAGE_MGR&                        m_PagePageMgr;
+        };
+
+        //---------------------------------------------------------------------------------
         // TOOLS::POOL
         //---------------------------------------------------------------------------------
         template< typename T, std::size_t MAX_PAGES >
