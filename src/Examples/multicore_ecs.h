@@ -232,18 +232,24 @@ namespace mecs
             ~page_mgr( void ) noexcept
             {
                 clear();
+                XCORE_PERF_PLOT("Total Pages", static_cast<int64_t>(m_TotalPages.load(std::memory_order_relaxed)) )
+                XCORE_PERF_PLOT("Free Pages",  static_cast<int64_t>(m_FreePages.load(std::memory_order_relaxed)) )
             }
 
             void clear( void ) noexcept
             {
+                std::uint32_t i=0;
                 auto p =reinterpret_cast<next*>(m_pFreeHead.load(std::memory_order_relaxed));
                 while( p )
                 {
                     auto n = p->m_pNext;
                     delete p;
                     p = n;
+                    i++;
                 }
                 m_pFreeHead.store(nullptr, std::memory_order_relaxed);
+                m_TotalPages -= i;
+                m_FreePages  -= i;
             }
 
             xforceinline
@@ -3141,6 +3147,22 @@ namespace mecs
 
                 if( NewGroup.m_Events.m_MovedInEntity.hasSubscribers() )
                     NewGroup.m_Events.m_MovedInEntity.NotifyAll(NewTmpRef);
+            }
+
+            ~instance()
+            {
+                XCORE_PERF_ZONE_SCOPED()
+                
+                xcore::scheduler::channel MyChannel(xconst_universal_str("World Destruction"));
+                MyChannel.SubmitJob([&]{ m_mapEntity.clear(); });
+                MyChannel.SubmitJob([&]{ m_mapGroupPerTag.clear(); });
+                MyChannel.SubmitJob([&]{ m_mapTagLookup.clear(); });
+                MyChannel.join();
+                MyChannel.SubmitJob([&]{ m_mapGroupDescriptor.clear(); });
+                MyChannel.SubmitJob([&]{ m_mapComponentDescriptor.clear(); });
+                MyChannel.SubmitJob([&]{ m_mapTagDescriptor.clear(); });
+                MyChannel.SubmitJob([&]{ m_PageMgr.clear(); });
+                MyChannel.join();
             }
 
             constexpr static std::size_t                                max_groups_count_v = 1024;
