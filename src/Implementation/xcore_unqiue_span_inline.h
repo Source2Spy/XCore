@@ -31,6 +31,7 @@ namespace xcore::allocator
     template< typename...T_ARGS > inline
     typename unique_span<T,T_COUNTER>::value_type* unique_span<T,T_COUNTER>::NewStatic( size_type Count, T_ARGS&&...Args ) noexcept
     {
+        XCORE_PERF_ZONE_SCOPED()
         auto p = AllocStatic(Count);
 
         if( p )
@@ -38,11 +39,13 @@ namespace xcore::allocator
             if constexpr ( false == std::is_trivially_constructible_v<value_type> || sizeof...(Args) )
             {
                 xcore::span<value_type> Span{p,Count};
-                if( Count > 20000 )
+                if( Count > 5000 )
                 {
                     xcore::scheduler::channel Channel( xconst_universal_str("xcore::unique_span::NewStatic") );
                     Channel.ForeachLog( Span, 8, 1000, [&]( xcore::span<value_type> View )
                     {
+                        XCORE_PERF_ZONE_SCOPED_N("xcore::unique_span::NewStatic::Constructing")
+
                         // Call constructors 
                         for( auto& E : View ) new(&E) value_type{ std::forward<T_ARGS&&>(Args)... };
                     });
@@ -97,6 +100,7 @@ namespace xcore::allocator
     template < typename T, typename T_COUNTER > inline
     xcore::err unique_span<T,T_COUNTER>::resize( size_type Count ) noexcept 
     {
+        XCORE_PERF_ZONE_SCOPED()
         xassert( Count > 0 );
 
         auto op = parent::data();
@@ -144,16 +148,19 @@ namespace xcore::allocator
     template < typename T, typename T_COUNTER > inline
     void unique_span<T,T_COUNTER>::clear  ( void ) noexcept 
     { 
+        XCORE_PERF_ZONE_SCOPED()
         auto p = parent::data();
         if( p )
         {
             if constexpr (false == std::is_trivially_destructible_v<value_type>)
             {
-                if( size() > 20000 )
+                if( size() > 5000 )
                 {
                     xcore::scheduler::channel Channel( xconst_universal_str("xcore::unique_span::clear") );
                     Channel.ForeachLog( *this, 8, 1000, [&]( xcore::span<value_type> View )
                     {
+                        XCORE_PERF_ZONE_SCOPED_N("xcore::unique_span::NewStatic::Destructing")
+
                         // Call constructors 
                         for( auto& E : View ) std::destroy_at(&E);
                     });
