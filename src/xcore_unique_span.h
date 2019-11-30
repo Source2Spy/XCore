@@ -47,6 +47,39 @@ namespace xcore::allocator
 
         //--------------------------------------------------------------------------------------------
 
+        inline
+        xcore::err Alloc( size_type Count ) noexcept
+        {
+            xassert(Count>=0);
+            err Error;
+
+            auto op = parent::data();
+            if( op )
+            {
+                if( Count == parent::size() ) return Error;
+                delete []op;
+            }
+
+            auto p = reinterpret_cast<value_type*>
+            (
+                xcore::memory::AlignedMalloc
+                ( 
+                    units::bytes{ static_cast<std::int64_t>(sizeof(value_type)*Count) }
+                    , std::alignment_of_v<value_type>
+                )
+            );
+
+            if( p == nullptr ) 
+            {
+                new( this ) xcore::span<value_type>( nullptr, static_cast<std::size_t>( 0 ) );
+                return xerr_code( Error, error_state::OUT_OF_MEMORY, "Memory Allocation Failure (Alloc)" );
+            }
+            new( this ) xcore::span( p, Count );
+            return Error;
+        }
+
+        //--------------------------------------------------------------------------------------------
+
         template< typename...T_ARGS > inline
         xcore::err New( size_type Count, T_ARGS&&...Args ) noexcept
         {
@@ -64,7 +97,7 @@ namespace xcore::allocator
             if( p == nullptr ) 
             {
                 new( this ) xcore::span<value_type>( nullptr, static_cast<std::size_t>( 0 ) );
-                return xerr_code( Error, error_state::OUT_OF_MEMORY, "Memory Allocation Failure" );
+                return xerr_code( Error, error_state::OUT_OF_MEMORY, "Memory Allocation Failure (New)" );
             }
             new( this ) xcore::span( p, Count );
             return Error;

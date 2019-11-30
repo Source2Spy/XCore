@@ -17,10 +17,10 @@ namespace xcore::memory
     void AlignedFree(void* pData) noexcept
     {
         xassert(pData);
-        free(pData);
 #if _XCORE_PLATFORM_WINDOWS
         _aligned_free(pData);
 #else
+        free(pData);
 #endif
         XCORE_PERF_FREE_S(pData, 10);
     }
@@ -33,39 +33,41 @@ namespace xcore::memory
 // "old" unaligned overloads
 void* operator new(std::size_t size)
 {
-    auto ptr = malloc(size);
-    XCORE_PERF_ALLOC_S(ptr, size, 10);
+    auto ptr =  xcore::memory::AlignedMalloc
+    ( 
+          xcore::units::bytes{ static_cast<std::int64_t>(size) }
+        , 8 
+    );
     return ptr ? ptr : throw std::bad_alloc{};
 }
 
 void operator delete(void* ptr, std::size_t size)
 {
-    free(ptr);
-    XCORE_PERF_FREE_S(ptr, 10);
+    xcore::memory::AlignedFree(ptr);
 }
 
 void operator delete(void* ptr)
 {
-    free(ptr);
-    XCORE_PERF_FREE_S(ptr, 10);
+    xcore::memory::AlignedFree(ptr);
 }
 
 // "new" over-aligned overloads
 void* operator new(std::size_t size, std::align_val_t align)
 {
-    auto ptr = _aligned_malloc(size, static_cast<std::size_t>(align));
-    XCORE_PERF_ALLOC_S(ptr, size, 10);
+    auto ptr = xcore::memory::AlignedMalloc
+    ( 
+          xcore::units::bytes{ static_cast<std::int64_t>(size) }
+        , static_cast<std::size_t>(align)
+    );
     return ptr ? ptr : throw std::bad_alloc{};
 }
 
 void operator delete(void* ptr, std::size_t size, std::align_val_t align)
 {
-    _aligned_free(ptr);
-    XCORE_PERF_FREE_S(ptr, 10);
+    xcore::memory::AlignedFree(ptr);
 }
 
 void operator delete(void* ptr, std::align_val_t align)
 {
-    _aligned_free(ptr);
-    XCORE_PERF_FREE_S(ptr, 10);
+    xcore::memory::AlignedFree(ptr);
 }

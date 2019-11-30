@@ -83,7 +83,6 @@ namespace mecs_examples
                 MyChannel.join();
             }
 
-
             World.Start();
             for( int i=0; i<100; i++) World.Resume();
         }
@@ -388,7 +387,6 @@ namespace mecs_examples
                 ,   component::translation_2d
                 ,   component::render_mesh
                 ,   component::local_to_world
-                ,   component::render_mesh
                 ,   component::move_speed
             >();
 
@@ -406,7 +404,6 @@ namespace mecs_examples
                     ,   component::translation_2d
                     ,   component::render_mesh
                     ,   component::local_to_world
-                    ,   component::render_mesh
                     ,   component::move_speed
                 >();
 

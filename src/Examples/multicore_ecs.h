@@ -7,8 +7,140 @@ namespace mecs
     namespace tools
     {
         //---------------------------------------------------------------------------------
-        // TOOLS::map_fixed
+        // TOOLS::map_fixed V2
         //---------------------------------------------------------------------------------
+        template< typename T_KEY, typename T_VALUE, std::size_t T_MAXSIZE_V > 
+        struct map_fixed
+        {
+            constexpr static auto max_size_v = T_MAXSIZE_V;
+
+            struct lock;
+
+            struct entry
+            {
+                T_KEY               m_Key;
+                T_VALUE             m_Value;       // TODO: These pointers below could be converted to indices to save memory
+                entry*              m_pNext;       // Next for cases where collisions happen
+                std::atomic<lock*>  m_pLock;       // Pointer back to its lock
+            };
+                
+            struct lock
+            {
+                xcore::lock::spin   m_Lock;
+                entry*              m_pEntry;
+                entry               m_Entry;
+            };
+
+            map_fixed()
+            {
+                // Allocate the memory
+                m_Map.Alloc(max_size_v).CheckError();
+
+                // Initialize the memory as fast as possible
+                xcore::scheduler::channel Channel( xconst_universal_str("map_fixed::constructor") );
+                Channel.ForeachLog( m_Map, 8, 1000, [&]( xcore::span<lock> View )
+                {
+                    memset( View.data(), 0, View.size()*sizeof(lock) );
+                });
+                Channel.join();
+            }
+
+            template< typename T_CALLBACK >
+            auto& alloc( T_KEY Key, T_CALLBACK&& Callback = [](entry&){} ) noexcept
+            {
+                assert(Key.isValid());
+
+                auto            Index      = Key.m_Value % max_size_v;
+                auto&           MapEntry   = m_Map[Index];
+                entry*          pEntry     = &m_Map[Index].m_Entry;
+
+                // Find/Alloc free memory
+                do 
+                {
+                    auto  L = pEntry->m_pLock.load(std::memory_order_relaxed);
+                    if( L )
+                    {
+                        Index   = (Index + 1)%max_size_v;
+                        pEntry  = &m_Map[Index].m_Entry;
+                        continue;
+                    }
+                    if( pEntry->m_pLock.compare_exchange_weak( L, &MapEntry ) ) break;
+
+                } while (true);
+
+                xcore::lock::scope Lk( MapEntry.m_Lock );
+
+                // Do we have a collision? 
+                // Make sure we have not collisions with any one
+                xassert_block_basic()
+                {
+                    for( auto p = MapEntry.m_pEntry; p ; p = p->m_pNext )
+                    {
+                        xassert( Key.m_Value != p->m_Key.m_Value );
+                    }
+                }
+
+                pEntry->m_Key     = Key;
+                pEntry->m_pNext   = MapEntry.m_pEntry;
+                MapEntry.m_pEntry = pEntry;
+
+                // Setup the node
+                Callback(*pEntry);           // should set ( pNode->m_Value = ... )
+
+                return *pEntry;
+            }
+
+            template< typename T > xforceinline
+            const bool find( T_KEY Key, T&& CallBack = [](entry&){} ) noexcept
+            {
+                assert(Key.isValid());
+
+                auto&           MapEntry    = m_Map[Key.m_Value % max_size_v];
+                xcore::lock::scope Lk( MapEntry.m_Lock );
+
+                for( auto p = MapEntry.m_pEntry; p; p = p->m_pNext )
+                {
+                    if( p->m_Key == Key ) 
+                    {
+                        CallBack( *p );
+                        return true;
+                    }
+                }
+
+                return false;
+            }
+
+            template< typename T >  xforceinline
+            const bool free( T_KEY Key, T&& CallBack = [](entry&){} ) noexcept
+            {
+                assert(Key.isValid());
+
+                auto&           MapEntry    = m_Map[Key.m_Value % max_size_v];
+                xcore::lock::scope Lk( MapEntry.m_Lock );
+
+                xassert( MapEntry.m_pEntry );
+                for( auto p = &MapEntry.m_pEntry; *p; p = &(*p)->m_pNext )
+                {
+                    auto& E = **p;
+                    if( E.m_Key == Key ) 
+                    {
+                        CallBack( E );
+                        *p = E.m_pNext;
+                        E.m_pLock.store( nullptr, std::memory_order_release );
+                        return true;
+                    }
+                }
+
+                return false;
+            }
+
+            xcore::unique_span<lock>    m_Map{};
+        };
+
+        //---------------------------------------------------------------------------------
+        // TOOLS::map_fixed V1
+        //---------------------------------------------------------------------------------
+    /*
         template< typename T_KEY, typename T_VALUE, std::size_t T_MAXSIZE_V > 
         struct map_fixed
         {
@@ -127,6 +259,7 @@ namespace mecs
             xcore::unique_span<lock>                    m_Map           { T_MAXSIZE_V };
             xcore::unique_span<entry>                   m_Entries       { T_MAXSIZE_V };    // 10% overflow
         };
+        */
 
         //---------------------------------------------------------------------------------
         // TOOLS::map
@@ -621,6 +754,7 @@ namespace mecs
         //---------------------------------------------------------------------------------
         // TOOLS::PAGE PAGE MANAGER
         //---------------------------------------------------------------------------------
+        /*
         template< std::size_t T_MAX_PAGES_V, std::size_t T_CUSTOM_PAGE_SIZE >
         struct page_page_mgr
         {
@@ -863,6 +997,7 @@ namespace mecs
             std::atomic<count>                      m_Count         { 0,0 };
             T_PAGE_PAGE_MGR&                        m_PagePageMgr;
         };
+        */
 
         //---------------------------------------------------------------------------------
         // TOOLS::POOL
@@ -3429,7 +3564,7 @@ namespace mecs
                 // Release the new entity. We must lock it before making any changes
                 //
                 {
-                    xcore::lock::scope Lock( Entity.getPointer().m_pLock->m_Lock );
+                    xcore::lock::scope Lock( Entity.getPointer().m_pLock.load(std::memory_order_relaxed)->m_Lock );
                     Entity.m_pInstance->m_Value = NewTmpRef;
                 }
 

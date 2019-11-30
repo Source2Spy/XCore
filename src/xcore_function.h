@@ -105,11 +105,11 @@ namespace xcore::function
     template< typename T_LAMBDA, typename T_FUNCTION_TYPE >
     struct is_lambda_signature_same
     {
-        constexpr static bool value = std::is_same
+        constexpr static bool value = std::is_same_v
         <
-            typename traits< typename std::remove_reference<T_LAMBDA>::err >::func_type,
+            typename traits< typename std::remove_reference_t<T_LAMBDA> >::func_type,
             T_FUNCTION_TYPE
-        >::value;
+        >;
     };
     template< typename T_LAMBDA, typename T_FUNCTION_TYPE >
     constexpr static bool is_lambda_signature_same_v = is_lambda_signature_same<T_LAMBDA, T_FUNCTION_TYPE>::value;
