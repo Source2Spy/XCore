@@ -12,7 +12,7 @@ namespace mecs
         template< typename T_KEY, typename T_VALUE, std::size_t T_MAXSIZE_V > 
         struct map_fixed
         {
-            constexpr static auto max_size_v = T_MAXSIZE_V;
+            constexpr static auto max_size_v = T_MAXSIZE_V + (T_MAXSIZE_V/10); // Add an additional 10% of entries for collisions and such
 
             struct lock;
 
@@ -40,9 +40,22 @@ namespace mecs
                 xcore::scheduler::channel Channel( xconst_universal_str("map_fixed::constructor") );
                 Channel.ForeachLog( m_Map, 8, 1000, [&]( xcore::span<lock> View )
                 {
-                    memset( View.data(), 0, View.size()*sizeof(lock) );
+                    if constexpr ( std::is_trivially_constructible_v<T_VALUE> )
+                    {
+                        memset( View.data(), 0, View.size()*sizeof(lock) );
+                    }
+                    else
+                    {
+                        // Call constructors 
+                        for( auto& E : View ) new(&E) lock{};
+                    }
                 });
                 Channel.join();
+            }
+
+            void clear()
+            {
+                m_Map.clear();
             }
 
             template< typename T_CALLBACK >
@@ -110,6 +123,23 @@ namespace mecs
                 return false;
             }
 
+            template< typename T_CREATE_CALLBACK > xforceinline
+            T_VALUE& getOrCreate( T_KEY Key, T_CREATE_CALLBACK&& CreateCallBack = []()->T_VALUE{} ) noexcept
+            {
+                T_VALUE* pV = nullptr;
+                if( find(Key,[&](entry& E){ pV = &E.m_Value; }) )
+                {
+                }
+                else alloc(Key,[&](entry& E){ E.m_Value = std::move(CreateCallBack()); pV = &E.m_Value; });
+                return *pV;
+            }
+
+            template< typename T_CALLBACK > xforceinline
+            bool getExlusive( T_KEY Key, T_CALLBACK&& CallBack = [](T_VALUE&){} ) noexcept
+            {
+                return find(Key,[&](entry& E){ CallBack(E.m_Value); });
+            }
+
             template< typename T >  xforceinline
             const bool free( T_KEY Key, T&& CallBack = [](entry&){} ) noexcept
             {
@@ -138,130 +168,6 @@ namespace mecs
         };
 
         //---------------------------------------------------------------------------------
-        // TOOLS::map_fixed V1
-        //---------------------------------------------------------------------------------
-    /*
-        template< typename T_KEY, typename T_VALUE, std::size_t T_MAXSIZE_V > 
-        struct map_fixed
-        {
-            constexpr static auto max_size_v = T_MAXSIZE_V;
-
-            struct lock;
-
-            struct entry
-            {
-                T_KEY               m_Key   {};
-                T_VALUE             m_Value {};              // TODO: These pointers below could be converted to indices to save memory
-                entry*              m_pNext {nullptr};       // Next for cases where collisions happen
-                lock*               m_pLock {nullptr};       // Pointer back to its lock
-            };
-                
-            struct lock
-            {
-                xcore::lock::semaphore  m_Lock;
-                entry*                  m_pEntry{ nullptr };
-            };
-
-            map_fixed()
-            {
-                for( int i=1; i<m_Entries.size(); ++i )
-                {
-                    m_Entries[i-1].m_pNext = &m_Entries[i];
-                }
-
-                m_Entries.back().m_pNext = nullptr;
-                m_pFreeNodes.store( &m_Entries[0], std::memory_order_relaxed );
-            }
-
-            template< typename T_CALLBACK >
-            auto& alloc( T_KEY Key, T_CALLBACK&& Callback ) noexcept
-            {
-                assert(Key.isValid());
-
-                // Allocate an overflow entry
-                auto pNode = m_pFreeNodes.load(std::memory_order_relaxed);
-                do 
-                {
-                    // Run out of free entries!
-                    xassert(pNode);
-
-                    if( m_pFreeNodes.compare_exchange_weak( pNode, pNode->m_pNext ) )
-                        break;
-                } while ( true );
-
-                // Lock our entry
-                auto&           MapEntry    = m_Map[Key.m_Value % max_size_v];
-                xcore::lock::scope( MapEntry.m_Lock );
-
-                // Do we have a collision? 
-                // Make sure we have not collisions with any one
-                xassert_block_basic()
-                {
-                    for( auto p = MapEntry.m_pEntry; p ; p = p->m_pNext )
-                    {
-                        xassert( Key.m_Value != p->m_Key.m_Value );
-                    }
-                }
-
-                // Setup the node
-                pNode->m_Key        = Key;
-                pNode->m_pNext      = MapEntry.m_pEntry;
-                pNode->m_pLock      = &MapEntry;
-                Callback(*pNode);           // should set ( pNode->m_Value = ... )
-                MapEntry.m_pEntry   = pNode;
-
-                return *pNode;
-            }
-
-            template< typename T > xforceinline
-            const bool find( T_KEY Key, T&& CallBack ) noexcept
-            {
-                assert(Key.isValid());
-
-                auto&           MapEntry    = m_Map[Key.m_Value % max_size_v];
-                xcore::lock::scope( const_cast<const xcore::lock::semaphore&>( MapEntry.m_Lock ) );
-
-                for( auto p = MapEntry.m_pEntry; p; p = p->m_pNext )
-                {
-                    if( p->m_Key == Key ) 
-                    {
-                        CallBack( *p );
-                        return true;
-                    }
-                }
-
-                return false;
-            }
-
-            template< typename T >  xforceinline
-            const bool free( T_KEY Key, T&& CallBack = [](entry&){} ) noexcept
-            {
-                assert(Key.isValid());
-
-                auto&           MapEntry    = m_Map[Key.m_Value % max_size_v];
-                xcore::lock::scope( const_cast<const xcore::lock::semaphore&>( MapEntry.m_Lock ) );
-
-                xassert( MapEntry.m_pEntry );
-                for( auto p = &MapEntry.m_pEntry; *p; p = &(*p)->m_pNext )
-                {
-                    if( (**p).m_Key == Key ) 
-                    {
-                        CallBack( **p );
-                        *p = (**p).m_pNext;
-                        return true;
-                    }
-                }
-
-                return false;
-            }
-
-            std::atomic<entry*>                         m_pFreeNodes    { nullptr };        // Link list of overflow entries
-            xcore::unique_span<lock>                    m_Map           { T_MAXSIZE_V };
-            xcore::unique_span<entry>                   m_Entries       { T_MAXSIZE_V };    // 10% overflow
-        };
-        */
-
-        //---------------------------------------------------------------------------------
         // TOOLS::map
         //---------------------------------------------------------------------------------
         template< typename T_KEY, typename T_VALUE, std::size_t T_MAXSIZE_V > 
@@ -278,6 +184,13 @@ namespace mecs
 
                 m_Extras.back().m_pNext = nullptr;
                 m_pFreeOverflow.store( &m_Extras[0] );
+            }
+
+            void clear( void ) noexcept
+            {
+                m_pFreeOverflow.store( nullptr, std::memory_order_relaxed );
+                m_Map.clear();
+                m_Extras.clear();
             }
 
             auto& push( T_KEY Key, T_VALUE&& Data ) noexcept
@@ -708,6 +621,23 @@ namespace mecs
             {
                 XCORE_PERF_PLOT_CONFIG("Total Pages", tracy::PlotFormatType::Number )
                 XCORE_PERF_PLOT_CONFIG("Free Pages",  tracy::PlotFormatType::Number )
+            }
+
+            ~page_mgr( void ) noexcept
+            {
+                clear();
+            }
+
+            void clear( void ) noexcept
+            {
+                auto p =reinterpret_cast<next*>(m_pFreeHead.load(std::memory_order_relaxed));
+                while( p )
+                {
+                    auto n = p->m_pNext;
+                    delete p;
+                    p = n;
+                }
+                m_pFreeHead.store(nullptr, std::memory_order_relaxed);
             }
 
             xforceinline
@@ -1794,6 +1724,30 @@ namespace mecs
                 , m_DeleteList          { m_PageMgr }
                 {}
 
+            ~instance() noexcept
+            {
+                xcore::scheduler::channel Channel( xconst_universal_str("mecs::group::~instance") );
+                const auto c    = m_nPages.load(std::memory_order_relaxed).m_Value;
+                auto  nEntities = m_Count;
+                for( std::uint16_t i=0; i<c; ++i )
+                {
+                    auto        pPage    = m_lPages[i];
+                    const auto  n        = static_cast<std::uint16_t>(std::min( (int)m_GroupDescriptor.m_EntriesPerPage, (int)nEntities ));
+                    Channel.SubmitJob( [pPage, n, this]
+                    {
+                        for( std::uint16_t i=0; i<n; ++i)
+                        {
+                            m_GroupDescriptor.DestructEntity( pPage, i );
+                        }
+                    
+                        m_PageMgr.FreePage( pPage );
+                    });
+
+                    nEntities -= m_GroupDescriptor.m_EntriesPerPage;
+                }
+                Channel.join();
+            }
+
             constexpr   auto        size()                  const   noexcept { return m_Count; }
             inline      auto        newSize()               const   noexcept { return m_NewCount.load(std::memory_order_relaxed); }
 
@@ -2702,11 +2656,11 @@ namespace mecs
             template< typename T, typename K = world::instance >
             xforceinline bool getGroup( component::group::guid gGroup, T&& CallBack ) noexcept
             {
-                return reinterpret_cast<K&>(m_World).m_mapGroupPerTag.getExlusive( gGroup, [&](component::group::instance*& pGroup )
+                return reinterpret_cast<K&>(m_World).m_mapGroupPerTag.getExlusive( gGroup, [&](std::unique_ptr<component::group::instance>& upGroup )
                 {
-                    const auto& Semaphore = pGroup->m_SemaphoreLock;
+                    const auto& Semaphore = upGroup->m_SemaphoreLock;
                     Semaphore.lock();
-                    CallBack( *pGroup );
+                    CallBack( *upGroup );
                     Semaphore.unlock();
                 });
             }
@@ -3132,7 +3086,7 @@ namespace mecs
 
                     GroupEntry.m_pGroup->m_pDataBaseRef = &TagEntry;
 
-                    return GroupEntry.m_pGroup;
+                    return std::unique_ptr<component::group::instance>{ GroupEntry.m_pGroup };
                 });
             }
 
@@ -3577,13 +3531,20 @@ namespace mecs
                     NewGroup.m_Events.m_MovedInEntity.NotifyAll(NewTmpRef);
             }
 
+            ~instance()
+            {
+                XCORE_PERF_ZONE_SCOPED()
+                m_mapGroupPerTag.clear();
+                m_PageMgr.clear();
+            }
+
             constexpr static std::size_t                                max_groups_count_v = 1024;
 
-            using map_group_per_tag_t           = tools::map<component::group::guid,  component::group::instance*,            max_groups_count_v>;
-            using map_group_descriptor_t        = tools::map<component::group::guid,  const component::group::descriptor*,    max_groups_count_v>;
-            using map_component_descriptor_t    = tools::map<type_guid,               const component::descriptor*,           256>;
-            using map_tag_descriptor_t          = tools::map<type_guid,               std::uint8_t,                           256>;
-            using map_tag_lookup_t              = tools::map<type_guid,               details::dbase::tag_entry*,             max_groups_count_v>;
+            using map_group_per_tag_t           = tools::map_fixed<component::group::guid,  std::unique_ptr<component::group::instance>,  max_groups_count_v>;
+            using map_group_descriptor_t        = tools::map<component::group::guid,  const component::group::descriptor*,          max_groups_count_v>;
+            using map_component_descriptor_t    = tools::map<type_guid,               const component::descriptor*,                 256>;
+            using map_tag_descriptor_t          = tools::map<type_guid,               std::uint8_t,                                 256>;
+            using map_tag_lookup_t              = tools::map<type_guid,               details::dbase::tag_entry*,                   max_groups_count_v>;
 
             bool                                        m_bFrameStarted                 { false };
             bool                                        m_bPause                        { false };

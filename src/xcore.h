@@ -147,6 +147,7 @@ namespace xcore { using namespace xcore::math; }
 //---------------------------------------------------------------------------
 #include "Implementation/xcore_string_inline.h"
 #include "Implementation/xcore_vector_inline.h"
+#include "Implementation/xcore_unqiue_span_inline.h"
 #include "Implementation/xcore_textfile2_inline.h"
 #include "Implementation/xcore_scheduler_inline.h"
 

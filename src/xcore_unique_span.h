@@ -33,113 +33,28 @@ namespace xcore::allocator
 
         //--------------------------------------------------------------------------------------------
 
-        ~unique_span( void ) noexcept 
-        { 
-            auto p = parent::data();
-            if( p ) delete []p;
-        }
+        inline ~unique_span( void ) noexcept;
 
         //--------------------------------------------------------------------------------------------
         template< typename...T_ARGS > inline
         unique_span(size_type Count, T_ARGS&&...Args) noexcept
-            : parent( new T[Count]{ std::forward<T_ARGS>(Args)... }, Count)
+            : parent( NewStatic(Count, std::forward<T_ARGS&&>(Args)... ), Count )
         {}
 
         //--------------------------------------------------------------------------------------------
 
-        inline
-        xcore::err Alloc( size_type Count ) noexcept
-        {
-            xassert(Count>=0);
-            err Error;
-
-            auto op = parent::data();
-            if( op )
-            {
-                if( Count == parent::size() ) return Error;
-                delete []op;
-            }
-
-            auto p = reinterpret_cast<value_type*>
-            (
-                xcore::memory::AlignedMalloc
-                ( 
-                    units::bytes{ static_cast<std::int64_t>(sizeof(value_type)*Count) }
-                    , std::alignment_of_v<value_type>
-                )
-            );
-
-            if( p == nullptr ) 
-            {
-                new( this ) xcore::span<value_type>( nullptr, static_cast<std::size_t>( 0 ) );
-                return xerr_code( Error, error_state::OUT_OF_MEMORY, "Memory Allocation Failure (Alloc)" );
-            }
-            new( this ) xcore::span( p, Count );
-            return Error;
-        }
+        inline xcore::err Alloc( size_type Count ) noexcept;
 
         //--------------------------------------------------------------------------------------------
 
-        template< typename...T_ARGS > inline
-        xcore::err New( size_type Count, T_ARGS&&...Args ) noexcept
-        {
-            xassert(Count>=0);
-            err Error;
-
-            auto op = parent::data();
-            if( op )
-            {
-                if( Count == parent::size() ) return Error;
-                delete []op;
-            }
-
-            auto p = new value_type[Count]{ std::forward<T_ARGS>(Args)... };
-            if( p == nullptr ) 
-            {
-                new( this ) xcore::span<value_type>( nullptr, static_cast<std::size_t>( 0 ) );
-                return xerr_code( Error, error_state::OUT_OF_MEMORY, "Memory Allocation Failure (New)" );
-            }
-            new( this ) xcore::span( p, Count );
-            return Error;
-        }
+        template< typename...T_ARGS > 
+        inline xcore::err New( size_type Count, T_ARGS&&...Args ) noexcept;
 
         //--------------------------------------------------------------------------------------------
-        xcore::err resize( size_type Count ) noexcept 
-        {
-            xassert( Count > 0 );
-            err     Error;
-
-            auto op = parent::data();
-            if( op && Count == parent::size() ) return Error;
-
-            auto p = new value_type[ Count ];
-            if( p == nullptr )
-                return xerr_code( Error, error_state::OUT_OF_MEMORY, "Resize Failure" );
-
-            if( op )
-            {
-                // Move all entries to new buffer
-                const auto count = std::min( static_cast<size_type>(parent::size()), Count );
-                std::memcpy( p, op, count*sizeof(value_type) );
-            
-                delete []op;
-            }
-            
-            new( this ) xcore::span( p, Count );
-            return Error;
-        }
+        inline xcore::err resize( size_type Count ) noexcept;
 
         //--------------------------------------------------------------------------------------------
-        void clear  ( void ) noexcept 
-        { 
-            auto p = parent::data();
-            if( p )
-            {
-                delete []p;
-                p = nullptr;
-                new( this ) xcore::span( p, parent::index_type{0} );
-            }
-        }
+        inline void clear  ( void ) noexcept;
 
         //--------------------------------------------------------------------------------------------
         template< typename T = std::size_t >
@@ -147,6 +62,12 @@ namespace xcore::allocator
         {
             return static_cast<T>(parent::size());
         }
+
+    protected:
+
+        template< typename...T_ARGS >
+        inline static value_type* NewStatic  ( size_type Count, T_ARGS&&...Args ) noexcept;
+        inline static value_type* AllocStatic( size_type Count ) noexcept;
     };
 
     //--------------------------------------------------------------------------------------------

@@ -70,6 +70,7 @@
     <ClInclude Include="..\..\src\Implementation\xcore_serializer_inline.h" />
     <ClInclude Include="..\..\src\Implementation\xcore_string_inline.h" />
     <ClInclude Include="..\..\src\Implementation\xcore_textfile2_inline.h" />
+    <ClInclude Include="..\..\src\Implementation\xcore_unqiue_span_inline.h" />
     <ClInclude Include="..\..\src\Implementation\xcore_vector_inline.h" />
     <ClInclude Include="..\..\src\Settings\PropertyConfig.h" />
     <ClInclude Include="..\..\src\xcore.h" />
