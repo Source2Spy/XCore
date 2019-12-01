@@ -323,7 +323,7 @@ namespace mecs_examples
                 xcore::vector2     m_Value;
             };
 
-            struct render_mesh : mecs::component::shared
+            struct render_mesh
             {
                 constexpr static mecs::type_guid type_guid_v{"render_mesh_com"};
         

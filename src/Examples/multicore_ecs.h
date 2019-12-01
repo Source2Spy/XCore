@@ -828,10 +828,11 @@ namespace mecs
     //---------------------------------------------------------------------------------
     namespace component
     {
-        struct double_buffer{};
-        struct tag {};
-        struct shared{};
-
+        struct shared           {};
+        struct quantum_mutable  {};
+        struct double_buffer    {};
+        struct tag              {};
+        
         struct descriptor
         {
             using fn_construct  = void(void*) noexcept;
@@ -1148,7 +1149,8 @@ namespace mecs
         struct descriptor
         {
             constexpr descriptor( xcore::span<const component::descriptor*> lComponetDesc ) noexcept
-                : m_lComponentTypeGuids     { [&]() constexpr { std::array<type_guid,64>                    D{}; for (int i = 0; i < lComponetDesc.size(); ++i) D[i] = lComponetDesc[i]->m_Guid;  return D; }() }
+                : m_Guid                    { [&]() constexpr { std::uint64_t K = entity::instance::type_guid_v.m_Value; for( const auto p:lComponetDesc) K += p->m_Guid.m_Value; return type_guid{K};      }() }
+                , m_lComponentTypeGuids     { [&]() constexpr { std::array<type_guid,64>                    D{}; for (int i = 0; i < lComponetDesc.size(); ++i) D[i] = lComponetDesc[i]->m_Guid;  return D; }() }
                 , m_lComponentDescriptors   { [&]() constexpr { std::array<const component::descriptor*,64> D{}; for (int i = 0; i < lComponetDesc.size(); ++i) D[i] = lComponetDesc[i];          return D; }() }
                 , m_nComponents             { static_cast<std::uint16_t>(lComponetDesc.size()) }
                 , m_EntriesPerPage          { [&]() constexpr
@@ -1263,7 +1265,7 @@ namespace mecs
                 return nullptr;
             }
 
-
+            const type_guid                                                                         m_Guid;
             const std::uint16_t                                                                     m_EntriesPerPage;
             const std::uint16_t                                                                     m_nComponents;
             const std::array<type_guid,                     settings::max_components_in_entity_v>   m_lComponentTypeGuids;
@@ -2295,6 +2297,12 @@ namespace mecs
             xforceinline void moveEntityToGroup( component::group::instance& Group, entity::instance& Entity, xcore::function::view<void(entity::tmp_ref)> CallBack = [](entity::tmp_ref){}) const noexcept
             {
                 reinterpret_cast<K&>(m_World).moveEntityToGroup(Group, Entity, CallBack );
+            }
+
+            template<typename T_HANDLE_CALLBACK >
+            void getEntity( entity::guid gEntity, T_HANDLE_CALLBACK&& CallBack )
+            {
+            
             }
 
             template<typename K = world::instance>
