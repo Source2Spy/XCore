@@ -4,7 +4,7 @@
 namespace mecs_examples
 {
     //------------------------------------------------------------------------------------
-    // Test1
+    // Test1 - testing different component types
     //------------------------------------------------------------------------------------
     namespace test1
     {
@@ -90,73 +90,73 @@ namespace mecs_examples
 
 
     //------------------------------------------------------------------------------------
-    // Test2
+    // Test2 - Spawner example
     //------------------------------------------------------------------------------------
     namespace test2
     {
-        struct life
+        namespace life
         {
-            constexpr static mecs::type_guid type_guid_v{ "life" };
-            int m_Live{10};
-        };
-
-        struct spawner
-        {
-            constexpr static mecs::type_guid type_guid_v{ "spawner" };
-
-            std::uint16_t                   m_Count;
-            mecs::component::group::guid    m_gGroup;
-        };
-
-        struct spawner_system : mecs::system::instance
-        {
-            constexpr static auto   system_name_v   = xconst_universal_str("spawner_system");
-            constexpr static mecs::query::define
-            <
-                mecs::query::all<spawner>
-            > query_v{};
-            
-            using parent_t = mecs::system::instance;
-            using parent_t::parent_t;
-
-            void Update( mecs::entity::instance& Entity, spawner& S ) noexcept
+            struct component
             {
-                getGroup( S.m_gGroup, [&](mecs::component::group::instance& Group ) noexcept
+                constexpr static mecs::type_guid type_guid_v{ "life component" };
+                int m_Value{10};
+            };
+
+            namespace system
+            {
+                struct decrement : mecs::system::instance
                 {
-                    for( int i=0; i<S.m_Count; ++i )
+                    constexpr static auto   system_name_v   = xconst_universal_str("life decrement system");
+            
+                    using mecs::system::instance::instance;
+
+                    void Update( mecs::entity::instance& Entity, life::component& Life ) noexcept
                     {
-                        createEntity( Group, []( mecs::entity::tmp_ref Ref ) noexcept
+                        Life.m_Value--;
+                        if( Life.m_Value == 0 ) 
                         {
-                            (void)Ref.getComponent<life>();
-                        });
-                        
+                            deleteEntity(Entity);
+                        }
                     }
-                });
-
-                deleteEntity(Entity);
+                };
             }
-        };
+        }
 
-        struct life_system : mecs::system::instance
+        namespace spawner
         {
-            constexpr static auto   system_name_v   = xconst_universal_str("life_system");
-            constexpr static mecs::query::define
-            <
-                mecs::query::all<life>
-            > query_v{};
-            
-            using parent_t = mecs::system::instance;
-            using parent_t::parent_t;
-
-            void Update( mecs::entity::instance& Entity, life& S ) noexcept
+            struct component
             {
-                S.m_Live--;
-                if( S.m_Live == 0 ) 
+                constexpr static mecs::type_guid type_guid_v{ "spawner component" };
+                using fn = void(mecs::entity::tmp_ref);
+
+                std::uint16_t                   m_Count;
+                mecs::component::group::guid    m_gGroup;
+                fn*                             m_fnCreated{nullptr};
+            };
+
+            struct system : mecs::system::instance
+            {
+                constexpr static auto   system_name_v   = xconst_universal_str("spawner_system");
+            
+                using mecs::system::instance::instance;
+
+                void Update( mecs::entity::instance& Entity, spawner::component& S ) noexcept
                 {
+                    getGroup( S.m_gGroup, [&](mecs::component::group::instance& Group ) noexcept
+                    {
+                        for( int i=0; i<S.m_Count; ++i )
+                        {
+                            createEntity( Group, [&]( mecs::entity::tmp_ref Ref ) constexpr noexcept
+                            {
+                                if( S.m_fnCreated ) S.m_fnCreated(Ref);
+                            });
+                        }
+                    });
+
                     deleteEntity(Entity);
                 }
-            }
-        };
+            };
+        }
 
         void Test()
         {
@@ -164,24 +164,25 @@ namespace mecs_examples
             mecs::world::instance World;
             World.registerComponents
             <
-                    life
-                ,   spawner
+                    life::component
+                ,   spawner::component
             >();
 
-            World.AddGraphConnection<spawner_system>( World.m_StartSyncPoint, World.m_EndSyncPoint );
-            World.AddGraphConnection<life_system>   ( World.m_StartSyncPoint, World.m_EndSyncPoint );
+            World.AddGraphConnection<spawner::system>           ( World.m_StartSyncPoint, World.m_EndSyncPoint );
+            World.AddGraphConnection<life::system::decrement>   ( World.m_StartSyncPoint, World.m_EndSyncPoint );
 
             //
             // Create a bunch of entities
             //
-            auto&   Group        = World.getOrCreateGroup<spawner>();
+            auto&   Group        = World.getOrCreateGroup<spawner::component>();
 
             World.createEntity( Group, [&](mecs::entity::tmp_ref Ref) noexcept
             {
-                auto& Spawner = Ref.getComponent<spawner>();
+                auto& Spawner = Ref.getComponent<spawner::component>();
 
-                Spawner.m_Count  = 10;
-                Spawner.m_gGroup = World.getOrCreateGroup<life>().m_Guid;
+                Spawner.m_Count     = 10;
+                Spawner.m_gGroup    = World.getOrCreateGroup<life::component>().m_Guid;
+                Spawner.m_fnCreated = [](mecs::entity::tmp_ref Ref ){ Ref.getComponent<life::component>().m_Value = 23; };
             });
 
             //

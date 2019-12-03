@@ -2306,7 +2306,7 @@ namespace mecs
             }
 
             template<typename K = world::instance>
-            xforceinline void createEntity( component::group::instance& Group, xcore::function::view<void(entity::tmp_ref)> UserFunction, entity::guid Guid = entity::guid{xcore::not_null} ) noexcept
+            xforceinline void createEntity( component::group::instance& Group, xcore::function::view<void(entity::tmp_ref)> UserFunction = [](entity::tmp_ref){}, entity::guid Guid = entity::guid{xcore::not_null} ) noexcept
             {
                 reinterpret_cast<K&>(m_World).createEntity( Group, UserFunction, Guid );
             }
