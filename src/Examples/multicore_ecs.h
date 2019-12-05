@@ -2205,7 +2205,6 @@ namespace mecs
                 using user_system_t     = T_SYSTEM;
                 using world_instance_t  = std::decay_t< decltype(user_system_t::m_World) >;
 
-                query::instance                                             m_Query;
                 sync_point::events::start::delegate                         m_SyncPointStartDelegate{       &custom_system::msgSyncPointStart };
                 sync_point::events::done::delegate                          m_SyncPointDoneDelegate { this, &custom_system::msgSyncPointDone  };
                 typename world_instance_t::events::world_start::delegate    m_WorldStartDelegate    {       &custom_system::msgWorldStart     };
@@ -2227,21 +2226,21 @@ namespace mecs
                     }
 
                     // Lock all the groups that we need to work with so that no one tries to add/remove entities
-                    for( const auto& E : m_Query.m_lResults )
+                    for( const auto& E : user_system_t::m_Query.m_lResults )
                     {
                         // TODO: Must lock each component base on r/w also must lock the group
                         E.m_pGroup->MemoryBarrierSync( Syncpoint );
                     }
 
-                    m_Query.m_lResults.clear();
+                    user_system_t::m_Query.m_lResults.clear();
                 }
 
                 virtual void qt_onRun( void ) noexcept override
                 {
-                    user_system_t::m_World.DoQuery(m_Query, *this, user_system_t::query_v );
+                    user_system_t::m_World.DoQuery(user_system_t::m_Query, *this, user_system_t::query_v );
                     
                     // Allow the system to compute
-                    auto pErrorString = ForEach( m_Query, *this );
+                    auto pErrorString = ForEach( user_system_t::m_Query, *this );
                     xassert(pErrorString==nullptr);
                 }
             };
@@ -2339,6 +2338,7 @@ namespace mecs
 
             // TODO: This will be private
             world::instance&    m_World;
+            query::instance     m_Query;
         };
     }
 

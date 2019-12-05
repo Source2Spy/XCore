@@ -186,7 +186,7 @@ namespace xcore::bits
         template<>
         struct murmurHash3_by_size<4> 
         {
-            inline
+            xforceinline constexpr
             static auto Compute( std::uint32_t h ) noexcept
             {
                 h ^= h >> 16;
@@ -199,10 +199,10 @@ namespace xcore::bits
         };
 
         //------------------------------------------------------------------------------
-        template<>
+        template<> 
         struct murmurHash3_by_size<8> 
         {
-            inline
+            xforceinline constexpr
             static auto Compute( std::uint64_t h ) noexcept
             {
                 h ^= h >> 33;
@@ -216,12 +216,12 @@ namespace xcore::bits
     }
 
     //------------------------------------------------------------------------------
-    template< typename T > inline 
+    template< typename T > xforceinline constexpr 
     T MurmurHash3( T h ) noexcept
     {
         static_assert( sizeof(T) >= 4 && sizeof(T) <= 8, "" );
         static_assert( std::is_integral<T>::value,"" );
-        return static_cast<T>(details::murmurHash3_by_size<sizeof(T)>::Compute( static_cast< typename xcore::type::template to_uint_t<T> >(h) ));
+        return static_cast<T>(details::murmurHash3_by_size<sizeof(T)>::Compute( static_cast< typename xcore::types::template to_uint_t<T> >(h) ));
     }
 
     //------------------------------------------------------------------------------
