@@ -3,6 +3,47 @@
 namespace mecs::examples::test5
 {
 /*
+    struct pepe
+    {
+        void operator() ( int ) {}
+    };
+
+    template< typename T_THIS, typename T_FUNC >
+    void Function( T_THIS& This, T_FUNC&& X )
+    {
+        using t = xcore::function::traits<decltype( X )>;
+        static_assert( 1 == t::arg_count_v );
+
+        //if constexpr ( std::same_v<t::class_type, void > )
+        {
+            (This.*(X))(5);
+        }
+        //else
+        {
+        }
+    }
+
+    template< typename T >
+    void Function2( T&& Obj )
+    {
+        using t = xcore::function::traits<decltype(Obj)>;
+        Obj(5);
+    }
+
+    void Today()
+    {
+        pepe Tt;
+        Function( Tt, &pepe::operator() );
+
+
+        Function2( Tt );
+        Function2( [](int x){} );
+    }
+*/
+
+
+
+/*
     namespace component
     {
         struct position : mecs::component::double_buffer
@@ -134,10 +175,9 @@ namespace mecs::examples::test5
                 }
 #endif
                 
-
                 constexpr static mecs::component::group::dependency
                 <
-                    std::tuple< group::fullcell_query_v >
+                    group::fullcell_query_v
                     , const component::spatial_cell::core
                     , const component::spatial_cell::entity
                     ,       component::spatial_cell::core
@@ -203,6 +243,5 @@ namespace mecs::examples::test5
             };
         }
     }
-
     */
 }

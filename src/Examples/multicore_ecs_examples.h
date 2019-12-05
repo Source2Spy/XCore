@@ -34,11 +34,10 @@ namespace mecs_examples
               , mecs::query::none<my_tag>
             > query_v{};
 
-            using parent_t = mecs::system::instance;
-            using parent_t::parent_t;
+            using mecs::system::instance::instance;
 
             constexpr
-            void Update( const double_buff& Buff, simple& Simple ) const noexcept
+            void operator() ( const double_buff& Buff, simple& Simple ) const noexcept
             {
                 Simple.m_Value += Buff.m_Value;
             }
@@ -88,7 +87,6 @@ namespace mecs_examples
         }
     }
 
-
     //------------------------------------------------------------------------------------
     // Test2 - Spawner example
     //------------------------------------------------------------------------------------
@@ -110,7 +108,7 @@ namespace mecs_examples
             
                     using mecs::system::instance::instance;
 
-                    void Update( mecs::entity::instance& Entity, life::component& Life ) noexcept
+                    void operator() ( mecs::entity::instance& Entity, life::component& Life ) noexcept
                     {
                         Life.m_Value--;
                         if( Life.m_Value == 0 ) 
@@ -140,16 +138,20 @@ namespace mecs_examples
             
                 using mecs::system::instance::instance;
 
-                void Update( mecs::entity::instance& Entity, spawner::component& S ) noexcept
+                void operator() ( mecs::entity::instance& Entity, spawner::component& S ) noexcept
                 {
                     getGroup( S.m_gGroup, [&](mecs::component::group::instance& Group ) noexcept
                     {
-                        for( int i=0; i<S.m_Count; ++i )
+                        if( S.m_fnCreated ) for( int i=0; i<S.m_Count; ++i )
                         {
                             createEntity( Group, [&]( mecs::entity::tmp_ref Ref ) constexpr noexcept
                             {
-                                if( S.m_fnCreated ) S.m_fnCreated(Ref);
+                                S.m_fnCreated(Ref);
                             });
+                        }
+                        else for( int i=0; i<S.m_Count; ++i )
+                        {
+                            createEntity( Group );
                         }
                     });
 
@@ -193,7 +195,6 @@ namespace mecs_examples
         }
     }
 
-
     //------------------------------------------------------------------------------------
     // Test3
     //------------------------------------------------------------------------------------
@@ -230,7 +231,7 @@ namespace mecs_examples
 
             xcore::random::small_generator R;
 
-            void Update( mecs::entity::instance& Entity, const double_buff& Buff, simple& Simple ) noexcept
+            void operator()( mecs::entity::instance& Entity, const double_buff& Buff, simple& Simple ) noexcept
             {
                 // This is the equivalent of removing a component (double_buff) from the entity
                 if( (R.RandU32() % 10)  == 0 )
@@ -357,7 +358,7 @@ namespace mecs_examples
 
                 using mecs::system::instance::instance;
 
-                void Update( component::level& Level ) noexcept
+                void operator()( component::level& Level ) noexcept
                 {
                     Level.m_Value += 1.0f * getTime().m_DeltaTime;
                 }
@@ -369,7 +370,7 @@ namespace mecs_examples
 
                 using mecs::system::instance::instance;
 
-                void Update( component::translation_2d& Translation, component::move_speed& MoveSpeed ) noexcept
+                void operator()( component::translation_2d& Translation, component::move_speed& MoveSpeed ) noexcept
                 {
                     Translation.m_Value.m_Y += MoveSpeed.m_Value * getTime().m_DeltaTime;
                     if(Translation.m_Value.m_Y >  5.0f ) MoveSpeed.m_Value = -xcore::Abs(MoveSpeed.m_Value);
