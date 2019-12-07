@@ -1,4 +1,5 @@
 
+#if 0
 
 namespace xcore::serializer
 {
@@ -326,3 +327,5 @@ namespace xcore::serializer
         return m_pWrite->m_bEndian;
     }
 }
+
+#endif

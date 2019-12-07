@@ -186,6 +186,77 @@ namespace xcore::string
     }
 
     //------------------------------------------------------------------------------------
+    // String manipulations
+    //------------------------------------------------------------------------------------
+    template< typename T >                  constexpr   auto            Length          ( const T& Obj )                                                            noexcept;
+    template< typename T1, typename T2 >    constexpr   auto            CopyN           ( T1& Dest, const T2& Src,  units<decltype(Src[0])> Count )                 noexcept;
+    template< typename T1, typename T2 >    constexpr   auto            Copy            ( T1& Dest, const T2& Src )                                                 noexcept;
+    template< typename T1, typename T2 >    constexpr   auto            Append          ( T1& Dest, const T2& Src )                                                 noexcept;
+    template< typename T1, typename T2 >    constexpr   int             CompareN        ( const T1& Dest, const T2& Src, int Count )                 noexcept;
+
+    //                                        inline      units<char>     sprintf         ( view<char> Dest, const char*, ... )                                       noexcept;
+    
+    template< typename... T_ARGS >
+    inline      units<char>     sprintf         ( view<char> Dest, const char*, T_ARGS... Args )                                       noexcept;
+
+    template< typename T_CHAR >             constexpr   std::uint64_t   ToGuid          ( const T_CHAR* const pStr )                                                noexcept;
+
+    template< typename T_CHAR >             constexpr   int             ToCharUpper     ( const T_CHAR C )                                                          noexcept { return( (C >= T_CHAR{'a'}) && (C <= T_CHAR{'z'}) )? C + (T_CHAR{'A'} - T_CHAR{'a'}) : C; }
+    template< typename T_CHAR >             constexpr   int             ToCharLower     ( const T_CHAR C )                                                          noexcept { return( (C >= T_CHAR{'A'}) && (C <= T_CHAR{'Z'}) )? C + (T_CHAR{'a'} - T_CHAR{'A'}) : C; }
+    template< typename T_CHAR >             constexpr   bool            isCharSpace     ( const T_CHAR C )                                                          noexcept { return  (C == 0x09) || (C == 0x0A) || (C == 0x0D) || (C == 32 ); }
+    template< typename T_CHAR >             constexpr   bool            isCharDigit     ( const T_CHAR C )                                                          noexcept { return( (C >=  T_CHAR{'0'}) && (C <= T_CHAR{'9'}) ); }
+    template< typename T_CHAR >             constexpr   bool            isCharAlpha     ( const T_CHAR C )                                                          noexcept { return( ((C >= T_CHAR{'A'}) && (C <= T_CHAR{'Z'})) || ((C >= T_CHAR{'a'}) && (C <= T_CHAR{'z'})) ); }
+    template< typename T_CHAR >             constexpr   bool            isCharUpper     ( const T_CHAR C )                                                          noexcept { return( (C >=  T_CHAR{'A'}) && (C <= T_CHAR{'Z'}) ); }
+    template< typename T_CHAR >             constexpr   bool            isCharLower     ( const T_CHAR C )                                                          noexcept { return( (C >=  T_CHAR{'a'}) && (C <= T_CHAR{'z'}) ); }
+    template< typename T_CHAR >             constexpr   bool            isCharHex       ( const T_CHAR C )                                                          noexcept { return( ((C >= T_CHAR{'A'}) && (C <= T_CHAR{'F'})) || ((C >= T_CHAR{'a'}) && (C <= T_CHAR{'f'})) || ((C >=  T_CHAR{'0'}) && (C <= T_CHAR{'9'})) ); }
+
+#if 0
+    template< typename T_CHAR > constexpr       chars<T_CHAR>   cpy             ( view<T_CHAR> Dest, const T_CHAR* pSrc )                                           noexcept;
+    template< typename T_CHAR > constexpr       void*           memchr          ( void* pBuf, const T_CHAR C, const units_chars_any<T_CHAR> aCount )                noexcept;
+    template< typename T_CHAR > constexpr       chars<T_CHAR>   dtoa            ( const u64 Val, xbuffer_view<T_CHAR> Buffer, const int Base )                      noexcept;
+    template< typename T_CHAR > constexpr       chars<T_CHAR>   dtoa            ( const s64 Val, xbuffer_view<T_CHAR> Buffer, const int Base )                      noexcept;
+    template< typename T_CHAR > constexpr       chars<T_CHAR>   dtoa            ( const u32 Val, xbuffer_view<T_CHAR> Buffer, const int Base )                      noexcept;
+    template< typename T_CHAR > constexpr       chars<T_CHAR>   dtoa            ( const int Val, xbuffer_view<T_CHAR> Buffer, const int Base )                      noexcept;
+    template< typename T_CHAR > x_inline        s64         atod64              ( const T_CHAR* pStr, const int Base )                                              noexcept;
+    template< typename T_CHAR > x_inline        int         x_atod32            ( const char* pStr, const int Base )                                                noexcept;
+    template< typename T_CHAR > x_inline        u32         Hash                ( const T_CHAR* pStr, const u32 Range = 0xffffffff, const u32 hVal = 1 )            noexcept;
+    template< typename T_CHAR > x_inline        u32         IHash               ( const T_CHAR* pStr, const u32 Range = 0xffffffff, const u32 hVal = 1 )            noexcept;
+    template< typename T_CHAR > x_inline        u64         IHash64             ( const T_CHAR* pStr, const u64 hVal )                                              noexcept;
+    template< typename T_CHAR > x_inline        u64         toguid              ( const T_CHAR* const pStr, const T_CHAR Separator = T_CHAR{ ':' } )                noexcept;
+    template< typename T_CHAR > x_inline        int         ncmp                ( const T_CHAR* pStr1, const T_CHAR* pStr2, int Count )                             noexcept;
+    template< typename T_CHAR > x_inline        int         cmp                 ( const T_CHAR* pStr1, const T_CHAR* pStr2 )                                        noexcept;
+    template< typename T_CHAR > x_inline        int         icmp                ( const T_CHAR* pStr1, const T_CHAR* pStr2 )                                        noexcept;
+    template< typename T_CHAR > x_inline        int         str                 ( const T_CHAR* const pMainStr, const T_CHAR* const pSubStr )                       noexcept;
+    template< typename T_CHAR > x_inline        int         istr                ( const T_CHAR* const pMainStr, const T_CHAR* const pSubStr )                       noexcept;
+    template< typename T_CHAR > x_inline        int         lastchar            ( const T_CHAR* const pMainStr, const T_CHAR C )                                    noexcept;
+    template< typename T_CHAR > x_inline        int         firstchar           ( const T_CHAR* const pMainStr, const T_CHAR C )                                    noexcept;
+    template< typename T_CHAR > x_inline   const T_CHAR*    lastchar_ptr        ( const T_CHAR* const pMainStr, const T_CHAR C )                                    noexcept;
+    template< typename T_CHAR > x_inline   const T_CHAR*    firstchar_ptr       ( const T_CHAR* const pMainStr, const T_CHAR C )                                    noexcept;
+    template< typename T_CHAR > x_inline        int         tolower             ( T_CHAR* const pMainStr )                                                          noexcept;
+    template< typename T_CHAR > x_inline        int         toupper             ( T_CHAR* const pMainStr )                                                          noexcept;
+    template< typename T_CHAR > x_inline        int         atoi32              ( const T_CHAR* pStr )                                                              noexcept;
+    template< typename T_CHAR > x_inline        s64         atoi64              ( const T_CHAR* pStr )                                                              noexcept;
+    template< typename T_CHAR > x_inline        bool        isstrint            ( const T_CHAR* pStr )                                                              noexcept;
+    template< typename T_CHAR > x_inline        bool        isstrfloat          ( const T_CHAR* pStr )                                                              noexcept;
+    template< typename T_CHAR > x_inline        bool        isstrhex            ( const T_CHAR* pStr )                                                              noexcept;
+    template< typename T_CHAR > x_inline        bool        isstrguid           ( const T_CHAR* pStr, const T_CHAR Separator = T_CHAR{ ':' } )                      noexcept;
+    template< typename T_CHAR > x_inline        f32         atof32              ( const T_CHAR* pStr )                                                              noexcept;
+    template< typename T_CHAR > x_inline        f64         atof64              ( const T_CHAR* pStr )                                                              noexcept;
+    template< typename T_CHAR > x_inline        int         toupper             ( const T_CHAR C )                                                                  noexcept { return( (C >= T_CHAR{'a'}) && (C <= T_CHAR{'z'}) )? C + (T_CHAR{'A'} - T_CHAR{'a'}) : C; }
+    template< typename T_CHAR > x_inline        int         tolower             ( const T_CHAR C )                                                                  noexcept { return( (C >= T_CHAR{'A'}) && (C <= T_CHAR{'Z'}) )? C + (T_CHAR{'a'} - T_CHAR{'A'}) : C; }
+    template< typename T_CHAR > x_inline        bool        isspace             ( const T_CHAR C )                                                                  noexcept { return( (C == 0x09) || (C == 0x0A) || (C == 0x0D) || (C == T_CHAR{' '}) ); }
+    template< typename T_CHAR > x_inline        bool        isdigit             ( const T_CHAR C )                                                                  noexcept { return( (C >=  T_CHAR{'0'}) && (C <= T_CHAR{'9'}) ); }
+    template< typename T_CHAR > x_inline        bool        isalpha             ( const T_CHAR C )                                                                  noexcept { return( ((C >= T_CHAR{'A'}) && (C <= T_CHAR{'Z'})) || ((C >= T_CHAR{'a'}) && (C <= T_CHAR{'z'})) ); }
+    template< typename T_CHAR > x_inline        bool        isupper             ( const T_CHAR C )                                                                  noexcept { return( (C >=  T_CHAR{'A'}) && (C <= T_CHAR{'Z'}) ); }
+    template< typename T_CHAR > x_inline        bool        islower             ( const T_CHAR C )                                                                  noexcept { return( (C >=  T_CHAR{'a'}) && (C <= T_CHAR{'z'}) ); }
+    template< typename T_CHAR > x_inline        bool        ishex               ( const T_CHAR C )                                                                  noexcept { return( ((C >= T_CHAR{'A'}) && (C <= T_CHAR{'F'})) || ((C >= T_CHAR{'a'}) && (C <= T_CHAR{'f'})) || ((C >=  T_CHAR{'0'}) && (C <= T_CHAR{'9'})) ); }
+    template< typename T_CHAR > x_inline        u32         strCRC              ( const T_CHAR* pStr, u32 crcSum = 0x00000000u )                                    noexcept;
+    template< typename T_CHAR > x_inline        int         replace             ( xbuffer_view<T_CHAR> Str, const T_CHAR  FindChar, const T_CHAR ReplaceChar )      noexcept;
+    template< typename T_CHAR > x_inline        int         replace             ( xbuffer_view<T_CHAR> Str, const T_CHAR* const pFindStr, const T_CHAR* const pReplaceChar ) noexcept;
+    template< typename T_CHAR > x_inline        int         cleanpath           ( xbuffer_view<T_CHAR> Path )                                                       noexcept;
+#endif
+
+    //------------------------------------------------------------------------------------
     // ref - reference string class this class handle all kinds of types of strings at the same time
     //------------------------------------------------------------------------------------
     template< typename T_CHAR >
@@ -593,78 +664,6 @@ namespace xcore::string
     }
     template< typename T >
     constexpr static bool is_view_v = details::is_view<std::decay_t<T>>::value;
-
-    //------------------------------------------------------------------------------------
-    // String manipulations
-    //------------------------------------------------------------------------------------
-    template< typename T >                  constexpr   auto            Length          ( const T& Obj )                                                            noexcept;
-    template< typename T1, typename T2 >    constexpr   auto            CopyN           ( T1& Dest, const T2& Src,  units<decltype(Src[0])> Count )                 noexcept;
-    template< typename T1, typename T2 >    constexpr   auto            Copy            ( T1& Dest, const T2& Src )                                                 noexcept;
-    template< typename T1, typename T2 >    constexpr   auto            Append          ( T1& Dest, const T2& Src )                                                 noexcept;
-    template< typename T1, typename T2 >    constexpr   int             CompareN        ( const T1& Dest, const T2& Src, int Count )                 noexcept;
-
-    //                                        inline      units<char>     sprintf         ( view<char> Dest, const char*, ... )                                       noexcept;
-    
-    template< typename... T_ARGS >
-    inline      units<char>     sprintf         ( view<char> Dest, const char*, T_ARGS... Args )                                       noexcept;
-
-    template< typename T_CHAR >             constexpr   std::uint64_t   ToGuid          ( const T_CHAR* const pStr )                                                noexcept;
-
-    template< typename T_CHAR >             constexpr   int             ToCharUpper     ( const T_CHAR C )                                                          noexcept { return( (C >= T_CHAR{'a'}) && (C <= T_CHAR{'z'}) )? C + (T_CHAR{'A'} - T_CHAR{'a'}) : C; }
-    template< typename T_CHAR >             constexpr   int             ToCharLower     ( const T_CHAR C )                                                          noexcept { return( (C >= T_CHAR{'A'}) && (C <= T_CHAR{'Z'}) )? C + (T_CHAR{'a'} - T_CHAR{'A'}) : C; }
-    template< typename T_CHAR >             constexpr   bool            isCharSpace     ( const T_CHAR C )                                                          noexcept { return  (C == 0x09) || (C == 0x0A) || (C == 0x0D) || (C == 32 ); }
-    template< typename T_CHAR >             constexpr   bool            isCharDigit     ( const T_CHAR C )                                                          noexcept { return( (C >=  T_CHAR{'0'}) && (C <= T_CHAR{'9'}) ); }
-    template< typename T_CHAR >             constexpr   bool            isCharAlpha     ( const T_CHAR C )                                                          noexcept { return( ((C >= T_CHAR{'A'}) && (C <= T_CHAR{'Z'})) || ((C >= T_CHAR{'a'}) && (C <= T_CHAR{'z'})) ); }
-    template< typename T_CHAR >             constexpr   bool            isCharUpper     ( const T_CHAR C )                                                          noexcept { return( (C >=  T_CHAR{'A'}) && (C <= T_CHAR{'Z'}) ); }
-    template< typename T_CHAR >             constexpr   bool            isCharLower     ( const T_CHAR C )                                                          noexcept { return( (C >=  T_CHAR{'a'}) && (C <= T_CHAR{'z'}) ); }
-    template< typename T_CHAR >             constexpr   bool            isCharHex       ( const T_CHAR C )                                                          noexcept { return( ((C >= T_CHAR{'A'}) && (C <= T_CHAR{'F'})) || ((C >= T_CHAR{'a'}) && (C <= T_CHAR{'f'})) || ((C >=  T_CHAR{'0'}) && (C <= T_CHAR{'9'})) ); }
-
-#if 0
-    template< typename T_CHAR > constexpr       chars<T_CHAR>   cpy             ( view<T_CHAR> Dest, const T_CHAR* pSrc )                                           noexcept;
-    template< typename T_CHAR > constexpr       void*           memchr          ( void* pBuf, const T_CHAR C, const units_chars_any<T_CHAR> aCount )                noexcept;
-    template< typename T_CHAR > constexpr       chars<T_CHAR>   dtoa            ( const u64 Val, xbuffer_view<T_CHAR> Buffer, const int Base )                      noexcept;
-    template< typename T_CHAR > constexpr       chars<T_CHAR>   dtoa            ( const s64 Val, xbuffer_view<T_CHAR> Buffer, const int Base )                      noexcept;
-    template< typename T_CHAR > constexpr       chars<T_CHAR>   dtoa            ( const u32 Val, xbuffer_view<T_CHAR> Buffer, const int Base )                      noexcept;
-    template< typename T_CHAR > constexpr       chars<T_CHAR>   dtoa            ( const int Val, xbuffer_view<T_CHAR> Buffer, const int Base )                      noexcept;
-    template< typename T_CHAR > x_inline        s64         atod64              ( const T_CHAR* pStr, const int Base )                                              noexcept;
-    template< typename T_CHAR > x_inline        int         x_atod32            ( const char* pStr, const int Base )                                                noexcept;
-    template< typename T_CHAR > x_inline        u32         Hash                ( const T_CHAR* pStr, const u32 Range = 0xffffffff, const u32 hVal = 1 )            noexcept;
-    template< typename T_CHAR > x_inline        u32         IHash               ( const T_CHAR* pStr, const u32 Range = 0xffffffff, const u32 hVal = 1 )            noexcept;
-    template< typename T_CHAR > x_inline        u64         IHash64             ( const T_CHAR* pStr, const u64 hVal )                                              noexcept;
-    template< typename T_CHAR > x_inline        u64         toguid              ( const T_CHAR* const pStr, const T_CHAR Separator = T_CHAR{ ':' } )                noexcept;
-    template< typename T_CHAR > x_inline        int         ncmp                ( const T_CHAR* pStr1, const T_CHAR* pStr2, int Count )                             noexcept;
-    template< typename T_CHAR > x_inline        int         cmp                 ( const T_CHAR* pStr1, const T_CHAR* pStr2 )                                        noexcept;
-    template< typename T_CHAR > x_inline        int         icmp                ( const T_CHAR* pStr1, const T_CHAR* pStr2 )                                        noexcept;
-    template< typename T_CHAR > x_inline        int         str                 ( const T_CHAR* const pMainStr, const T_CHAR* const pSubStr )                       noexcept;
-    template< typename T_CHAR > x_inline        int         istr                ( const T_CHAR* const pMainStr, const T_CHAR* const pSubStr )                       noexcept;
-    template< typename T_CHAR > x_inline        int         lastchar            ( const T_CHAR* const pMainStr, const T_CHAR C )                                    noexcept;
-    template< typename T_CHAR > x_inline        int         firstchar           ( const T_CHAR* const pMainStr, const T_CHAR C )                                    noexcept;
-    template< typename T_CHAR > x_inline   const T_CHAR*    lastchar_ptr        ( const T_CHAR* const pMainStr, const T_CHAR C )                                    noexcept;
-    template< typename T_CHAR > x_inline   const T_CHAR*    firstchar_ptr       ( const T_CHAR* const pMainStr, const T_CHAR C )                                    noexcept;
-    template< typename T_CHAR > x_inline        int         tolower             ( T_CHAR* const pMainStr )                                                          noexcept;
-    template< typename T_CHAR > x_inline        int         toupper             ( T_CHAR* const pMainStr )                                                          noexcept;
-    template< typename T_CHAR > x_inline        int         atoi32              ( const T_CHAR* pStr )                                                              noexcept;
-    template< typename T_CHAR > x_inline        s64         atoi64              ( const T_CHAR* pStr )                                                              noexcept;
-    template< typename T_CHAR > x_inline        bool        isstrint            ( const T_CHAR* pStr )                                                              noexcept;
-    template< typename T_CHAR > x_inline        bool        isstrfloat          ( const T_CHAR* pStr )                                                              noexcept;
-    template< typename T_CHAR > x_inline        bool        isstrhex            ( const T_CHAR* pStr )                                                              noexcept;
-    template< typename T_CHAR > x_inline        bool        isstrguid           ( const T_CHAR* pStr, const T_CHAR Separator = T_CHAR{ ':' } )                      noexcept;
-    template< typename T_CHAR > x_inline        f32         atof32              ( const T_CHAR* pStr )                                                              noexcept;
-    template< typename T_CHAR > x_inline        f64         atof64              ( const T_CHAR* pStr )                                                              noexcept;
-    template< typename T_CHAR > x_inline        int         toupper             ( const T_CHAR C )                                                                  noexcept { return( (C >= T_CHAR{'a'}) && (C <= T_CHAR{'z'}) )? C + (T_CHAR{'A'} - T_CHAR{'a'}) : C; }
-    template< typename T_CHAR > x_inline        int         tolower             ( const T_CHAR C )                                                                  noexcept { return( (C >= T_CHAR{'A'}) && (C <= T_CHAR{'Z'}) )? C + (T_CHAR{'a'} - T_CHAR{'A'}) : C; }
-    template< typename T_CHAR > x_inline        bool        isspace             ( const T_CHAR C )                                                                  noexcept { return( (C == 0x09) || (C == 0x0A) || (C == 0x0D) || (C == T_CHAR{' '}) ); }
-    template< typename T_CHAR > x_inline        bool        isdigit             ( const T_CHAR C )                                                                  noexcept { return( (C >=  T_CHAR{'0'}) && (C <= T_CHAR{'9'}) ); }
-    template< typename T_CHAR > x_inline        bool        isalpha             ( const T_CHAR C )                                                                  noexcept { return( ((C >= T_CHAR{'A'}) && (C <= T_CHAR{'Z'})) || ((C >= T_CHAR{'a'}) && (C <= T_CHAR{'z'})) ); }
-    template< typename T_CHAR > x_inline        bool        isupper             ( const T_CHAR C )                                                                  noexcept { return( (C >=  T_CHAR{'A'}) && (C <= T_CHAR{'Z'}) ); }
-    template< typename T_CHAR > x_inline        bool        islower             ( const T_CHAR C )                                                                  noexcept { return( (C >=  T_CHAR{'a'}) && (C <= T_CHAR{'z'}) ); }
-    template< typename T_CHAR > x_inline        bool        ishex               ( const T_CHAR C )                                                                  noexcept { return( ((C >= T_CHAR{'A'}) && (C <= T_CHAR{'F'})) || ((C >= T_CHAR{'a'}) && (C <= T_CHAR{'f'})) || ((C >=  T_CHAR{'0'}) && (C <= T_CHAR{'9'})) ); }
-    template< typename T_CHAR > x_inline        u32         strCRC              ( const T_CHAR* pStr, u32 crcSum = 0x00000000u )                                    noexcept;
-    template< typename T_CHAR > x_inline        int         replace             ( xbuffer_view<T_CHAR> Str, const T_CHAR  FindChar, const T_CHAR ReplaceChar )      noexcept;
-    template< typename T_CHAR > x_inline        int         replace             ( xbuffer_view<T_CHAR> Str, const T_CHAR* const pFindStr, const T_CHAR* const pReplaceChar ) noexcept;
-    template< typename T_CHAR > x_inline        int         cleanpath           ( xbuffer_view<T_CHAR> Path )                                                       noexcept;
-#endif
-
 }
 
 

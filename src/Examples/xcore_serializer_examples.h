@@ -2,6 +2,7 @@
 
 namespace xcore::serializer
 {
+#if 0
     //----------------------------------------------------------------------------------
     // Examples of data structures and their save functions
     //----------------------------------------------------------------------------------
@@ -226,5 +227,6 @@ namespace xcore::serializer
             Test01();
         }
     }
+#endif
 }
 

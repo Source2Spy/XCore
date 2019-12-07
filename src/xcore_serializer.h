@@ -4,6 +4,7 @@
 
 namespace xcore::serializer
 {
+#if 0
     //------------------------------------------------------------------------------
     // Description:
     //     The xserialfile class is design for binary resources files. It is design
@@ -373,5 +374,7 @@ namespace xcore::serializer
         void*                   m_pTempBlockData    { nullptr };    // This is data that was saved with the flag temp_data
         bool                    m_bFreeTempData     { true };
     };
+
+#endif
 }
 #endif

@@ -687,7 +687,7 @@ namespace xcore::scheduler
             // Get next job or Sleep when we need to
             //
             pJob = getJob();
-            if( pJob == false )
+            if( pJob == nullptr )
             {
                 XCORE_PERF_ZONE_SCOPED_NC("Sleeping",0x4f2f2f)
                 XLOG_CHANNEL_INFO( *m_LogChannel, "Worker[%d] Sleeping", getWorkerUID(*this).m_Value );

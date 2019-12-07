@@ -354,7 +354,7 @@ namespace xcore::file
     {
         string::ref<char> Data;
         Data.MakeUnique(512);
-        const auto c = xcore::vsprintf( Data.getView(), pFormatStr, xarg_list(sizeof...(T_ARGS), Args...));
+        const auto c = xcore::string::sprintf( Data.getView(), pFormatStr, xarg_list(sizeof...(T_ARGS), Args...));
         return WriteList( Data.getView().ViewTo(c) );
     }
 }

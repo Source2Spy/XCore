@@ -83,17 +83,32 @@ namespace mecs::examples::test5
         {
             namespace spatial_cell
             {
-                struct core : mecs::component::quantum_mutable, mecs::component::double_buffer
+                constexpr static std::size_t max_entity_count = 64;
+                struct position : mecs::component::double_buffer, mecs::component::quantum_mutable
                 {
-                    std::atomic<int>                        m_nEntries;
-                    std::array<xcore::vector2,64>           m_Position;
-                    std::array<float,64>                    m_Radius;
+                    std::array<xcore::vector2,max_entity_count>			m_lPosition;
+                    std::array<float,max_entity_count>					m_lRadius;
                 };
 
-                struct entity : mecs::component::quantum_mutable, mecs::component::double_buffer
+                struct count : mecs::component::double_buffer, mecs::component::quantum_mutable
                 {
-                    std::array<mecs::entity::instance,64>   m_Entity;
+                    int													m_Value;
+                }
+                
+                struct entity : mecs::component::double_buffer, mecs::component::quantum_mutable
+                {
+                    std::array<mecs::entity::instance,max_entity_count>	m_lEntity;
                 };
+
+                struct velocity : mecs::component::double_buffer, mecs::component::quantum_mutable
+                {
+                    std::array<xcore::vector2,max_entity_count>			m_lVelocity;
+                };
+                
+                struct id
+                {
+                    world_grid::vector2 								m_Value;
+                }
             }
 
             struct type : mecs::component::shared
@@ -112,7 +127,7 @@ namespace mecs::examples::test5
             > fullcell_v;            
         }
         */
-
+        
         namespace system
         {
             struct events
@@ -120,12 +135,116 @@ namespace mecs::examples::test5
                 // onCollision
             };
 
+            constexpr static mecs::query::define
+            <
+                mecs::query::all<component::spatial_cell::position
+                               , component::spatial_cell::count
+                               , component::spatial_cell::entity
+                               , component::spatial_cell::id>
+            > query2_v{};
+
             struct instance : mecs::system::instance
             {
                 constexpr static auto   system_name_v   = xconst_universal_str("system physics instance");
 
                 using mecs::system::instance::instance;
 
+
+                void opeprator() ( 
+                        const component::spatial_cell::position& 	T0lPosition
+                    ,	const component::spatial_cell::entity&   	T0lVelocity
+                    ,   const component::spatial_cell::count&	 	T0Count
+                    ,   const component::spatial_cell::entity&   	T0lEntity
+                    ,	const component::spatial_cell::id&          T0ID 
+                    ,		  component::spatial_cell::position& 	T1lPosition
+                    ,	      component::spatial_cell::entity&   	T1lVelocity
+                    ,         component::spatial_cell::count&	 	T1Count
+                    ,         component::spatial_cell::entity&   	T1lEntity ) noexcept
+                {
+                    
+                    const component::spatial_cell::position* T0CellMapPosition[3][3]  = {nullptr};
+                    const component::spatial_cell::velocity* T0CellMapVelocity[3][3]  = {nullptr};
+                    const component::spatial_cell::count*    T0CellMapCount[3][3]     = {nullptr};
+                    const component::spatial_cell::entity*   T0CellMapEntity[3][3]    = {nullptr};
+                          component::spatial_cell::position* T1CellMapPosition[3][3]  = {nullptr};
+                          component::spatial_cell::velocity* T1CellMapVelocity[3][3]  = {nullptr};
+                          component::spatial_cell::count*    T1CellMapCount[3][3]     = {nullptr};
+                          component::spatial_cell::entity*   T1CellMapEntity[3][3]    = {nullptr};
+
+                    T0CellMapPosition[1][1]  = &T0lPosition;
+                    T0CellMapVelocity[1][1]  = &T0lVelocity;
+                    T0CellMapCount[1][1]     = &T0Count;
+                    T0CellMapEntity[1][1]    = &T0lEntity;
+
+                    T1CellMapPosition[1][1]  = &T1lPosition;
+                    T1CellMapVelocity[1][1]  = &T1lVelocity;
+                    T1CellMapCount[1][1]     = &T1Count;
+                    T1CellMapEntity[1][1]    = &T1lEntity;
+                    
+                    ForEachQuery(query2_v, [&](mecs::component::group::instance& Group )
+                    {
+                        const auto SearchBox = world_grid::SearchBox( ID.m_Value );
+                        for( int y=SearchBox.m_Min.m_Y; y<SearchBox.m_Max.m_Y; ++y )
+                        for( int x=SearchBox.m_Min.m_X; x<SearchBox.m_Max.m_X; ++x )
+                        {
+                            if( x == ID.m_Value.m_X && y == ID.m_Value.m_Y ) continue;
+                            
+                            findEntity( Group, mecs::entity::guid{ world_grid::ComputeKeyFromPosition(x,y) }, [&](
+                                    const component::spatial_cell::position& 	T0lPosition
+                                ,   const component::spatial_cell::position& 	T0lVelocity
+                                ,   const component::spatial_cell::count&	 	T0Count
+                                ,   const component::spatial_cell::entity&   	T0lEntity
+                                ,  	      component::spatial_cell::position& 	T1lPosition
+                                ,         component::spatial_cell::position& 	T1lVelocity
+                                ,		  component::spatial_cell::count&	 	T1Count
+                                ,	      component::spatial_cell::entity&   	T1lEntity
+                                ) noexcept
+                                {
+                                    T0CellMapPosition[x][y]  = &T0lPosition;
+                                    T0CellMapVelocity[x][y]  = &T0lVelocity;
+                                    T0CellMapCount[x][y]     = &T0Count;
+                                    T0CellMapEntity[x][y]    = &T0lEntity;
+                                    
+                                    T1CellMapPosition[x][y]  = &T1lPosition;
+                                    T1CellMapVelocity[x][y]  = &T1lVelocity;
+                                    T1CellMapCount[x][y]     = &T1Count;
+                                    T1CellMapEntity[x][y]    = &T1lEntity;
+                                }
+                        }
+                    });
+                                        
+                    const float DT = getTime().m_DeltaTime;
+                    for( int i=0;i<Count.m_Value; ++i )
+                    {
+                        const auto&    T0Position = &T0lPosition,m_lPosition[i].m_Value;
+                        const auto&    T0Velocity = &T0lPosition,m_lVelocity[i].m_Value;
+                        xcore::vector2 T1Velocity = T0Velocity;
+                        xcore::vector2 T1Position = T0Position + T1Velocity * DT;
+                        
+                        for( int y=0; y<3; y++)
+                        for( int x=0; x<3; x++)
+                        for( int c=0; c<T0CellMapCount[x][y].m_Value; c++)
+                        {
+                            if( &T0Position == &T0CellMapPosition[x][y].m_lPosition[c].m_Value ) continue;
+                            
+                            // Check for collision
+                        }
+                        
+                        auto RelativeGridPos = WorldToGrid( T1Position ) -  T0ID.m_Value;
+                        
+                        const int C = T1CellMapCount[ RelativeGridPos.m_X ][RelativeGridPos.m_Y].m_Value++;
+                        T1CellMapPosition[RelativeGridPos.m_X][RelativeGridPos.m_Y].m_lPosition[C] = T1Position;
+                        T1CellMapVelocity[RelativeGridPos.m_X][RelativeGridPos.m_Y].m_lVelocity[C] = T1Velocity;
+                        T1CellMapEntity  [RelativeGridPos.m_X][RelativeGridPos.m_Y].m_lEntity[C]   = T0lPosition,m_lEntity[i];
+                    }
+                }						
+            }
+            
+            struct instance : mecs::system::instance
+            {
+                constexpr static auto   system_name_v   = xconst_universal_str("system physics instance");
+
+                using mecs::system::instance::instance;
 #if 0
                 
                 virtual void qt_onRun( void ) noexcept override

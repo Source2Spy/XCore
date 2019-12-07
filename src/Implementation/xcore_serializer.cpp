@@ -2,6 +2,7 @@
 
 namespace xcore::serializer
 {
+#if 0
     //------------------------------------------------------------------------------
     static
     void* MemoryAllocaterDefaultFunction( units::bytes Size, mem_type Flags) noexcept
@@ -602,4 +603,5 @@ namespace xcore::serializer
         // Return the basic pack
         return pPackPointers[0];
     }
+#endif
 }

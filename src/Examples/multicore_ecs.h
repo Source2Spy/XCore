@@ -186,7 +186,7 @@ namespace mecs
                 auto&           MapEntry    = m_Map[Key.m_Value % max_size_v];
                 xcore::lock::scope Lk( MapEntry.m_Lock );
 
-                xassert( MapEntry.m_pEntry );
+                xassert( MapEntry.m_pEntry != nullptr );
                 for( auto p = &MapEntry.m_pEntry; *p; p = &(*p)->m_pNext )
                 {
                     auto& E = **p;
@@ -2019,6 +2019,91 @@ namespace mecs
     //---------------------------------------------------------------------------------
     namespace system
     {
+        //---------------------------------------------------------------------------------
+        // SYSTEM::INSTANCE 
+        //---------------------------------------------------------------------------------
+        struct instance : xcore::scheduler::job<4>
+        {
+            using                                   parent_t        = xcore::scheduler::job<4>;
+
+            // Defaults that can be overwritten by the user
+            constexpr static auto                   system_name_v   = xconst_universal_str("mecs::System");
+            constexpr static mecs::query::define<>  query_v         {};
+
+            // Messages that we can handle these can be overwritten by the user
+            inline void msgSyncPointDone    ( sync_point::instance& ){}
+            inline void msgSyncPointStart   ( sync_point::instance& ){}
+            inline void msgWorldStart       ( void ){}
+            inline void msgFrameStart       ( void ){}
+            inline void msgFrameDone        ( void ){}
+
+            // Functions
+            template<typename K = world::instance>
+            xforceinline void deleteEntity( entity::instance& Entity )
+            {
+                reinterpret_cast<K&>(m_World).deleteEntity( Entity );
+            }
+
+            template<typename K = world::instance>
+            xforceinline auto& getTime( void ) const noexcept
+            {
+                return reinterpret_cast<const K&>(m_World).m_Time;
+            }
+
+            template< typename T, typename K = world::instance >
+            xforceinline bool getGroup( component::group::guid gGroup, T&& CallBack ) noexcept
+            {
+                return reinterpret_cast<K&>(m_World).m_mapGroupPerTag.getExlusive( gGroup, [&](std::unique_ptr<component::group::instance>& upGroup )
+                {
+                    const auto& Semaphore = upGroup->m_SemaphoreLock;
+                    Semaphore.lock();
+                    CallBack( *upGroup );
+                    Semaphore.unlock();
+                });
+            }
+
+            template< typename T_TUPLE_ADD_COMPONENTS_AND_TAGS, typename T_TUPLE_REMOVE_COMPONENTS_AND_TAGS, typename T_CALLBACK, typename K = world::instance >
+            xforceinline void getGroupBy( entity::instance& Entity, T_CALLBACK&& CallBack ) const noexcept
+            {
+                auto& Group = reinterpret_cast<K&>(m_World).getOrCreateGroupBy
+                                ( *Entity.getTmpRef().m_pGroupInstance, (T_TUPLE_ADD_COMPONENTS_AND_TAGS*)nullptr, (T_TUPLE_REMOVE_COMPONENTS_AND_TAGS*)nullptr );
+
+                {
+                    const auto& Semaphore = Group.m_SemaphoreLock;
+                    Semaphore.lock();
+                    CallBack( Group );
+                    Semaphore.unlock();
+                };
+            }
+
+            template< typename K = world::instance >
+            xforceinline void moveEntityToGroup( component::group::instance& Group, entity::instance& Entity, xcore::function::view<void(entity::tmp_ref)> CallBack = [](entity::tmp_ref){}) const noexcept
+            {
+                reinterpret_cast<K&>(m_World).moveEntityToGroup(Group, Entity, CallBack );
+            }
+
+            template<typename T_HANDLE_CALLBACK >
+            void getEntity( entity::guid gEntity, T_HANDLE_CALLBACK&& CallBack )
+            {
+            
+            }
+
+            template<typename K = world::instance>
+            xforceinline void createEntity( component::group::instance& Group, xcore::function::view<void(entity::tmp_ref)> UserFunction = [](entity::tmp_ref){}, entity::guid Guid = entity::guid{xcore::not_null} ) noexcept
+            {
+                reinterpret_cast<K&>(m_World).createEntity( Group, UserFunction, Guid );
+            }
+
+            instance( world::instance& World, xcore::string::const_universal Str, xcore::scheduler::definition Def = {} ) noexcept 
+                : parent_t{ Def | xcore::scheduler::triggers::DONT_CLEAN_COUNT }
+                , m_World{World}
+                {setupName(Str);}
+
+            // TODO: This will be private
+            world::instance&    m_World;
+            query::instance     m_Query;
+        };
+
         namespace details
         {
             template< typename T, typename...T_ARGS >
@@ -2220,7 +2305,7 @@ namespace mecs
                 void msgSyncPointDone( sync_point::instance& Syncpoint ) noexcept
                 {
                     // Call the user function if he overwrote it
-                    if constexpr ( &T_SYSTEM::msgSyncPointDone != &instance::msgSyncPointDone )
+                    if constexpr ( &T_SYSTEM::msgSyncPointDone != &system::instance::msgSyncPointDone )
                     {
                         T_SYSTEM::msgSyncPointDone(Syncpoint);
                     }
@@ -2255,91 +2340,6 @@ namespace mecs
             using function_t  = query::system_function<decltype(Functor)>;
             return details::ForEach( Query, Functor, reinterpret_cast< typename function_t::args_t* >(nullptr) );
         }
-
-        //---------------------------------------------------------------------------------
-        // SYSTEM::INSTANCE 
-        //---------------------------------------------------------------------------------
-        struct instance : xcore::scheduler::job<4>
-        {
-            using                                   parent_t        = xcore::scheduler::job<4>;
-
-            // Defaults that can be overwritten by the user
-            constexpr static auto                   system_name_v   = xconst_universal_str("mecs::System");
-            constexpr static mecs::query::define<>  query_v         {};
-
-            // Messages that we can handle these can be overwritten by the user
-            inline void msgSyncPointDone    ( sync_point::instance& ){}
-            inline void msgSyncPointStart   ( sync_point::instance& ){}
-            inline void msgWorldStart       ( void ){}
-            inline void msgFrameStart       ( void ){}
-            inline void msgFrameDone        ( void ){}
-
-            // Functions
-            template<typename K = world::instance>
-            xforceinline void deleteEntity( entity::instance& Entity )
-            {
-                reinterpret_cast<K&>(m_World).deleteEntity( Entity );
-            }
-
-            template<typename K = world::instance>
-            xforceinline auto& getTime( void ) const noexcept
-            {
-                return reinterpret_cast<const K&>(m_World).m_Time;
-            }
-
-            template< typename T, typename K = world::instance >
-            xforceinline bool getGroup( component::group::guid gGroup, T&& CallBack ) noexcept
-            {
-                return reinterpret_cast<K&>(m_World).m_mapGroupPerTag.getExlusive( gGroup, [&](std::unique_ptr<component::group::instance>& upGroup )
-                {
-                    const auto& Semaphore = upGroup->m_SemaphoreLock;
-                    Semaphore.lock();
-                    CallBack( *upGroup );
-                    Semaphore.unlock();
-                });
-            }
-
-            template< typename T_TUPLE_ADD_COMPONENTS_AND_TAGS, typename T_TUPLE_REMOVE_COMPONENTS_AND_TAGS, typename T_CALLBACK, typename K = world::instance >
-            xforceinline void getGroupBy( entity::instance& Entity, T_CALLBACK&& CallBack ) const noexcept
-            {
-                auto& Group = reinterpret_cast<K&>(m_World).getOrCreateGroupBy
-                                ( *Entity.getTmpRef().m_pGroupInstance, (T_TUPLE_ADD_COMPONENTS_AND_TAGS*)nullptr, (T_TUPLE_REMOVE_COMPONENTS_AND_TAGS*)nullptr );
-
-                {
-                    const auto& Semaphore = Group.m_SemaphoreLock;
-                    Semaphore.lock();
-                    CallBack( Group );
-                    Semaphore.unlock();
-                };
-            }
-
-            template< typename K = world::instance >
-            xforceinline void moveEntityToGroup( component::group::instance& Group, entity::instance& Entity, xcore::function::view<void(entity::tmp_ref)> CallBack = [](entity::tmp_ref){}) const noexcept
-            {
-                reinterpret_cast<K&>(m_World).moveEntityToGroup(Group, Entity, CallBack );
-            }
-
-            template<typename T_HANDLE_CALLBACK >
-            void getEntity( entity::guid gEntity, T_HANDLE_CALLBACK&& CallBack )
-            {
-            
-            }
-
-            template<typename K = world::instance>
-            xforceinline void createEntity( component::group::instance& Group, xcore::function::view<void(entity::tmp_ref)> UserFunction = [](entity::tmp_ref){}, entity::guid Guid = entity::guid{xcore::not_null} ) noexcept
-            {
-                reinterpret_cast<K&>(m_World).createEntity( Group, UserFunction, Guid );
-            }
-
-            instance( world::instance& World, xcore::string::const_universal Str, xcore::scheduler::definition Def = {} ) noexcept 
-                : parent_t{ Def | xcore::scheduler::triggers::DONT_CLEAN_COUNT }
-                , m_World{World}
-                {setupName(Str);}
-
-            // TODO: This will be private
-            world::instance&    m_World;
-            query::instance     m_Query;
-        };
     }
 
     //---------------------------------------------------------------------------------
