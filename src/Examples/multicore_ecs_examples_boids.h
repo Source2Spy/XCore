@@ -73,6 +73,33 @@ namespace mecs::examples::test5
                 return box{ {Pos.m_X-1, Pos.m_Y-1}, {Pos.m_X+1, Pos.m_Y+1} };
             }
 
+            box MakeBox( world_grid::vector2 A, world_grid::vector2 B ) noexcept
+            {
+                box BBox;
+                if( A.m_X < B.m_X )
+                {
+                    BBox.m_Min.m_X = A.m_X; 
+                    BBox.m_Max.m_X = B.m_X;
+                }
+                else
+                {
+                    BBox.m_Max.m_X = A.m_X; 
+                    BBox.m_Min.m_X = B.m_X;
+                }
+
+                if( A.m_Y < B.m_Y )
+                {
+                    BBox.m_Min.m_Y = A.m_Y; 
+                    BBox.m_Max.m_Y = B.m_Y;
+                }
+                else
+                {
+                    BBox.m_Max.m_Y = A.m_Y;
+                    BBox.m_Min.m_Y = B.m_Y;
+                }
+                return BBox;
+            }
+
             std::uint64_t ComputeKeyFromPosition( int X, int Y )
             {
                 return xcore::bits::MurmurHash3( static_cast<std::uint64_t>((static_cast<std::uint64_t>(X)<<32) | Y) );
@@ -86,13 +113,13 @@ namespace mecs::examples::test5
                 constexpr static std::size_t max_entity_count = 64;
                 struct position : mecs::component::double_buffer, mecs::component::quantum_mutable
                 {
-                    std::array<xcore::vector2,max_entity_count>			m_lPosition;
-                    std::array<float,max_entity_count>					m_lRadius;
+                    std::array<xcore::vector2,max_entity_count>         m_lPosition;
+                    std::array<float,max_entity_count>                  m_lRadius;
                 };
 
                 struct count : mecs::component::double_buffer, mecs::component::quantum_mutable
                 {
-                    int													m_Value;
+                    std::atomic<std::int8_t>                            m_Value;
                 }
                 
                 struct entity : mecs::component::double_buffer, mecs::component::quantum_mutable
@@ -151,17 +178,16 @@ namespace mecs::examples::test5
 
 
                 void opeprator() ( 
-                        const component::spatial_cell::position& 	T0lPosition
-                    ,	const component::spatial_cell::entity&   	T0lVelocity
-                    ,   const component::spatial_cell::count&	 	T0Count
-                    ,   const component::spatial_cell::entity&   	T0lEntity
-                    ,	const component::spatial_cell::id&          T0ID 
-                    ,		  component::spatial_cell::position& 	T1lPosition
-                    ,	      component::spatial_cell::entity&   	T1lVelocity
-                    ,         component::spatial_cell::count&	 	T1Count
-                    ,         component::spatial_cell::entity&   	T1lEntity ) noexcept
+                        const component::spatial_cell::position&    T0lPosition
+                    ,   const component::spatial_cell::entity&      T0lVelocity
+                    ,   const component::spatial_cell::count&       T0Count
+                    ,   const component::spatial_cell::entity&      T0lEntity
+                    ,   const component::spatial_cell::id&          T0ID 
+                    ,         component::spatial_cell::position&    T1lPosition
+                    ,         component::spatial_cell::entity&      T1lVelocity
+                    ,         component::spatial_cell::count&       T1Count
+                    ,         component::spatial_cell::entity&      T1lEntity ) noexcept
                 {
-                    
                     const component::spatial_cell::position* T0CellMapPosition[3][3]  = {nullptr};
                     const component::spatial_cell::velocity* T0CellMapVelocity[3][3]  = {nullptr};
                     const component::spatial_cell::count*    T0CellMapCount[3][3]     = {nullptr};
@@ -181,7 +207,7 @@ namespace mecs::examples::test5
                     T1CellMapCount[1][1]     = &T1Count;
                     T1CellMapEntity[1][1]    = &T1lEntity;
                     
-                    ForEachQuery(query2_v, [&](mecs::component::group::instance& Group )
+                    ForEachQuery( query2_v, [&]( mecs::component::group::instance& Group ) noexcept
                     {
                         const auto SearchBox = world_grid::SearchBox( ID.m_Value );
                         for( int y=SearchBox.m_Min.m_Y; y<SearchBox.m_Max.m_Y; ++y )
@@ -190,14 +216,14 @@ namespace mecs::examples::test5
                             if( x == ID.m_Value.m_X && y == ID.m_Value.m_Y ) continue;
                             
                             findEntity( Group, mecs::entity::guid{ world_grid::ComputeKeyFromPosition(x,y) }, [&](
-                                    const component::spatial_cell::position& 	T0lPosition
-                                ,   const component::spatial_cell::position& 	T0lVelocity
-                                ,   const component::spatial_cell::count&	 	T0Count
-                                ,   const component::spatial_cell::entity&   	T0lEntity
-                                ,  	      component::spatial_cell::position& 	T1lPosition
-                                ,         component::spatial_cell::position& 	T1lVelocity
-                                ,		  component::spatial_cell::count&	 	T1Count
-                                ,	      component::spatial_cell::entity&   	T1lEntity
+                                    const component::spatial_cell::position&    T0lPosition
+                                ,   const component::spatial_cell::position&    T0lVelocity
+                                ,   const component::spatial_cell::count&       T0Count
+                                ,   const component::spatial_cell::entity&      T0lEntity
+                                ,         component::spatial_cell::position&    T1lPosition
+                                ,         component::spatial_cell::position&    T1lVelocity
+                                ,         component::spatial_cell::count&       T1Count
+                                ,         component::spatial_cell::entity&      T1lEntity
                                 ) noexcept
                                 {
                                     T0CellMapPosition[x][y]  = &T0lPosition;
@@ -214,30 +240,32 @@ namespace mecs::examples::test5
                     });
                                         
                     const float DT = getTime().m_DeltaTime;
-                    for( int i=0;i<Count.m_Value; ++i )
+                    for( auto CountT = Count.m_Value.load(std::memory_order_relax)-1, i=0; i<CountT; ++i )
                     {
                         const auto&    T0Position = &T0lPosition,m_lPosition[i].m_Value;
                         const auto&    T0Velocity = &T0lPosition,m_lVelocity[i].m_Value;
                         xcore::vector2 T1Velocity = T0Velocity;
+                        const float    VL         = T1Velocity.Length();
                         xcore::vector2 T1Position = T0Position + T1Velocity * DT;
-                        
-                        for( int y=0; y<3; y++)
-                        for( int x=0; x<3; x++)
-                        for( int c=0; c<T0CellMapCount[x][y].m_Value; c++)
+                        const auto     SearchBox  = MakeBox( WorldToGrid( T1Position ), WorldToGrid( T1Position + (T1Velocity / VL) * T0lPosition.m_lRadius[i] ) );
+
+                        for( int y=SearchBox.m_Min.m_Y; y<SearchBox.m_Max.m_Y; y++)
+                        for( int x=SearchBox.m_Min.m_X; x<SearchBox.m_Max.m_X; x++)
+                        for( auto Count = T0CellMapCount[x][y].m_Value.load(std::memory_order_relax)-1, c = 0; c < Count; ++c )
                         {
                             if( &T0Position == &T0CellMapPosition[x][y].m_lPosition[c].m_Value ) continue;
                             
                             // Check for collision
                         }
                         
-                        auto RelativeGridPos = WorldToGrid( T1Position ) -  T0ID.m_Value;
+                        auto RelativeGridPos = WorldToGrid( T1Position ) - T0ID.m_Value;
                         
-                        const int C = T1CellMapCount[ RelativeGridPos.m_X ][RelativeGridPos.m_Y].m_Value++;
+                        const auto C = T1CellMapCount[RelativeGridPos.m_X][RelativeGridPos.m_Y].m_Value++;
                         T1CellMapPosition[RelativeGridPos.m_X][RelativeGridPos.m_Y].m_lPosition[C] = T1Position;
                         T1CellMapVelocity[RelativeGridPos.m_X][RelativeGridPos.m_Y].m_lVelocity[C] = T1Velocity;
                         T1CellMapEntity  [RelativeGridPos.m_X][RelativeGridPos.m_Y].m_lEntity[C]   = T0lPosition,m_lEntity[i];
                     }
-                }						
+                }
             }
             
             struct instance : mecs::system::instance
