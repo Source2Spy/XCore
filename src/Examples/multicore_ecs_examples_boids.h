@@ -164,10 +164,40 @@ namespace mecs::examples::test5
 
             constexpr static mecs::query::define
             <
-                mecs::query::all<component::spatial_cell::position
-                               , component::spatial_cell::count
-                               , component::spatial_cell::entity
-                               , component::spatial_cell::id>
+                mecs::query::access
+                <       const component::spatial_cell::position
+                    ,   const component::spatial_cell::velocity
+                    ,   const component::spatial_cell::count
+                    ,   const component::spatial_cell::entity
+                    ,   const component::spatial_cell::id
+                    ,         component::spatial_cell::position
+                    ,         component::spatial_cell::velocity
+                    ,         component::spatial_cell::count
+                    ,         component::spatial_cell::entity
+                >;
+
+            > query_v{};
+
+            constexpr static mecs::query::define
+            <
+                mecs::query::all
+                <     component::spatial_cell::position
+                    , component::spatial_cell::count
+                    , component::spatial_cell::entity
+                    , component::spatial_cell::id
+                >
+                , mecs::query::access
+                <       const component::spatial_cell::position
+                    ,   const component::spatial_cell::velocity
+                    ,   const component::spatial_cell::count
+                    ,   const component::spatial_cell::entity
+                    ,   const component::spatial_cell::id
+                    ,         component::spatial_cell::position
+                    ,         component::spatial_cell::velocity
+                    ,         component::spatial_cell::count
+                    ,         component::spatial_cell::entity
+                >;
+
             > query2_v{};
 
             struct instance : mecs::system::instance
@@ -177,16 +207,7 @@ namespace mecs::examples::test5
                 using mecs::system::instance::instance;
 
 
-                void opeprator() ( 
-                        const component::spatial_cell::position&    T0lPosition
-                    ,   const component::spatial_cell::entity&      T0lVelocity
-                    ,   const component::spatial_cell::count&       T0Count
-                    ,   const component::spatial_cell::entity&      T0lEntity
-                    ,   const component::spatial_cell::id&          T0ID 
-                    ,         component::spatial_cell::position&    T1lPosition
-                    ,         component::spatial_cell::entity&      T1lVelocity
-                    ,         component::spatial_cell::count&       T1Count
-                    ,         component::spatial_cell::entity&      T1lEntity ) noexcept
+                void operator() ( query_v::access& Component ) noexcept
                 {
                     const component::spatial_cell::position* T0CellMapPosition[3][3]  = {nullptr};
                     const component::spatial_cell::velocity* T0CellMapVelocity[3][3]  = {nullptr};
@@ -197,15 +218,15 @@ namespace mecs::examples::test5
                           component::spatial_cell::count*    T1CellMapCount[3][3]     = {nullptr};
                           component::spatial_cell::entity*   T1CellMapEntity[3][3]    = {nullptr};
 
-                    T0CellMapPosition[1][1]  = &T0lPosition;
-                    T0CellMapVelocity[1][1]  = &T0lVelocity;
-                    T0CellMapCount[1][1]     = &T0Count;
-                    T0CellMapEntity[1][1]    = &T0lEntity;
+                    T0CellMapPosition[1][1]  = &Component.get<const component::spatial_cell::position>();
+                    T0CellMapVelocity[1][1]  = &Component.get<const component::spatial_cell::velocity>();
+                    T0CellMapCount[1][1]     = &Component.get<const component::spatial_cell::count>();
+                    T0CellMapEntity[1][1]    = &Component.get<const component::spatial_cell::entity>();
 
-                    T1CellMapPosition[1][1]  = &T1lPosition;
-                    T1CellMapVelocity[1][1]  = &T1lVelocity;
-                    T1CellMapCount[1][1]     = &T1Count;
-                    T1CellMapEntity[1][1]    = &T1lEntity;
+                    T1CellMapPosition[1][1]  = &Component.get<component::spatial_cell::position>();
+                    T1CellMapVelocity[1][1]  = &Component.get<component::spatial_cell::velocity>();
+                    T1CellMapCount[1][1]     = &Component.get<component::spatial_cell::count>();
+                    T1CellMapEntity[1][1]    = &Component.get<component::spatial_cell::entity>();
                     
                     ForEachQuery( query2_v, [&]( mecs::component::group::instance& Group ) noexcept
                     {
@@ -215,27 +236,18 @@ namespace mecs::examples::test5
                         {
                             if( x == ID.m_Value.m_X && y == ID.m_Value.m_Y ) continue;
                             
-                            findEntity( Group, mecs::entity::guid{ world_grid::ComputeKeyFromPosition(x,y) }, [&](
-                                    const component::spatial_cell::position&    T0lPosition
-                                ,   const component::spatial_cell::position&    T0lVelocity
-                                ,   const component::spatial_cell::count&       T0Count
-                                ,   const component::spatial_cell::entity&      T0lEntity
-                                ,         component::spatial_cell::position&    T1lPosition
-                                ,         component::spatial_cell::position&    T1lVelocity
-                                ,         component::spatial_cell::count&       T1Count
-                                ,         component::spatial_cell::entity&      T1lEntity
-                                ) noexcept
-                                {
-                                    T0CellMapPosition[x][y]  = &T0lPosition;
-                                    T0CellMapVelocity[x][y]  = &T0lVelocity;
-                                    T0CellMapCount[x][y]     = &T0Count;
-                                    T0CellMapEntity[x][y]    = &T0lEntity;
+                            findEntity( Group, mecs::entity::guid{ world_grid::ComputeKeyFromPosition(x,y) }, [&]( query2_v::access& Access ) noexcept
+                            {
+                                T0CellMapPosition[x][y]  = &Access.get<const component::spatial_cell::position>();
+                                T0CellMapVelocity[x][y]  = &Access.get<const component::spatial_cell::velocity>();
+                                T0CellMapCount[x][y]     = &Access.get<const component::spatial_cell::count>();
+                                T0CellMapEntity[x][y]    = &Access.get<const component::spatial_cell::entity>();
                                     
-                                    T1CellMapPosition[x][y]  = &T1lPosition;
-                                    T1CellMapVelocity[x][y]  = &T1lVelocity;
-                                    T1CellMapCount[x][y]     = &T1Count;
-                                    T1CellMapEntity[x][y]    = &T1lEntity;
-                                }
+                                T1CellMapPosition[x][y]  = &Access.get<component::spatial_cell::position>();
+                                T1CellMapVelocity[x][y]  = &Access.get<component::spatial_cell::velocity>();
+                                T1CellMapCount[x][y]     = &Access.get<component::spatial_cell::count>();
+                                T1CellMapEntity[x][y]    = &Access.get<component::spatial_cell::entity>();
+                            }
                         }
                     });
                                         
