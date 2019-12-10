@@ -1845,7 +1845,8 @@ namespace mecs
         template< typename T >
         struct system_function
         {
-            using args_t        = typename xcore::function::traits<T>::args_tuple;
+            using function_t    = typename xcore::function::traits<T>;
+            using args_t        = typename function_t::args_tuple;
             using sorted_args_t = typename xcore::types::tuple_sort_t< component::group::details::compare, args_t >;
             constexpr static std::array list_v          { details::TypeArray ( reinterpret_cast<args_t*>(nullptr) ) };
             constexpr static std::array const_list_v    { details::ConstArray( reinterpret_cast<args_t*>(nullptr) ) };
@@ -1944,12 +1945,12 @@ namespace mecs
                 filter_bits                 m_None                  {nullptr};
             };
 
-            xcore::vector<result_entry> m_lResults              {};
-            bool                        m_isInitialized         {false};
-            filter_bits                 m_Function              {nullptr};
-            filter_bits                 m_Write                 {nullptr};
-            component_query             m_ComponentQuery        {};
-            tag_query                   m_TagQuery              {};
+            xcore::vector<result_entry>     m_lResults              {};
+            bool                            m_isInitialized         {false};
+            filter_bits                     m_Function              {nullptr};
+            filter_bits                     m_Write                 {nullptr};
+            component_query                 m_ComponentQuery        {};
+            tag_query                       m_TagQuery              {};
         };
     }
 
@@ -2402,6 +2403,42 @@ namespace mecs
                 return pError;
             }
 
+            //-----------------------------------------------------------------------------------------
+
+            template< typename T >
+            const char* ForEachGroup( query::instance& Query, T&& Functor ) noexcept
+            {
+                using                           function_t  = query::system_function<decltype(Functor)>;
+                const char*                     pError      = nullptr;
+
+                // If there is nothing to do then lets bail out
+                if( Query.m_lResults.size() == 0 )
+                    return pError;
+
+                //
+                // Lock all the groups
+                //
+                if( pError = LockQueryComponents( Query, Query. ) ) return pError;
+
+                //
+                // Do all the groups
+                //
+                xcore::scheduler::channel Channel( xconst_universal_str("ForEach") );
+                for (auto& R : Query.m_lResults )
+                {
+                    if( R.m_pGroup->m_Count == 0 ) continue;
+                    ProcessGroup<T,T_ARGS...>( Channel, R, std::forward<T&&>(Functor) );
+                }
+                Channel.join();
+
+                //
+                // unlock all the groups that we need to work with so that no one tries to add/remove entities
+                //
+                UnlockQueryComponents( Query, IndexList );
+
+                return pError;
+            }
+
             //---------------------------------------------------------------------------------
             // SYSTEM::CUSTOM SYSTEM 
             //---------------------------------------------------------------------------------
@@ -2443,11 +2480,24 @@ namespace mecs
 
                 virtual void qt_onRun( void ) noexcept override
                 {
-                    user_system_t::m_World.DoQuery(user_system_t::m_Query, *this, user_system_t::query_v );
+                    using function_t  = query::system_function<decltype(*this)>;
+
+                    static_assert( function_t::function_t::arg_count_v > 0 );
+                    using t = typename std::decay_t<std::remove_reference_t< function_t::function_t::arg_t<0> >>;
+
+                    if constexpr ( xcore::types::is_specialized_v< details::access_components, t > )
+                    {
+                        static_assert( function_t::function_t::arg_count_v == 1 );
+                        user_system_t::m_World.DoQueryTuple(user_system_t::m_Query, *this, user_system_t::query_v );
+                    }
+                    else
+                    {
+                        user_system_t::m_World.DoQuery(user_system_t::m_Query, *this, user_system_t::query_v );
                     
-                    // Allow the system to compute
-                    auto pErrorString = ForEach( user_system_t::m_Query, *this );
-                    xassert(pErrorString==nullptr);
+                        // Allow the system to compute
+                        auto pErrorString = ForEach( user_system_t::m_Query, *this );
+                        xassert(pErrorString==nullptr);
+                    }
                 }
             };
         }
