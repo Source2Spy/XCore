@@ -206,6 +206,13 @@ namespace mecs::examples::test5
 
                 using mecs::system::instance::instance;
 
+                query::instance     m_SpacialGroupQuery;
+
+                void msgWorldStart()
+                {
+                    // Only need to resolve this ones
+                    DoQuery( m_SpacialGroupQuery );
+                }
 
                 void operator() ( query_v::access& Component ) noexcept
                 {
@@ -228,7 +235,7 @@ namespace mecs::examples::test5
                     T1CellMapCount[1][1]     = &Component.get<component::spatial_cell::count>();
                     T1CellMapEntity[1][1]    = &Component.get<component::spatial_cell::entity>();
                     
-                    ForEachQuery( query2_v, [&]( mecs::component::group::instance& Group ) noexcept
+                    ForEachGroup( m_SpacialGroupQuery, [&]( mecs::component::group::instance& Group ) noexcept
                     {
                         const auto SearchBox = world_grid::SearchBox( ID.m_Value );
                         for( int y=SearchBox.m_Min.m_Y; y<SearchBox.m_Max.m_Y; ++y )

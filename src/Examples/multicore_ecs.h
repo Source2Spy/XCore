@@ -1738,28 +1738,36 @@ namespace mecs
         template< typename...T_COMPONENTS_AND_TAGS >
         struct all : component::group::details::guid_arrays_from_types< T_COMPONENTS_AND_TAGS... >
         {
+            static_assert( ((std::is_reference_v<T_COMPONENTS_AND_TAGS> == false) && ...) );
+            static_assert( ((std::is_const_v<T_COMPONENTS_AND_TAGS> == false) && ...) );
         };
 
         template< typename...T_COMPONENTS_AND_TAGS >
         struct none : component::group::details::guid_arrays_from_types< T_COMPONENTS_AND_TAGS... >
         {
+            static_assert( ((std::is_reference_v<T_COMPONENTS_AND_TAGS> == false) && ...) );
+            static_assert( ((std::is_const_v<T_COMPONENTS_AND_TAGS> == false) && ...) );
         };
 
         template< typename...T_COMPONENTS_AND_TAGS >
         struct any : component::group::details::guid_arrays_from_types< T_COMPONENTS_AND_TAGS... >
         {
+            static_assert( ((std::is_reference_v<T_COMPONENTS_AND_TAGS> == false) && ...) );
+            static_assert( ((std::is_const_v<T_COMPONENTS_AND_TAGS> == false) && ...) );
         };
 
         template< typename...T_COMPONENTS_ONLY_WITH_CONST_WHEN_NEEDED >
         struct access : component::group::details::guid_arrays_from_types< T_COMPONENTS_ONLY_WITH_CONST_WHEN_NEEDED... >
         {
+            static_assert( ((std::is_reference_v<T_COMPONENTS_ONLY_WITH_CONST_WHEN_NEEDED> == false) && ...) );
+
             using type = details::access_components< T_COMPONENTS_ONLY_WITH_CONST_WHEN_NEEDED... >;
             std::array<component::write_type, sizeof...(T_COMPONENTS_ONLY_WITH_CONST_WHEN_NEEDED)> write_v
             { 
-                std::is_const_v<T_COMPONENTS_ONLY_WITH_CONST_WHEN_NEEDED> == false ? component::write_type::READ_ONLY:
-                std::is_base_of_v<T_COMPONENTS_ONLY_WITH_CONST_WHEN_NEEDED, component::quantum_mutable>?component::write_type::QUANTUM_WRITE:
-                component::write_type::LINEAR_WRITE
-                , ... 
+                std::is_base_of_v<T_COMPONENTS_ONLY_WITH_CONST_WHEN_NEEDED, component::quantum_mutable> ? component::write_type::QUANTUM_WRITE :
+                std::is_const_v<T_COMPONENTS_ONLY_WITH_CONST_WHEN_NEEDED> == false                      ? component::write_type::READ_ONLY     :
+                                                                                                          component::write_type::LINEAR_WRITE
+                , ...
             };
         };
 
@@ -2170,16 +2178,13 @@ namespace mecs
 
         namespace details
         {
-            template< typename T, typename...T_ARGS >
-            const char* ForEach( query::instance& Query, T&& Functor, std::tuple<T_ARGS...>* ) noexcept
+            //-----------------------------------------------------------------------------------------
+            inline
+            const char* LockQueryComponents( query::instance& Query, const std::span<const std::int16_t> IndexList ) noexcept
             {
-                using function_t  = query::system_function<decltype(Functor)>;
-                using pool_tuple  = typename std::tuple< std::remove_reference_t<T_ARGS>*... >;
                 const char* pError = nullptr;
 
-                // If there is nothing to do then lets bail out
-                if( Query.m_lResults.size() == 0 )
-                    return pError;
+                xassert(Query.m_lResults.size());
 
                 // Lock all the groups that we need to work with so that no one tries to add/remove entities
                 for( const auto& E : Query.m_lResults )
@@ -2191,14 +2196,14 @@ namespace mecs
                     // We lock as read only even if one of our components is going to write to it since really what we are saying is that we 
                     // are going to use the group. Unlock will happen when we are done using this group.
                     std::as_const(Group.m_SemaphoreLock).lock();
-                        
+                    
                     // Now we are going to tell the system which components in fact we are going to use. 
                     // This is mainly for debugging purposes to make sure that we don't have two system writing to the same component
                     static_assert( std::is_const_v<decltype(Group)> == false, "We need to lock here as read only" );
                     xcore::lock::scope Lk( Group.m_lComponentLocks );
                     auto& ComponentLockArray = Group.m_lComponentLocks.get();
 
-                    auto LockComponent = [&]( int I ) constexpr noexcept -> const char*
+                    auto LockComponent = [&]( std::int16_t I ) constexpr noexcept -> const char*
                     {
                         const auto iComp = E.m_lLockRemaps[I];
                         auto&      CLock = ComponentLockArray[iComp];
@@ -2241,75 +2246,21 @@ namespace mecs
                         return nullptr;
                     };
 
-                    if( ( (pError = LockComponent(xcore::types::tuple_t2i_v< T_ARGS, function_t::args_t >)) || ...) )
+                    // Lock component
+                    for( auto x : IndexList )
                     {
-                        return pError;
+                        if( pError = LockComponent(x) )
+                            return pError;
                     }
                 }
 
-                // Do all the groups
-                xcore::scheduler::channel Channel( xconst_universal_str("ForEach") );
-                for (auto& R : Query.m_lResults )
-                {
-                    auto&               Group           = *R.m_pGroup;
-                    auto                TotalEntries    = Group.m_Count;
+                return nullptr;
+            }
 
-                    if( TotalEntries == 0 ) continue;
-
-                    auto                Index           = 0;
-                    auto                GetPools        = [&]( int Index )->pool_tuple
-                    {
-                        return { reinterpret_cast<std::remove_reference_t<T_ARGS>*>
-                        ( &Group.m_lPages[Index]->m_RawData
-                            [ 
-                                R.m_lRemaps[ xcore::types::tuple_t2i_v< T_ARGS, function_t::args_t > ] 
-                            ]
-                        ) ... };
-                    };
-
-                    while( TotalEntries )
-                    {
-                        const auto  nEntities  = std::min( (int)5000, (int)TotalEntries );
-
-                        Channel.SubmitJob( [ &Group, Index, nEntities, &GetPools, &Functor ]
-                        {
-                            XCORE_PERF_ZONE_SCOPED_N("ForEach::LightJob")
-
-                            auto     I{ static_cast<std::uint16_t>( Index % Group.m_GroupDescriptor.m_EntriesPerPage) };
-                            auto     P{ static_cast<std::uint16_t>( Index / Group.m_GroupDescriptor.m_EntriesPerPage) };
-                            auto     Pools = GetPools(P);
-                            auto     n = nEntities;
-
-                            while( n-- )
-                            {
-                                Functor
-                                ( 
-                                    std::get
-                                    <
-                                        std::remove_reference_t<T_ARGS>*
-                                    >(Pools)[I] ... 
-                                );
-
-                                I++;
-                                if( I == Group.m_GroupDescriptor.m_EntriesPerPage )
-                                {
-                                    P++;
-                                    I = 0;
-                                    Pools = GetPools(P);
-                                }
-                            }
-                        });
-
-                        Index        += nEntities;
-                        TotalEntries -= nEntities;
-                    }
-                }
-
-                Channel.join();
-
-                //
-                // unlock all the groups that we need to work with so that no one tries to add/remove entities
-                //
+            //-----------------------------------------------------------------------------------------
+            inline
+            void UnlockQueryComponents( query::instance& Query, const std::span<const std::int16_t> IndexList ) noexcept
+            {
                 for( const auto& E : Query.m_lResults )
                 {
                     auto& Group = const_cast<component::group::instance&>(*E.m_pGroup);
@@ -2319,7 +2270,7 @@ namespace mecs
                     xcore::lock::scope Lk( Group.m_lComponentLocks );
                     auto& ComponentLockArray = Group.m_lComponentLocks.get();
 
-                    auto UnlockComponent = [&]( int I ) constexpr noexcept
+                    auto UnlockComponent = [&]( std::int16_t I ) constexpr noexcept
                     {
                         const auto iComp = E.m_lLockRemaps[I];
                         auto&      CLock = ComponentLockArray[iComp];
@@ -2335,12 +2286,117 @@ namespace mecs
                         }
                     };
 
-                    (( UnlockComponent(xcore::types::tuple_t2i_v< T_ARGS, function_t::args_t >) )
-                    , ...);
+                    // Unlock component
+                    for( auto x : IndexList )
+                    {
+                        UnlockComponent(x);
+                    }
 
                     // We officially release this group
                     std::as_const(Group.m_SemaphoreLock).unlock();
                 }
+            }
+
+            //-----------------------------------------------------------------------------------------
+            template< typename T, typename...T_ARGS >
+            void ProcessGroup( xcore::scheduler::channel& Channel, query::result_entry& ResultEntry, T&& Functor ) noexcept
+            {
+                using       function_t      = query::system_function<decltype(Functor)>;
+                using       pool_tuple      = typename std::tuple< std::remove_reference_t<T_ARGS>*... >;
+                auto&       Group           = *ResultEntry.m_pGroup;
+                auto        TotalEntries    = Group.m_Count;
+                auto        Index           = 0;
+
+                xassert( TotalEntries );
+
+                while( TotalEntries )
+                {
+                    const auto  nEntities  = std::min( (int)5000, (int)TotalEntries );
+
+                    Channel.SubmitJob( [ &Group, Index, nEntities, &ResultEntry, &Functor ]
+                    {
+                        XCORE_PERF_ZONE_SCOPED_N("ForEach::LightJob")
+
+                        const auto  epp    = static_cast<std::int32_t>(Group.m_GroupDescriptor.m_EntriesPerPage);
+                        auto        I      { static_cast<std::uint16_t>( Index % epp) };
+                        auto        P      { static_cast<std::uint16_t>( Index / epp) };
+                        auto        TotalRemainingForThisPage   = std::min( nEntities, (epp - I) );
+                        auto        TotalRemaining              = nEntities - TotalRemainingForThisPage;
+
+                        for(;;) 
+                        {
+                            const auto Pools  = pool_tuple
+                            { 
+                                reinterpret_cast<std::remove_reference_t<T_ARGS>*>
+                                ( &Group.m_lPages[P]->m_RawData
+                                    [ 
+                                        ResultEntry.m_lRemaps[ xcore::types::tuple_t2i_v< T_ARGS, function_t::args_t > ] 
+                                    ]
+                                ) ... 
+                            };
+                            
+                            // execute each entry
+                            for( const auto End = I + TotalRemainingForThisPage; I<End; ++I )
+                            {
+                                Functor
+                                ( 
+                                    std::get
+                                    <
+                                        std::remove_reference_t<T_ARGS>*
+                                    >(Pools)[I] ... 
+                                );
+                            }
+
+                            // are we done?
+                            if(TotalRemaining==0) break;
+
+                            // get ready for next page
+                            P++;
+                            I                         = 0;
+                            TotalRemainingForThisPage = std::min( TotalRemaining, epp );
+                            TotalRemaining           -= TotalRemainingForThisPage;
+                        }
+
+                    });
+
+                    Index        += nEntities;
+                    TotalEntries -= nEntities;
+                }
+            }
+
+            //-----------------------------------------------------------------------------------------
+
+            template< typename T, typename...T_ARGS >
+            const char* ForEach( query::instance& Query, T&& Functor, std::tuple<T_ARGS...>* ) noexcept
+            {
+                using                           function_t  = query::system_function<decltype(Functor)>;
+                constexpr static std::array     IndexList   { static_cast<std::int16_t>(xcore::types::tuple_t2i_v< T_ARGS, function_t::args_t >) ... };
+                const char*                     pError      = nullptr;
+
+                // If there is nothing to do then lets bail out
+                if( Query.m_lResults.size() == 0 )
+                    return pError;
+
+                //
+                // Lock all the groups
+                //
+                if( pError = LockQueryComponents( Query, IndexList ) ) return pError;
+
+                //
+                // Do all the groups
+                //
+                xcore::scheduler::channel Channel( xconst_universal_str("ForEach") );
+                for (auto& R : Query.m_lResults )
+                {
+                    if( R.m_pGroup->m_Count == 0 ) continue;
+                    ProcessGroup<T,T_ARGS...>( Channel, R, std::forward<T&&>(Functor) );
+                }
+                Channel.join();
+
+                //
+                // unlock all the groups that we need to work with so that no one tries to add/remove entities
+                //
+                UnlockQueryComponents( Query, IndexList );
 
                 return pError;
             }
