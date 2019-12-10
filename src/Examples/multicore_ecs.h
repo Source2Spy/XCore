@@ -2309,7 +2309,7 @@ namespace mecs
 
                 xassert( TotalEntries );
 
-                while( TotalEntries )
+                do 
                 {
                     const auto  nEntities  = std::min( (int)5000, (int)TotalEntries );
 
@@ -2361,7 +2361,8 @@ namespace mecs
 
                     Index        += nEntities;
                     TotalEntries -= nEntities;
-                }
+
+                } while( TotalEntries );
             }
 
             //-----------------------------------------------------------------------------------------
