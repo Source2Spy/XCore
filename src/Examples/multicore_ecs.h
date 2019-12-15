@@ -1743,7 +1743,7 @@ namespace mecs
         };
 
         template< typename...T_COMPONENTS_ONLY_WITH_CONST_WHEN_NEEDED >
-        struct access : component::group::details::guid_arrays_from_types< T_COMPONENTS_ONLY_WITH_CONST_WHEN_NEEDED... >
+        struct access : component::group::details::guid_arrays_from_types< std::remove_const_t<T_COMPONENTS_ONLY_WITH_CONST_WHEN_NEEDED>... >
         {
             static_assert( ((std::is_reference_v<T_COMPONENTS_ONLY_WITH_CONST_WHEN_NEEDED> == false) && ...) );
 
@@ -1757,13 +1757,19 @@ namespace mecs
             };
         };
 
+        template<>
+        struct access<void>
+        {
+        };
+
         namespace details
         {
             template< typename...T_COMPONENTS_ONLY_WITH_CONST_WHEN_NEEDED >
             struct access_components;
 
             template< typename...T_COMPONENTS_ONLY_WITH_CONST_WHEN_NEEDED >
-            struct access_components< mecs::query::access<T_COMPONENTS_ONLY_WITH_CONST_WHEN_NEEDED...> > : mecs::query::access<T_COMPONENTS_ONLY_WITH_CONST_WHEN_NEEDED...>
+            struct access_components< mecs::query::access<T_COMPONENTS_ONLY_WITH_CONST_WHEN_NEEDED...> > 
+                                    : mecs::query::access<T_COMPONENTS_ONLY_WITH_CONST_WHEN_NEEDED...>
             {
                 using tuple_t = std::tuple<T_COMPONENTS_ONLY_WITH_CONST_WHEN_NEEDED& ...>;
                 tuple_t m_Tuple;
@@ -1772,11 +1778,14 @@ namespace mecs
                 {
                     return std::get<T&>(m_Tuple);
                 }
+
+                constexpr static type_guid type_guid_v{};
             };
 
             template<>
-            struct access_components< void >
+            struct access_components< mecs::query::access<void> >
             {
+                constexpr static type_guid type_guid_v{};
             };
         }
 
@@ -2194,6 +2203,9 @@ namespace mecs
             query::instance     m_Query;
         };
 
+        template< typename T > constexpr xforceinline
+        const char* ForEach( query::instance& Query, T&& Functor ) noexcept;
+
         namespace details
         {
             //-----------------------------------------------------------------------------------------
@@ -2455,41 +2467,150 @@ namespace mecs
             }
 
             //-----------------------------------------------------------------------------------------
+            // SYSTEM::DETAILS::DO_QUERY
+            //-----------------------------------------------------------------------------------------
+            template
+            < 
+                    typename    T_WORLD_INSTANCE
+                ,   typename    T
+                ,   bool        T_B = xcore::types::is_specialized_v
+                                     < query::details::access_components, std::remove_reference_t<xcore::function::traits<T>::template arg_t<0>>>
+            >
+            struct do_query;
 
-            template< typename T, typename...T_ARGS >
-            const char* ForEach( query::instance& Query, T&& Functor, std::tuple<T_ARGS...>* ) noexcept
+            //-----------------------------------------------------------------------------------------
+            template< typename T_WORLD_INSTANCE, typename T >
+            struct do_query<T_WORLD_INSTANCE,T,false>
             {
-                using                           function_t  = query::system_function<decltype(Functor)>;
-                constexpr static std::array     IndexList   { static_cast<std::int16_t>(xcore::types::tuple_t2i_v< T_ARGS, function_t::args_t >) ... };
-                const char*                     pError      = nullptr;
-
-                // If there is nothing to do then lets bail out
-                if( Query.m_lResults.size() == 0 )
-                    return pError;
-
-                //
-                // Lock all the groups
-                //
-                if( pError = LockQueryComponents( Query, IndexList ) ) return pError;
-
-                //
-                // Do all the groups
-                //
-                xcore::scheduler::channel Channel( xconst_universal_str("ForEach") );
-                for (auto& R : Query.m_lResults )
+                constexpr xforceinline
+                static void DoQuery( T_WORLD_INSTANCE& World, query::instance& Query, T&& Function, const query::define_data& Data ) noexcept
                 {
-                    if( R.m_pGroup->m_Count == 0 ) continue;
-                    ProcessGroup<T,T_ARGS...>( Channel, R, std::forward<T&&>(Functor) );
+                    World.DoQuery( Query, std::forward<T&&>(Function), Data );
                 }
-                Channel.join();
+            };
 
-                //
-                // unlock all the groups that we need to work with so that no one tries to add/remove entities
-                //
-                UnlockQueryComponents( Query, IndexList );
+            //-----------------------------------------------------------------------------------------
+            template< typename T_WORLD_INSTANCE, typename T >
+            struct do_query<T_WORLD_INSTANCE,T,true>
+            {
+                constexpr xforceinline
+                static void DoQuery( T_WORLD_INSTANCE& World, query::instance& Query, T&& Function, const query::define_data& Data ) noexcept
+                {
+                    World.DoQueryTuple( Query, std::forward<T&&>(Function), Data );
+                }
+            };
 
-                return pError;
-            }
+            //-----------------------------------------------------------------------------------------
+            // SYSTEM::DETAILS::FOR_EACH
+            //-----------------------------------------------------------------------------------------
+            template
+            < 
+                    typename    T
+                ,   bool        T_B = xcore::types::is_specialized_v
+                                     < query::details::access_components, std::remove_reference_t<xcore::function::traits<T>::template arg_t<0>>>
+            >
+            struct for_each;
+
+            //-----------------------------------------------------------------------------------------
+            template< typename T >
+            struct for_each<T,false>
+            {
+                template< typename...T_ARGS >
+                static const char* Process( query::instance& Query, T&& Functor, std::tuple<T_ARGS...>* ) noexcept
+                {
+                    using                           function_t  = query::system_function<decltype(Functor)>;
+                    constexpr static std::array     IndexList   { static_cast<std::int16_t>(xcore::types::tuple_t2i_v< T_ARGS, function_t::args_t >) ... };
+                    const char*                     pError      = nullptr;
+
+                    // If there is nothing to do then lets bail out
+                    if( Query.m_lResults.size() == 0 )
+                        return pError;
+
+                    //
+                    // Lock all the groups
+                    //
+                    if( pError = LockQueryComponents( Query, IndexList ) ) return pError;
+
+                    //
+                    // Do all the groups
+                    //
+                    xcore::scheduler::channel Channel( xconst_universal_str("ForEach") );
+                    for (auto& R : Query.m_lResults )
+                    {
+                        if( R.m_pGroup->m_Count == 0 ) continue;
+                        ProcessGroup<T,T_ARGS...>( Channel, R, std::forward<T&&>(Functor) );
+                    }
+                    Channel.join();
+
+                    //
+                    // unlock all the groups that we need to work with so that no one tries to add/remove entities
+                    //
+                    UnlockQueryComponents( Query, IndexList );
+
+                    return pError;
+                }
+
+                constexpr xforceinline
+                static const char* ForEach( query::instance& Query, T&& Functor ) noexcept
+                {
+                    using function_t  = query::system_function<T>;
+                    return Process( Query, Functor, reinterpret_cast< typename function_t::args_t* >(nullptr) );
+                }
+            };
+
+            //-----------------------------------------------------------------------------------------
+            template< typename T >
+            struct for_each<T,true>
+            {
+                static_assert( xcore::function::traits<T>::arg_count_v == 1 );
+
+                static const char* ForEach( query::instance& Query, T&& Functor ) noexcept
+                {
+                    using   function_t      = query::system_function<decltype(Functor)>;
+                    using   access_raw_t    = typename function_t::function_t::template arg_t<0>;
+                    using   access_t        = typename std::decay_t< std::remove_reference_t< access_raw_t >>;
+
+                    static_assert( std::is_reference_v<access_raw_t> );
+                    static_assert( std::is_const_v<access_raw_t> );
+
+                    constexpr static std::array<std::int16_t,32> IndexList   { 0u,1u,2u,3u,4u,5u,6u,7u,8u,9u,10u,11u,12u,13u,14u,15u,16u,17u,18u,19u,20u,21u,22u,23u,24u,25u,26u,27u,28u,29u,30u,31u };
+                    const char*                                  pError      = nullptr;
+
+                    // If there is nothing to do then lets bail out
+                    if( Query.m_lResults.size() == 0 )
+                        return pError;
+
+                    auto IndexListSpan = std::span<const std::int16_t>{ IndexList.data(), function_t::function_t::arg_count_v };
+
+                    //
+                    // Lock all the groups
+                    //
+                    if( pError = details::LockQueryComponents( Query, IndexListSpan ) ) return pError;
+
+                    //
+                    // Do all the groups
+                    //
+                    xcore::scheduler::channel Channel( xconst_universal_str("ForEach") );
+                    for (auto& R : Query.m_lResults )
+                    {
+                        if( R.m_pGroup->m_Count == 0 ) continue;
+                        details::ProcessGroupByAccess<T, access_t>
+                        (       Channel
+                            ,   R
+                            ,   std::forward<T&&>(Functor)
+                            ,   reinterpret_cast<typename access_t::tuple_t*>(nullptr) 
+                        );
+                    }
+                    Channel.join();
+
+                    //
+                    // unlock all the groups that we need to work with so that no one tries to add/remove entities
+                    //
+                    details::UnlockQueryComponents( Query, IndexListSpan );
+
+                    return pError;
+                }
+            };
 
             //-----------------------------------------------------------------------------------------
 
@@ -2571,27 +2692,9 @@ namespace mecs
 
                 virtual void qt_onRun( void ) noexcept override
                 {
-                    using function_t  = query::system_function<decltype(*this)>;
-
-                    static_assert( function_t::function_t::arg_count_v > 0 );
-                    using possibly_access_t = typename std::decay_t< std::remove_reference_t< function_t::function_t::template arg_t<0> >>;
-
-                    if constexpr ( xcore::types::is_specialized_v< query::details::access_components, possibly_access_t > )
-                    {
-                        static_assert( function_t::function_t::arg_count_v == 1 );
-                        user_system_t::m_World.DoQueryTuple(user_system_t::m_Query, *this, user_system_t::query_v );
-
-                        auto pErrorString = ForEachByAccess( user_system_t::m_Query, *this );
-                        xassert(pErrorString==nullptr);
-                    }
-                    else
-                    {
-                        user_system_t::m_World.DoQuery(user_system_t::m_Query, *this, user_system_t::query_v );
-                    
-                        // Allow the system to compute
-                        auto pErrorString = ForEach( user_system_t::m_Query, *this );
-                        xassert(pErrorString==nullptr);
-                    }
+                    details::do_query<world::instance,decltype(*this)>::DoQuery( user_system_t::m_World, user_system_t::m_Query, *this, query_v );
+                    auto pErrorString = mecs::system::ForEach( user_system_t::m_Query, *this );
+                    xassert(pErrorString==nullptr);
                 }
             };
         }
@@ -2600,61 +2703,10 @@ namespace mecs
         // SYSTEM::FOR EACH 
         //---------------------------------------------------------------------------------
         template< typename T > constexpr xforceinline
-        auto ForEach( query::instance& Query, T&& Functor ) noexcept
+        const char* ForEach( query::instance& Query, T&& Functor ) noexcept
         {
-            using function_t  = query::system_function<decltype(Functor)>;
-            return details::ForEach( Query, Functor, reinterpret_cast< typename function_t::args_t* >(nullptr) );
-        }
-
-        //---------------------------------------------------------------------------------
-        // SYSTEM::FOR EACH BY ACCESS
-        //---------------------------------------------------------------------------------
-        template< typename T >
-        const char* ForEachByAccess( query::instance& Query, T&& Functor ) noexcept
-        {
-            using   function_t      = query::system_function<decltype(Functor)>;
-            using   access_raw_t    = typename function_t::function_t::template arg_t<0>;
-            using   access_t        = typename std::decay_t< std::remove_reference_t< access_raw_t >>;
-
-            static_assert( std::is_reference_v<access_raw_t> );
-            static_assert( std::is_const_v<access_raw_t> );
-
-            constexpr static std::array<std::int16_t,32> IndexList   { 0u,1u,2u,3u,4u,5u,6u,7u,8u,9u,10u,11u,12u,13u,14u,15u,16u,17u,18u,19u,20u,21u,22u,23u,24u,25u,26u,27u,28u,29u,30u,31u };
-            const char*                                  pError      = nullptr;
-
-            // If there is nothing to do then lets bail out
-            if( Query.m_lResults.size() == 0 )
-                return pError;
-
-            auto IndexListSpan = std::span<const std::int16_t>{ IndexList.data(), function_t::function_t::arg_count_v };
-
-            //
-            // Lock all the groups
-            //
-            if( pError = details::LockQueryComponents( Query, IndexListSpan ) ) return pError;
-
-            //
-            // Do all the groups
-            //
-            xcore::scheduler::channel Channel( xconst_universal_str("ForEach") );
-            for (auto& R : Query.m_lResults )
-            {
-                if( R.m_pGroup->m_Count == 0 ) continue;
-                details::ProcessGroupByAccess<T, access_t>
-                (       Channel
-                    ,   R
-                    ,   std::forward<T&&>(Functor)
-                    ,   reinterpret_cast<typename access_t::tuple_t*>(nullptr) 
-                );
-            }
-            Channel.join();
-
-            //
-            // unlock all the groups that we need to work with so that no one tries to add/remove entities
-            //
-            details::UnlockQueryComponents( Query, IndexListSpan );
-
-            return pError;
+            static_assert( xcore::function::traits<T>::arg_count_v >= 1 );
+            return details::for_each<T>::ForEach( Query, std::forward<T&&>(Functor) );
         }
     }
 
