@@ -1747,7 +1747,6 @@ namespace mecs
         {
             static_assert( ((std::is_reference_v<T_COMPONENTS_ONLY_WITH_CONST_WHEN_NEEDED> == false) && ...) );
 
-            //using type = details::access_components< T_COMPONENTS_ONLY_WITH_CONST_WHEN_NEEDED... >;
             constexpr static std::array<component::write_type, sizeof...(T_COMPONENTS_ONLY_WITH_CONST_WHEN_NEEDED)> write_v
             { 
                 std::is_base_of_v<T_COMPONENTS_ONLY_WITH_CONST_WHEN_NEEDED, component::quantum_mutable> ? component::write_type::QUANTUM_WRITE :
@@ -1769,7 +1768,6 @@ namespace mecs
 
             template< typename...T_COMPONENTS_ONLY_WITH_CONST_WHEN_NEEDED >
             struct access_components< mecs::query::access<T_COMPONENTS_ONLY_WITH_CONST_WHEN_NEEDED...> > 
-                                    : mecs::query::access<T_COMPONENTS_ONLY_WITH_CONST_WHEN_NEEDED...>
             {
                 using tuple_t = std::tuple<T_COMPONENTS_ONLY_WITH_CONST_WHEN_NEEDED& ...>;
                 tuple_t m_Tuple;
@@ -1778,14 +1776,11 @@ namespace mecs
                 {
                     return std::get<T&>(m_Tuple);
                 }
-
-                constexpr static type_guid type_guid_v{};
             };
 
             template<>
             struct access_components< mecs::query::access<void> >
             {
-                constexpr static type_guid type_guid_v{};
             };
         }
 
@@ -2119,93 +2114,8 @@ namespace mecs
     namespace system
     {
         //---------------------------------------------------------------------------------
-        // SYSTEM::INSTANCE 
+        // SYSTEM::DETAILS
         //---------------------------------------------------------------------------------
-        struct instance : xcore::scheduler::job<4>
-        {
-            using                                   parent_t        = xcore::scheduler::job<4>;
-
-            // Defaults that can be overwritten by the user
-            constexpr static auto                   system_name_v   = xconst_universal_str("mecs::System");
-            using                                   query_t         = query::define<>; 
-
-            // Messages that we can handle these can be overwritten by the user
-            inline void msgSyncPointDone    ( sync_point::instance& ){}
-            inline void msgSyncPointStart   ( sync_point::instance& ){}
-            inline void msgWorldStart       ( void ){}
-            inline void msgFrameStart       ( void ){}
-            inline void msgFrameDone        ( void ){}
-
-            // Functions
-            template<typename K = world::instance>
-            xforceinline void deleteEntity( entity::instance& Entity )
-            {
-                reinterpret_cast<K&>(m_World).deleteEntity( Entity );
-            }
-
-            template<typename K = world::instance>
-            xforceinline auto& getTime( void ) const noexcept
-            {
-                return reinterpret_cast<const K&>(m_World).m_Time;
-            }
-
-            template< typename T, typename K = world::instance >
-            xforceinline bool getGroup( component::group::guid gGroup, T&& CallBack ) noexcept
-            {
-                return reinterpret_cast<K&>(m_World).m_mapGroupPerTag.getExlusive( gGroup, [&](std::unique_ptr<component::group::instance>& upGroup )
-                {
-                    const auto& Semaphore = upGroup->m_SemaphoreLock;
-                    Semaphore.lock();
-                    CallBack( *upGroup );
-                    Semaphore.unlock();
-                });
-            }
-
-            template< typename T_TUPLE_ADD_COMPONENTS_AND_TAGS, typename T_TUPLE_REMOVE_COMPONENTS_AND_TAGS, typename T_CALLBACK, typename K = world::instance >
-            xforceinline void getGroupBy( entity::instance& Entity, T_CALLBACK&& CallBack ) const noexcept
-            {
-                auto& Group = reinterpret_cast<K&>(m_World).getOrCreateGroupBy
-                                ( *Entity.getTmpRef().m_pGroupInstance, (T_TUPLE_ADD_COMPONENTS_AND_TAGS*)nullptr, (T_TUPLE_REMOVE_COMPONENTS_AND_TAGS*)nullptr );
-
-                {
-                    const auto& Semaphore = Group.m_SemaphoreLock;
-                    Semaphore.lock();
-                    CallBack( Group );
-                    Semaphore.unlock();
-                };
-            }
-
-            template< typename K = world::instance >
-            xforceinline void moveEntityToGroup( component::group::instance& Group, entity::instance& Entity, xcore::function::view<void(entity::tmp_ref)> CallBack = [](entity::tmp_ref){}) const noexcept
-            {
-                reinterpret_cast<K&>(m_World).moveEntityToGroup(Group, Entity, CallBack );
-            }
-
-            template<typename T_HANDLE_CALLBACK >
-            void getEntity( entity::guid gEntity, T_HANDLE_CALLBACK&& CallBack )
-            {
-            
-            }
-
-            template<typename K = world::instance>
-            xforceinline void createEntity( component::group::instance& Group, xcore::function::view<void(entity::tmp_ref)> UserFunction = [](entity::tmp_ref){}, entity::guid Guid = entity::guid{xcore::not_null} ) noexcept
-            {
-                reinterpret_cast<K&>(m_World).createEntity( Group, UserFunction, Guid );
-            }
-
-            instance( world::instance& World, xcore::string::const_universal Str, xcore::scheduler::definition Def = {} ) noexcept 
-                : parent_t{ Def | xcore::scheduler::triggers::DONT_CLEAN_COUNT }
-                , m_World{World}
-                {setupName(Str);}
-
-            // TODO: This will be private
-            world::instance&    m_World;
-            query::instance     m_Query;
-        };
-
-        template< typename T > constexpr xforceinline
-        const char* ForEach( query::instance& Query, T&& Functor ) noexcept;
-
         namespace details
         {
             //-----------------------------------------------------------------------------------------
@@ -2399,7 +2309,6 @@ namespace mecs
             template< typename T, typename T_ACCESS, typename...T_ARGS >
             void ProcessGroupByAccess( xcore::scheduler::channel& Channel, query::result_entry& ResultEntry, T&& Functor, std::tuple<T_ARGS...>* ) noexcept
             {
-                using       function_t      = query::system_function<decltype(Functor)>;
                 using       pool_tuple      = typename std::tuple< std::remove_reference_t<T_ARGS>*... >;
                 auto&       Group           = *ResultEntry.m_pGroup;
                 auto        TotalEntries    = Group.m_Count;
@@ -2428,7 +2337,7 @@ namespace mecs
                                 reinterpret_cast<std::remove_reference_t<T_ARGS>*>
                                 ( &Group.m_lPages[P]->m_RawData
                                     [ 
-                                        ResultEntry.m_lRemaps[ xcore::types::tuple_t2i_v< T_ARGS, function_t::args_t > ] 
+                                        ResultEntry.m_lRemaps[ xcore::types::tuple_t2i_v< T_ARGS, typename xcore::function::traits<T>::args_tuple > ] 
                                     ]
                                 ) ... 
                             };
@@ -2438,13 +2347,16 @@ namespace mecs
                             {
                                 Functor
                                 (
-                                    T_ACCESS
-                                    {
-                                        std::get
-                                        <
-                                            std::remove_reference_t<T_ARGS>*
-                                        >(Pools)[I] ... 
-                                    }
+                                    xcore::types::lvalue
+                                    (
+                                        T_ACCESS
+                                        {{
+                                            std::get
+                                            <
+                                                std::remove_reference_t<T_ARGS>*
+                                            >(Pools)[I] ... 
+                                        }}
+                                    )
                                 );
                             }
 
@@ -2467,14 +2379,29 @@ namespace mecs
             }
 
             //-----------------------------------------------------------------------------------------
+            // SYSTEM::DETAILS::IS_BY_ACCESS
+            //-----------------------------------------------------------------------------------------
+            template< typename T >
+            static constexpr bool is_by_access_v = xcore::types::is_specialized_v
+            < 
+                    query::details::access_components
+                ,   std::decay_t
+                    <
+                        std::remove_reference_t
+                        <
+                            typename xcore::function::traits<T>::template arg_t<0>
+                        >
+                    >
+            >;
+
+            //-----------------------------------------------------------------------------------------
             // SYSTEM::DETAILS::DO_QUERY
             //-----------------------------------------------------------------------------------------
             template
             < 
                     typename    T_WORLD_INSTANCE
                 ,   typename    T
-                ,   bool        T_B = xcore::types::is_specialized_v
-                                     < query::details::access_components, std::remove_reference_t<xcore::function::traits<T>::template arg_t<0>>>
+                ,   bool        T_B = is_by_access_v<T>
             >
             struct do_query;
 
@@ -2483,9 +2410,9 @@ namespace mecs
             struct do_query<T_WORLD_INSTANCE,T,false>
             {
                 constexpr xforceinline
-                static void DoQuery( T_WORLD_INSTANCE& World, query::instance& Query, T&& Function, const query::define_data& Data ) noexcept
+                static void DoQuery( T_WORLD_INSTANCE& World, query::instance& Query,const query::define_data& Data ) noexcept
                 {
-                    World.DoQuery( Query, std::forward<T&&>(Function), Data );
+                    World.DoQuery<T>( Query, Data );
                 }
             };
 
@@ -2494,21 +2421,17 @@ namespace mecs
             struct do_query<T_WORLD_INSTANCE,T,true>
             {
                 constexpr xforceinline
-                static void DoQuery( T_WORLD_INSTANCE& World, query::instance& Query, T&& Function, const query::define_data& Data ) noexcept
+                static void DoQuery( T_WORLD_INSTANCE& World, query::instance& Query, const query::define_data& Data ) noexcept
                 {
-                    World.DoQueryTuple( Query, std::forward<T&&>(Function), Data );
+                    xassert(false);
+//                    World.DoQueryTuple( Query, Data );
                 }
             };
 
             //-----------------------------------------------------------------------------------------
             // SYSTEM::DETAILS::FOR_EACH
             //-----------------------------------------------------------------------------------------
-            template
-            < 
-                    typename    T
-                ,   bool        T_B = xcore::types::is_specialized_v
-                                     < query::details::access_components, std::remove_reference_t<xcore::function::traits<T>::template arg_t<0>>>
-            >
+            template< typename T, bool T_B = is_by_access_v<T> >
             struct for_each;
 
             //-----------------------------------------------------------------------------------------
@@ -2566,12 +2489,10 @@ namespace mecs
 
                 static const char* ForEach( query::instance& Query, T&& Functor ) noexcept
                 {
-                    using   function_t      = query::system_function<decltype(Functor)>;
-                    using   access_raw_t    = typename function_t::function_t::template arg_t<0>;
+                    using   access_raw_t    = typename xcore::function::traits<T>::template arg_t<0>;
                     using   access_t        = typename std::decay_t< std::remove_reference_t< access_raw_t >>;
 
                     static_assert( std::is_reference_v<access_raw_t> );
-                    static_assert( std::is_const_v<access_raw_t> );
 
                     constexpr static std::array<std::int16_t,32> IndexList   { 0u,1u,2u,3u,4u,5u,6u,7u,8u,9u,10u,11u,12u,13u,14u,15u,16u,17u,18u,19u,20u,21u,22u,23u,24u,25u,26u,27u,28u,29u,30u,31u };
                     const char*                                  pError      = nullptr;
@@ -2580,7 +2501,7 @@ namespace mecs
                     if( Query.m_lResults.size() == 0 )
                         return pError;
 
-                    auto IndexListSpan = std::span<const std::int16_t>{ IndexList.data(), function_t::function_t::arg_count_v };
+                    auto IndexListSpan = std::span<const std::int16_t>{ IndexList.data(), xcore::function::traits<T>::arg_count_v };
 
                     //
                     // Lock all the groups
@@ -2648,7 +2569,115 @@ namespace mecs
 
                 return pError;
             }
+        }
 
+
+        //---------------------------------------------------------------------------------
+        // SYSTEM::INSTANCE 
+        //---------------------------------------------------------------------------------
+        struct instance : xcore::scheduler::job<4>
+        {
+            using                                   parent_t        = xcore::scheduler::job<4>;
+
+            // Defaults that can be overwritten by the user
+            constexpr static auto                   system_name_v   = xconst_universal_str("mecs::System");
+            using                                   query_t         = query::define<>; 
+
+            // Messages that we can handle these can be overwritten by the user
+            inline void msgSyncPointDone    ( sync_point::instance& ){}
+            inline void msgSyncPointStart   ( sync_point::instance& ){}
+            inline void msgWorldStart       ( void ){}
+            inline void msgFrameStart       ( void ){}
+            inline void msgFrameDone        ( void ){}
+
+
+            template< typename T_CALLBACK > constexpr xforceinline
+            void DoQuery( query::instance& Query, const query::define_data& Data ) const noexcept
+            {
+                details::do_query<world::instance,T_CALLBACK>::DoQuery( m_World, Query, Data );
+            }
+
+            template< typename T > constexpr xforceinline
+            const char* ForEach( query::instance& Query, T&& Functor ) const noexcept
+            {
+           //     std::decay_t<std::remove_reference_t<typename xcore::function::traits<T>::template arg_t<0>>> xx = 66;
+
+                static_assert( xcore::function::traits<T>::arg_count_v >= 1 );
+                return details::for_each<T>::ForEach( Query, std::forward<T&&>(Functor) );
+            }
+
+            // Functions
+            template<typename K = world::instance>
+            xforceinline void deleteEntity( entity::instance& Entity )
+            {
+                reinterpret_cast<K&>(m_World).deleteEntity( Entity );
+            }
+
+            template<typename K = world::instance>
+            xforceinline auto& getTime( void ) const noexcept
+            {
+                return reinterpret_cast<const K&>(m_World).m_Time;
+            }
+
+            template< typename T, typename K = world::instance >
+            xforceinline bool getGroup( component::group::guid gGroup, T&& CallBack ) noexcept
+            {
+                return reinterpret_cast<K&>(m_World).m_mapGroupPerTag.getExlusive( gGroup, [&](std::unique_ptr<component::group::instance>& upGroup )
+                {
+                    const auto& Semaphore = upGroup->m_SemaphoreLock;
+                    Semaphore.lock();
+                    CallBack( *upGroup );
+                    Semaphore.unlock();
+                });
+            }
+
+            template< typename T_TUPLE_ADD_COMPONENTS_AND_TAGS, typename T_TUPLE_REMOVE_COMPONENTS_AND_TAGS, typename T_CALLBACK, typename K = world::instance >
+            xforceinline void getGroupBy( entity::instance& Entity, T_CALLBACK&& CallBack ) const noexcept
+            {
+                auto& Group = reinterpret_cast<K&>(m_World).getOrCreateGroupBy
+                                ( *Entity.getTmpRef().m_pGroupInstance, (T_TUPLE_ADD_COMPONENTS_AND_TAGS*)nullptr, (T_TUPLE_REMOVE_COMPONENTS_AND_TAGS*)nullptr );
+
+                {
+                    const auto& Semaphore = Group.m_SemaphoreLock;
+                    Semaphore.lock();
+                    CallBack( Group );
+                    Semaphore.unlock();
+                };
+            }
+
+            template< typename K = world::instance >
+            xforceinline void moveEntityToGroup( component::group::instance& Group, entity::instance& Entity, xcore::function::view<void(entity::tmp_ref)> CallBack = [](entity::tmp_ref){}) const noexcept
+            {
+                reinterpret_cast<K&>(m_World).moveEntityToGroup(Group, Entity, CallBack );
+            }
+
+            template<typename T_HANDLE_CALLBACK >
+            void getEntity( entity::guid gEntity, T_HANDLE_CALLBACK&& CallBack )
+            {
+            
+            }
+
+            template<typename K = world::instance>
+            xforceinline void createEntity( component::group::instance& Group, xcore::function::view<void(entity::tmp_ref)> UserFunction = [](entity::tmp_ref){}, entity::guid Guid = entity::guid{xcore::not_null} ) noexcept
+            {
+                reinterpret_cast<K&>(m_World).createEntity( Group, UserFunction, Guid );
+            }
+
+            instance( world::instance& World, xcore::string::const_universal Str, xcore::scheduler::definition Def = {} ) noexcept 
+                : parent_t{ Def | xcore::scheduler::triggers::DONT_CLEAN_COUNT }
+                , m_World{World}
+                {setupName(Str);}
+
+            // TODO: This will be private
+            world::instance&    m_World;
+            query::instance     m_Query;
+        };
+
+        //---------------------------------------------------------------------------------
+        // SYSTEM::DETAILS::CUSTOM_SYSTEM
+        //---------------------------------------------------------------------------------
+        namespace details
+        {
             //---------------------------------------------------------------------------------
             // SYSTEM::CUSTOM SYSTEM 
             //---------------------------------------------------------------------------------
@@ -2692,21 +2721,12 @@ namespace mecs
 
                 virtual void qt_onRun( void ) noexcept override
                 {
-                    details::do_query<world::instance,decltype(*this)>::DoQuery( user_system_t::m_World, user_system_t::m_Query, *this, query_v );
-                    auto pErrorString = mecs::system::ForEach( user_system_t::m_Query, *this );
+                    //details::do_query<world::instance,decltype(*this)>::DoQuery( user_system_t::m_World, user_system_t::m_Query, *this, query_v );
+                    user_system_t::template DoQuery<decltype(*this)>( user_system_t::m_Query, query_v );
+                    auto pErrorString = user_system_t::ForEach( user_system_t::m_Query, *this );
                     xassert(pErrorString==nullptr);
                 }
             };
-        }
-
-        //---------------------------------------------------------------------------------
-        // SYSTEM::FOR EACH 
-        //---------------------------------------------------------------------------------
-        template< typename T > constexpr xforceinline
-        const char* ForEach( query::instance& Query, T&& Functor ) noexcept
-        {
-            static_assert( xcore::function::traits<T>::arg_count_v >= 1 );
-            return details::for_each<T>::ForEach( Query, std::forward<T&&>(Functor) );
         }
     }
 
@@ -3201,10 +3221,10 @@ namespace mecs
             }
 
             template<typename T >
-            void DoQuery( query::instance& Instance, T&& Functor, const query::define_data& Defined ) const noexcept
+            void DoQuery( query::instance& Instance, const query::define_data& Defined ) const noexcept
             {
                 XCORE_PERF_ZONE_SCOPED()
-                using function  = query::system_function<decltype(Functor)>;
+                using function  = query::system_function<T>;
 
                 if( Instance.m_isInitialized == false )
                 {

@@ -14,7 +14,7 @@ namespace xcore::function
     //------------------------------------------------------------------------------
     // Helper to extract a the function arguments
     //------------------------------------------------------------------------------
-    template< std::size_t T_I, std::size_t T_MAX, typename... T_ARGS >  struct traits_args { using arg_t = typename std::tuple_element< T_I, std::tuple<T_ARGS...> >; };
+    template< std::size_t T_I, std::size_t T_MAX, typename... T_ARGS >  struct traits_args { using arg_t = typename std::tuple_element_t< T_I, std::tuple<T_ARGS...> >; };
     template<>                                                          struct traits_args<0, 0> { using arg_t = void; };
     template< std::size_t T_I, std::size_t T_MAX, typename... T_ARGS >  using  traits_args_t = typename traits_args<T_I, T_MAX, T_ARGS...>::arg_t;
 
