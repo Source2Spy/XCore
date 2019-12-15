@@ -1718,21 +1718,6 @@ namespace mecs
             }
         };
 
-        namespace details
-        {
-            template< typename...T_COMPONENTS_ONLY_WITH_CONST_WHEN_NEEDED >
-            struct access_components
-            {
-                using tuple_t = std::tuple<T_COMPONENTS_ONLY_WITH_CONST_WHEN_NEEDED& ...>;
-                tuple_t m_Tuple;
-                template< typename T > xforceinline constexpr
-                T& get( void ) const noexcept
-                {
-                    return std::get<T&>(m_Tuple);
-                }
-            };
-        }
-
         //---------------------------------------------------------------------------------
         // QUERY::ALL NONE ANY
         //---------------------------------------------------------------------------------
@@ -1762,15 +1747,33 @@ namespace mecs
         {
             static_assert( ((std::is_reference_v<T_COMPONENTS_ONLY_WITH_CONST_WHEN_NEEDED> == false) && ...) );
 
-            using type = details::access_components< T_COMPONENTS_ONLY_WITH_CONST_WHEN_NEEDED... >;
-            std::array<component::write_type, sizeof...(T_COMPONENTS_ONLY_WITH_CONST_WHEN_NEEDED)> write_v
+            //using type = details::access_components< T_COMPONENTS_ONLY_WITH_CONST_WHEN_NEEDED... >;
+            constexpr static std::array<component::write_type, sizeof...(T_COMPONENTS_ONLY_WITH_CONST_WHEN_NEEDED)> write_v
             { 
                 std::is_base_of_v<T_COMPONENTS_ONLY_WITH_CONST_WHEN_NEEDED, component::quantum_mutable> ? component::write_type::QUANTUM_WRITE :
                 std::is_const_v<T_COMPONENTS_ONLY_WITH_CONST_WHEN_NEEDED> == false                      ? component::write_type::READ_ONLY     :
                                                                                                           component::write_type::LINEAR_WRITE
-                , ...
+                ...
             };
         };
+
+        namespace details
+        {
+            template< typename...T_COMPONENTS_ONLY_WITH_CONST_WHEN_NEEDED >
+            struct access_components;
+
+            template< typename...T_COMPONENTS_ONLY_WITH_CONST_WHEN_NEEDED >
+            struct access_components< mecs::query::access<T_COMPONENTS_ONLY_WITH_CONST_WHEN_NEEDED...> > : mecs::query::access<T_COMPONENTS_ONLY_WITH_CONST_WHEN_NEEDED...>
+            {
+                using tuple_t = std::tuple<T_COMPONENTS_ONLY_WITH_CONST_WHEN_NEEDED& ...>;
+                tuple_t m_Tuple;
+                template< typename T > xforceinline constexpr
+                T& get( void ) const noexcept
+                {
+                    return std::get<T&>(m_Tuple);
+                }
+            };
+        }
 
         //---------------------------------------------------------------------------------
         // QUERY::SYSTEM FUNCTION
@@ -1825,7 +1828,7 @@ namespace mecs
             template<>
             struct get_access_type<void>
             {
-                using type = access<>;
+                using type = access_components<>;
             };
 
             template<typename T, typename...T_COMPONENTS_ONLY_WITH_CONST_WHEN_NEEDED>
@@ -1834,7 +1837,7 @@ namespace mecs
                 using type = typename std::conditional_t
                 <
                      xcore::types::is_specialized_v< access, T >
-                    , T
+                    , access_components<T>
                     , typename get_access_type<T_COMPONENTS_ONLY_WITH_CONST_WHEN_NEEDED...>::type
                 >;
             };
@@ -1869,8 +1872,8 @@ namespace mecs
 
             struct access
             {
-                std::span<const type_guid>          m_Components;     // Which components/tags we must have
-                std::span<component::write_type>    m_WriteType;          // Which components/tags we must have
+                std::span<const type_guid>              m_Components;     // Which components/tags we must have
+                std::span<const component::write_type>  m_WriteType;          // Which components/tags we must have
             };
 
             query   m_ComponentQuery;
@@ -1881,31 +1884,31 @@ namespace mecs
         template< typename...T_QUERY_FILTERS >
         struct define : define_data
         {
-            using access = typename details::access_t<T_QUERY_FILTERS...>::type;
+            using access = typename details::access_t<T_QUERY_FILTERS...>;
             
             template< typename T >
             constexpr static void Initializer( define& This ) noexcept
             {
-                if constexpr ( xcore::types::is_specialized_v<all, T> ) 
+                if constexpr ( xcore::types::is_specialized_v<mecs::query::all, T> ) 
                 {
                     if(T::tag_guid_list_v.size()>1)         This.m_TagQuery.m_All        = std::span<const type_guid>(&T::tag_guid_list_v[1],       T::tag_guid_list_v.size()-1);
                     if(T::component_guid_list_v.size()>1)   This.m_ComponentQuery.m_All  = std::span<const type_guid>(&T::component_guid_list_v[1], T::component_guid_list_v.size()-1);
                 }
-                else if constexpr ( xcore::types::is_specialized_v<any, T> )
+                else if constexpr ( xcore::types::is_specialized_v<mecs::query::any, T> )
                 {
                     if(T::tag_guid_list_v.size()>1)         This.m_TagQuery.m_Any        = std::span<const type_guid>(&T::tag_guid_list_v[1],       T::tag_guid_list_v.size()-1);
                     if(T::component_guid_list_v.size()>1)   This.m_ComponentQuery.m_Any  = std::span<const type_guid>(&T::component_guid_list_v[1], T::component_guid_list_v.size()-1);
                 }
-                else if constexpr ( xcore::types::is_specialized_v<none, T> )
+                else if constexpr ( xcore::types::is_specialized_v<mecs::query::none, T> )
                 {
                     if(T::tag_guid_list_v.size()>1)         This.m_TagQuery.m_None       = std::span<const type_guid>(&T::tag_guid_list_v[1],       T::tag_guid_list_v.size()-1);
                     if(T::component_guid_list_v.size()>1)   This.m_ComponentQuery.m_None = std::span<const type_guid>(&T::component_guid_list_v[1], T::component_guid_list_v.size()-1);
                 }
-                else if constexpr ( xcore::types::is_specialized_v<access, T> )
+                else if constexpr ( xcore::types::is_specialized_v<mecs::query::access, T> )
                 {
                     static_assert( T::tag_guid_list_v.size() == 0 );
-                    if(T::component_guid_list_v.size())   This.m_Access.m_Components    = std::span<const type_guid>            (&T::component_guid_list_v[0], T::component_guid_list_v.size());
-                    if(T::component_guid_list_v.size())   This.m_Access.m_WriteType     = std::span<const component::write_type>(&T::write_v[0], T::write_v.size());
+                    if(T::component_guid_list_v.size()!=0)  This.m_Access.m_Components    = std::span<const type_guid>            (&T::component_guid_list_v[0], T::component_guid_list_v.size());
+                    if(T::component_guid_list_v.size()!=0)  This.m_Access.m_WriteType     = std::span<const component::write_type>(&T::write_v[0],               T::write_v.size());
                 }
             };
 

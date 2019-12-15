@@ -215,27 +215,27 @@ namespace mecs::examples::test5
 
                 void operator() ( query_v::access& Component ) noexcept
                 {
-                    const component::spatial_cell::position* T0CellMapPosition[3][3]  = {nullptr};
-                    const component::spatial_cell::velocity* T0CellMapVelocity[3][3]  = {nullptr};
-                    const component::spatial_cell::count*    T0CellMapCount[3][3]     = {nullptr};
-                    const component::spatial_cell::entity*   T0CellMapEntity[3][3]    = {nullptr};
-                          component::spatial_cell::position* T1CellMapPosition[3][3]  = {nullptr};
-                          component::spatial_cell::velocity* T1CellMapVelocity[3][3]  = {nullptr};
-                          component::spatial_cell::count*    T1CellMapCount[3][3]     = {nullptr};
-                          component::spatial_cell::entity*   T1CellMapEntity[3][3]    = {nullptr};
-
-                    T0CellMapPosition[1][1]  = &Component.get<const component::spatial_cell::position>  ();
-                    T0CellMapVelocity[1][1]  = &Component.get<const component::spatial_cell::velocity>  ();
-                    T0CellMapCount[1][1]     = &Component.get<const component::spatial_cell::count>     ();
-                    T0CellMapEntity[1][1]    = &Component.get<const component::spatial_cell::entity>    ();
-
-                    T1CellMapPosition[1][1]  = &Component.get<      component::spatial_cell::position>  ();
-                    T1CellMapVelocity[1][1]  = &Component.get<      component::spatial_cell::velocity>  ();
-                    T1CellMapCount[1][1]     = &Component.get<      component::spatial_cell::count>     ();
-                    T1CellMapEntity[1][1]    = &Component.get<      component::spatial_cell::entity>    ();
-                    
                     ForEachGroup( m_SpacialGroupQuery, [&]( mecs::component::group::instance& Group ) noexcept
                     {
+                        const component::spatial_cell::position* T0CellMapPosition[3][3]  = {nullptr};
+                        const component::spatial_cell::velocity* T0CellMapVelocity[3][3]  = {nullptr};
+                        const component::spatial_cell::count*    T0CellMapCount[3][3]     = {nullptr};
+                        const component::spatial_cell::entity*   T0CellMapEntity[3][3]    = {nullptr};
+                              component::spatial_cell::position* T1CellMapPosition[3][3]  = {nullptr};
+                              component::spatial_cell::velocity* T1CellMapVelocity[3][3]  = {nullptr};
+                              component::spatial_cell::count*    T1CellMapCount[3][3]     = {nullptr};
+                              component::spatial_cell::entity*   T1CellMapEntity[3][3]    = {nullptr};
+
+                        T0CellMapPosition[1][1]  = &Component.get<const component::spatial_cell::position>  ();
+                        T0CellMapVelocity[1][1]  = &Component.get<const component::spatial_cell::velocity>  ();
+                        T0CellMapCount[1][1]     = &Component.get<const component::spatial_cell::count>     ();
+                        T0CellMapEntity[1][1]    = &Component.get<const component::spatial_cell::entity>    ();
+
+                        T1CellMapPosition[1][1]  = &Component.get<      component::spatial_cell::position>  ();
+                        T1CellMapVelocity[1][1]  = &Component.get<      component::spatial_cell::velocity>  ();
+                        T1CellMapCount[1][1]     = &Component.get<      component::spatial_cell::count>     ();
+                        T1CellMapEntity[1][1]    = &Component.get<      component::spatial_cell::entity>    ();
+
                         const auto SearchBox = world_grid::SearchBox( ID.m_Value );
                         for( int y=SearchBox.m_Min.m_Y; y<SearchBox.m_Max.m_Y; ++y )
                         for( int x=SearchBox.m_Min.m_X; x<SearchBox.m_Max.m_X; ++x )
@@ -255,34 +255,34 @@ namespace mecs::examples::test5
                                 T1CellMapEntity[x][y]    = &Access.get<component::spatial_cell::entity>();
                             }
                         }
-                    });
-                                        
-                    const float DT = getTime().m_DeltaTime;
-                    for( auto CountT = Count.m_Value.load(std::memory_order_relax)-1, i=0; i<CountT; ++i )
-                    {
-                        const auto&    T0Position = &T0lPosition,m_lPosition[i].m_Value;
-                        const auto&    T0Velocity = &T0lPosition,m_lVelocity[i].m_Value;
-                        xcore::vector2 T1Velocity = T0Velocity;
-                        const float    VL         = T1Velocity.Length();
-                        xcore::vector2 T1Position = T0Position + T1Velocity * DT;
-                        const auto     SearchBox  = MakeBox( WorldToGrid( T1Position ), WorldToGrid( T1Position + (T1Velocity / VL) * T0lPosition.m_lRadius[i] ) );
 
-                        for( int y=SearchBox.m_Min.m_Y; y<SearchBox.m_Max.m_Y; y++)
-                        for( int x=SearchBox.m_Min.m_X; x<SearchBox.m_Max.m_X; x++)
-                        for( auto Count = T0CellMapCount[x][y].m_Value.load(std::memory_order_relax)-1, c = 0; c < Count; ++c )
+                        const float DT = getTime().m_DeltaTime;
+                        for( auto CountT = Count.m_Value.load(std::memory_order_relax)-1, i=0; i<CountT; ++i )
                         {
-                            if( &T0Position == &T0CellMapPosition[x][y].m_lPosition[c].m_Value ) continue;
+                            const auto&    T0Position = &T0lPosition,m_lPosition[i].m_Value;
+                            const auto&    T0Velocity = &T0lPosition,m_lVelocity[i].m_Value;
+                            xcore::vector2 T1Velocity = T0Velocity;
+                            const float    VL         = T1Velocity.Length();
+                            xcore::vector2 T1Position = T0Position + T1Velocity * DT;
+                            const auto     SearchBox  = MakeBox( WorldToGrid( T1Position ), WorldToGrid( T1Position + (T1Velocity / VL) * T0lPosition.m_lRadius[i] ) );
+
+                            for( int y=SearchBox.m_Min.m_Y; y<SearchBox.m_Max.m_Y; y++)
+                            for( int x=SearchBox.m_Min.m_X; x<SearchBox.m_Max.m_X; x++)
+                            for( auto Count = T0CellMapCount[x][y].m_Value.load(std::memory_order_relax)-1, c = 0; c < Count; ++c )
+                            {
+                                if( &T0Position == &T0CellMapPosition[x][y].m_lPosition[c].m_Value ) continue;
                             
-                            // Check for collision
+                                // Check for collision
+                            }
+                        
+                            auto RelativeGridPos = WorldToGrid( T1Position ) - T0ID.m_Value;
+                        
+                            const auto C = T1CellMapCount[RelativeGridPos.m_X][RelativeGridPos.m_Y].m_Value++;
+                            T1CellMapPosition[RelativeGridPos.m_X][RelativeGridPos.m_Y].m_lPosition[C] = T1Position;
+                            T1CellMapVelocity[RelativeGridPos.m_X][RelativeGridPos.m_Y].m_lVelocity[C] = T1Velocity;
+                            T1CellMapEntity  [RelativeGridPos.m_X][RelativeGridPos.m_Y].m_lEntity[C]   = T0lPosition,m_lEntity[i];
                         }
-                        
-                        auto RelativeGridPos = WorldToGrid( T1Position ) - T0ID.m_Value;
-                        
-                        const auto C = T1CellMapCount[RelativeGridPos.m_X][RelativeGridPos.m_Y].m_Value++;
-                        T1CellMapPosition[RelativeGridPos.m_X][RelativeGridPos.m_Y].m_lPosition[C] = T1Position;
-                        T1CellMapVelocity[RelativeGridPos.m_X][RelativeGridPos.m_Y].m_lVelocity[C] = T1Velocity;
-                        T1CellMapEntity  [RelativeGridPos.m_X][RelativeGridPos.m_Y].m_lEntity[C]   = T0lPosition,m_lEntity[i];
-                    }
+                    });
                 }
             }
             

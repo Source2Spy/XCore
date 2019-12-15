@@ -43,6 +43,25 @@ namespace mecs_examples
             }
         };
 
+        struct my_system2 : mecs::system::instance
+        {
+            constexpr static auto   system_name_v   = xconst_universal_str("my_system");
+            constexpr static mecs::query::define
+            <
+                mecs::query::all<simple>
+              , mecs::query::none<my_tag>
+              , mecs::query::access<const double_buff, simple>
+            > query_v{};
+
+            using mecs::system::instance::instance;
+
+            constexpr
+            void operator() ( decltype(query_v)::access& Component ) const noexcept
+            {
+                Component.get<simple>().m_Value += Component.get<const double_buff>().m_Value;
+            }
+        };
+
         void Test()
         {
             XCORE_PERF_ZONE_SCOPED()
@@ -55,6 +74,7 @@ namespace mecs_examples
             >();
 
             World.AddGraphConnection<my_system>( World.m_StartSyncPoint, World.m_EndSyncPoint );
+            World.AddGraphConnection<my_system2>( World.m_StartSyncPoint, World.m_EndSyncPoint );
 
             //
             // Create a bunch of entities
