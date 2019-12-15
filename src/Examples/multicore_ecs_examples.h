@@ -28,11 +28,11 @@ namespace mecs_examples
         struct my_system : mecs::system::instance
         {
             constexpr static auto   system_name_v   = xconst_universal_str("my_system");
-            constexpr static mecs::query::define
+            using query_t = mecs::query::define
             <
-                mecs::query::all<simple>
-              , mecs::query::none<my_tag>
-            > query_v{};
+                    mecs::query::all<simple>
+                ,   mecs::query::none<my_tag>
+            >;
 
             using mecs::system::instance::instance;
 
@@ -46,17 +46,17 @@ namespace mecs_examples
         struct my_system2 : mecs::system::instance
         {
             constexpr static auto   system_name_v   = xconst_universal_str("my_system");
-            constexpr static mecs::query::define
+            using                   query_t         = mecs::query::define
             <
-                mecs::query::all<simple>
-              , mecs::query::none<my_tag>
-              , mecs::query::access<const double_buff, simple>
-            > query_v{};
+                    mecs::query::all<simple>
+                ,   mecs::query::none<my_tag>
+                ,   mecs::query::access<const double_buff, simple>
+            >;
 
             using mecs::system::instance::instance;
 
             constexpr
-            void operator() ( decltype(query_v)::access& Component ) const noexcept
+            void operator() ( query_t::access& Component ) const noexcept
             {
                 Component.get<simple>().m_Value += Component.get<const double_buff>().m_Value;
             }
@@ -106,7 +106,7 @@ namespace mecs_examples
             for( int i=0; i<100; i++) World.Resume();
         }
     }
-
+/*
     //------------------------------------------------------------------------------------
     // Test2 - Spawner example
     //------------------------------------------------------------------------------------
@@ -450,6 +450,7 @@ namespace mecs_examples
             }
         }
     }
+    */
 }
 
-#include "multicore_ecs_examples_boids.h"
+//#include "multicore_ecs_examples_boids.h"

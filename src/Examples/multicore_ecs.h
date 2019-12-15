@@ -1773,6 +1773,11 @@ namespace mecs
                     return std::get<T&>(m_Tuple);
                 }
             };
+
+            template<>
+            struct access_components< void >
+            {
+            };
         }
 
         //---------------------------------------------------------------------------------
@@ -1822,28 +1827,31 @@ namespace mecs
                 return Array;
             }
 
-            template<typename T, typename...T_COMPONENTS_ONLY_WITH_CONST_WHEN_NEEDED>
-            struct get_access_type;
-
-            template<>
-            struct get_access_type<void>
+            namespace details
             {
-                using type = access_components<>;
-            };
+                template< template< typename... > class T_CLASS, typename T, typename...T_ARGS>
+                struct get_compound_type;
 
-            template<typename T, typename...T_COMPONENTS_ONLY_WITH_CONST_WHEN_NEEDED>
-            struct get_access_type
-            {
-                using type = typename std::conditional_t
-                <
-                     xcore::types::is_specialized_v< access, T >
-                    , access_components<T>
-                    , typename get_access_type<T_COMPONENTS_ONLY_WITH_CONST_WHEN_NEEDED...>::type
-                >;
-            };
+                template< template< typename... > class T_CLASS >
+                struct get_compound_type< T_CLASS, void >
+                {
+                    using type = T_CLASS<>;
+                };
 
-            template< typename...T_COMPONENTS_ONLY_WITH_CONST_WHEN_NEEDED >
-            using access_t = typename get_access_type<T_COMPONENTS_ONLY_WITH_CONST_WHEN_NEEDED... , void>::type;
+                template< template< typename... > class T_CLASS, typename T, typename...T_ARGS>
+                struct get_compound_type
+                {
+                    using type = typename std::conditional_t
+                    <
+                         xcore::types::is_specialized_v< T_CLASS, T >
+                        , T
+                        , typename get_compound_type<T_CLASS, T_ARGS...>::type
+                    >;
+                };
+            }
+
+            template< template< typename... > class T_CLASS, typename...T_ARGS >
+            using get_compound_type_t = typename details::get_compound_type<T_CLASS, T_ARGS... , void>::type;
         }
 
         template< typename T >
@@ -1884,31 +1892,36 @@ namespace mecs
         template< typename...T_QUERY_FILTERS >
         struct define : define_data
         {
-            using access = typename details::access_t<T_QUERY_FILTERS...>;
-            
+            using all_filter    = details::get_compound_type_t< mecs::query::all,    T_QUERY_FILTERS... >;
+            using none_filter   = details::get_compound_type_t< mecs::query::none,   T_QUERY_FILTERS... >;
+            using any_filter    = details::get_compound_type_t< mecs::query::any,    T_QUERY_FILTERS... >;
+            using access_filter = details::get_compound_type_t< mecs::query::access, T_QUERY_FILTERS... >;
+
+            using access        = details::access_components< access_filter >;
+
             template< typename T >
             constexpr static void Initializer( define& This ) noexcept
             {
                 if constexpr ( xcore::types::is_specialized_v<mecs::query::all, T> ) 
                 {
-                    if(T::tag_guid_list_v.size()>1)         This.m_TagQuery.m_All        = std::span<const type_guid>(&T::tag_guid_list_v[1],       T::tag_guid_list_v.size()-1);
-                    if(T::component_guid_list_v.size()>1)   This.m_ComponentQuery.m_All  = std::span<const type_guid>(&T::component_guid_list_v[1], T::component_guid_list_v.size()-1);
+                    if(T::tag_guid_list_v.size()>1)         This.m_TagQuery.m_All           = std::span<const type_guid>(&T::tag_guid_list_v[1],       T::tag_guid_list_v.size()-1);
+                    if(T::component_guid_list_v.size()>1)   This.m_ComponentQuery.m_All     = std::span<const type_guid>(&T::component_guid_list_v[1], T::component_guid_list_v.size()-1);
                 }
                 else if constexpr ( xcore::types::is_specialized_v<mecs::query::any, T> )
                 {
-                    if(T::tag_guid_list_v.size()>1)         This.m_TagQuery.m_Any        = std::span<const type_guid>(&T::tag_guid_list_v[1],       T::tag_guid_list_v.size()-1);
-                    if(T::component_guid_list_v.size()>1)   This.m_ComponentQuery.m_Any  = std::span<const type_guid>(&T::component_guid_list_v[1], T::component_guid_list_v.size()-1);
+                    if(T::tag_guid_list_v.size()>1)         This.m_TagQuery.m_Any           = std::span<const type_guid>(&T::tag_guid_list_v[1],       T::tag_guid_list_v.size()-1);
+                    if(T::component_guid_list_v.size()>1)   This.m_ComponentQuery.m_Any     = std::span<const type_guid>(&T::component_guid_list_v[1], T::component_guid_list_v.size()-1);
                 }
                 else if constexpr ( xcore::types::is_specialized_v<mecs::query::none, T> )
                 {
-                    if(T::tag_guid_list_v.size()>1)         This.m_TagQuery.m_None       = std::span<const type_guid>(&T::tag_guid_list_v[1],       T::tag_guid_list_v.size()-1);
-                    if(T::component_guid_list_v.size()>1)   This.m_ComponentQuery.m_None = std::span<const type_guid>(&T::component_guid_list_v[1], T::component_guid_list_v.size()-1);
+                    if(T::tag_guid_list_v.size()>1)         This.m_TagQuery.m_None          = std::span<const type_guid>(&T::tag_guid_list_v[1],       T::tag_guid_list_v.size()-1);
+                    if(T::component_guid_list_v.size()>1)   This.m_ComponentQuery.m_None    = std::span<const type_guid>(&T::component_guid_list_v[1], T::component_guid_list_v.size()-1);
                 }
                 else if constexpr ( xcore::types::is_specialized_v<mecs::query::access, T> )
                 {
                     static_assert( T::tag_guid_list_v.size() == 0 );
-                    if(T::component_guid_list_v.size()!=0)  This.m_Access.m_Components    = std::span<const type_guid>            (&T::component_guid_list_v[0], T::component_guid_list_v.size());
-                    if(T::component_guid_list_v.size()!=0)  This.m_Access.m_WriteType     = std::span<const component::write_type>(&T::write_v[0],               T::write_v.size());
+                    if(T::component_guid_list_v.size()!=0)  This.m_Access.m_Components      = std::span<const type_guid>            (&T::component_guid_list_v[0], T::component_guid_list_v.size());
+                    if(T::component_guid_list_v.size()!=0)  This.m_Access.m_WriteType       = std::span<const component::write_type>(&T::write_v[0],               T::write_v.size());
                 }
             };
 
@@ -2105,7 +2118,7 @@ namespace mecs
 
             // Defaults that can be overwritten by the user
             constexpr static auto                   system_name_v   = xconst_universal_str("mecs::System");
-            constexpr static mecs::query::define<>  query_v         {};
+            using                                   query_t         = query::define<>; 
 
             // Messages that we can handle these can be overwritten by the user
             inline void msgSyncPointDone    ( sync_point::instance& ){}
@@ -2523,6 +2536,8 @@ namespace mecs
             {
                 using user_system_t     = T_SYSTEM;
                 using world_instance_t  = std::decay_t< decltype(user_system_t::m_World) >;
+
+                constexpr static typename user_system_t::query_t query_v{};
 
                 sync_point::events::start::delegate                         m_SyncPointStartDelegate{       &custom_system::msgSyncPointStart };
                 sync_point::events::done::delegate                          m_SyncPointDoneDelegate { this, &custom_system::msgSyncPointDone  };
