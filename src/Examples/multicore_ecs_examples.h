@@ -28,14 +28,20 @@ namespace mecs_examples
         struct my_system : mecs::system::instance
         {
             constexpr static auto   system_name_v   = xconst_universal_str("my_system");
-            using query_t = mecs::query::define
+            using query_t = mecs::query::define     // This query_t overrides the default query_t. The default query_t is empty.
             <
-                    mecs::query::all<simple>
-                ,   mecs::query::none<my_tag>
+                    mecs::query::all<simple>        // Must have all these components
+                ,   mecs::query::none<my_tag>       // Can not have any of these components
             >;
 
             using mecs::system::instance::instance;
 
+            // This is the function that will execute. Note that the function takes components.
+            // These components will be added to the query as Must Have. In other words (mecs::query::all<...>).
+            // In this example there for the mecs::query::all<simple> is irrelevant since we already are including 
+            // it in the parameters of the function.
+            // Note the function signature is not virtual bur rather it is inline or even constexpr if possible.
+            // Also note how the function is mark as const since systems dont have state.
             constexpr xforceinline
             void operator() ( const double_buff& Buff, simple& Simple ) const noexcept
             {
@@ -50,11 +56,14 @@ namespace mecs_examples
             <
                     mecs::query::all<simple>
                 ,   mecs::query::none<my_tag>
-                ,   mecs::query::access<const double_buff, simple>
+                ,   mecs::query::access<const double_buff, simple>  // Note that this is the equivalent of the parameters of the function
             >;
 
             using mecs::system::instance::instance;
 
+            // This function works exactly the same way than the previous system. Note that mecs::query::access is where all the parameters are. 
+            // Note the you don't need to add the reference symbol, but you do need to add the const.
+            // Turns out that for some reason the compiler makes faster code than actually having the parameters spell out in the function.
             constexpr xforceinline
             void operator() ( query_t::access& Component ) const noexcept
             {

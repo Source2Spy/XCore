@@ -2719,8 +2719,7 @@ namespace mecs
 
                 virtual void qt_onRun( void ) noexcept override
                 {
-                    //details::do_query<world::instance,decltype(*this)>::DoQuery( user_system_t::m_World, user_system_t::m_Query, *this, query_v );
-                    user_system_t::template DoQuery<custom_system>( user_system_t::m_Query, query_v );
+                    user_system_t::template DoQuery<user_system_t>( user_system_t::m_Query, query_v );
                     auto pErrorString = user_system_t::ForEach( user_system_t::m_Query, *this );
                     xassert(pErrorString==nullptr);
                 }
