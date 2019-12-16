@@ -2400,46 +2400,62 @@ namespace mecs
             template
             < 
                     typename    T_WORLD_INSTANCE
-                ,   typename    T
-                ,   bool        T_B = is_by_access_v<T>
+                ,   typename    T_CALLBACK
+                ,   bool        T_IS_BY_ACCESS = is_by_access_v<T_CALLBACK>
             >
             struct do_query;
 
             //-----------------------------------------------------------------------------------------
-            template< typename T_WORLD_INSTANCE, typename T >
-            struct do_query<T_WORLD_INSTANCE,T,false>
+            template< typename T_WORLD_INSTANCE, typename T_CALLBACK >
+            struct do_query<T_WORLD_INSTANCE,T_CALLBACK,false>
             {
                 constexpr xforceinline
                 static void DoQuery( T_WORLD_INSTANCE& World, query::instance& Query,const query::define_data& Data ) noexcept
                 {
-                    World.DoQuery<T>( Query, Data );
+                    World.DoQuery<T_CALLBACK>( Query, Data );
                 }
             };
 
             //-----------------------------------------------------------------------------------------
-            template< typename T_WORLD_INSTANCE, typename T >
-            struct do_query<T_WORLD_INSTANCE,T,true>
+            template< typename T_WORLD_INSTANCE, typename T_CALLBACK >
+            struct do_query<T_WORLD_INSTANCE,T_CALLBACK,true>
             {
+                template< typename...T_ARGS >
+                struct type_func;
+
+                template< typename...T_ARGS >
+                struct type_func<std::tuple<T_ARGS...>>
+                {
+                    void operator()( T_ARGS... ) noexcept{}
+                };
+
                 constexpr xforceinline
                 static void DoQuery( T_WORLD_INSTANCE& World, query::instance& Query, const query::define_data& Data ) noexcept
                 {
-                    xassert(false);
-//                    World.DoQueryTuple( Query, Data );
+                    using the_tuple = typename std::decay_t
+                    <
+                        std::remove_reference_t
+                        <
+                            typename xcore::function::traits<T_CALLBACK>::template arg_t<0>
+                        >
+                    >::tuple_t;
+
+                    World.DoQuery< type_func< the_tuple > >( Query, Data );
                 }
             };
 
             //-----------------------------------------------------------------------------------------
             // SYSTEM::DETAILS::FOR_EACH
             //-----------------------------------------------------------------------------------------
-            template< typename T, bool T_B = is_by_access_v<T> >
+            template< typename T_CALLBACK, bool T_IS_BY_ACCESS = is_by_access_v<T_CALLBACK> >
             struct for_each;
 
             //-----------------------------------------------------------------------------------------
-            template< typename T >
-            struct for_each<T,false>
+            template< typename T_CALLBACK >
+            struct for_each<T_CALLBACK,false>
             {
                 template< typename...T_ARGS >
-                static const char* Process( query::instance& Query, T&& Functor, std::tuple<T_ARGS...>* ) noexcept
+                static const char* Process( query::instance& Query, T_CALLBACK&& Functor, std::tuple<T_ARGS...>* ) noexcept
                 {
                     using                           function_t  = query::system_function<decltype(Functor)>;
                     constexpr static std::array     IndexList   { static_cast<std::int16_t>(xcore::types::tuple_t2i_v< T_ARGS, function_t::args_t >) ... };
@@ -2461,7 +2477,7 @@ namespace mecs
                     for (auto& R : Query.m_lResults )
                     {
                         if( R.m_pGroup->m_Count == 0 ) continue;
-                        ProcessGroup<T,T_ARGS...>( Channel, R, std::forward<T&&>(Functor) );
+                        ProcessGroup<T_CALLBACK,T_ARGS...>( Channel, R, std::forward<T_CALLBACK&&>(Functor) );
                     }
                     Channel.join();
 
@@ -2474,22 +2490,22 @@ namespace mecs
                 }
 
                 constexpr xforceinline
-                static const char* ForEach( query::instance& Query, T&& Functor ) noexcept
+                static const char* ForEach( query::instance& Query, T_CALLBACK&& Functor ) noexcept
                 {
-                    using function_t  = query::system_function<T>;
+                    using function_t  = query::system_function<T_CALLBACK>;
                     return Process( Query, Functor, reinterpret_cast< typename function_t::args_t* >(nullptr) );
                 }
             };
 
             //-----------------------------------------------------------------------------------------
-            template< typename T >
-            struct for_each<T,true>
+            template< typename T_CALLBACK >
+            struct for_each<T_CALLBACK,true>
             {
-                static_assert( xcore::function::traits<T>::arg_count_v == 1 );
+                static_assert( xcore::function::traits<T_CALLBACK>::arg_count_v == 1 );
 
-                static const char* ForEach( query::instance& Query, T&& Functor ) noexcept
+                static const char* ForEach( query::instance& Query, T_CALLBACK&& Functor ) noexcept
                 {
-                    using   access_raw_t    = typename xcore::function::traits<T>::template arg_t<0>;
+                    using   access_raw_t    = typename xcore::function::traits<T_CALLBACK>::template arg_t<0>;
                     using   access_t        = typename std::decay_t< std::remove_reference_t< access_raw_t >>;
 
                     static_assert( std::is_reference_v<access_raw_t> );
@@ -2501,7 +2517,7 @@ namespace mecs
                     if( Query.m_lResults.size() == 0 )
                         return pError;
 
-                    auto IndexListSpan = std::span<const std::int16_t>{ IndexList.data(), xcore::function::traits<T>::arg_count_v };
+                    auto IndexListSpan = std::span<const std::int16_t>{ IndexList.data(), xcore::function::traits<T_CALLBACK>::arg_count_v };
 
                     //
                     // Lock all the groups
@@ -2515,10 +2531,10 @@ namespace mecs
                     for (auto& R : Query.m_lResults )
                     {
                         if( R.m_pGroup->m_Count == 0 ) continue;
-                        details::ProcessGroupByAccess<T, access_t>
+                        details::ProcessGroupByAccess<T_CALLBACK, access_t>
                         (       Channel
                             ,   R
-                            ,   std::forward<T&&>(Functor)
+                            ,   std::forward<T_CALLBACK&&>(Functor)
                             ,   reinterpret_cast<typename access_t::tuple_t*>(nullptr) 
                         );
                     }
@@ -2722,7 +2738,7 @@ namespace mecs
                 virtual void qt_onRun( void ) noexcept override
                 {
                     //details::do_query<world::instance,decltype(*this)>::DoQuery( user_system_t::m_World, user_system_t::m_Query, *this, query_v );
-                    user_system_t::template DoQuery<decltype(*this)>( user_system_t::m_Query, query_v );
+                    user_system_t::template DoQuery<custom_system>( user_system_t::m_Query, query_v );
                     auto pErrorString = user_system_t::ForEach( user_system_t::m_Query, *this );
                     xassert(pErrorString==nullptr);
                 }

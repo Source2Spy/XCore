@@ -36,7 +36,7 @@ namespace mecs_examples
 
             using mecs::system::instance::instance;
 
-            constexpr
+            constexpr xforceinline
             void operator() ( const double_buff& Buff, simple& Simple ) const noexcept
             {
                 Simple.m_Value += Buff.m_Value;
@@ -45,7 +45,7 @@ namespace mecs_examples
 
         struct my_system2 : mecs::system::instance
         {
-            constexpr static auto   system_name_v   = xconst_universal_str("my_system");
+            constexpr static auto   system_name_v   = xconst_universal_str("my_system2");
             using                   query_t         = mecs::query::define
             <
                     mecs::query::all<simple>
@@ -55,7 +55,7 @@ namespace mecs_examples
 
             using mecs::system::instance::instance;
 
-            constexpr
+            constexpr xforceinline
             void operator() ( query_t::access& Component ) const noexcept
             {
                 Component.get<simple>().m_Value += Component.get<const double_buff>().m_Value;
@@ -66,6 +66,7 @@ namespace mecs_examples
         {
             XCORE_PERF_ZONE_SCOPED()
             mecs::world::instance World;
+            mecs::sync_point::instance MidPoint;
             World.registerComponents
             <
                     simple
@@ -73,8 +74,8 @@ namespace mecs_examples
                 ,   my_tag
             >();
 
-            World.AddGraphConnection<my_system>( World.m_StartSyncPoint, World.m_EndSyncPoint );
-            World.AddGraphConnection<my_system2>( World.m_StartSyncPoint, World.m_EndSyncPoint );
+            World.AddGraphConnection<my_system>( World.m_StartSyncPoint, MidPoint );
+            World.AddGraphConnection<my_system2>( MidPoint, World.m_EndSyncPoint );
 
             //
             // Create a bunch of entities
