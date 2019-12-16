@@ -107,7 +107,6 @@ namespace mecs_examples
             for( int i=0; i<100; i++) World.Resume();
         }
     }
-/*
     //------------------------------------------------------------------------------------
     // Test2 - Spawner example
     //------------------------------------------------------------------------------------
@@ -241,24 +240,24 @@ namespace mecs_examples
         struct my_system : mecs::system::instance
         {
             constexpr static auto   system_name_v   = xconst_universal_str("my_system");
-            constexpr static mecs::query::define
+            using query_t = mecs::query::define
             <
                 mecs::query::all<simple>
               , mecs::query::none<my_tag>
-            > query_v{};
+              , mecs::query::access<mecs::entity::instance, const double_buff, simple>
+            >;
 
-            using parent_t = mecs::system::instance;
-            using parent_t::parent_t;
+            using mecs::system::instance::instance;
 
             xcore::random::small_generator R;
 
-            void operator()( mecs::entity::instance& Entity, const double_buff& Buff, simple& Simple ) noexcept
+            void operator()( const query_t::access& Components ) noexcept
             {
                 // This is the equivalent of removing a component (double_buff) from the entity
                 if( (R.RandU32() % 10)  == 0 )
-                    getGroupBy< std::tuple<>, std::tuple<double_buff> >( Entity, [&](mecs::component::group::instance& Group )
+                    getGroupBy< std::tuple<>, std::tuple<double_buff> >( Components.get<mecs::entity::instance>(), [&](mecs::component::group::instance& Group )
                     {
-                        moveEntityToGroup( Group, Entity );
+                        moveEntityToGroup( Group, Components.get<mecs::entity::instance>() );
                     });
             }
         };
@@ -451,7 +450,6 @@ namespace mecs_examples
             }
         }
     }
-    */
 }
 
 //#include "multicore_ecs_examples_boids.h"

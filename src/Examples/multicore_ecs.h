@@ -2120,7 +2120,7 @@ namespace mecs
         {
             //-----------------------------------------------------------------------------------------
             inline
-            const char* LockQueryComponents( query::instance& Query, const std::span<const std::int16_t> IndexList ) noexcept
+            const char* LockQueryComponents( query::instance& Query ) noexcept
             {
                 const char* pError = nullptr;
 
@@ -2143,7 +2143,8 @@ namespace mecs
                     xcore::lock::scope Lk( Group.m_lComponentLocks );
                     auto& ComponentLockArray = Group.m_lComponentLocks.get();
 
-                    auto LockComponent = [&]( std::int16_t I ) constexpr noexcept -> const char*
+                    // Lock component
+                    for( std::uint8_t end = E.m_nRemaps, I=0u; I<end; ++I )
                     {
                         const auto iComp = E.m_lLockRemaps[I];
                         auto&      CLock = ComponentLockArray[iComp];
@@ -2182,15 +2183,6 @@ namespace mecs
                             if(CLock.m_nWritters)  return "I found a systems that is trying to write to a component while other systems where trying to read it [2]";
                             CLock.m_nReaders++;
                         }
-
-                        return nullptr;
-                    };
-
-                    // Lock component
-                    for( auto x : IndexList )
-                    {
-                        if( pError = LockComponent(x) )
-                            return pError;
                     }
                 }
 
@@ -2199,7 +2191,7 @@ namespace mecs
 
             //-----------------------------------------------------------------------------------------
             inline
-            void UnlockQueryComponents( query::instance& Query, const std::span<const std::int16_t> IndexList ) noexcept
+            void UnlockQueryComponents( query::instance& Query ) noexcept
             {
                 for( const auto& E : Query.m_lResults )
                 {
@@ -2210,7 +2202,8 @@ namespace mecs
                     xcore::lock::scope Lk( Group.m_lComponentLocks );
                     auto& ComponentLockArray = Group.m_lComponentLocks.get();
 
-                    auto UnlockComponent = [&]( std::int16_t I ) constexpr noexcept
+                    // Unlock component
+                    for( std::uint8_t end = E.m_nRemaps, I=0u; I<end; ++I )
                     {
                         const auto iComp = E.m_lLockRemaps[I];
                         auto&      CLock = ComponentLockArray[iComp];
@@ -2224,12 +2217,6 @@ namespace mecs
                             xassert(CLock.m_nReaders);
                             CLock.m_nReaders--;
                         }
-                    };
-
-                    // Unlock component
-                    for( auto x : IndexList )
-                    {
-                        UnlockComponent(x);
                     }
 
                     // We officially release this group
@@ -2458,7 +2445,6 @@ namespace mecs
                 static const char* Process( query::instance& Query, T_CALLBACK&& Functor, std::tuple<T_ARGS...>* ) noexcept
                 {
                     using                           function_t  = query::system_function<decltype(Functor)>;
-                    constexpr static std::array     IndexList   { static_cast<std::int16_t>(xcore::types::tuple_t2i_v< T_ARGS, function_t::args_t >) ... };
                     const char*                     pError      = nullptr;
 
                     // If there is nothing to do then lets bail out
@@ -2468,7 +2454,7 @@ namespace mecs
                     //
                     // Lock all the groups
                     //
-                    if( pError = LockQueryComponents( Query, IndexList ) ) return pError;
+                    if( pError = LockQueryComponents( Query ) ) return pError;
 
                     //
                     // Do all the groups
@@ -2484,7 +2470,7 @@ namespace mecs
                     //
                     // unlock all the groups that we need to work with so that no one tries to add/remove entities
                     //
-                    UnlockQueryComponents( Query, IndexList );
+                    UnlockQueryComponents( Query );
 
                     return pError;
                 }
@@ -2510,19 +2496,16 @@ namespace mecs
 
                     static_assert( std::is_reference_v<access_raw_t> );
 
-                    constexpr static std::array<std::int16_t,32> IndexList   { 0u,1u,2u,3u,4u,5u,6u,7u,8u,9u,10u,11u,12u,13u,14u,15u,16u,17u,18u,19u,20u,21u,22u,23u,24u,25u,26u,27u,28u,29u,30u,31u };
                     const char*                                  pError      = nullptr;
 
                     // If there is nothing to do then lets bail out
                     if( Query.m_lResults.size() == 0 )
                         return pError;
 
-                    auto IndexListSpan = std::span<const std::int16_t>{ IndexList.data(), xcore::function::traits<T_CALLBACK>::arg_count_v };
-
                     //
                     // Lock all the groups
                     //
-                    if( pError = details::LockQueryComponents( Query, IndexListSpan ) ) return pError;
+                    if( pError = details::LockQueryComponents( Query ) ) return pError;
 
                     //
                     // Do all the groups
@@ -2543,7 +2526,7 @@ namespace mecs
                     //
                     // unlock all the groups that we need to work with so that no one tries to add/remove entities
                     //
-                    details::UnlockQueryComponents( Query, IndexListSpan );
+                    details::UnlockQueryComponents( Query );
 
                     return pError;
                 }
@@ -2555,7 +2538,6 @@ namespace mecs
             const char* ForEachGroup( query::instance& Query, T_CALLBACK&& Functor ) noexcept
             {
                 using                                           function_t  = query::system_function<decltype(Functor)>;
-                constexpr static std::array<std::int16_t,32>    IndexList   { 0u,1u,2u,3u,4u,5u,6u,7u,8u,9u,10u,11u,12u,13u,14u,15u,16u,17u,18u,19u,20u,21u,22u,23u,24u,25u,26u,27u,28u,29u,30u,31u };
                 const char*                                     pError      = nullptr;
 
                 // If there is nothing to do then lets bail out
@@ -2565,7 +2547,7 @@ namespace mecs
                 //
                 // Lock all the groups
                 //
-                if( pError = LockQueryComponents( Query, IndexList ) ) return pError;
+                if( pError = LockQueryComponents( Query ) ) return pError;
 
                 //
                 // Do all the groups
@@ -2581,7 +2563,7 @@ namespace mecs
                 //
                 // unlock all the groups that we need to work with so that no one tries to add/remove entities
                 //
-                UnlockQueryComponents( Query, IndexList );
+                UnlockQueryComponents( Query );
 
                 return pError;
             }
