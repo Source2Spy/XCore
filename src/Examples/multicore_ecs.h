@@ -1719,7 +1719,7 @@ namespace mecs
         };
 
         //---------------------------------------------------------------------------------
-        // QUERY::ALL NONE ANY
+        // QUERY::ALL, NONE, ANY, ACCESS
         //---------------------------------------------------------------------------------
         template< typename...T_COMPONENTS_AND_TAGS >
         struct all : component::group::details::guid_arrays_from_types< T_COMPONENTS_AND_TAGS... >
@@ -1756,11 +1756,11 @@ namespace mecs
             };
         };
 
-        template<>
-        struct access<void>
-        {
-        };
+        template<> struct access<void>{};
 
+        //---------------------------------------------------------------------------------
+        // QUERY::SYSTEM FUNCTION
+        //---------------------------------------------------------------------------------
         namespace details
         {
             template< typename...T_COMPONENTS_ONLY_WITH_CONST_WHEN_NEEDED >
@@ -1782,13 +1782,7 @@ namespace mecs
             struct access_components< mecs::query::access<void> >
             {
             };
-        }
 
-        //---------------------------------------------------------------------------------
-        // QUERY::SYSTEM FUNCTION
-        //---------------------------------------------------------------------------------
-        namespace details
-        {
             template<typename...T_ARGS>
             constexpr auto TypeArray( std::tuple<T_ARGS...>* ) noexcept
             {
