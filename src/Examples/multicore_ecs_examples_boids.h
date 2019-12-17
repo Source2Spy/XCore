@@ -167,7 +167,7 @@ namespace mecs::examples::test5
                 constexpr static auto   system_name_v   = xconst_universal_str("system physics instance");
                 using mecs::system::instance::instance;
 
-                constexpr static mecs::query::define
+               using query_t = mecs::query::define
                 <
                     mecs::query::access
                     <       const component::spatial_cell::position
@@ -181,9 +181,9 @@ namespace mecs::examples::test5
                         ,         component::spatial_cell::entity
                     >;
 
-                > query_v{};
+                >;
 
-                constexpr static mecs::query::define
+                using query2_t = mecs::query::define
                 <
                     mecs::query::all
                     <     component::spatial_cell::position
@@ -202,8 +202,7 @@ namespace mecs::examples::test5
                         ,         component::spatial_cell::count
                         ,         component::spatial_cell::entity
                     >;
-
-                > query2_v{};
+                >;
 
                 query::instance     m_SpacialGroupQuery;
 

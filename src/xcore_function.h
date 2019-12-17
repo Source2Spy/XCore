@@ -167,6 +167,8 @@ namespace xcore::function
             return m_Invoker(m_Storage, std::forward<T_ARG>(Args)...);
         }
 
+        constexpr bool isValid ( void ) const noexcept { return m_Invoker; }
+
     protected:
 
         template<typename T_LAMBDA>

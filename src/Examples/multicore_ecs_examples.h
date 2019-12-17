@@ -154,11 +154,10 @@ namespace mecs_examples
             struct component
             {
                 constexpr static mecs::type_guid type_guid_v{ "spawner component" };
-                using fn = void(mecs::entity::tmp_ref);
 
-                std::uint16_t                   m_Count;
-                mecs::component::group::guid    m_gGroup;
-                fn*                             m_fnCreated{nullptr};
+                std::uint32_t                               m_Count;
+                mecs::component::group::guid                m_gGroup;
+                xcore::func<void(mecs::entity::tmp_ref)>    m_fnCreated;
             };
 
             struct system : mecs::system::instance
@@ -167,18 +166,62 @@ namespace mecs_examples
             
                 using mecs::system::instance::instance;
 
+                constexpr static std::uint32_t limit_singlecore_v = 1000u;
+
                 void operator() ( mecs::entity::instance& Entity, spawner::component& S ) noexcept
                 {
                     getGroup( S.m_gGroup, [&](mecs::component::group::instance& Group ) noexcept
                     {
-                        if( S.m_fnCreated ) for( int i=0; i<S.m_Count; ++i )
+                        if( S.m_fnCreated.isValid() ) 
                         {
-                            createEntity( Group, [&]( mecs::entity::tmp_ref Ref ) constexpr noexcept
+                            if( S.m_Count > limit_singlecore_v )
                             {
-                                S.m_fnCreated(Ref);
-                            });
+                                xcore::scheduler::channel Channel( xconst_universal_str("Spawer"));
+                                for( auto end = S.m_Count; end; )
+                                {
+                                    auto Count = std::min( 1000u, end );
+
+                                    Channel.SubmitJob([this, Count, &Group, &S]()
+                                    {
+                                        for( auto end = Count; end--; )
+                                        {
+                                            createEntity( Group, [&]( mecs::entity::tmp_ref Ref ) constexpr noexcept
+                                            {
+                                                S.m_fnCreated(Ref);
+                                            });
+                                        }
+                                    });
+
+                                    end -= Count;
+                                }
+                                Channel.join();
+                            }
+                            else for( auto end = S.m_Count; end--; )
+                            {
+                                createEntity( Group, [&]( mecs::entity::tmp_ref Ref ) constexpr noexcept
+                                {
+                                    S.m_fnCreated(Ref);
+                                });
+                            }
                         }
-                        else for( int i=0; i<S.m_Count; ++i )
+                        else if( S.m_Count > limit_singlecore_v )
+                        {
+                            xcore::scheduler::channel Channel( xconst_universal_str("Spawer") );
+                            for( auto end = S.m_Count; end; )
+                            {
+                                auto Count = std::min( 1000u, end );
+
+                                Channel.SubmitJob([this, Count, &Group]()
+                                {
+                                    for( auto end = Count; end--; )
+                                        createEntity( Group );
+                                });
+
+                                end -= Count;
+                            }
+                            Channel.join();
+                        }
+                        else for( auto end = S.m_Count; end--; )
                         {
                             createEntity( Group );
                         }
