@@ -27,10 +27,6 @@
     <ClInclude Include="..\..\src\Examples\circular_pool.h" />
     <ClInclude Include="..\..\src\Examples\cmdPool.h" />
     <ClInclude Include="..\..\src\Examples\helpers.h" />
-    <ClInclude Include="..\..\src\Examples\multicore_ecs.h" />
-    <ClInclude Include="..\..\src\Examples\multicore_ecs_2d_physis.h" />
-    <ClInclude Include="..\..\src\Examples\multicore_ecs_examples.h" />
-    <ClInclude Include="..\..\src\Examples\multicore_ecs_examples_boids.h" />
     <ClInclude Include="..\..\src\Examples\pool.h" />
     <ClInclude Include="..\..\src\Examples\xcore_cmdline_example.h" />
     <ClInclude Include="..\..\src\Examples\xcore_compression_examples.h" />
@@ -126,7 +122,6 @@
     <ClInclude Include="..\..\src\xcore_vector.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\..\src\Examples\main.cpp" />
     <ClCompile Include="..\..\src\xcore.cpp" />
     <ClCompile Include="..\..\src\xcore_profiler_1.cpp" />
     <ClCompile Include="..\..\src\xcore_profiler_2.cpp" />

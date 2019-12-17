@@ -24,8 +24,6 @@
 #include "xcore_compression_examples.h"
 #include "xcore_serializer_examples.h"
 
-#include "multicore_ecs_examples.h"
-
 namespace xcore::examples
 {
     void Test( void )
@@ -55,10 +53,6 @@ namespace xcore::examples
         if (1)
         {
             // xcore::serializer::examples::Test();
-            mecs_examples::test1::Test();
-            mecs_examples::test2::Test();
-            mecs_examples::test3::Test();
-            mecs_examples::test4::Test();
         }
     }
 }
