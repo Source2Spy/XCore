@@ -8,6 +8,7 @@ namespace xcore::memory
 #if _XCORE_PLATFORM_WINDOWS
         ptr = _aligned_malloc(Size.m_Value, Align);
 #else
+    #error "need to define an align alloc"
 #endif
         XCORE_PERF_ALLOC_S(ptr, Size.m_Value, 10);
         return ptr;

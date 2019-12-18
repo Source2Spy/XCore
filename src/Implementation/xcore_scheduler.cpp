@@ -831,7 +831,7 @@ namespace xcore::scheduler
             SetThreadName( Name, xcore::get().m_pAppName );
 
             const auto ID = system::getWorkerUID(Scheduler).m_Value;
-            xcore::profile::SetThreadName( Name.data() );// Scheduler.m_lWorkers[ID-1] );//, Name.data() );
+            XCORE_CMD_PROFILER( xcore::profile::SetThreadName( Name.data() ); )// Scheduler.m_lWorkers[ID-1] );//, Name.data() );
 
             XLOG_CHANNEL_INFO( *Scheduler.m_LogChannel, "%s Created", Name.data() );
         }

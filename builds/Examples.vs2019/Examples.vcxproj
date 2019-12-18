@@ -70,6 +70,7 @@
     <ClInclude Include="..\..\src\Implementation\xcore_unqiue_span_inline.h" />
     <ClInclude Include="..\..\src\Implementation\xcore_vector_inline.h" />
     <ClInclude Include="..\..\src\Settings\PropertyConfig.h" />
+    <ClInclude Include="..\..\src\Settings\xcore_user_settings.h" />
     <ClInclude Include="..\..\src\xcore.h" />
     <ClInclude Include="..\..\src\xcore_arglist.h" />
     <ClInclude Include="..\..\src\xcore_array.h" />
@@ -122,6 +123,7 @@
     <ClInclude Include="..\..\src\xcore_vector.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\..\src\Examples\main.cpp" />
     <ClCompile Include="..\..\src\xcore.cpp" />
     <ClCompile Include="..\..\src\xcore_profiler_1.cpp" />
     <ClCompile Include="..\..\src\xcore_profiler_2.cpp" />

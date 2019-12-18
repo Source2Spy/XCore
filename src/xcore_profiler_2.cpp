@@ -9,22 +9,24 @@
 #include <array>
 #include "xcore_target.h"
 
-//-------------------------------------------------------------------------------
-// Tracy files
-//-------------------------------------------------------------------------------
-#ifdef _WIN32
-#  include <winsock2.h>
-#  include <ws2tcpip.h>
-#endif
+#ifdef _XCORE_PROFILE
+    //-------------------------------------------------------------------------------
+    // Tracy files
+    //-------------------------------------------------------------------------------
+    #ifdef _WIN32
+    #  include <winsock2.h>
+    #  include <ws2tcpip.h>
+    #endif
 
-#ifdef max
-    #undef max
-#endif
-#ifdef min
-    #undef min
-#endif
+    #ifdef max
+        #undef max
+    #endif
+    #ifdef min
+        #undef min
+    #endif
 
-#include "../dependencies/tracy/common/tracySocket.cpp"
-#include "../dependencies/tracy/client/tracyProfiler.cpp"
+    #include "../dependencies/tracy/common/tracySocket.cpp"
+    #include "../dependencies/tracy/client/tracyProfiler.cpp"
 
+#endif
 

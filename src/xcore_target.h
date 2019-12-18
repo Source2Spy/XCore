@@ -2,9 +2,6 @@
 #define _XCORE_TARGET_H
 #pragma once
 
-
-#define _XCORE_PROFILE
-
 //------------------------------------------------------------------------------
 // Determine the compiler err set it in _XCORE_COMPILER_ ...
 //------------------------------------------------------------------------------
@@ -194,6 +191,18 @@ constexpr xcore::target::compiler   xcore::target::getCompiler      ( void ) noe
 #else
     #define _XCORE_RELEASE           true
     constexpr bool xcore::target::isDebug( void ) noexcept { return false; }
+#endif
+
+//------------------------------------------------------------------------------
+// Include the user settings
+//------------------------------------------------------------------------------
+#include "xcore_user_settings.h"
+
+//------------------------------------------------------------------------------
+// Enable the profiler if the user request it
+//------------------------------------------------------------------------------
+#ifdef XCORE_USER_SETTINGS_PROFILE
+    #define _XCORE_PROFILE
 #endif
 
 //------------------------------------------------------------------------------
