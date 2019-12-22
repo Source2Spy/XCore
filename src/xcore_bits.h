@@ -8,7 +8,7 @@ namespace xcore::bits
     // Description:
     //      returns a power of 2 integer given n. result = 2^n  
     //------------------------------------------------------------------------------
-    template< typename T > constexpr
+    template< typename T > constexpr xforceinline
     T SLeft( T n ) noexcept
     { 
         static_assert( std::is_integral<T>::value,"" ); 
@@ -24,7 +24,7 @@ namespace xcore::bits
     //     Addr       - This is the address/number/offset to align
     //     AlignTo    - This is a power of 2 number that the user_types wants it to be align to
     //------------------------------------------------------------------------------
-    template< typename T > constexpr
+    template< typename T > constexpr xforceinline
     T Align( T Address, const int AlignTo ) noexcept
     {
         static_assert( std::is_integral<T>::value, "This function only works with integer values" );
@@ -34,7 +34,7 @@ namespace xcore::bits
 
     //------------------------------------------------------------------------------
 
-    template< typename T > inline
+    template< typename T > inline xforceinline
     T* Align( T* Address, const int AlignTo ) noexcept
     {
         return reinterpret_cast<T*>( Align( reinterpret_cast<const std::size_t>( Address ), AlignTo ) );
@@ -50,7 +50,7 @@ namespace xcore::bits
     //     AlignTo    - This is a power of 2 number that the user_types wants it to be align to
     //------------------------------------------------------------------------------
 
-    template< typename T > constexpr
+    template< typename T > constexpr xforceinline
     T AlignLower( T Address, const int AlignTo ) noexcept
     {
         static_assert( std::is_integral<T>::value, "This function only works with integer values" );
@@ -60,7 +60,7 @@ namespace xcore::bits
 
     //------------------------------------------------------------------------------
 
-    template< typename T > inline
+    template< typename T > inline xforceinline
     T* AlignLower( T* Address, const int AlignTo ) noexcept
     {
         return reinterpret_cast<T*>( AlignLower( reinterpret_cast<const std::size_t>( Address ), AlignTo ) );
@@ -74,7 +74,7 @@ namespace xcore::bits
     //     Addr       - This is the address/number/offset to align
     //     AlignTo    - This is a power of 2 number that the user_types wants it to be align to
     //------------------------------------------------------------------------------
-    template< typename T > constexpr 
+    template< typename T > constexpr xforceinline
     bool isAlign( T Addr, const int AlignTo ) noexcept
     {
         static_assert( std::is_pointer<T>::value || std::is_integral<T>::value,"" );
@@ -98,7 +98,7 @@ namespace xcore::bits
     //      It answer the question: how many bits do I need to rshift 'y' to make this expression true: 
     //      (input) x == 1 << 'y'. Assuming x was originally a power of 2.
     //------------------------------------------------------------------------------
-    template< typename T> constexpr
+    template< typename T> constexpr xforceinline
     T Log2Int( T x, int p = 0 ) noexcept
     {
         return (x <= 1) ? p : Log2Int(x >> 1, p + 1);
@@ -112,7 +112,7 @@ namespace xcore::bits
     namespace details
     {
         //------------------------------------------------------------------------------
-        template< typename T > constexpr
+        template< typename T > constexpr xforceinline
         int NextPowOfTwo( const T x, const int s ) noexcept
         {
             static_assert( std::is_integral<T>::value, "" );
@@ -121,7 +121,7 @@ namespace xcore::bits
     }
 
     //------------------------------------------------------------------------------
-    template< class T > constexpr
+    template< class T > constexpr xforceinline
     bool isPowTwo( const T x ) noexcept
     { 
         static_assert( std::is_integral<T>::value, "" ); 
@@ -134,7 +134,7 @@ namespace xcore::bits
     // Example:
     //      Log2IntRoundUp(3) == 2 // it takes 2bits to store #3
     //------------------------------------------------------------------------------
-    template< typename T> constexpr
+    template< typename T> constexpr xforceinline
     T Log2IntRoundUp( T x ) noexcept
     {
         static_assert( std::is_integral<T>::value, "" ); 
@@ -163,7 +163,7 @@ namespace xcore::bits
     // Example:
     //      RoundToNextPowOfTwo(3) == 4   // The next power from #3 is #4
     //------------------------------------------------------------------------------
-    template< typename T> constexpr
+    template< typename T> constexpr xforceinline
     int RoundToNextPowOfTwo( const T x ) noexcept
     { 
         static_assert( std::is_integral<T>::value, "" ); 
