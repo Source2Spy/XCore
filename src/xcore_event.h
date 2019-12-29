@@ -184,8 +184,10 @@ namespace xcore::event
     {
     public:
 
-        using self      = type_rtn_any;
-        using delegate  = details::delegate<T_RET, T_ARGS...>;
+        using self                  = type_rtn_any;
+        using delegate              = details::delegate<T_RET, T_ARGS...>;
+        using arguments_tuple_t     = std::tuple<T_ARGS...>;
+        using return_t              = T_RET;
 
     public:
 

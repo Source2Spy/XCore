@@ -63,6 +63,7 @@ namespace xcore::random
     inline
     float small_generator::RandF32( float Start, float End ) noexcept
     {
+        xassert(Start<End);
         return Start+RandF32()*(End-Start);
     }
 
@@ -70,6 +71,7 @@ namespace xcore::random
     inline
     std::int32_t small_generator::RandS32( std::int32_t Start, std::int32_t End ) noexcept
     {
+        xassert(Start<End);
         const std::int32_t L = End-Start;
         return Start+(RandU32()%L);
     }
@@ -78,6 +80,7 @@ namespace xcore::random
     inline
     double small_generator::RandF64( double Start, double End ) noexcept
     {
+        xassert(Start<End);
         return Start+RandF64()*(End-Start);
     }
 

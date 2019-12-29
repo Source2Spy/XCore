@@ -47,6 +47,7 @@ namespace xcore
     namespace file      { class device_i;  void InitSystem(std::vector<device_i*>&) noexcept; }
 }
 
+
 //---------------------------------------------------------------------------
 // including the profiler 
 //---------------------------------------------------------------------------
