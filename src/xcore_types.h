@@ -69,22 +69,6 @@ namespace xcore::types
         return static_cast<T_TO>(a);
     }
 
-    /*
-    //------------------------------------------------------------------------------
-    template< typename T_TO, typename T_FROM > constexpr
-    T_TO static_cast_safe( const T_FROM&& a ) noexcept
-    {
-        xassert_block_basic()
-        {
-            using max_type = typename byte_size_uint_t< int(sizeof(T_TO) > sizeof(T_FROM) ? sizeof(T_TO) : sizeof(T_FROM)) >::type;
-            using min_type = typename byte_size_int_t < int(sizeof(T_TO) > sizeof(T_FROM) ? sizeof(T_TO) : sizeof(T_FROM)) >::type;
-            xassert(static_cast<min_type>(a) >= static_cast<min_type>(std::numeric_limits<T_TO>::lowest()) &&
-                    static_cast<max_type>(a) <= static_cast<max_type>(std::numeric_limits<typename byte_size_uint_t<sizeof(T_TO)>::type>::max()));
-        }
-        return static_cast<T_TO>(a);
-    }
-    */
-
     //------------------------------------------------------------------------------
     // Description:
     //      Converts an rvalue to an lvalue 
@@ -120,6 +104,117 @@ namespace xcore::types
     //------------------------------------------------------------------------------------------
     template<typename ... T_TUPLES>
     using tuple_cat_t = decltype(std::tuple_cat(std::declval<T_TUPLES>()...));
+
+    //------------------------------------------------------------------------------------------
+    // tuple_extract_n_t - creates a new tuple containing the first n types
+    // tuple_delete_n_t  - creates a new tuple which has removed the first n entries
+    //------------------------------------------------------------------------------------------
+    namespace details
+    {
+        //----------------------------------------------------------------------------------
+        template< std::size_t T_COUNT, typename T_TUPLE, bool = (T_COUNT == 0) > 
+        struct tuple_extract_n
+        {
+            static_assert(T_COUNT <= std::tuple_size_v<T_TUPLE> );
+
+            using type      = std::tuple<>;
+            using remainder = T_TUPLE;
+        };
+
+        template< std::size_t T_COUNT, typename...T_ARGS > 
+        struct tuple_extract_n< T_COUNT, std::tuple<T_ARGS...>, false >
+        {
+            static_assert( T_COUNT <= sizeof...(T_ARGS) );
+
+            template< std::size_t I, typename T_ELEMENT, typename...T_A >
+            struct append
+            {
+                using app_t     = append< I-1, T_A... >;
+
+                using remainder = typename app_t::remainder; 
+                using type      = tuple_cat_t< std::tuple<T_ELEMENT>, typename app_t::type >;
+            };
+
+            template< typename T_ELEMENT, typename...T_A >
+            struct append< 0, T_ELEMENT, T_A... >
+            {
+                using remainder = std::tuple<T_A...>;
+                using type      = std::tuple<T_ELEMENT>;
+            };
+
+            using app_t     = append< T_COUNT-1, T_ARGS...>;
+            using type      = typename app_t::type;
+            using remainder = typename app_t::remainder; 
+        };
+    }
+
+    template< std::size_t T_COUNT, typename T_TUPLE >
+    using tuple_extract_n_t = typename details::tuple_extract_n< T_COUNT, T_TUPLE>::type;
+
+    template< std::size_t T_COUNT, typename T_TUPLE >
+    using tuple_delete_n_t = typename details::tuple_extract_n< T_COUNT, T_TUPLE>::remainder;
+
+    //------------------------------------------------------------------------------------------
+    // tuple_search_and_replace_t - Given 3 tuples it will search the first tuple with the second one
+    //                              and replace the match with the 3rd one.
+    //------------------------------------------------------------------------------------------
+    namespace details
+    {
+        template< typename T_TUPLE_LIST, typename T_TUPLE_FIND, typename T_TUPLE_REPLACE >
+        struct tuple_search_and_replace
+        {
+            // nonsensical warning from visual studio.
+            #pragma warning ( push )
+            #pragma warning ( disable:4348 )  // warning C4348: 'details::tuple_search_and_replace<a,b,c>::sar': redefinition of default parameter: parameter 4
+
+            template< typename T_NEW_TUPLE_LIST
+                    , typename T_TUPLE_MATCH
+                    , typename T_TUPLE_REMAINDER
+                    , bool     = ((0 == std::tuple_size_v<T_TUPLE_MATCH>) || (0 == std::tuple_size_v<T_TUPLE_REMAINDER>)) >
+            struct sar;
+
+            #pragma warning ( pop )
+
+            template< typename T_NEW_TUPLE_LIST, typename T_TUPLE_MATCH, typename T_TUPLE_REMAINDER >
+            struct sar< T_NEW_TUPLE_LIST, T_TUPLE_MATCH, T_TUPLE_REMAINDER, true >
+            {
+                using type = tuple_cat_t< T_NEW_TUPLE_LIST, T_TUPLE_MATCH, T_TUPLE_REMAINDER >;
+            };
+
+            template< typename T_NEW_TUPLE_LIST,typename T_TUPLE_REMAINDER >
+            struct sar< T_NEW_TUPLE_LIST, T_TUPLE_FIND, T_TUPLE_REMAINDER, true >
+            {
+                using type = tuple_cat_t< T_NEW_TUPLE_LIST, T_TUPLE_REPLACE, T_TUPLE_REMAINDER >;
+            };
+
+            template< typename T_NEW_TUPLE_LIST, typename T_TUPLE_MATCH, typename T_TUPLE_REMAINDER >
+            struct sar< T_NEW_TUPLE_LIST, T_TUPLE_MATCH, T_TUPLE_REMAINDER, false >
+            {
+                using remainder = tuple_cat_t   <   tuple_delete_n_t < 1, T_TUPLE_MATCH >, T_TUPLE_REMAINDER >;                            
+                using type      = typename sar  <   tuple_cat_t< T_NEW_TUPLE_LIST, std::tuple< std::tuple_element_t< 0, T_TUPLE_MATCH>>>
+                                                ,   tuple_extract_n_t< std::tuple_size_v<T_TUPLE_FIND>, remainder >
+                                                ,   tuple_delete_n_t < std::tuple_size_v<T_TUPLE_FIND>, remainder >
+                                                >::type; 
+            };
+
+            template< typename T_NEW_TUPLE_LIST, typename T_TUPLE_REMAINDER >
+            struct sar< T_NEW_TUPLE_LIST, T_TUPLE_FIND, T_TUPLE_REMAINDER, false >
+            {
+                using type = typename sar   <   tuple_cat_t< T_NEW_TUPLE_LIST, T_TUPLE_REPLACE >
+                                            ,   tuple_extract_n_t< std::tuple_size_v<T_TUPLE_FIND>, T_TUPLE_REMAINDER >
+                                            ,   tuple_delete_n_t < std::tuple_size_v<T_TUPLE_FIND>, T_TUPLE_REMAINDER >
+                                            >::type; 
+            };
+
+            using type = typename sar   <   std::tuple<>
+                                        ,   tuple_extract_n_t< std::tuple_size_v<T_TUPLE_FIND>, T_TUPLE_LIST >
+                                        ,   tuple_delete_n_t < std::tuple_size_v<T_TUPLE_FIND>, T_TUPLE_LIST >
+                                        >::type;
+        };
+    }
+
+    template< typename T_TUPLE_LIST, typename T_TUPLE_FIND, typename T_TUPLE_REPLACE >
+    using tuple_search_and_replace_t = typename details::tuple_search_and_replace<T_TUPLE_LIST, T_TUPLE_FIND, T_TUPLE_REPLACE>::type;
 
     //--------------------------------------------------------------------------------------------
     // Tuple visit similar to the variant visit
@@ -230,7 +325,7 @@ namespace xcore::types
     using tuple_sort_t = typename details::tuple_selection_sort< T_COMPARE, T_TUPLE >::type;
 
     //------------------------------------------------------------------------------------------
-    // Variant err to index conversion
+    // Variant type to index conversion
     //------------------------------------------------------------------------------------------
     namespace details
     {
