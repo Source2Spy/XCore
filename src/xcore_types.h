@@ -348,6 +348,12 @@ namespace xcore::types
     constexpr static auto variant_t2i_v = details::variant_t2i< T_TYPE, T_VARIANT >::value;
 
     //--------------------------------------------------------------------------------------------
+    // Removes all attributes and references operators giving the basic underlaying type
+    //--------------------------------------------------------------------------------------------
+    template< typename T >
+    using decay_full_t = std::remove_reference_t<std::decay_t<T>>;
+
+    //--------------------------------------------------------------------------------------------
     // Helpful when using variadic types
     //--------------------------------------------------------------------------------------------
     namespace details{ template< typename T > struct always_false : std::false_type {}; }
