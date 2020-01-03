@@ -135,7 +135,7 @@
   <PropertyGroup Label="Globals">
     <VCProjectVersion>15.0</VCProjectVersion>
     <ProjectGuid>{9FBD5D8F-43DE-409B-AF80-CA375739383F}</ProjectGuid>
-    <RootNamespace>Examples</RootNamespace>
+    <RootNamespace>XCORE-Examples</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />

@@ -2,9 +2,11 @@
 # This .gitignore file was automatically created by Microsoft(R) Visual Studio.
 ################################################################################
 
-/.vs
-/builds/Examples.vs2019/x64/Debug
-/builds/Examples.vs2019/.vs/Examples/v16
-/builds/Examples.vs2019/Examples.vcxproj.user
+.vs
+/builds/XCORE-Examples.vs2019/x64
+/builds/XCORE-Examples.vs2019/XCORE-Examples.vcxproj.user
 /dependencies
-/builds/Examples.vs2019/x64/Release
+/builds/XCORE-Examples.vs2019/TextFileTest.la.txt
+/builds/XCORE-Examples.vs2019/PropertyText.la.txt
+/builds/XCORE-Examples.vs2019/PropertyBin.la.bin
+/builds/XCORE-Examples.vs2019/BinaryFileTest.la.bin
