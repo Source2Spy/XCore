@@ -6,6 +6,7 @@
 // Useful references:
 //      * Time based GUID:   https://github.com/mariusbancila/stduuid
 //      * meow hash project: https://github.com/RedSpah/meow_hash_cpp 
+//      * Very nice article: https://preshing.com/20110504/hash-collision-probabilities/ 
 //---------------------------------------------------------------------------------------
 namespace xcore::guid
 {
@@ -75,6 +76,36 @@ namespace xcore::guid
 
         t m_Value;
     };
+
+    template< typename T_TAG >
+    struct unit<128,T_TAG>
+    {
+        constexpr                           unit                ( void )                                                        noexcept = default;
+        template< std::size_t N >
+        constexpr                           unit                ( const char (&Str)[N] )                                        noexcept : m_Value{ xcore::crc<64>::FromString(Str).m_Value, xcore::crc<64>::FromString(Str+1).m_Value }{}
+        constexpr                           unit                ( std::nullptr_t )                                              noexcept : m_Value{ 0u, 0u }{}
+        constexpr explicit                  unit                ( std::uint64_t High, std::uint64_t Low )                       noexcept : m_Value{ High, Low }{}
+        constexpr explicit                  unit                ( xcore::not_null_t )                                           noexcept : m_Value{ details::Generate<128>() } {}
+        constexpr            bool           operator ==         ( const unit A )                                        const   noexcept { return m_Value[0] == A.m_Value[0] && m_Value[1] == A.m_Value[1]; }
+        constexpr            bool           operator !=         ( const unit A )                                        const   noexcept { return m_Value[0] != A.m_Value[0] || m_Value[1] != A.m_Value[1]; }
+        constexpr            bool           operator <          ( const unit A )                                        const   noexcept { return m_Value[0] == A.m_Value[0] ? m_Value[1] <  A.m_Value[1] : m_Value[0] < A.m_Value[0]; }
+        constexpr            bool           operator >          ( const unit A )                                        const   noexcept { return m_Value[0] == A.m_Value[0] ? m_Value[1] >  A.m_Value[1] : m_Value[0] > A.m_Value[0]; }
+        constexpr            bool           operator <=         ( const unit A )                                        const   noexcept { return m_Value[0] == A.m_Value[0] ? m_Value[1] <= A.m_Value[1] : m_Value[0] < A.m_Value[0]; }
+        constexpr            bool           operator >=         ( const unit A )                                        const   noexcept { return m_Value[0] == A.m_Value[0] ? m_Value[1] >= A.m_Value[1] : m_Value[0] > A.m_Value[0]; }
+        constexpr            bool           isValid             ( void )                                                const   noexcept { return !! ( m_Value[0] | m_Value[1] );  }
+        constexpr            bool           isNull              ( void )                                                const   noexcept { return 0 == ( m_Value[0] | m_Value[1] );  }
+        inline               void           setNull             ( void )                                                        noexcept { m_Value[0] = m_Value[1] = 0; }
+        inline               void           Reset               ( void )                                                        noexcept { m_Value = details::Generate<128>(); }
+        template< typename T_CHAR >
+        inline              void            setFromStringHex    ( const T_CHAR* pStr )                                          noexcept { m_Value[0] = string::ToGuid( pStr ); m_Value[1] = string::ToGuid( pStr+1 ); }
+        template< typename T_CHAR >
+        inline              void            getStringHex        ( string::view<T_CHAR> String )                         const   noexcept { string::sprintf( String, "%llX,llX", m_Value[0],m_Value[1] ); }
+        template< typename T_CHAR >
+        inline         string::ref<T_CHAR>  getStringHex        ( void )                                                const   noexcept { string::ref<T_CHAR> String{string::units<char>{128}}; getStringHex(String.getView()); return std::move(String); }
+
+        std::array<std::uint64_t,2> m_Value;
+    };
+
 
     //------------------------------------------------------------------------------
     // Description:
