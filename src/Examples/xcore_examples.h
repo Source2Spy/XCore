@@ -49,6 +49,7 @@ namespace xcore::examples
             xcore::compression::examples::Test();
         }
 
+            xcore::guid::examples::Test();
         // wip
         if (1)
         {
