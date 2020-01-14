@@ -1,7 +1,7 @@
 @echo OFF
 setlocal enabledelayedexpansion
 cd %cd%
-set MY_PATH = %cd%
+set XCORE_PATH=%cd%
 
 rem --------------------------------------------------------------------------------------------------------
 rem To write line Colors
@@ -42,7 +42,7 @@ echo.
 powershell write-host -fore White ------------------------------------------------------------------------------------------------------
 powershell write-host -fore White XCORE - FINDING VISUAL STUDIO / MSBuild
 powershell write-host -fore White ------------------------------------------------------------------------------------------------------
-
+cd /d %XCORE_PATH%
 for /f "usebackq tokens=*" %%i in (`.\..\bin\vswhere -latest -requires Microsoft.Component.MSBuild -find MSBuild\**\Bin\MSBuild.exe`) do (
     SET MSBUILD=%%i
 )
