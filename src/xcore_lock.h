@@ -120,6 +120,32 @@ namespace xcore::lock
             } while(true);
         }
 
+        /*
+        // Transition From Reader Lock to Writer Lock. Note you need to unlock like a writer now!
+        inline void TransitionFromReadToWriteLock( void ) const noexcept
+        {
+            auto p = m_Lock.load( std::memory_order_relaxed );
+
+            // We must have a lock already!
+            assert( p.m_isLockWriter == false );
+            assert( p.m_nLocks >= 1 );
+
+            // Let the lock know that we are trying to transition
+            while( false == m_Lock.compare_exchange_weak( p, thelock{ p.m_nLocks, p.m_nWaitingWritters+1u, p.m_nLocks == 1 ? true : false } ) );
+
+            p = m_Lock.load( std::memory_order_relaxed );
+            if( p.m_isLockWriter ) return;
+
+            while( p.m_nLocks > 1 )
+            {
+                // Spin and wait!
+                p = m_Lock.load( std::memory_order_relaxed );
+            }
+            
+            m_Lock.store( thelock{ 1u, p.m_nWaitingWritters-1u, true }, std::memory_order_release );
+        }
+        */
+
         // Reader unlock
         inline void unlock( void ) const noexcept
         {

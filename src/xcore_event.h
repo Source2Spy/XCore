@@ -279,7 +279,7 @@ namespace xcore::event
     private:
 
         mutable xcore::lock::spin       m_Lock{};
-        delegate* m_pHead{ nullptr };
+        delegate*                       m_pHead{ nullptr };
 
         friend delegate;
     };
