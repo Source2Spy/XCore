@@ -4,12 +4,6 @@ cd %cd%
 set MY_PATH = %cd%
 
 rem --------------------------------------------------------------------------------------------------------
-rem Set the color of the terminal to blue with yellow text
-rem --------------------------------------------------------------------------------------------------------
-COLOR 8E
-powershell write-host -fore Cyan Welcome I am your dependency updater bot, let me get to work...
-
-rem --------------------------------------------------------------------------------------------------------
 rem To write line Colors
 rem More info: https://docs.microsoft.com/en-us/powershell/module/microsoft.powershell.utility/write-host?view=powershell-6
 rem --------------------------------------------------------------------------------------------------------
@@ -36,8 +30,17 @@ rem      powershell write-host -fore Cyan This is Cyan text
 rem      powershell write-host -back Red  This is Red background
 rem --------------------------------------------------------------------------------------------------------
 
+rem --------------------------------------------------------------------------------------------------------
+rem Set the color of the terminal to blue with yellow text
+rem --------------------------------------------------------------------------------------------------------
+COLOR 8E
 powershell write-host -fore White ------------------------------------------------------------------------------------------------------
-powershell write-host -fore White FINDING VISUAL STUDIO / MSBuild
+powershell write-host -fore Cyan Welcome I am your XCORE dependency updater bot, let me get to work...
+powershell write-host -fore White ------------------------------------------------------------------------------------------------------
+echo.
+
+powershell write-host -fore White ------------------------------------------------------------------------------------------------------
+powershell write-host -fore White XCORE - FINDING VISUAL STUDIO / MSBuild
 powershell write-host -fore White ------------------------------------------------------------------------------------------------------
 
 for /f "usebackq tokens=*" %%i in (`.\..\bin\vswhere -latest -requires Microsoft.Component.MSBuild -find MSBuild\**\Bin\MSBuild.exe`) do (
@@ -57,7 +60,7 @@ GOTO :PAUSE
 
 :DOWNLOAD_DEPENDENCIES
 powershell write-host -fore White ------------------------------------------------------------------------------------------------------
-powershell write-host -fore White DOWNLOADING DEPENDENCIES
+powershell write-host -fore White XCORE - DOWNLOADING DEPENDENCIES
 powershell write-host -fore White ------------------------------------------------------------------------------------------------------
 
 echo.
@@ -111,7 +114,7 @@ if %ERRORLEVEL% GEQ 1 goto :PAUSE
 
 :COMPILATION
 powershell write-host -fore White ------------------------------------------------------------------------------------------------------
-powershell write-host -fore White COMPILING DEPENDENCIES
+powershell write-host -fore White XCORE - COMPILING DEPENDENCIES
 powershell write-host -fore White ------------------------------------------------------------------------------------------------------
 
 powershell write-host -fore Cyan zstad: Updating...
@@ -130,7 +133,7 @@ if %ERRORLEVEL% GEQ 1 goto :PAUSE
 
 :DONE
 powershell write-host -fore White ------------------------------------------------------------------------------------------------------
-powershell write-host -fore White DONE!!
+powershell write-host -fore White XCORE - DONE!!
 powershell write-host -fore White ------------------------------------------------------------------------------------------------------
 
 :PAUSE
