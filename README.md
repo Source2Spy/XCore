@@ -1,5 +1,6 @@
-# textfile
+# xCore
 
+Low level cross platform library
 
 why xcore?
 
