@@ -68,7 +68,7 @@ rmdir "../dependencies/tracy" /S /Q
 git clone https://bitbucket.org/wolfpld/tracy/src/master/ "../dependencies/tracy"
 if %ERRORLEVEL% GEQ 1 goto :PAUSE
 cd "../dependencies/tracy"
-git checkout 2aad20e --quiet
+git checkout 3010c7c --quiet
 if %ERRORLEVEL% GEQ 1 goto :PAUSE
 cd ../../builds
 
