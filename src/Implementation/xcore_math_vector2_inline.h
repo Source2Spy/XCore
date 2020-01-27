@@ -211,6 +211,13 @@ namespace xcore::math
 
     //------------------------------------------------------------------------------
     constexpr
+    vector2 vector2::Reflect( const vector2& Normal, const vector2& Vector ) noexcept
+    {
+        return Vector - 2 * Normal * (Normal.Dot(Vector));
+    }
+
+    //------------------------------------------------------------------------------
+    constexpr
     bool vector2::operator == ( const vector2& V ) const noexcept
     {
         return !( (math::Abs( V.m_X - m_X) > XFLT_TOL) ||

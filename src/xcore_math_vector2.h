@@ -58,6 +58,8 @@ namespace xcore::math
         friend constexpr    vector2             operator *                      ( const vector2& V1, const vector2& V2 )            noexcept;
         friend constexpr    vector2             operator *                      (       float    S,  const vector2& V  )            noexcept;
 
+        static constexpr    vector2             Reflect                         ( const vector2& Normal, const vector2& Vector )    noexcept;
+
     public:
 
         float       m_X;
