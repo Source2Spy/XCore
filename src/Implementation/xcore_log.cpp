@@ -25,9 +25,17 @@ void xcore::log::Output( const char* pMsg, ... ) noexcept
 
     // Output to the debug window
     #if _XCORE_COMPILER_VISUAL_STUDIO
-    //std::array<WCHAR,1024> szBuff;
-    //for (int i = 0; !!((szBuff[i] = Buffer[i])); i++);
-    OutputDebugString( Buffer.data() );
+        #ifdef UNICODE
+        {
+            std::array<WCHAR,1024> szBuff;
+            for (int i = 0; !!((szBuff[i] = Buffer[i])); i++);
+            OutputDebugString( szBuff.data() );
+        }
+        #else
+        {
+            OutputDebugString( Buffer.data() );
+        }
+        #endif
     #endif
 }
 

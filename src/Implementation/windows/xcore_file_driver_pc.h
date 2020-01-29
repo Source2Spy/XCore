@@ -7,8 +7,17 @@ namespace xcore::file
         {
             temp_path(void) noexcept
             {
-                GetTempPath(m_Path.size(), m_Path.data());
-                string::Copy(m_WPath, m_Path);
+                #ifdef UNICODE
+                {
+                    GetTempPath(m_WPath.size(), m_WPath.data());
+                    string::Copy(m_Path, m_WPath);
+                }
+                #else
+                {
+                    GetTempPath(m_Path.size(), m_Path.data());
+                    string::Copy(m_WPath, m_Path);
+                }
+                #endif
             }
 
             string::fixed<char, 512>      m_Path;
@@ -49,20 +58,37 @@ namespace xcore::file::driver
         //----------------------------------------------------------------------------------------
         void DisplayError(void) noexcept
         {
-#if _XCORE_COMPILER_VISUAL_STUDIO   
             xassert_block_basic()
             {
-                std::array<CHAR, 256> Buffer;
-                FormatMessage(
-                    FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM,
-                    NULL,
-                    GetLastError(),
-                    MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), // Default language
-                    Buffer.data(),
-                    static_cast<DWORD>( Buffer.size() ),
-                    NULL);
-                MessageBox(NULL, Buffer.data(), "GetLastError", MB_OK | MB_ICONINFORMATION);
-#endif
+                #if _XCORE_COMPILER_VISUAL_STUDIO   
+                #ifdef UNICODE
+                {
+                    std::array<WCHAR, 256> Buffer;
+                    FormatMessage(
+                        FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM,
+                        NULL,
+                        GetLastError(),
+                        MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), // Default language
+                        Buffer.data(),
+                        static_cast<DWORD>( Buffer.size() ),
+                        NULL);
+                    MessageBox(NULL, Buffer.data(), L"GetLastError", MB_OK | MB_ICONINFORMATION);
+                }
+                #else
+                {
+                    std::array<CHAR, 256> Buffer;
+                    FormatMessage(
+                        FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM,
+                        NULL,
+                        GetLastError(),
+                        MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), // Default language
+                        Buffer.data(),
+                        static_cast<DWORD>( Buffer.size() ),
+                        NULL);
+                    MessageBox(NULL, Buffer.data(), "GetLastError", MB_OK | MB_ICONINFORMATION);
+                }
+                #endif
+                #endif
                 xassert(false);
             }
         }
@@ -78,7 +104,11 @@ namespace xcore::file::driver
 
             xassert( FileName.empty() == false );
 
-            string::fixed<char,256> FinalFileName;
+            #ifdef UNICODE
+                string::fixed<WCHAR,256> FinalFileName;
+            #else
+                string::fixed<char,256> FinalFileName;
+            #endif
             if( string::CompareN(FileName, L"temp:", 5) == 0 )
             {
                 auto L = string::Copy(FinalFileName, details::s_TempPath.m_Path);
