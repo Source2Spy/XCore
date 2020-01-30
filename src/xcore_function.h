@@ -4,6 +4,18 @@
 
 namespace xcore::function
 {
+    //-------------------------------------------------------------------------------------------------------
+    // temporary class that hold a lambda for any clean up code
+    //-------------------------------------------------------------------------------------------------------
+    template< typename T >
+    struct scope
+    {
+        constexpr   scope (T&& Callback)    noexcept : m_Callback{ Callback } {}
+        inline     ~scope (void)            noexcept { m_Callback(); }
+
+        T           m_Callback;
+    };
+
     //------------------------------------------------------------------------------
     // Helper to build a function err
     //------------------------------------------------------------------------------
