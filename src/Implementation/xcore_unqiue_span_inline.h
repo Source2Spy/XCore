@@ -174,7 +174,7 @@ namespace xcore::allocator
 
             xcore::memory::AlignedFree(p);
             p = nullptr;
-            new( this ) xcore::span( p, parent::index_type{0} );
+            new( this ) xcore::span( p, std::size_t{0} );
         }
     }
 }
