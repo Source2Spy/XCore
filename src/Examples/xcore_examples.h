@@ -28,7 +28,7 @@ namespace xcore::examples
 {
     void Test( void )
     {
-        if(0)
+        if(1)
         {
             xcore::string::examples::Tests();
             xcore::error::examples::Tests();
