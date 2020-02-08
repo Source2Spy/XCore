@@ -6,10 +6,10 @@ namespace xcore::file
 {
     //------------------------------------------------------------------------------
 
-    void InitSystem( std::vector<device_i*>& List ) noexcept
+    void InitSystem( std::vector<std::unique_ptr<device_i>>& List ) noexcept
     {
-        List.emplace_back( new xcore::file::driver::system );
-        List.emplace_back( new xcore::file::driver::ram::device );
+        List.emplace_back( std::unique_ptr<device_i>{ new xcore::file::driver::system      } );
+        List.emplace_back( std::unique_ptr<device_i>{ new xcore::file::driver::ram::device } );
     }
 
     //------------------------------------------------------------------------------
@@ -22,11 +22,11 @@ namespace xcore::file
         // Or if it is a temp folder we also will use the default device
         if (pDeviceName == nullptr || std::strncmp(pDeviceName, "temp:", sizeof("temp:") - 1) == 0)
         {
-            return DeviceList.front();
+            return DeviceList.front().get();
         }
 
         // Search throw all the devices    
-        for(device_i* pDevice : DeviceList )
+        for(auto& pDevice : DeviceList )
         {
             device_i&   Device  = *pDevice;
             const char* pName   = Device.getName().m_pValue;
@@ -34,7 +34,7 @@ namespace xcore::file
             for (int i = 0; pDeviceName[i] && *pName; i++, pName++)
             {
                 if (pDeviceName[i] == ':' && *pName == ':')
-                    return pDevice;
+                    return &Device;
 
                 if ( string::ToCharLower(*pName) != string::ToCharLower(pDeviceName[i]))
                 {

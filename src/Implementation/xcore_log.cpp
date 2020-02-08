@@ -21,7 +21,7 @@ void xcore::log::Output( const char* pMsg, ... ) noexcept
     //perror( Buffer.data() );
 
     // Output to the console
-    printf( Buffer.data() );
+    printf( "%s", Buffer.data() );
 
     // Output to the debug window
     #if _XCORE_COMPILER_VISUAL_STUDIO

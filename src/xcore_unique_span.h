@@ -97,9 +97,9 @@ namespace xcore::allocator
 
             ~unique_span( void ) noexcept 
             { 
-                auto p = parent::data();
-                if( p )
+                if( false == parent::empty() )
                 {
+                    auto p = parent::data();
                     #if _XCORE_COMPILER_VISUAL_STUDIO
                         _aligned_free( p );
                     #else
@@ -115,10 +115,10 @@ namespace xcore::allocator
             {
                 err Error;
                 xassert(Count>=0);
-                auto op = parent::data();
 
-                if( op )
+                if( false == parent::empty() )
                 {
+                    auto op = parent::data();
                     if( Count == parent::size() ) return Error;
                     #if _XCORE_COMPILER_VISUAL_STUDIO
                         _aligned_free( op );
@@ -147,8 +147,7 @@ namespace xcore::allocator
                 xassert( Count > 0 );
                 err     Error;
 
-                auto op = parent::data();
-                if( op && Count == parent::size() ) return Error;
+                if( false == parent::empty() && Count == parent::size() ) return Error;
 
                 #if _XCORE_COMPILER_VISUAL_STUDIO
                     auto p = reinterpret_cast<value_type*>( _aligned_malloc( sizeof(value_type)*Count, std::alignment_of_v<value_type> ) );
@@ -158,10 +157,12 @@ namespace xcore::allocator
                 if( p == nullptr ) 
                     return xerr_code( Error, error_state::OUT_OF_MEMORY, "Resize Failure" );
 
-                if( op )
+                if( false == parent::empty() )
                 {
                     xassert( parent::size() > 0 );
                 
+                    auto op = parent::data();
+
                     // Move all entries to new buffer
                     const auto count = std::min( static_cast<size_type>(parent::size()), Count );
                     std::memcpy( p, op, count*sizeof(value_type) );
@@ -180,9 +181,9 @@ namespace xcore::allocator
             //--------------------------------------------------------------------------------------------
             void clear  ( void ) noexcept 
             { 
-                auto p = parent::data();
-                if( p )
+                if( false == parent::empty() )
                 {
+                    auto p = parent::data();
                     #if _XCORE_COMPILER_VISUAL_STUDIO
                         _aligned_free( p );
                     #else

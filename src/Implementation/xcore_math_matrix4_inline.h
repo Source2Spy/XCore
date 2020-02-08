@@ -690,7 +690,7 @@ namespace xcore::math
     matrix4& matrix4::FullInvert( void ) noexcept
     {
     #ifdef _XCORE_SSE4
-        float* src = &(m_Cell[0][0]);
+        alignas(matrix4) float* src = &(m_Cell[0][0]);
 
         floatx4 minor0, minor1, minor2, minor3;
         floatx4 row0, row1, row2, row3;

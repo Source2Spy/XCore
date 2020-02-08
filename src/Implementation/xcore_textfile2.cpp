@@ -247,7 +247,7 @@ namespace xcore::textfile::version_2::details
             }
 
             // Skip spaces
-            return ReadWhiteSpace(c);
+            if( ReadWhiteSpace(c).isError(Error) ) return Error;
         }
 
         return Error;

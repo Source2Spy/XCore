@@ -340,10 +340,10 @@ namespace xcore::file::driver
             LARGE_INTEGER NewFilePointer;
 
             Position.QuadPart = Pos.m_Value;
-            DWORD Result = SetFilePointerEx(File.m_Handle, Position, &NewFilePointer, HardwareMode);
+            const DWORD Result = SetFilePointerEx(File.m_Handle, Position, &NewFilePointer, HardwareMode);
             if (!Result)
             {
-                if (Result == INVALID_SET_FILE_POINTER)
+                if (Result == INVALID_SET_FILE_POINTER) //-V547
                 {
                     // Failed to seek.
                     return xerr_failure(Error, "Fail to seek, INVALID_SET_FILE_POINTER");
@@ -470,7 +470,7 @@ namespace xcore::file::driver
             BOOL  Result = GetOverlappedResult(File.m_Handle, &File.m_Overlapped, &nBytesTransfer, bBlock);
 
             // Has the asynchronous operation finished?
-            if (Result == TRUE)
+            if (Result != FALSE)
             {
                 // Clear the event's signal since it isn't automatically reset.
                 // VERIFY( ResetEvent( File.m_Overlapped.hEvent ) == TRUE );

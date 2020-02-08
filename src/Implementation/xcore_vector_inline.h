@@ -20,7 +20,7 @@ namespace xcore::containers::vector
     template< typename T, typename T_ALLOCATOR > inline
     void type<T, T_ALLOCATOR>::reserve ( size_type NewCap ) noexcept
     {
-        GrowBy( NewCap - m_Count );
+        GrowBy( NewCap - m_Count ).CheckError();
     }
 
     //------------------------------------------------------------------------------
@@ -56,7 +56,7 @@ namespace xcore::containers::vector
 
         const size_type NewCount = m_Count + Count;
         if( NewCount > m_Allocator.size() )
-            GrowBy( std::max( NewCount/2, Count + DEFAULT_GROWTH ) );
+            GrowBy( std::max( NewCount/2, Count + DEFAULT_GROWTH ) ).CheckError();
 
         //
         // Okay lets move all the elements
@@ -94,7 +94,7 @@ namespace xcore::containers::vector
 
         const auto NewCount = m_Count + View.size();
         if( NewCount > m_Allocator.size() )
-            GrowBy( std::max( NewCount/2, View.size() + DEFAULT_GROWTH ) );
+            GrowBy( std::max( NewCount/2, View.size() + DEFAULT_GROWTH ) ).CheckError();
         
         //
         // Okay lets move all the elements

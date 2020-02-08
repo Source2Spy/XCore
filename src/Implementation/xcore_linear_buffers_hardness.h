@@ -26,6 +26,7 @@ auto& CopyFromTo( const xcore::span<value_type>     View,
 public: template< typename T > inline
 auto ViewFromTo( T iStart, T iEnd ) noexcept
 {
+    static_assert( std::is_integral_v<T> );
     xassert( iStart >= 0 );
     xassert( iEnd   <= size() );
     xassert( iStart <= iEnd );
@@ -36,6 +37,7 @@ auto ViewFromTo( T iStart, T iEnd ) noexcept
 public: template< typename T > inline
 auto ViewFromTo( T iStart, T iEnd ) const noexcept
 {
+    static_assert( std::is_integral_v<T> );
     xassert( iStart >= 0 );
     xassert( iEnd   <= size() );
     xassert( iStart <= iEnd );
@@ -46,6 +48,7 @@ auto ViewFromTo( T iStart, T iEnd ) const noexcept
 public: template< typename T > inline
 auto ViewFromCount( T iStart, T Count ) noexcept
 {
+    static_assert( std::is_integral_v<T> );
     xassert( iStart >= 0 );
     xassert( iStart + Count <= size() );
     xassert( Count > 0 );
@@ -56,6 +59,7 @@ auto ViewFromCount( T iStart, T Count ) noexcept
 public: template< typename T > inline     
 auto ViewFrom( T iStart ) noexcept
 {
+    static_assert( std::is_integral_v<T> );
     const auto s = size();
     xassert( iStart >= 0 );
     xassert( iStart <= s );
@@ -66,6 +70,7 @@ auto ViewFrom( T iStart ) noexcept
 public: template< typename T > inline
 auto ViewTo( T iEnd )
 {
+    static_assert( std::is_integral_v<T> );
     xassert( iEnd <= size() );
     return xcore::span{ data(), iEnd };
 }
@@ -74,6 +79,7 @@ auto ViewTo( T iEnd )
 public: template< typename T > inline
 auto ViewTo(T iEnd) const
 {
+    static_assert( std::is_integral_v<T> );
     xassert(iEnd <= size());
     return xcore::span{ data(), iEnd };
 }

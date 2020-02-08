@@ -44,7 +44,7 @@ namespace xcore
     namespace context   { struct base;   }
     namespace scheduler { struct local_storage_data { std::uint32_t m_ThreadID; constexpr local_storage_data(std::nullptr_t) : m_ThreadID{~0u}{} }; }
     namespace system    { class registration; }
-    namespace file      { class device_i;  void InitSystem(std::vector<device_i*>&) noexcept; }
+    namespace file      { class device_i;  void InitSystem( std::vector<std::unique_ptr<device_i>>& ) noexcept; }
 }
 
 

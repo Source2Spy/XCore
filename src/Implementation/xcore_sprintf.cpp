@@ -49,7 +49,6 @@ namespace xcore::string::details
         void WriteToBuffer( const char* String, std::size_t Count ) noexcept
         {
             xassert( String );
-            xassert( Count >= 0 );
 
             for( int i=0; i < Count; i++ )
             {
@@ -919,14 +918,12 @@ namespace xcore::string::details
                 case 'g':
                 case 'G':
                         if (prec == 0) prec = 1;
-
+                        /////////>>>>>>>>>>>>>>>>>> FALLTHROUGH <<<<<<<<<<<<<<//////////
                 case 'e':
                 case 'E':
                 case 'f':
                 {
                     double _double;
-
-                    /////////>>>>>>>>>>>>>>>>>> FALLTHROUGH <<<<<<<<<<<<<<//////////
 
                     if (sign == '+') 
                     {
@@ -1005,7 +1002,7 @@ namespace xcore::string::details
 
                 case 'o':
                     // Give a break to the user_types and allow quadints
-                    Flags.m_QUADINT;
+                    // Flags.m_QUADINT;
                     if (Flags.m_QUADINT) uqval = ArgList.getGenericInt(); //ArgList.get<u64>(); //(u64)x_va_arg(Args, s64); 
                     else                 ulval = ArgList.get<std::uint32_t>(); //x_va_arg(Args, u32); //GetUnSignARG( (xva_list*)&Args, flags );
 

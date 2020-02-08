@@ -103,14 +103,15 @@ namespace xcore::allocator
         XCORE_PERF_ZONE_SCOPED()
         xassert( Count > 0 );
 
-        auto op = parent::data();
-        if( op && Count == parent::size() ) return {};
+        if( false == parent::empty() && Count == parent::size() ) return {};
 
         auto p = AllocStatic(Count);
         if( p == nullptr ) return xerr_code_s( error_state::OUT_OF_MEMORY, "xcore::unique_span::resize Failure" );
 
-        if( op )
+        if( false == parent::empty() )
         {
+            auto op = parent::data();
+
             // Move all entries to new buffer
             const auto count = std::min( static_cast<size_type>(parent::size()), Count );
             std::memcpy( p, op, count*sizeof(value_type) );
@@ -149,9 +150,9 @@ namespace xcore::allocator
     void unique_span<T,T_COUNTER>::clear  ( void ) noexcept 
     { 
         XCORE_PERF_ZONE_SCOPED()
-        auto p = parent::data();
-        if( p )
+        if( false == parent::empty() )
         {
+            auto p = parent::data();
             if constexpr (false == std::is_trivially_destructible_v<value_type>)
             {
                 if( size() > 5000 )

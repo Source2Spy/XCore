@@ -12,7 +12,7 @@ namespace xcore::textfile::version_2
             || std::is_same_v< std::uint16_t         , T >
             || std::is_same_v< std::uint32_t         , T >
             || std::is_same_v< std::uint64_t         , T >
-            || std::is_same_v< std::int8_t           , T >
+//            || std::is_same_v< std::char           , T >
             || std::is_same_v< std::int16_t          , T >
             || std::is_same_v< std::int32_t          , T >
             || std::is_same_v< std::int64_t          , T >

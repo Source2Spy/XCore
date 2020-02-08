@@ -31,6 +31,8 @@ namespace xcore::guid
             using namespace std::chrono;
             static std::atomic<std::uint64_t> C{0};
             ui UI;
+
+            // NOTE: UI is left uninitialized by design we want to have trash if possible to add more uniqueness 
             UI.m_Time       ^= system_clock::to_time_t(system_clock::now());
             UI.m_UID        ^= std::hash<std::thread::id>()(std::this_thread::get_id());
             UI.m_ProcessID  ^= C++ ^ xcore::global::state::getProcessID();

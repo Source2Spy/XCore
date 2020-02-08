@@ -188,7 +188,7 @@ namespace xcore::scheduler
                 Worker = std::thread( WorkersStartWorking );
             }
 
-            while (m_nWorkersActive != (m_nAllocatedWorkers + 1));
+            while (m_nWorkersActive.load(std::memory_order_relaxed) != (m_nAllocatedWorkers + 1));
         }
         else
         {
@@ -805,10 +805,7 @@ namespace xcore::scheduler
         //
         // Wait for the system to finish its initialization
         //
-        if (m_State == system::state::NO_INITIALIZED)
-        {
-            while(m_State == system::state::NO_INITIALIZED);
-        }
+        while(m_State.load(std::memory_order_relaxed) == system::state::NO_INITIALIZED);
 
         MainThreadBecomesWorker();
         XLOG_CHANNEL_INFO( *m_LogChannel, "Main thread worker[%d] Stops contributing to the workers [%d]", getWorkerUID(*this).m_Value, m_nWorkersActive.load()  );

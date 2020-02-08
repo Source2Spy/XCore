@@ -32,7 +32,7 @@ namespace xcore::compression
         void*                       m_pCCTX     { nullptr };
         std::uint64_t               m_Position  { 0 };
         std::span<const std::byte>  m_Src;
-        std::uint32_t               m_BlockSize;
+        std::uint32_t               m_BlockSize {0};
     };
 
     //-----------------------------------------------------------------------------------------------------
@@ -46,7 +46,7 @@ namespace xcore::compression
     protected:
         void*                       m_pDCTX{ nullptr };
         std::span<const std::byte>  m_Src;
-        std::uint32_t               m_BlockSize;
+        std::uint32_t               m_BlockSize{0};
     };
 }
 
