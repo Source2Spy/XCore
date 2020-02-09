@@ -29,13 +29,12 @@ namespace xcore::guid
         {
             using namespace std;
             using namespace std::chrono;
-            static std::atomic<std::uint64_t> C{0};
+            static std::atomic<std::uint64_t> C{0x423849};
             ui UI;
-
-            // NOTE: UI is left uninitialized by design we want to have trash if possible to add more uniqueness 
-            UI.m_Time       ^= system_clock::to_time_t(system_clock::now());
-            UI.m_UID        ^= std::hash<std::thread::id>()(std::this_thread::get_id());
-            UI.m_ProcessID  ^= C++ ^ xcore::global::state::getProcessID();
+            
+            UI.m_Time        = system_clock::to_time_t(system_clock::now());
+            UI.m_UID         = std::hash<std::thread::id>()(std::this_thread::get_id());
+            UI.m_ProcessID   = C++ ^ xcore::global::state::getProcessID();
             UI.m_pPtr        = &UI;
             return meowh::meow_hash<T_BITS_SIZE < 128 ? 128 : T_BITS_SIZE>( &UI, sizeof(UI) ).as<T_BITS_SIZE>(0);
         }

@@ -19,7 +19,11 @@ constexpr static auto ms_xCoreAssertLevel = xcore::assert_level::MEDIUM;
     // xassert - Basic Assert 
     //------------------------------------------------------------------------------
 #if _XCORE_ASSERTS
-    #define xassert( EXP )  assert( EXP )
+    #if _XCORE_RELEASE
+        #define xassert( EXP )  do{ if( !(EXP) ) XCORE_BREAK; } while(false)
+    #else
+        #define xassert( EXP )  assert( EXP )
+    #endif
 #else
     #define xassert( EXP )  ((void)(0))
 #endif

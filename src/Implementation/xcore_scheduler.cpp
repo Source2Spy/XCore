@@ -300,7 +300,10 @@ namespace xcore::scheduler
 
     system::worker_kit& system::getWorketKit( void ) noexcept
     {
-        return m_WorkerKit[ getWorkerUID(*this).m_Value ];
+        const auto x = getWorkerUID(*this).m_Value;
+        xassert( x >= 0 );
+        xassert( x <= static_cast<decltype(x)>(m_nAllocatedWorkers) );
+        return m_WorkerKit[ x ];
     }
 
     //--------------------------------------------------------------------------------------

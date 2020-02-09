@@ -208,7 +208,12 @@ constexpr xcore::target::compiler   xcore::target::getCompiler      ( void ) noe
 //------------------------------------------------------------------------------
 // Determine if we need to turn on or off asserts
 //------------------------------------------------------------------------------
-#if _XCORE_DEBUG || XCORE_USER_SETTINGS_ASSERTS
+#ifdef XCORE_USER_SETTINGS_ASSERTS
+    #define _DEBUG
+    #define _XCORE_DEBUG true
+#endif
+
+#if defined _XCORE_DEBUG || defined XCORE_USER_SETTINGS_ASSERTS
     #define _XCORE_ASSERTS          true
 #else
     #define _XCORE_ASSERTS          false
@@ -333,16 +338,23 @@ constexpr xcore::target::compiler   xcore::target::getCompiler      ( void ) noe
 //------------------------------------------------------------------------------
 #if _XCORE_COMPILER_VISUAL_STUDIO
     #define xforceinline       __forceinline
-    #if _XCORE_RELEASE
+    #if _XCORE_RELEASE && false == defined _XCORE_ASSERTS
         #pragma inline_recursion( on )
         #pragma inline_depth( 255 )
     #endif
+
 #elif _XCORE_COMPILER_CLANG
     #define xforceinline       __attribute__((always_inline))
 #elif _XCORE_COMPILER_GCC
     #define xforceinline       __attribute__((forceinline))
 #else
     #error "Missing compiler"
+#endif
+
+// If the user wants to override the default
+#ifdef XCORE_USER_SETTINGS_DISABLE_FORCE_INLINE
+    #undef xforceinline
+    #define xforceinline       inline
 #endif
 
 //------------------------------------------------------------------------------

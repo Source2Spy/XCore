@@ -34,7 +34,7 @@ namespace xcore::bits
 
     //------------------------------------------------------------------------------
 
-    template< typename T > inline xforceinline
+    template< typename T > xforceinline
     T* Align( T* Address, const int AlignTo ) noexcept
     {
         return reinterpret_cast<T*>( Align( reinterpret_cast<const std::size_t>( Address ), AlignTo ) );
@@ -60,7 +60,7 @@ namespace xcore::bits
 
     //------------------------------------------------------------------------------
 
-    template< typename T > inline xforceinline
+    template< typename T > xforceinline
     T* AlignLower( T* Address, const int AlignTo ) noexcept
     {
         return reinterpret_cast<T*>( AlignLower( reinterpret_cast<const std::size_t>( Address ), AlignTo ) );
