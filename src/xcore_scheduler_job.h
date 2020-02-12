@@ -113,7 +113,7 @@ namespace xcore::scheduler
         constexpr   affinity        getAffinity             ( void )                        const   noexcept { return m_Definition.m_Affinity; }
         inline      void            NotifyTrigger           ( trigger_base& Trigger )               noexcept;
         virtual     int             getTriggerCount         ( void )                        const   noexcept = 0; 
-      //  X_CMD_JOB_PROFILER_ON( x_forceconst auto           getName                 ( void )                        const   noexcept { return m_JobName; } )
+        XCORE_CMD_PROFILER( constexpr auto&           getName                 ( void )                        const   noexcept { return m_JobName; } )
 
     protected:
 

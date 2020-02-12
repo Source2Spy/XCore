@@ -348,7 +348,7 @@ namespace xcore::scheduler
         // Lets focus on getting a job and only return if we fail after a while
         // if we fail we probably will go to sleep
         //
-        //for( int iLoop = 0; iLoop <100; iLoop++ )
+        for( int iLoop = 0; iLoop <100; iLoop++ )
         {
             // Try to get a light job first
             auto pJob = getLightJob();

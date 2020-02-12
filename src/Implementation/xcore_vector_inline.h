@@ -110,7 +110,7 @@ namespace xcore::containers::vector
         {
             size_type i=0;
             for( const auto& Entry : View )
-                new( &m_Allocator[Index+i] ) value_type{ Entry }, i++;
+                new( &m_Allocator[Index+i] ) value_type{ Entry }, i++; //-V521
         }
         else
         {
@@ -175,7 +175,7 @@ namespace xcore::containers::vector
         {
             size_type i=0;
             for( const auto& Entry : View )
-                new( &m_Allocator[Index+i] ) value_type{ Entry }, i++;
+                new( &m_Allocator[Index+i] ) value_type{ Entry }, i++; //-V521
         }
         else
         {

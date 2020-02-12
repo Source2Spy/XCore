@@ -157,9 +157,9 @@ namespace xcore::rtti
         {
             const static int Offset = static_cast<int>
             ( 
-                reinterpret_cast<const std::byte*>
+                reinterpret_cast<const std::byte*> //-V650
                 (
-                    (const T*)(reinterpret_cast<const T_DST*>(0x10000000))
+                    static_cast<const T*>(reinterpret_cast<const T_DST*>(0x10000000))
                 ) 
                 - reinterpret_cast<const std::byte*>(0x10000000)
             );
