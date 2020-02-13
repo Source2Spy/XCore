@@ -128,6 +128,20 @@ namespace xcore::bits
         return !((x - 1) & x); 
     }
 
+
+    //------------------------------------------------------------------------------
+    // Description:
+    //      Checks if a integral number is divisible by some 2^m number
+    //------------------------------------------------------------------------------
+    template< class T1, class T2 > constexpr xforceinline
+    bool isDivBy2PowerX( const T1 n, const T2 x ) noexcept
+    { 
+        static_assert( std::is_integral<T1>::value ); 
+        static_assert( std::is_integral<T2>::value );
+        // n is divisible by pow(2, x) 
+        return ((n & ((1 << x) - 1)) == 0); 
+    } 
+
     //------------------------------------------------------------------------------
     // Description:
     //      Determines the minimum power of two that encapsulates the given number
