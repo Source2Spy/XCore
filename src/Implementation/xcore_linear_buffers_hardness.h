@@ -27,7 +27,7 @@ public: template< typename T > inline
 auto ViewFromTo( T iStart, T iEnd ) noexcept
 {
     static_assert( std::is_integral_v<T> );
-    xassert( iStart >= 0 );
+    xassert( iStart >= 0 ); //-V503 //-V547
     xassert( iEnd   <= size() );
     xassert( iStart <= iEnd );
     return xcore::span{ &(*this)[ iStart ], static_cast<std::size_t>(iEnd - iStart) };
@@ -38,7 +38,7 @@ public: template< typename T > inline
 auto ViewFromTo( T iStart, T iEnd ) const noexcept
 {
     static_assert( std::is_integral_v<T> );
-    xassert( iStart >= 0 );
+    xassert( iStart >= 0 ); //-V503 //-V547
     xassert( iEnd   <= size() );
     xassert( iStart <= iEnd );
     return xcore::span{ &(*this)[ iStart ], static_cast<std::size_t>(iEnd - iStart) };
@@ -49,7 +49,7 @@ public: template< typename T > inline
 auto ViewFromCount( T iStart, T Count ) noexcept
 {
     static_assert( std::is_integral_v<T> );
-    xassert( iStart >= 0 );
+    xassert( iStart >= 0 ); //-V503 //-V547
     xassert( iStart + Count <= size() );
     xassert( Count > 0 );
     return xcore::span{ &(*this)[ iStart ], Count };
@@ -61,7 +61,7 @@ auto ViewFrom( T iStart ) noexcept
 {
     static_assert( std::is_integral_v<T> );
     const auto s = size();
-    xassert( iStart >= 0 );
+    xassert( iStart >= 0 ); //-V503 //-V547
     xassert( iStart <= s );
     return xcore::span{ &(*this)[ iStart ], s - static_cast<std::size_t>(iStart) };
 }

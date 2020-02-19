@@ -319,7 +319,7 @@ namespace xcore::file::driver
             auto&       File            = *static_cast<small_file*>(pFile);
             auto        HardwareMode = [](seek_mode Mode)
             {
-                switch (Mode)
+                switch (Mode) //-V719
                 {
                     case SKM_CURENT: return FILE_CURRENT;  
                     case SKM_END:    return FILE_END;

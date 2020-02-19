@@ -33,12 +33,13 @@ namespace xcore::units
     struct type
     {
         using basic_t = T_BASIC_TYPE;
-
+        using self_t  = type;
         T_BASIC_TYPE m_Value;
 
         constexpr                               type        ( void )                        noexcept = default;
         constexpr explicit                      type        ( basic_t Value )               noexcept : m_Value{ Value } {}
         constexpr               bool            operator == ( const T_PARENT X )    const   noexcept { return m_Value == X.m_Value;              }
+        constexpr               bool            operator != ( const T_PARENT X )    const   noexcept { return m_Value != X.m_Value;              }
         constexpr               bool            operator >= ( const T_PARENT X )    const   noexcept { return m_Value >= X.m_Value;              }
         constexpr               bool            operator <= ( const T_PARENT X )    const   noexcept { return m_Value <= X.m_Value;              }
         constexpr               bool            operator >  ( const T_PARENT X )    const   noexcept { return m_Value >  X.m_Value;              }
@@ -57,6 +58,37 @@ namespace xcore::units
         constexpr               auto            operator -  ( const T_PARENT X )    const   noexcept { return T_PARENT{ m_Value - X.m_Value };       }
         constexpr               auto            operator *  ( const T_PARENT X )    const   noexcept { return T_PARENT{ m_Value * X.m_Value };       }
         constexpr               auto            operator /  ( const T_PARENT X )    const   noexcept { return T_PARENT{ m_Value / X.m_Value };       }
+    };
+
+    template< typename T_BASIC_TYPE >
+    struct type<T_BASIC_TYPE,T_BASIC_TYPE>
+    {
+        using basic_t = T_BASIC_TYPE;
+        using self_t  = type;
+        T_BASIC_TYPE m_Value;
+
+        constexpr                               type        ( void )                        noexcept = default;
+        constexpr explicit                      type        ( basic_t Value )               noexcept : m_Value{ Value } {}
+        constexpr               bool            operator == ( const self_t X )      const   noexcept { return m_Value == X.m_Value;              }
+        constexpr               bool            operator != ( const self_t X )      const   noexcept { return m_Value != X.m_Value;              }
+        constexpr               bool            operator >= ( const self_t X )      const   noexcept { return m_Value >= X.m_Value;              }
+        constexpr               bool            operator <= ( const self_t X )      const   noexcept { return m_Value <= X.m_Value;              }
+        constexpr               bool            operator >  ( const self_t X )      const   noexcept { return m_Value >  X.m_Value;              }
+        constexpr               bool            operator <  ( const self_t X )      const   noexcept { return m_Value <  X.m_Value;              }
+                                auto            operator ++ ( int )                         noexcept { self_t temp{*this}; m_Value+=1; return temp;}
+                                auto&           operator ++ ( void )                        noexcept { m_Value+=1; return *this;                   }
+                                auto            operator -- ( int )                         noexcept { self_t temp{*this}; m_Value-=1; return temp;}
+                                auto&           operator -- ( void )                        noexcept { m_Value-=1; return *this;                 }
+                                auto&           operator += ( const self_t X )              noexcept { m_Value += X.m_Value; return *this;       }
+                                auto&           operator -= ( const self_t X )              noexcept { m_Value -= X.m_Value; return *this;       }
+                                auto&           operator *= ( const self_t X )              noexcept { m_Value *= X.m_Value; return *this;       }
+                                auto&           operator /= ( const self_t X )              noexcept { m_Value /= X.m_Value; return *this;       }
+        template< typename = typename std::enable_if_t< std::is_signed<basic_t>::value, type > >
+        constexpr               auto            operator -  ( void  )               const   noexcept { return self_t{ -m_Value };                  }
+        constexpr               auto            operator +  ( const self_t X )      const   noexcept { return self_t{ m_Value + X.m_Value };       }
+        constexpr               auto            operator -  ( const self_t X )      const   noexcept { return self_t{ m_Value - X.m_Value };       }
+        constexpr               auto            operator *  ( const self_t X )      const   noexcept { return self_t{ m_Value * X.m_Value };       }
+        constexpr               auto            operator /  ( const self_t X )      const   noexcept { return self_t{ m_Value / X.m_Value };       }
     };
 
     struct bytes : type<bytes, std::int64_t>

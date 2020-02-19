@@ -231,7 +231,10 @@ namespace xcore::containers::vector
         //
         // Lets free all these guys
         //
-        std::destroy( &m_Allocator[Index], m_Allocator.data()[Index+Count] );
+        {
+            auto p = std::launder(&m_Allocator[Index]); 
+            std::destroy( p, p+Count );
+        }
     
         //
         // Copy all the nodes from the end to where we are

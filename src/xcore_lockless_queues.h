@@ -182,7 +182,7 @@ namespace xcore::lockless::queues
                             return false;
                     }
                 }
-                xassume(false);
+                xassume(false); //-V779
             }
 
             bool steal( T& Data ) noexcept { return pop(Data); }

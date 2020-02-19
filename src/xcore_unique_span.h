@@ -42,6 +42,13 @@ namespace xcore::allocator
         {}
 
         //--------------------------------------------------------------------------------------------
+        unique_span( unique_span&& A ) noexcept
+            : parent( A.data(), A.size() )
+        {
+            new( &A ) xcore::span( (value_type*)nullptr, parent::size_type{0} );
+        }
+
+        //--------------------------------------------------------------------------------------------
 
         inline xcore::err Alloc( size_type Count ) noexcept;
 
@@ -190,7 +197,7 @@ namespace xcore::allocator
                         free( p );
                     #endif
                     p = nullptr;
-                    new( this ) xcore::span( p, parent::index_type{0} );
+                    new( this ) xcore::span( p, parent::size_type{0} );
                 }
             }
 
