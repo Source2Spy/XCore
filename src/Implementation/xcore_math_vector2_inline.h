@@ -309,7 +309,7 @@ namespace xcore::math
     }
 
     //------------------------------------------------------------------------------
-    inline
+    constexpr
     vector2 operator / ( const vector2& V, float S ) noexcept
     {
         S = 1.0f/S;

@@ -53,7 +53,7 @@ namespace xcore::math
         friend constexpr    vector2             operator +                      ( const vector2& V1, const vector2& V2 )            noexcept;
         friend constexpr    vector2             operator -                      ( const vector2& V1 )                               noexcept;
         friend constexpr    vector2             operator -                      ( const vector2& V1, const vector2& V2 )            noexcept;
-        friend inline       vector2             operator /                      ( const vector2& V,        float    S  )            noexcept;
+        friend constexpr    vector2             operator /                      ( const vector2& V,        float    S  )            noexcept;
         friend constexpr    vector2             operator *                      ( const vector2& V,        float    S  )            noexcept;
         friend constexpr    vector2             operator *                      ( const vector2& V1, const vector2& V2 )            noexcept;
         friend constexpr    vector2             operator *                      (       float    S,  const vector2& V  )            noexcept;
