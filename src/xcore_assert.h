@@ -4,7 +4,7 @@
 
 namespace xcore
 {
-    enum assert_level
+    enum class assert_level : std::uint8_t
     {
           NONE
         , BASIC

@@ -159,7 +159,7 @@ namespace xcore::string::details
             x *= x;
         }
 
-        xassume( false );
+        xassume( false ); //-V779
     }
 
     //------------------------------------------------------------------------------

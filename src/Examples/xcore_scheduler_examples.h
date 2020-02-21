@@ -302,7 +302,7 @@ namespace xcore::scheduler::examples
     void Test( void )
     {
         log::channel Channel("Scheduler Examples");
-        s_pChannel = &Channel;
+        s_pChannel = &Channel; //-V506
         test1::Test();
         test2::Test();
         test3::Test();

@@ -46,14 +46,28 @@ namespace xcore::allocator
                     {
                         XCORE_PERF_ZONE_SCOPED_N("xcore::unique_span::NewStatic::Constructing")
 
-                        // Call constructors 
-                        for( auto& E : View ) new(&E) value_type{ std::forward<T_ARGS&&>(Args)... };
+                        // Call constructors
+                        if constexpr (sizeof...(Args))
+                        {
+                            for( auto& E : View ) new(&E) value_type{ std::forward<T_ARGS&&>(Args)... };
+                        }
+                        else
+                        {
+                            for( auto& E : View ) new(&E) value_type;
+                        }
                     });
                     Channel.join();
                 }
                 else
                 {
-                    for( auto& E : Span ) new(&E) value_type{ std::forward<T_ARGS&&>(Args)... };
+                    if constexpr (sizeof...(Args))
+                    {
+                        for( auto& E : Span ) new(&E) value_type{ std::forward<T_ARGS&&>(Args)... };
+                    }
+                    else
+                    {
+                        for( auto& E : Span ) new(&E) value_type;
+                    }
                 }
             }
         }
