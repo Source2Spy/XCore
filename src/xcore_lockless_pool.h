@@ -276,11 +276,11 @@ namespace xcore::lockless::pool
     //      dynamic - The pool will be allocated in the heap, must Init to create the pool size
     //------------------------------------------------------------------------------
     template< typename T, typename T_COUNTER = std::size_t >
-    class mpmc_bounded_dynamic : public details::mpmc_bounded_general< T, allocator::unique_span, T_COUNTER >
+    class mpmc_bounded_dynamic : public details::mpmc_bounded_general< T, xcore::allocator::unique_span, T_COUNTER >
     {
     public:
 
-        using parent        = details::mpmc_bounded_general< T, allocator::unique_span, T_COUNTER >;
+        using parent        = details::mpmc_bounded_general< T, xcore::allocator::unique_span, T_COUNTER >;
         using self          = mpmc_bounded_dynamic;
         using value_type    = T;
     
@@ -302,11 +302,11 @@ namespace xcore::lockless::pool
     //                  Means that when an entry is pop then we will constructed and push destruct it
     //------------------------------------------------------------------------------
     template< typename T, typename T_COUNTER >
-    class mpmc_bounded_dynamic_jitc : public details::mpmc_bounded_jitc_general< T, allocator::raw::unique_span, T_COUNTER >
+    class mpmc_bounded_dynamic_jitc : public details::mpmc_bounded_jitc_general< T, xcore::allocator::raw::unique_span, T_COUNTER >
     {
     public:
 
-        using parent        = details::mpmc_bounded_jitc_general< T, allocator::raw::unique_span, T_COUNTER >;
+        using parent        = details::mpmc_bounded_jitc_general< T, xcore::allocator::raw::unique_span, T_COUNTER >;
         using self          = mpmc_bounded_dynamic_jitc;
         using value_type    = T;
     

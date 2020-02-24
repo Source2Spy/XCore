@@ -11,9 +11,9 @@ namespace xcore::log
     //----------------------------------------------------------------------------------------------
     enum class msg_type
     {
-          INFO
-        , WARNING
-        , ERROR
+          L_INFO
+        , L_WARNING
+        , L_ERROR
     };
 
     //----------------------------------------------------------------------------------------------
@@ -77,7 +77,7 @@ namespace xcore::log
         sprintf_s( __LogChannelTempBuff.data(), __LogChannelTempBuff.size(), FMTSTR, __VA_ARGS__ ); \
         auto& __Logger = __Channel.getLogger();                                                     \
         xcore::lock::scope<xcore::lock::spin> __Lock( __Logger.m_Lock );                            \
-        __Logger.m_pOutput( __Channel, xcore::log::msg_type::ERROR, __LogChannelTempBuff.data(), __LINE__, __FILE__ ); \
+        __Logger.m_pOutput( __Channel, xcore::log::msg_type::L_ERROR, __LogChannelTempBuff.data(), __LINE__, __FILE__ ); \
     }                                                                                               \
 }
 
@@ -88,7 +88,7 @@ namespace xcore::log
         sprintf_s( __LogChannelTempBuff.data(), __LogChannelTempBuff.size(), FMTSTR, __VA_ARGS__ ); \
         auto& __Logger = __Channel.getLogger();                                                     \
         xcore::lock::scope __Lock( __Logger.m_Lock );                                               \
-        __Logger.m_pOutput( __Channel, xcore::log::msg_type::WARNING, __LogChannelTempBuff.data(), __LINE__, __FILE__ ); \
+        __Logger.m_pOutput( __Channel, xcore::log::msg_type::L_WARNING, __LogChannelTempBuff.data(), __LINE__, __FILE__ ); \
     }                                                                                               \
 }
 
@@ -99,7 +99,7 @@ namespace xcore::log
         sprintf_s( __LogChannelTempBuff.data(), __LogChannelTempBuff.size(), FMTSTR, __VA_ARGS__ ); \
         auto& __Logger = __Channel.getLogger();                                                     \
         xcore::lock::scope __Lock( __Logger.m_Lock );                                               \
-        __Logger.m_pOutput( __Channel, xcore::log::msg_type::INFO, __LogChannelTempBuff.data(), __LINE__, __FILE__ ); \
+        __Logger.m_pOutput( __Channel, xcore::log::msg_type::L_INFO, __LogChannelTempBuff.data(), __LINE__, __FILE__ ); \
     }                                                                                               \
 }
 
