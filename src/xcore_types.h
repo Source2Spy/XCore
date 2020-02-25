@@ -77,6 +77,17 @@ namespace xcore::types
     constexpr T& lvalue(T&& r) noexcept { return r; }
 
     //------------------------------------------------------------------------------------------
+    // Tuple Compose
+    //------------------------------------------------------------------------------------------
+    namespace details
+    {
+        template< template< typename...T> class T_MAIN, typename...T_ARGS >
+        T_MAIN< T_ARGS... > Compose( std::tuple<T_ARGS...>* );
+    }
+    template< template< typename...T> class T_MAIN, typename T_TUPLE >
+    using tuple_compose_t = decltype( details::Compose<T_MAIN>( static_cast<T_TUPLE*>(nullptr) ));
+
+    //------------------------------------------------------------------------------------------
     // Tuple err to index conversion
     //------------------------------------------------------------------------------------------
     namespace details
