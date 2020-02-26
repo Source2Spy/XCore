@@ -362,7 +362,7 @@ namespace xcore::types
     // Removes all attributes and references operators giving the basic underlaying type
     //--------------------------------------------------------------------------------------------
     template< typename T >
-    using decay_full_t = std::remove_reference_t<std::decay_t<T>>;
+    using decay_full_t = std::remove_pointer_t<std::decay_t<T>>;
 
     //--------------------------------------------------------------------------------------------
     // Helpful when using variadic types
