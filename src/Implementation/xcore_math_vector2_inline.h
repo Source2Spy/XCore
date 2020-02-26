@@ -180,6 +180,25 @@ namespace xcore::math
     }
 
     //------------------------------------------------------------------------------
+
+    constexpr
+    vector2 vector2::LimitLength( float MaxLength ) const noexcept
+    {
+        auto l = getLengthSquared();
+        if( l <= (MaxLength*MaxLength) ) return *this;
+        return (*this) * ( MaxLength * xcore::InvSqrt(l) );
+    }
+
+    //------------------------------------------------------------------------------
+    xforceinline
+    vector2& vector2::setLength( float Length ) noexcept
+    {
+        Normalize() *= Length;
+        return *this;
+    }
+
+
+    //------------------------------------------------------------------------------
     // Determines which side of a line a is point on.
     //
     // Note that the value returned divided by the distance from line_v1 to line_v2

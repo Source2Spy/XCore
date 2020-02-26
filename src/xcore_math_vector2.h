@@ -38,6 +38,8 @@ namespace xcore::math
         inline              vector2&            NormalizeSafe                   ( void )                                            noexcept;
         constexpr           vector2             getMin                          ( const vector2& V )                        const   noexcept;
         constexpr           vector2             getMax                          ( const vector2& V )                        const   noexcept;
+        constexpr           vector2             LimitLength                     ( float MaxLength )                         const   noexcept;
+        xforceinline        vector2&            setLength                       ( float Length )                                    noexcept;
 
         constexpr           float               getWhichSideOfLine              ( const vector2& V0, const vector2& V1 )    const   noexcept;
         inline              vector2             getClosestPointInLine           ( const vector2& V0, const vector2& V1 )    const   noexcept;
