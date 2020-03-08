@@ -1,5 +1,5 @@
-#ifndef _XCORE_CORE_H
-#define _XCORE_CORE_H
+#ifndef _XCORE_H
+#define _XCORE_H
 #pragma once
 
 //--------------------------------------------------------------------------------------------

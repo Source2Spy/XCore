@@ -548,9 +548,14 @@ namespace xcore::string
             }, m_Ref );
             return p;
         }
-
-        constexpr auto getView( void )          const   noexcept { return static_cast<const string::view<const char>>(*this); }
-        constexpr auto getView( void )                  noexcept { return static_cast<string::view<char>>(*this); }
+                  const char_t*   c_str   ( void )                   const       noexcept { return data(); }
+                  char_t*   c_str   ( void )                          noexcept { return data(); }
+                  void      assign  ( const char* p )                 noexcept { Copy( *this, p ); }
+                  void      assign  ( const self& V )                 noexcept { Copy( *this, V ); }
+                  void      copy    ( char_t* p, int L )      const   noexcept { for( int i=0; i<L; ++i ) p[i] = (*this)[i]; }
+        constexpr auto      length  ( void )                  const   noexcept { return Length(*this).m_Value; }
+        constexpr auto      getView ( void )          const   noexcept { return static_cast<const string::view<const char>>(*this); }
+        constexpr auto      getView ( void )                  noexcept { return static_cast<string::view<char>>(*this); }
 
         constexpr                   operator const char_t*              ( void )                    const   noexcept { return data(); }
                                     operator       char_t*              ( void )                            noexcept { return data(); }
