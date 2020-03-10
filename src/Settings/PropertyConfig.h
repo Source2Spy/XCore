@@ -99,6 +99,7 @@ namespace property
     {
         template< std::size_t N >
         constexpr static editor::style_info<string_t> Enumeration(const std::array<std::pair<const char*, int>, N>& Array)  noexcept;
+        constexpr static editor::style_info<string_t> Button     (void)                                                     noexcept;
         constexpr static editor::style_info<string_t> Default    (void)                                                     noexcept;
     };
 
