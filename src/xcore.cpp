@@ -2,9 +2,6 @@
 
 #if _XCORE_COMPILER_VISUAL_STUDIO
     #include "windows.h"
-    #undef ERROR
-    #undef max
-    #undef min
 #endif
 
 #include <iostream>

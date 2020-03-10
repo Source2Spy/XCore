@@ -18,13 +18,6 @@
     #  include <ws2tcpip.h>
     #endif
 
-    #ifdef max
-        #undef max
-    #endif
-    #ifdef min
-        #undef min
-    #endif
-
     #include "../dependencies/tracy/common/tracySocket.cpp"
     #include "../dependencies/tracy/client/tracyProfiler.cpp"
 

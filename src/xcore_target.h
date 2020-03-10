@@ -23,6 +23,7 @@
 //------------------------------------------------------------------------------
 #ifdef _WIN32
     #define _XCORE_PLATFORM_WINDOWS true
+    #define NOMINMAX
 #elif __APPLE__
     #if TARGET_IPHONE_SIMULATOR || TARGET_IPHONE
         #define _XCORE_PLATFORM_IOS true
