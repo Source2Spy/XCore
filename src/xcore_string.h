@@ -159,8 +159,8 @@ namespace xcore::string
         constexpr           auto    get                                         ( void )                            const   noexcept { return parent::data(); }
         inline              auto    getView                                     ( void )                                    noexcept { return static_cast<view<char_t>>(*this); }
         constexpr           auto    getView                                     ( void )                            const   noexcept { return static_cast<const view<char_t>>(*this); }
-        inline              auto    getViewFrom                                 ( int Start )                               noexcept { return string::view{ &(*this)[Start], static_cast<int>(size()-Start) }; }
-        constexpr           auto    getViewFrom                                 ( int Start )                       const   noexcept { return string::view{ &(*this)[Start], static_cast<int>(size()-Start) }; }
+        inline              auto    getViewFrom                                 ( int Start )                               noexcept { return string::view{ &(*this)[Start], size()-Start }; }
+        constexpr           auto    getViewFrom                                 ( int Start )                       const   noexcept { return string::view{ &(*this)[Start], size()-Start }; }
         constexpr           bool    empty                                       ( void )                            const   noexcept { return parent::data()[0] == 0; }
         inline              void    clear                                       ( void )                                    noexcept { parent::data()[0]=0; }
     };
@@ -194,8 +194,6 @@ namespace xcore::string
     template< typename T1, typename T2 >    constexpr   auto            Append          ( T1& Dest, const T2& Src )                                                 noexcept;
     template< typename T1, typename T2 >    constexpr   int             CompareN        ( const T1& Dest, const T2& Src, int Count )                 noexcept;
 
-    //                                        inline      units<char>     sprintf         ( view<char> Dest, const char*, ... )                                       noexcept;
-    
     template< typename... T_ARGS >
     inline      units<char>     sprintf         ( view<char> Dest, const char*, T_ARGS... Args )                                       noexcept;
 
@@ -565,6 +563,16 @@ namespace xcore::string
     // Confirm we are getting the size that we expect
     static_assert( sizeof(ref<char>)  == 64 );
     static_assert( sizeof(ref<short>) == 64 );
+
+
+    template< typename T_CHAR, typename... T_ARGS >
+    xforceinline    ref<T_CHAR> Fmt( const T_CHAR* pFmt, T_ARGS&&...Args ) noexcept
+    {
+        ref<T_CHAR> Ref;
+        Ref.MakeFixed( ref<T_CHAR>::units{ 256 } );
+        sprintf( Ref.getView(), pFmt, std::forward<T_ARGS>(Args)... );
+        return std::move(Ref);
+    }
 
     //------------------------------------------------------------------------------
     // Simple == functions

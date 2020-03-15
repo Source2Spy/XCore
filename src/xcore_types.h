@@ -455,6 +455,21 @@ namespace xcore::types
     constexpr static bool is_span_v = details::is_span<T>::value;
 
     //--------------------------------------------------------------------------------------------
+    // Checks if a type is valid 
+    // https://stackoverflow.com/questions/39816779/check-if-type-is-defined
+    //--------------------------------------------------------------------------------------------
+    namespace details
+    {
+        template< class T, class E = void >
+        struct is_defined : std::false_type {};
+
+        template< class T >
+        struct is_defined< T, std::enable_if_t< std::is_object<T>::value && !std::is_pointer<T>::value && (sizeof(T) > 0) > > : std::true_type{};
+    }
+
+    template< typename T > constexpr static bool is_defined_v = details::is_defined<T>::value;
+
+    //--------------------------------------------------------------------------------------------
     // 
     //--------------------------------------------------------------------------------------------
     struct nonesuch
