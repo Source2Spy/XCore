@@ -23,6 +23,8 @@ namespace xcore::containers::vector
         constexpr                                               type                        ( void )                                            noexcept = default;
         inline                                                 ~type                        ( void )                                            noexcept { clear(); }
 
+        inline      auto&                                       operator =                  ( self&& Container )                                noexcept { clear(); m_Allocator = std::move(Container.m_Allocator); m_Count = Container.m_Count; Container.m_Count=0; return *this; }
+        inline      auto&                                       operator =                  ( const self& Container )                           noexcept { m_Allocator = Container.m_Allocator; m_Count = Container.m_Count; return *this; }
         constexpr   auto*                                       data                        ( void )                                            noexcept { return reinterpret_cast<T*>      (m_Allocator.data()); }
         constexpr   auto*                                       data                        ( void )                                    const   noexcept { return reinterpret_cast<const T*>(m_Allocator.data()); }
         constexpr   bool                                        isIndexValid                ( size_type i )                             const   noexcept { return i >= 0 && i < m_Count; }

@@ -96,9 +96,54 @@ namespace xcore::allocator
             using size_type  = T_COUNTER;
             using parent     = xcore::span<T>;
         
-            unique_span& operator=(const unique_span&) = delete;
             unique_span(const unique_span&) = delete;
             constexpr unique_span() = default;
+
+
+            //--------------------------------------------------------------------------------------------
+            unique_span& operator = ( unique_span&& X ) noexcept
+            {
+                if( false == parent::empty() )
+                {
+                    auto op = parent::data();
+                    #if _XCORE_COMPILER_VISUAL_STUDIO
+                        _aligned_free( op );
+                    #else
+                        free( op );
+                    #endif
+                }
+
+                new( this ) xcore::span( X );
+                value_type* p = nullptr;
+                new( &X ) xcore::span( p, parent::size_type{0} );
+                return *this;
+            }
+
+            //--------------------------------------------------------------------------------------------
+            unique_span& operator = ( const unique_span& X ) noexcept
+            {
+                if( false == parent::empty() )
+                {
+                    auto op = parent::data();
+                    #if _XCORE_COMPILER_VISUAL_STUDIO
+                        _aligned_free( op );
+                    #else
+                        free( op );
+                    #endif
+                }
+
+                #if _XCORE_COMPILER_VISUAL_STUDIO
+                    auto p = reinterpret_cast<value_type*>( _aligned_malloc( sizeof(value_type)*X.size(), std::alignment_of_v<value_type> ) );
+                #else
+                    auto p = reinterpret_cast<value_type*>( std::aligned_alloc( std::alignment_of_v<value_type>, sizeof(value_type)*X.size() ) );
+                #endif
+
+                new( this ) xcore::span( p, X.size() );
+                memcpy( this->data(), X.data(), X.getByteSize() );
+
+                return *this;
+            }
+
 
             //--------------------------------------------------------------------------------------------
 
