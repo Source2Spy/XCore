@@ -569,7 +569,7 @@ namespace xcore::string
     xforceinline    ref<T_CHAR> Fmt( const T_CHAR* pFmt, T_ARGS&&...Args ) noexcept
     {
         ref<T_CHAR> Ref;
-        Ref.MakeFixed( ref<T_CHAR>::units{ 256 } );
+        Ref.MakeFixed( ref<T_CHAR>::units( 256 ) );
         sprintf( Ref.getView(), pFmt, std::forward<T_ARGS>(Args)... );
         return std::move(Ref);
     }

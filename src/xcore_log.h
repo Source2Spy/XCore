@@ -42,7 +42,7 @@ namespace xcore::log
     public:
 
                                     channel         ( void )                                                        noexcept = delete;
-        constexpr                   channel         ( std::string&& Name
+        xforceinline                channel         ( std::string&& Name
                                                     , logger&       Logger = xcore::get().m_MainLogger )            noexcept : m_Logger{Logger}, m_Name{std::move(Name)} {}
         inline      void            TurnOn          ( void )                                                        noexcept { m_bPrint = true;     }
         inline      void            TurnOff         ( void )                                                        noexcept { m_bPrint = false;    }
