@@ -122,7 +122,7 @@ namespace xcore::allocator
             }
 
             //--------------------------------------------------------------------------------------------
-            constexpr bool empty( void ) const noexcept { return !!m_Count; }
+            constexpr bool empty( void ) const noexcept { return !m_Count; }
 
             //--------------------------------------------------------------------------------------------
             constexpr    value_type* data( void ) const noexcept { return m_pData; }
