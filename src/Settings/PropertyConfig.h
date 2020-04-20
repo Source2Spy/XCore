@@ -116,6 +116,7 @@ namespace property
     template< std::size_t N >
     constexpr editor::style_info<string_t>      edstyle<string_t>::     Enumeration (const std::array<std::pair<const char*, int>, N>&) noexcept { return {}; }
     constexpr editor::style_info<string_t>      edstyle<string_t>::     Default     (void)                                              noexcept { return {}; }
+    constexpr editor::style_info<string_t>      edstyle<string_t>::     Button      (void)                                              noexcept { return {}; }
 #endif
 
     //--------------------------------------------------------------------------------------------
