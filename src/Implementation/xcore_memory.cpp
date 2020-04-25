@@ -37,7 +37,7 @@ void* operator new(std::size_t size)
     auto ptr =  xcore::memory::AlignedMalloc
     ( 
           xcore::units::bytes{ static_cast<std::int64_t>(size) }
-        , 8 
+        , __STDCPP_DEFAULT_NEW_ALIGNMENT__
     );
     return ptr ? ptr : throw std::bad_alloc{};
 }
