@@ -89,6 +89,27 @@ namespace xcore::textfile::version_2
 
     //------------------------------------------------------------------------------------------------
 
+    template< std::size_t N, typename TT, typename T > inline
+    xcore::err stream::Record( const char (&Str)[N], TT&& RecordStar, T&& Callback) noexcept
+    {
+        xcore::err Error;
+        if( Record(Error, Str, std::forward<TT&&>(RecordStar), std::forward<T&&>(Callback) ) )
+        {
+            if( Error == false )
+            {
+                
+            }
+            else
+            {
+                
+            }
+        }
+
+        return Error;
+    }
+
+    //------------------------------------------------------------------------------------------------
+
     template< std::size_t N, typename T > inline
     bool stream::Record( xcore::err& Error, const char (&Str)[N], T&& Callback ) noexcept
     {
