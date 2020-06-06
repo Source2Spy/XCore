@@ -45,7 +45,9 @@ powershell write-host -fore White ----------------------------------------------
 cd /d %XCORE_PATH%
 for /f "usebackq tokens=*" %%i in (`.\..\bin\vswhere -latest -requires Microsoft.Component.MSBuild -find MSBuild\**\Bin\MSBuild.exe`) do (
     SET MSBUILD=%%i
+    GOTO :BREAK_OUT
 )
+:BREAK_OUT
 
 for /f "usebackq tokens=1* delims=: " %%i in (`.\..\bin\vswhere -latest -requires Microsoft.VisualStudio.Workload.NativeDesktop`) do (
     if /i "%%i"=="installationPath" set VSPATH=%%j

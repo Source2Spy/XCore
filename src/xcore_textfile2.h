@@ -202,6 +202,10 @@ namespace xcore::textfile::version_2
         inline          bool            Record              ( xcore::err& Error, const char (&Str)[N]
                                                                 , TT&& RecordStar, T&& Callback )                                       noexcept;
 
+                        template< std::size_t N, typename TT, typename T >
+        inline          xcore::err      Record              ( const char (&Str)[N]
+                                                                , TT&& RecordStar, T&& Callback )                                       noexcept;
+
                         template< std::size_t N, typename T >
         inline          bool            Record              ( xcore::err& Error, const char (&Str)[N]
                                                                 , T&& Callback )                                                        noexcept;
