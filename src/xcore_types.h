@@ -397,10 +397,10 @@ namespace xcore::types
     //--------------------------------------------------------------------------------------------
     namespace details
     {
-        template< std::size_t T_MAX_SIZE, template< typename, std::size_t, typename > class T_PARENT, typename T_COUNTER  >
+        template< std::size_t T_MAX_SIZE, template< typename, std::size_t, typename > class T_PARENT  >
         struct container_static_to_dynamic
         {
-            template< typename T, typename T_COUNTER_ARG = T_COUNTER >
+            template< typename T, typename T_COUNTER_ARG >
             struct type : T_PARENT<T,T_MAX_SIZE,T_COUNTER_ARG>
             {
                 using parent = T_PARENT<T,T_MAX_SIZE,T_COUNTER_ARG>;
@@ -408,8 +408,8 @@ namespace xcore::types
             };
         };
     }
-    template< typename T, template< typename, std::size_t, typename > class T_PARENT, std::size_t T_MAX_SIZE, typename T_COUNTER >
-    using container_static_to_dynamic = typename details::container_static_to_dynamic<T_MAX_SIZE,T_PARENT,T_COUNTER>::template type;
+    template< template< typename, std::size_t, typename > class T_PARENT, std::size_t T_MAX_SIZE >
+    using container_static_to_dynamic = typename details::container_static_to_dynamic<T_MAX_SIZE,T_PARENT>;
 
     //--------------------------------------------------------------------------------------------
     // Determine if a type is an array will return true if it is a C array or an object of type array 

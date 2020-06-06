@@ -105,8 +105,8 @@ namespace xcore
     };
 
     // Construction guide
-    template <class T, class... T_ARGS >
-    array(T, T_ARGS...) -> array<typename std::common_type_t<T, T_ARGS...>, 1 + sizeof...(T_ARGS)>;
+    template <class... T_ARGS >
+    array(T_ARGS...) -> array<typename std::common_type_t<T_ARGS...>, sizeof...(T_ARGS)>;
 
     //------------------------------------------------------------------------------
     // raw array
@@ -115,8 +115,8 @@ namespace xcore
     struct rawarray : xcore::containers::raw::array<T,T_MAX_SIZE,T_COUNTER> {};
 
     // Construction guide
-    template <class T, class... T_ARGS >
-    rawarray(T, T_ARGS...) -> rawarray<typename std::common_type_t<T, T_ARGS...>, 1 + sizeof...(T_ARGS)>;
+    template <class... T_ARGS >
+    rawarray(T_ARGS...) -> rawarray<typename std::common_type_t<T_ARGS...>, sizeof...(T_ARGS)>;
 }
 
 

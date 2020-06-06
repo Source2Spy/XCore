@@ -4,6 +4,28 @@
 
 namespace xcore::containers::vector
 {
+    namespace details
+    {
+        template<typename T_ALLOCATOR >
+        struct has_malloc_internal
+        {
+            template<typename T>
+            static constexpr auto check(T*) -> typename std::is_same
+            <
+                decltype(std::declval<T>().malloc(0))
+                , xcore::err
+            >::type;
+
+            template<typename>
+            static constexpr std::false_type check(...);
+
+            using type = decltype(check<T_ALLOCATOR>(nullptr));
+        };
+
+        template<typename T_ALLOCATOR >
+        static constexpr bool has_malloc_v = has_malloc_internal<T_ALLOCATOR>::type::value;
+    }
+
     //------------------------------------------------------------------------------
     //------------------------------------------------------------------------------
     template< typename T, typename T_ALLOCATOR >
@@ -18,6 +40,8 @@ namespace xcore::containers::vector
 
         constexpr static size_type DEFAULT_GROWTH = 127;
 
+        // it must have a function to allocate memory
+        static_assert( details::has_malloc_v<T_ALLOCATOR> );
 
         inline                                                  type                        ( self&& Container )                                noexcept : m_Allocator( std::move(Container.m_Allocator) ), m_Count(Container.m_Count) { Container.m_Count=0; }
         constexpr                                               type                        ( void )                                            noexcept = default;

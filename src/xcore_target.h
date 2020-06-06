@@ -87,7 +87,7 @@ namespace xcore::target
     constexpr unsigned      getCacheLineSize    ( void )                    noexcept 
     { 
         #if _XCORE_PLATFORM_WINDOWS || _XCORE_PLATFORM_MAC_LINUX
-            return 128;
+            return 64;
         #else
             return 64; 
         #endif

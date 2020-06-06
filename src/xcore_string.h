@@ -88,7 +88,7 @@ namespace xcore::string
         constexpr                   constant                            ( const constant& )                 noexcept = default;
         constexpr                   constant                            ( void )                            noexcept = default;
         constexpr   const char_t&   operator[]                          ( units I )                 const   noexcept { xassume( m_pValue ); xassume( I < m_Size ); return m_pValue[I.m_Value]; }
-                    char_t&         operator[]                          ( units I )                         noexcept { xassume( m_pValue ); xassume( I < m_Size ); return m_pValue[I.m_Value]; }
+//                    char_t&         operator[]                          ( units I )                         noexcept { xassume( m_pValue ); xassume( I < m_Size ); return m_pValue[I.m_Value]; }
         constexpr                   operator const view<const char_t>   ( void )                    const   noexcept { xassume( m_pValue ); return { m_pValue, m_Size.m_Value }; }
         constexpr                   operator const view<char_t>         ( void )                    const   noexcept { xassume( m_pValue ); return { const_cast<char_t*>(m_pValue), m_Size.m_Value }; }
         constexpr                   operator const char_t*              ( void )                    const   noexcept { xassume( m_pValue ); return m_pValue; }

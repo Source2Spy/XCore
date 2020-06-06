@@ -293,7 +293,7 @@ namespace xcore::lockless::pool
 
     //------------------------------------------------------------------------------
     template< typename T, std::size_t T_MAX_SIZE, typename T_COUNTER = std::size_t >
-    using mpmc_bounded = details::mpmc_bounded_general< T, xcore::types::container_static_to_dynamic< T, xcore::array, T_MAX_SIZE, T_COUNTER >, T_COUNTER >;
+    using mpmc_bounded = details::mpmc_bounded_general< T, xcore::types::container_static_to_dynamic< xcore::array, T_MAX_SIZE >::type, T_COUNTER >;
 
     //------------------------------------------------------------------------------
     // Description:
@@ -319,6 +319,6 @@ namespace xcore::lockless::pool
 
     //------------------------------------------------------------------------------
     template< typename T, std::size_t T_MAX_SIZE, typename T_COUNTER = std::size_t >
-    using mpmc_bounded_jitc = details::mpmc_bounded_jitc_general< T, xcore::types::container_static_to_dynamic< T, xcore::array, T_MAX_SIZE, T_COUNTER >, T_COUNTER >;
+    using mpmc_bounded_jitc = details::mpmc_bounded_jitc_general< T, xcore::types::container_static_to_dynamic< xcore::array, T_MAX_SIZE >::template type, T_COUNTER >;
 }
 #endif
