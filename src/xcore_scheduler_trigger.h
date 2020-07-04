@@ -16,8 +16,8 @@ namespace xcore::scheduler
     public:
     
                                         trigger_base                ( void )                                        noexcept = default;
-        constexpr                       trigger_base                ( lifetime LifeTime )                           noexcept;
-        virtual                        ~trigger_base                ( void )                                        noexcept { xassume( m_NotificationCounter == 0 ); }
+        constexpr                       trigger_base                ( lifetime LifeTime, triggers ClearCounter )    noexcept;
+        virtual                        ~trigger_base                ( void )                                        noexcept { xassume(m_Definition.m_Triggers == triggers::DONT_CLEAN_COUNT || m_NotificationCounter == 0); }
         constexpr       bool            isGoingToBeDeletedWhenDone  ( void )                                const   noexcept;
         inline          void            join                        ( void )                                        noexcept;
         template< class T_JOB >
@@ -39,9 +39,10 @@ namespace xcore::scheduler
         x_debug_linear_quantum          m_Debug_LQ                  {};
     #endif
 
-        std::atomic<int>                m_NotificationCounter       { 0 };
         std::atomic<bool>*              m_pNotifyVar                { nullptr };
-        bool                            m_bDeleteWhenDone           { false };
+        std::atomic<std::uint16_t>      m_NotificationCounter       { 0 };
+        std::uint16_t                   m_NotificationResetCounter  { 0 };
+        definition                      m_Definition                { 0 };
 
     protected:
 
@@ -62,8 +63,8 @@ namespace xcore::scheduler
     
     public:
 
-        constexpr               trigger                 ( void )                    noexcept = default;
-        constexpr               trigger                 ( lifetime LifeTime )       noexcept : trigger_base{ LifeTime } {}
+        using trigger_base::trigger_base;
+
         inline                 ~trigger                 ( void )                    noexcept;
         inline      void        AddJobToBeTrigger       ( job_base& Job )           noexcept;
         virtual     int         getJobCount             ( void )            const   noexcept override { return m_nJobsToTrigger; }
@@ -75,7 +76,7 @@ namespace xcore::scheduler
 
     protected:
 
-        std::atomic<int>                    m_nJobsToTrigger    {0};
+        std::atomic<std::uint16_t>          m_nJobsToTrigger    {0};
         xcore::array<job_base*,max_jobs_v>  m_JobToTrigger      {};
     };
 }

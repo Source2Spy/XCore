@@ -617,7 +617,10 @@ namespace xcore::scheduler
             // Get me a job!
             {
                 XCORE_PERF_ZONE_SCOPED_NC( "Actively Sleeping", 0x4f2f2f );
-                do { pJob = S.getLightJob(); } while( Bool.load( std::memory_order_relaxed ) && pJob == nullptr );
+                do
+                {
+                    pJob = S.getLightJob();
+                } while( Bool.load( std::memory_order_relaxed ) && pJob == nullptr );
                 if( pJob == nullptr && Bool.load( std::memory_order_relaxed ) == false ) break;
             }
             

@@ -87,10 +87,11 @@ namespace xcore::scheduler
 
     //------------------------------------------------------------------------------
     constexpr
-    trigger_base::trigger_base( lifetime Flags ) noexcept 
-        : m_NotificationCounter{ 0 }
-        , m_bDeleteWhenDone{ Flags == lifetime::DELETE_WHEN_DONE }
+    trigger_base::trigger_base( lifetime LifeTime, triggers ClearCounter) noexcept
     {
+        m_Definition.m_LifeTime = LifeTime;
+        m_Definition.m_Triggers = ClearCounter;
+
         xassert_linear( m_Debug_LQ );
     }
 
@@ -100,7 +101,7 @@ namespace xcore::scheduler
     {
         xassert_quantum( m_Debug_LQ );
         // this could run in quantum or linear
-        return m_bDeleteWhenDone;
+        return m_Definition.m_LifeTime == lifetime::DELETE_WHEN_DONE;
     }
 
     //------------------------------------------------------------------------------
@@ -115,7 +116,7 @@ namespace xcore::scheduler
     void trigger_base::JobWillNotifyMe ( T_JOB& Job ) noexcept
     {
         xassert_quantum( m_Debug_LQ );
-        ++m_NotificationCounter;
+        m_NotificationResetCounter = ++m_NotificationCounter;
         Job.onAppenTrigger( *this );
     }
 
@@ -165,7 +166,7 @@ namespace xcore::scheduler
         // xassert_quantum( m_Debug_LQ );
         XLOG_CHANNEL_INFO( *xcore::get().m_Scheduler.m_LogChannel, "Trigger: notify: %d\n", m_NotificationCounter.load() );
         xassume( m_NotificationCounter > 0 );
-        if( --m_NotificationCounter == 0 )
+        if( 0 == --m_NotificationCounter )
         {
             XLOG_CHANNEL_INFO( *xcore::get().m_Scheduler.m_LogChannel,  "Trigger: Ready to Releasing Jobs!\n" )
 
@@ -176,6 +177,9 @@ namespace xcore::scheduler
 
             // Backup also the delete flag
             const bool bDelete = isGoingToBeDeletedWhenDone();
+
+            // If the user ask us to reset the counter we will
+            if (m_Definition.m_Triggers == triggers::DONT_CLEAN_COUNT) m_NotificationCounter.store(m_NotificationResetCounter, std::memory_order_relaxed);
 
             // Notify our OO-hierarchy that we are ready to release jobs
             // Here the user may do some nasty things, so that is why we play safe and backup the delete flag
@@ -193,7 +197,7 @@ namespace xcore::scheduler
             //
             //////
             // now we are really officially done, so notify people that may care
-            if( pNotifyVar ) *pNotifyVar = false;
+            if( pNotifyVar ) pNotifyVar->store( false, std::memory_order_release );
         }
         ////////////////
         //
@@ -212,7 +216,7 @@ namespace xcore::scheduler
     template< int T_MAX_JOBS > inline
     trigger<T_MAX_JOBS>::~trigger ( void ) noexcept
     {
-        xassume( m_NotificationCounter == 0 );
+        xassume( m_Definition.m_Triggers == triggers::DONT_CLEAN_COUNT || m_NotificationCounter == 0 );
         xassert( m_Debug_bReady == true );
     }
 
@@ -243,7 +247,7 @@ namespace xcore::scheduler
     {
         xassert_quantum( m_Debug_LQ ); 
 
-        const int nJobs = m_nJobsToTrigger;
+        const int nJobs = m_nJobsToTrigger.load(std::memory_order_relaxed);
         for( int i=0; i<nJobs; i++ )
         {
             xcore::get().m_Scheduler.AddJobToQuantumWorld( *m_JobToTrigger[i] );
@@ -284,7 +288,7 @@ namespace xcore::scheduler
     channel::~channel( void ) noexcept
     {
         join();
-        xassume( m_bDeleteWhenDone == false );
+        xassume( isGoingToBeDeletedWhenDone() == false );
         xassume( m_ProcessState == STATE_PROCESS_STATE_DONE );
         xassert_linear( m_Debug_LQ );
     }
@@ -404,19 +408,21 @@ namespace xcore::scheduler
     
         if( Total == 0 ) return;
 
+        xassert(Diviser);
+        xassert(Total / Diviser);
         std::size_t   Start     = 0;
-        const auto    nEntries  = std::max( 1, Total/Diviser );   
+        const auto    nEntries  = std::max<std::size_t>( 1, Total/Diviser );
 
         // Process all the entries
         do
         {
-            const auto End = std::min( Total, Start + nEntries ); 
-            SubmitJob( [ &Container, Start, End, &func ]()
+            const auto Count = std::min( Total - Start, Diviser);
+            SubmitJob( [ View = Container.ViewFromCount(Start, Count), &func ]()
             {
-                func( Container.ViewFromTo(Start, End) );
+                func(View);
             });
 
-            Start  = End;
+            Start  += Count;
         } while( Start < Total );
     }
 
@@ -443,7 +449,7 @@ namespace xcore::scheduler
     void channel::join( void ) noexcept
     {
         xassert_quantum( m_Debug_LQ );
-        xassume( m_bDeleteWhenDone == false );
+        xassume( isGoingToBeDeletedWhenDone() == false );
 
         if( m_ProcessState == STATE_PROCESS_STATE_READY )
         {
@@ -468,7 +474,7 @@ namespace xcore::scheduler
         if( --m_NotificationCounter == 0 )
         {
             XLOG_CHANNEL_INFO( *xcore::get().m_Scheduler.m_LogChannel,  "Trigger: Ready to Releasing Jobs!\n" )
-            
+
             // Notify our OO-hierarchy that we are ready to release jobs
             qt_onTriggered();
             
@@ -485,7 +491,7 @@ namespace xcore::scheduler
     {
         xassert_quantum( m_Debug_LQ );
         xassume( m_ProcessState == STATE_PROCESS_STATE_READY );
-        m_ProcessState.store( STATE_PROCESS_STATE_DONE, std::memory_order_relaxed );
+        m_ProcessState.store( STATE_PROCESS_STATE_DONE, std::memory_order_release );
     }
 
 }

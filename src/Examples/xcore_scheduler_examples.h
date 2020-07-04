@@ -159,8 +159,8 @@ namespace xcore::scheduler::examples
 
             constexpr static int    Count           = 16;
             using                   mytrigger       = trigger<Count>;
-            auto                    pTrigger        = new mytrigger { lifetime::DELETE_WHEN_DONE };
-            auto                    pWaitingTrigger = new mytrigger { lifetime::DELETE_WHEN_DONE };
+            auto                    pTrigger        = new mytrigger { lifetime::DELETE_WHEN_DONE, triggers::CLEAN_COUNT };
+            auto                    pWaitingTrigger = new mytrigger { lifetime::DELETE_WHEN_DONE, triggers::CLEAN_COUNT };
             auto&                   S               = xcore::get().m_Scheduler;
             
             pWaitingTrigger->DontTriggerUntilReady();
