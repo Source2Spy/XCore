@@ -21,7 +21,7 @@ namespace xcore::random
     void small_generator::setSeed32( std::uint32_t u ) noexcept
     {
         m_W = std::uint32_t(u);
-        m_Z = 362436069;
+        m_Z = 362436069 ^ std::uint32_t(u);
     
         xassert( m_W );
     }
