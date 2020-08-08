@@ -61,6 +61,7 @@ namespace xcore::string
         else                        return details::CopyN<T1::char_t>(Dest,Src,Count); 
     }
 
+    /*
     //------------------------------------------------------------------------------
     template< typename T1, typename T2 > constexpr xforceinline
     auto CopyN( T1&& Dest, const T2& Src, units<decltype(Src[0])> Count ) noexcept
@@ -68,6 +69,7 @@ namespace xcore::string
         static_assert( is_view_v<T1> );
         return CopyN(Dest,Src,Count);
     }
+    */
 
     //------------------------------------------------------------------------------
     // Copy one string buffer to another

@@ -311,7 +311,7 @@ namespace xcore
                 }
                 else
                 {
-                    Value = crc_details::table<basic_t>::ms_Table[(Value ^ c) & 0xFF] ^ (Value >> 8);
+                    Value = crc_details::table<basic_t>::ms_Table[(Value ^ static_cast<basic_t>(c)) & 0xFF] ^ (Value >> 8);
                 }
             }
 

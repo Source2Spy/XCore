@@ -144,10 +144,10 @@ namespace xcore::string
         constexpr                   fixed                                       ( const view<const char_t,T_SIZE_V> Str )   noexcept { xassume(Str.size()<=ms_BufferSize.m_Value); for(int i=0; i<Str.size(); ++i) parent::at(i) = Str[i]; } //-V573
         constexpr                   fixed                                       ( const view<char_t> Str )                  noexcept { xassume(Str.size()<=ms_BufferSize.m_Value); for(int i=0; i<Str.size(); ++i) parent::at(i) = Str[i]; } //-V573
         constexpr                   fixed                                       ( const view<const char_t> Str )            noexcept { xassume(Str.size()<=ms_BufferSize.m_Value); for(int i=0; i<Str.size(); ++i) parent::at(i) = Str[i]; } //-V573
-        constexpr                   fixed                                       ( const char_t (&Str)[T_SIZE_V] )           noexcept { for(int i=0; i<T_SIZE_V; ++i) parent::at(i) = Str[i]; } //-V573
+        constexpr                   fixed                                       ( const char_t (&Str)[T_SIZE_V] )           noexcept : parent{ [&]()constexpr{ parent A{}; for(int i=0; i<T_SIZE_V; ++i) A[i] = Str[i]; return A;}() }{} //-V573
         template< std::size_t N >
-        constexpr                   fixed                                       ( const char_t (&Str)[N] )                  noexcept { static_assert( N <= T_SIZE_V); for(int i=0; i<T_SIZE_V; ++i) parent::at(i) = Str[i]; } //-V573
-        constexpr                   fixed                                       ( const char_t* pStr )                      noexcept { details::size_t i=0; while(parent::at(i)=pStr[i]) ++i; xassert(i<ms_BufferSize.m_Value); } //-V573
+        constexpr                   fixed                                       ( const char_t (&Str)[N] )                  noexcept : parent{ [&]()constexpr{ static_assert(N <= T_SIZE_V); parent A{}; for (int i = 0; i < N; ++i) A[i] = Str[i]; return A; }() }{} //-V573
+        constexpr                   fixed                                       ( const char_t* pStr )                      noexcept : parent{ [&]()constexpr{ parent A{}; for (int i = 0; A[i] = pStr[i]; ++i); return A; }() }{} //-V573 
 
         inline                      operator view<char_t,T_SIZE_V>              ( void )                                    noexcept { return { parent::data() }; }
         inline                      operator view<char_t>                       ( void )                                    noexcept { return { parent::data(), size() }; }
