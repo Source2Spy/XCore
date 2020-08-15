@@ -33,6 +33,31 @@ namespace xcore::types
         return First;
     }
 
+    //------------------------------------------------------------------------------------------
+    // Checks if a type is part of a pack
+    //------------------------------------------------------------------------------------------
+
+    namespace details
+    {
+        template <typename...>
+        struct count_of;
+
+        template< typename F >
+        struct count_of<F>
+        {
+            static constexpr auto value = 0ull;
+        };
+
+        template <typename F, typename S, typename... T>
+        struct count_of<F, S, T...>
+        {
+            static constexpr auto value = std::is_same<F, S>::value + count_of<F, T...>::value;
+        };
+    }
+
+    template< typename T_TYPE, typename...T_ARGS >
+    static constexpr auto count_of_v  = details::count_of< T_TYPE, T_ARGS...>::value;
+
     //-------------------------------------------------------------------------------------------------------
     // int base on size
     //-------------------------------------------------------------------------------------------------------
@@ -334,6 +359,42 @@ namespace xcore::types
 
     template< template <class, class> class T_COMPARE, class T_TUPLE >
     using tuple_sort_t = typename details::tuple_selection_sort< T_COMPARE, T_TUPLE >::type;
+
+    //--------------------------------------------------------------------------------------------
+    // is Type in tuple
+    //--------------------------------------------------------------------------------------------
+    namespace details
+    {
+        template< typename T, typename T_TUPLE >
+        struct tuple_has_type;
+
+        template< typename T, typename...T_ARGS >
+        struct tuple_has_type< T, std::tuple<T_ARGS...> >
+        {
+            constexpr static bool value = xcore::types::count_of_v<T, T_ARGS...> > 0;
+        };
+    }
+
+    template< typename T, typename T_TUPLE >
+    static constexpr bool tuple_has_type_v = details::tuple_has_type<T, T_TUPLE >::value;
+
+    //--------------------------------------------------------------------------------------------
+    // Does tuple have duplicates
+    //--------------------------------------------------------------------------------------------
+    namespace details
+    {
+        template< typename T_TUPLE >
+        struct tuple_has_duplicates;
+
+        template< typename...T_ARGS >
+        struct tuple_has_duplicates< std::tuple<T_ARGS...> >
+        {
+            constexpr static bool value = ((xcore::types::count_of_v<T_ARGS, T_ARGS...> > 1 ) || ... ) ;
+        };
+    }
+
+    template< typename T_TUPLE >
+    static constexpr bool tuple_has_duplicates_v = details::tuple_has_duplicates<T_TUPLE >::value;
 
     //------------------------------------------------------------------------------------------
     // Variant type to index conversion
