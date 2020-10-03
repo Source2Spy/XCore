@@ -68,7 +68,7 @@ namespace xcore::lock
             }
 
             // try to lock it officially
-            if( !m_State.test_and_set( std::memory_order_acquire ) )
+            if( curID == std::thread::id() && !m_State.test_and_set( std::memory_order_acquire ) )
             {
                 xassume( Id              != std::thread::id{} );
                 xassume( m_FullThreadID  == std::thread::id{} );
@@ -96,10 +96,14 @@ namespace xcore::lock
         xforceinline void lock( void ) noexcept
         {
             const auto Id = _getID();
-            if( _TryLock(Id) == false )
+            if( m_Lock.exchange(true, std::memory_order_acquire) )
             {
                 XCORE_PERF_ZONE_SCOPED_NC("Lock is Spinning and waiting", tracy::Color::ColorType::Red);
                 while( _TryLock(Id) == false );
+            }
+            else
+            {
+                XCORE_CMD_DEBUG(m_Debug_Counter++);
             }
         }
 
@@ -109,14 +113,14 @@ namespace xcore::lock
             return _TryLock(Id);
         }
 
-        xforceinline bool isLockedDebug(void) const noexcept { return reinterpret_cast<std::atomic<details::atomic_flag_base_type>&>(const_cast<std::atomic_flag&>(m_State)).load(std::memory_order_relaxed) != details::flag_value_v; }
+        xforceinline bool isLockedDebug(void) const noexcept { return !!m_Lock.load(std::memory_order_relaxed); }
 
         xforceinline void unlock     ( void ) noexcept
         {
             xassert( m_Debug_Counter == 1 );
             XCORE_CMD_DEBUG( m_Debug_Counter-- );
             XCORE_CMD_DEBUG( m_Debug_FullThreadID.store( std::thread::id{}, std::memory_order_relaxed) );
-            m_State.clear(std::memory_order_release);
+            m_Lock.store(false, std::memory_order_release);
         }
 
     #if _XCORE_DEBUG
@@ -131,7 +135,8 @@ namespace xcore::lock
         xforceinline bool _TryLock ( int ) noexcept
     #endif
         {
-            if( !m_State.test_and_set(std::memory_order_acquire) )
+            if( !m_Lock.load(std::memory_order_relaxed)
+             && !m_Lock.exchange(true, std::memory_order_acquire))
             {
                 XCORE_CMD_DEBUG( m_Debug_Counter++ );
                 xassert( m_Debug_Counter == 1 );
@@ -156,7 +161,7 @@ namespace xcore::lock
         int                             m_Debug_Counter        {0};
         std::atomic<std::thread::id>    m_Debug_FullThreadID   {};
     #endif
-        std::atomic_flag                m_State                { ATOMIC_FLAG_INIT };
+        std::atomic<bool>               m_Lock                 { 0 };
     };
 
     /*
