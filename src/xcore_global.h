@@ -65,8 +65,8 @@ namespace xcore::global
         }
 
         using state_ptr_type = std::variant< state*, std::unique_ptr<state> >;
-        using local_cleanup  = xcore::lock::object<std::vector<std::unique_ptr<details::local_storage_data>>,xcore::lock::spin>;
-        using system_reg     = xcore::lock::object< std::unordered_map<std::uint64_t, xcore::system::registration*>, lock::spin >;
+        using local_cleanup  = xcore::lock::object<std::vector<std::unique_ptr<details::local_storage_data>>,        xcore::lock::spin >;
+        using system_reg     = xcore::lock::object< std::unordered_map<std::uint64_t, xcore::system::registration*>, xcore::lock::spin >;
         
         system_reg                                          m_SystemReg         {};
         local_cleanup                                       m_LocalCleanup      {};

@@ -4,8 +4,163 @@
 
 namespace xcore::lock
 {
+    namespace details
+    {
+        template< std::size_t T_SIZE_BYTES >
+        using                                   byte_size_uint_t        = std::tuple_element_t< T_SIZE_BYTES - 1, std::tuple<std::uint8_t, std::uint16_t, std::uint32_t, std::uint32_t, std::uint64_t, std::uint64_t, std::uint64_t, std::uint64_t>>;
+        using                                   atomic_flag_base_type   = byte_size_uint_t<sizeof(std::atomic_flag)>;
+        constexpr static atomic_flag_base_type  flag_value_v            = 0;
+    }
+
+    //------------------------------------------------------------------------------
+    // Description:
+    //      A spin lock that is thread aware so recursion will work
+    //      Example: xcore::lock::spin_reentrance
+    //------------------------------------------------------------------------------
+    struct spin_reentrance
+    {
+        xforceinline void lock(void) noexcept
+        {
+            const auto Id = _getID();
+
+            if (_TryLock(Id) == false)
+            {
+                XCORE_PERF_ZONE_SCOPED_NC("Re-entrance spin Lock is Spinning and waiting", tracy::Color::ColorType::Red);
+                while (_TryLock(Id) == false);
+            }
+        }
+
+        xforceinline bool trylock    (void) noexcept
+        {
+            const auto Id = _getID();
+            return _TryLock(Id);
+        }
+
+        xforceinline void unlock( void ) noexcept
+        {
+            xassume( m_EnteringCount > 0 );
+            --m_EnteringCount;
+            if( m_EnteringCount == 0 )
+            {
+                m_FullThreadID = std::thread::id();
+                m_State.clear(std::memory_order_release);
+            }
+        }
+
+        xforceinline bool isLockedDebug( void ) const noexcept { return reinterpret_cast<std::atomic<details::atomic_flag_base_type>&>(const_cast<std::atomic_flag&>(m_State)).load(std::memory_order_relaxed) != details::flag_value_v; }
+
+        xforceinline static const std::thread::id _getID( void ) noexcept
+        {
+            return std::this_thread::get_id();
+        }
+        
+
+        xforceinline bool _TryLock( const std::thread::id Id ) noexcept
+        {
+            // Are we dealing with the same thread?
+            if( m_FullThreadID == Id )
+            {
+                xassume( Id != std::thread::id{} );
+                xassume( m_EnteringCount > 0 );
+                m_EnteringCount++;
+                return true;
+            }
+
+            // try to lock it officially
+            if( !m_State.test_and_set( std::memory_order_acquire ) )
+            {
+                xassume( Id              != std::thread::id{} );
+                xassume( m_FullThreadID  == std::thread::id{} );
+                xassume( m_EnteringCount == 0 );
+                m_FullThreadID = Id;
+                m_EnteringCount++;
+                return true;
+            }
+
+            return false;
+        }
+        
+        std::thread::id  m_FullThreadID     {};
+        std::uint32_t    m_EnteringCount    {0};
+        std::atomic_flag m_State            { ATOMIC_FLAG_INIT };
+    };
+
+    //------------------------------------------------------------------------------
+    // Description:
+    //      A spin lock that is NOT thread aware so recursion won't work
+    //      Example: xcore::lock::spin
+    //------------------------------------------------------------------------------
+    struct spin
+    {
+        xforceinline void lock( void ) noexcept
+        {
+            const auto Id = _getID();
+            if( _TryLock(Id) == false )
+            {
+                XCORE_PERF_ZONE_SCOPED_NC("Lock is Spinning and waiting", tracy::Color::ColorType::Red);
+                while( _TryLock(Id) == false );
+            }
+        }
+
+        xforceinline bool trylock( void ) noexcept
+        {
+            const auto Id = _getID();
+            return _TryLock(Id);
+        }
+
+        xforceinline bool isLockedDebug(void) const noexcept { return reinterpret_cast<std::atomic<details::atomic_flag_base_type>&>(const_cast<std::atomic_flag&>(m_State)).load(std::memory_order_relaxed) != details::flag_value_v; }
+
+        xforceinline void unlock     ( void ) noexcept
+        {
+            xassert( m_Debug_Counter == 1 );
+            XCORE_CMD_DEBUG( m_Debug_Counter-- );
+            XCORE_CMD_DEBUG( m_Debug_FullThreadID = std::thread::id{} );
+            m_State.clear(std::memory_order_release);
+        }
+
+    #if _XCORE_DEBUG
+        xforceinline static const std::thread::id   _getID( void ) noexcept  { return std::this_thread::get_id(); }
+    #else
+        xforceinline static constexpr const int     _getID( void ) noexcept  { return 0; }
+    #endif
+        
+    #if _XCORE_DEBUG
+        xforceinline bool _TryLock ( const std::thread::id Id ) noexcept
+    #else
+        xforceinline bool _TryLock ( int ) noexcept
+    #endif
+        {
+            if( !m_State.test_and_set(std::memory_order_acquire) )
+            {
+                XCORE_CMD_DEBUG( m_Debug_Counter++ );
+                xassert( m_Debug_Counter == 1 );
+                XCORE_CMD_DEBUG( m_Debug_FullThreadID = Id );
+                return true;
+            }
+        #if _XCORE_DEBUG
+            else
+            {
+                //const std::thread::id Id = std::this_thread::get_id();
+                //x_assert( Id == std::this_thread::get_id() );
+                
+                // if this assert hits you may want to change to the reentrance version
+                // since you did try to relock again with the same thread.
+                xassert( m_Debug_FullThreadID != Id );
+            }
+        #endif
+            return false;
+        }
+
+    #if _XCORE_DEBUG
+        int              m_Debug_Counter        {0};
+        std::thread::id  m_Debug_FullThreadID   {};
+    #endif
+        std::atomic_flag m_State                { ATOMIC_FLAG_INIT };
+    };
+
+    /*
     //------------------------------------------------------------------------------------------
-    // Spin lock non-reentrant
+    // Spin lock non-re-entrant
     //------------------------------------------------------------------------------------------
     class spin  
     {
@@ -40,6 +195,8 @@ namespace xcore::lock
         std::atomic_flag m_qFlag = ATOMIC_FLAG_INIT;
         XCORE_CMD_ASSERT( bool m_bLocked = false; )
     };
+    */
+
 
     //------------------------------------------------------------------------------------------
     // semaphore lock non-reentrant (Gives priority to writers)
