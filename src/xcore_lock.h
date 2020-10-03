@@ -42,7 +42,7 @@ namespace xcore::lock
             --m_EnteringCount;
             if( m_EnteringCount == 0 )
             {
-                m_FullThreadID = std::thread::id();
+                m_FullThreadID.store( std::thread::id(), std::memory_order_relaxed );
                 m_State.clear(std::memory_order_release);
             }
         }
@@ -54,11 +54,12 @@ namespace xcore::lock
             return std::this_thread::get_id();
         }
         
-
         xforceinline bool _TryLock( const std::thread::id Id ) noexcept
         {
+            const auto curID = m_FullThreadID.load(std::memory_order_relaxed);
+
             // Are we dealing with the same thread?
-            if( m_FullThreadID == Id )
+            if( curID == Id )
             {
                 xassume( Id != std::thread::id{} );
                 xassume( m_EnteringCount > 0 );
@@ -72,7 +73,7 @@ namespace xcore::lock
                 xassume( Id              != std::thread::id{} );
                 xassume( m_FullThreadID  == std::thread::id{} );
                 xassume( m_EnteringCount == 0 );
-                m_FullThreadID = Id;
+                m_FullThreadID.store( Id, std::memory_order_relaxed );
                 m_EnteringCount++;
                 return true;
             }
@@ -80,9 +81,9 @@ namespace xcore::lock
             return false;
         }
         
-        std::thread::id  m_FullThreadID     {};
-        std::uint32_t    m_EnteringCount    {0};
-        std::atomic_flag m_State            { ATOMIC_FLAG_INIT };
+        std::atomic<std::thread::id>    m_FullThreadID     {};
+        std::uint32_t                   m_EnteringCount    {0};
+        std::atomic_flag                m_State            { ATOMIC_FLAG_INIT };
     };
 
     //------------------------------------------------------------------------------
@@ -114,7 +115,7 @@ namespace xcore::lock
         {
             xassert( m_Debug_Counter == 1 );
             XCORE_CMD_DEBUG( m_Debug_Counter-- );
-            XCORE_CMD_DEBUG( m_Debug_FullThreadID = std::thread::id{} );
+            XCORE_CMD_DEBUG( m_Debug_FullThreadID.store( std::thread::id{}, std::memory_order_relaxed) );
             m_State.clear(std::memory_order_release);
         }
 
@@ -134,7 +135,7 @@ namespace xcore::lock
             {
                 XCORE_CMD_DEBUG( m_Debug_Counter++ );
                 xassert( m_Debug_Counter == 1 );
-                XCORE_CMD_DEBUG( m_Debug_FullThreadID = Id );
+                XCORE_CMD_DEBUG( m_Debug_FullThreadID.store( Id, std::memory_order_relaxed ) );
                 return true;
             }
         #if _XCORE_DEBUG
@@ -145,17 +146,17 @@ namespace xcore::lock
                 
                 // if this assert hits you may want to change to the reentrance version
                 // since you did try to relock again with the same thread.
-                xassert( m_Debug_FullThreadID != Id );
+                xassert( m_Debug_FullThreadID.load(std::memory_order_relaxed) != Id );
             }
         #endif
             return false;
         }
 
     #if _XCORE_DEBUG
-        int              m_Debug_Counter        {0};
-        std::thread::id  m_Debug_FullThreadID   {};
+        int                             m_Debug_Counter        {0};
+        std::atomic<std::thread::id>    m_Debug_FullThreadID   {};
     #endif
-        std::atomic_flag m_State                { ATOMIC_FLAG_INIT };
+        std::atomic_flag                m_State                { ATOMIC_FLAG_INIT };
     };
 
     /*
