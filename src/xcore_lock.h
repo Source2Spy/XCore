@@ -4,14 +4,6 @@
 
 namespace xcore::lock
 {
-    namespace details
-    {
-        template< std::size_t T_SIZE_BYTES >
-        using                                   byte_size_uint_t        = std::tuple_element_t< T_SIZE_BYTES - 1, std::tuple<std::uint8_t, std::uint16_t, std::uint32_t, std::uint32_t, std::uint64_t, std::uint64_t, std::uint64_t, std::uint64_t>>;
-        using                                   atomic_flag_base_type   = byte_size_uint_t<sizeof(std::atomic_flag)>;
-        constexpr static atomic_flag_base_type  flag_value_v            = 0;
-    }
-
     //------------------------------------------------------------------------------
     // Description:
     //      A spin lock that is thread aware so recursion will work
@@ -43,11 +35,11 @@ namespace xcore::lock
             if( m_EnteringCount == 0 )
             {
                 m_FullThreadID.store( std::thread::id(), std::memory_order_relaxed );
-                m_State.clear(std::memory_order_release);
+                m_Lock.store(false, std::memory_order_release);
             }
         }
 
-        xforceinline bool isLockedDebug( void ) const noexcept { return reinterpret_cast<std::atomic<details::atomic_flag_base_type>&>(const_cast<std::atomic_flag&>(m_State)).load(std::memory_order_relaxed) != details::flag_value_v; }
+        xforceinline bool isLockedDebug(void) const noexcept { return !!m_Lock.load(std::memory_order_relaxed); }
 
         xforceinline static const std::thread::id _getID( void ) noexcept
         {
@@ -68,7 +60,7 @@ namespace xcore::lock
             }
 
             // try to lock it officially
-            if( curID == std::thread::id() && !m_State.test_and_set( std::memory_order_acquire ) )
+            if( curID == std::thread::id() && !m_Lock.exchange(true, std::memory_order_acquire) )
             {
                 xassume( Id              != std::thread::id{} );
                 xassume( m_FullThreadID  == std::thread::id{} );
@@ -81,9 +73,9 @@ namespace xcore::lock
             return false;
         }
         
-        std::atomic<std::thread::id>    m_FullThreadID     {};
-        std::uint32_t                   m_EnteringCount    {0};
-        std::atomic_flag                m_State            { ATOMIC_FLAG_INIT };
+        std::atomic<std::thread::id>    m_FullThreadID      {};
+        std::int32_t                    m_EnteringCount     {0};
+        std::atomic<bool>               m_Lock              {0};
     };
 
     //------------------------------------------------------------------------------
@@ -95,15 +87,11 @@ namespace xcore::lock
     {
         xforceinline void lock( void ) noexcept
         {
-            const auto Id = _getID();
             if( m_Lock.exchange(true, std::memory_order_acquire) )
             {
                 XCORE_PERF_ZONE_SCOPED_NC("Lock is Spinning and waiting", tracy::Color::ColorType::Red);
+                const auto Id = _getID();
                 while( _TryLock(Id) == false );
-            }
-            else
-            {
-                XCORE_CMD_DEBUG(m_Debug_Counter++);
             }
         }
 
@@ -117,8 +105,6 @@ namespace xcore::lock
 
         xforceinline void unlock     ( void ) noexcept
         {
-            xassert( m_Debug_Counter == 1 );
-            XCORE_CMD_DEBUG( m_Debug_Counter-- );
             XCORE_CMD_DEBUG( m_Debug_FullThreadID.store( std::thread::id{}, std::memory_order_relaxed) );
             m_Lock.store(false, std::memory_order_release);
         }
@@ -138,8 +124,6 @@ namespace xcore::lock
             if( !m_Lock.load(std::memory_order_relaxed)
              && !m_Lock.exchange(true, std::memory_order_acquire))
             {
-                XCORE_CMD_DEBUG( m_Debug_Counter++ );
-                xassert( m_Debug_Counter == 1 );
                 XCORE_CMD_DEBUG( m_Debug_FullThreadID.store( Id, std::memory_order_relaxed ) );
                 return true;
             }
@@ -158,10 +142,9 @@ namespace xcore::lock
         }
 
     #if _XCORE_DEBUG
-        int                             m_Debug_Counter        {0};
         std::atomic<std::thread::id>    m_Debug_FullThreadID   {};
     #endif
-        std::atomic<bool>               m_Lock                 { 0 };
+        std::atomic<bool>               m_Lock                 {0};
     };
 
     /*
