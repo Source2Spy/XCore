@@ -7,9 +7,9 @@ namespace xcore::lock
     //------------------------------------------------------------------------------
     // Description:
     //      A spin lock that is thread aware so recursion will work
-    //      Example: xcore::lock::spin_reentrance
+    //      Example: xcore::lock::spin_reentrant
     //------------------------------------------------------------------------------
-    struct spin_reentrance
+    struct spin_reentrant
     {
         template< typename T_CALLBACK = void(*)() >
         xforceinline void lock( T_CALLBACK&& Callback = []()constexpr {} ) noexcept
@@ -18,7 +18,7 @@ namespace xcore::lock
 
             if (_TryLock(Id) == false)
             {
-                XCORE_PERF_ZONE_SCOPED_NC("Re-entrance spin Lock is Spinning and waiting", tracy::Color::ColorType::Red);
+                XCORE_PERF_ZONE_SCOPED_NC("spin_reentrant spin Lock is Spinning and waiting", tracy::Color::ColorType::Red);
                 while (_TryLock(Id) == false) Callback();
             }
         }
@@ -75,7 +75,7 @@ namespace xcore::lock
         }
         
         std::atomic<std::thread::id>    m_FullThreadID      {};
-        std::int32_t                    m_EnteringCount     {0};
+        std::int16_t                    m_EnteringCount     {0};
         std::atomic<bool>               m_Lock              {0};
     };
 
@@ -148,46 +148,6 @@ namespace xcore::lock
     #endif
         std::atomic<bool>               m_Lock                 {0};
     };
-
-    /*
-    //------------------------------------------------------------------------------------------
-    // Spin lock non-re-entrant
-    //------------------------------------------------------------------------------------------
-    class spin  
-    {
-    public:
-
-        inline void lock( void ) noexcept
-        {
-            if(m_qFlag.test_and_set(std::memory_order_acquire))
-            {
-                XCORE_PERF_ZONE_SCOPED_NC( "Lock is Spinning and waiting", tracy::Color::ColorType::Red );
-                while(m_qFlag.test_and_set(std::memory_order_acquire));
-                // spin!!
-            }
-            XCORE_CMD_ASSERT( xassert(m_bLocked==false); m_bLocked=true; )
-        }
- 
-        inline void unlock( void ) noexcept
-        {
-            XCORE_CMD_ASSERT( xassert(m_bLocked); m_bLocked=false; )
-            m_qFlag.clear(std::memory_order_release);
-        }
-
-#if _XCORE_ASSERTS
-        constexpr bool isLockedDebug( void ) const noexcept
-        {
-            return m_bLocked;
-        }
-#endif
-
-    protected:
-
-        std::atomic_flag m_qFlag = ATOMIC_FLAG_INIT;
-        XCORE_CMD_ASSERT( bool m_bLocked = false; )
-    };
-    */
-
 
     //------------------------------------------------------------------------------------------
     // semaphore lock non-reentrant (Gives priority to writers)
@@ -332,6 +292,58 @@ namespace xcore::lock
 
             return {};
         }
+    };
+
+    //------------------------------------------------------------------------------------------
+    // semaphore with lock reentrant for writers, readers were already supported
+    //------------------------------------------------------------------------------------------
+    struct semaphore_reentrant
+    {
+        template< typename T_CALLBACK = void(*)() >
+        xforceinline void lock(T_CALLBACK&& Callback = []()constexpr {}) noexcept
+        {
+            const auto ID = _getID();
+            if( m_FullThreadID.load(std::memory_order_relaxed) != ID)
+            {
+                m_Semaphore.lock(std::forward<T_CALLBACK&&>(Callback));
+                m_FullThreadID.store(ID, std::memory_order_relaxed);
+            }
+
+            m_EnteringCount++;
+        }
+
+        xforceinline void unlock(void) noexcept
+        {
+            xassert(m_EnteringCount>0);
+            xassert( _getID() == m_FullThreadID.load(std::memory_order_relaxed) );
+
+            m_EnteringCount--;
+            if( !m_EnteringCount )
+            {
+                m_FullThreadID.store( std::thread::id{}, std::memory_order_relaxed );
+                m_Semaphore.unlock();
+            }
+        }
+
+        xforceinline void unlock(void) const noexcept
+        {
+            m_Semaphore.unlock();
+        }
+
+        template< typename T_CALLBACK = void(*)() >
+        xforceinline void lock(T_CALLBACK&& Callback = []()constexpr {}) const noexcept
+        {
+            m_Semaphore.lock(std::forward<T_CALLBACK&&>(Callback));
+        }
+
+        xforceinline static const std::thread::id _getID(void) noexcept
+        {
+            return std::this_thread::get_id();
+        }
+
+        std::atomic<std::thread::id>    m_FullThreadID      {};
+        std::int16_t                    m_EnteringCount     {0};
+        semaphore                       m_Semaphore         {};
     };
 
     //------------------------------------------------------------------------------------------
