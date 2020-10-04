@@ -11,14 +11,15 @@ namespace xcore::lock
     //------------------------------------------------------------------------------
     struct spin_reentrance
     {
-        xforceinline void lock(void) noexcept
+        template< typename T_CALLBACK = void(*)() >
+        xforceinline void lock( T_CALLBACK&& Callback = []()constexpr {} ) noexcept
         {
             const auto Id = _getID();
 
             if (_TryLock(Id) == false)
             {
                 XCORE_PERF_ZONE_SCOPED_NC("Re-entrance spin Lock is Spinning and waiting", tracy::Color::ColorType::Red);
-                while (_TryLock(Id) == false);
+                while (_TryLock(Id) == false) Callback();
             }
         }
 
@@ -85,13 +86,14 @@ namespace xcore::lock
     //------------------------------------------------------------------------------
     struct spin
     {
-        xforceinline void lock( void ) noexcept
+        template< typename T_CALLBACK = void(*)() >
+        xforceinline void lock(T_CALLBACK&& Callback = []()constexpr{} ) noexcept
         {
             if( m_Lock.exchange(true, std::memory_order_acquire) )
             {
                 XCORE_PERF_ZONE_SCOPED_NC("Lock is Spinning and waiting", tracy::Color::ColorType::Red);
                 const auto Id = _getID();
-                while( _TryLock(Id) == false );
+                while( _TryLock(Id) == false ) Callback();
             }
         }
 
@@ -204,7 +206,8 @@ namespace xcore::lock
         inline bool isLockedDebug(void) const noexcept { return m_Lock.load(std::memory_order_relaxed).m_nLocks; }
 
         // Writer lock
-        inline void lock( void ) noexcept
+        template< typename T_CALLBACK = void(*)() >
+        inline void lock(T_CALLBACK&& Callback = []()constexpr {}) noexcept
         {
             auto p = m_Lock.load( std::memory_order_relaxed );
             do 
@@ -220,6 +223,7 @@ namespace xcore::lock
                             if( p.m_nLocks ) 
                             {
                                 // Spin...
+                                Callback();
                                 p = m_Lock.load( std::memory_order_relaxed );
                             }
                             else if( m_Lock.compare_exchange_weak( p, thelock{ p.m_nLocks+1u, p.m_nWaitingWritters, 1u } ) ) goto LOCKED;
@@ -247,7 +251,8 @@ namespace xcore::lock
         }
 
         // Reader lock
-        inline void lock( void ) const noexcept
+        template< typename T_CALLBACK = void(*)() >
+        inline void lock(T_CALLBACK&& Callback = []()constexpr {}) const noexcept
         {
             auto p = m_Lock.load( std::memory_order_relaxed );
             do 
@@ -257,6 +262,7 @@ namespace xcore::lock
                     XCORE_PERF_ZONE_SCOPED_NC( "Waiting to access for reading", tracy::Color::ColorType::Red )
                     do 
                     {
+                        Callback();
                         // Spin...
                         p = m_Lock.load( std::memory_order_relaxed );
                     } while (p.m_nWaitingWritters);
@@ -303,12 +309,14 @@ namespace xcore::lock
             } while( false == m_Lock.compare_exchange_weak( p, thelock{ p.m_nLocks-1u, p.m_nWaitingWritters, 0u } ) );
         }
 
-        inline xcore::err ExclusiveWriteLock( void ) noexcept
+        template< typename T_CALLBACK = void(*)() >
+        inline xcore::err ExclusiveWriteLock(T_CALLBACK&& Callback = []()constexpr {}) noexcept
         {
             auto p = m_Lock.load( std::memory_order_relaxed );
             do 
             {
                 if( p.m_nLocks || p.m_nWaitingWritters ) return xerr_failure_s( "Fail to exclusively lock for writing. There are other locks pending in xcore::semaphore");
+                Callback();
             } while( false == m_Lock.compare_exchange_weak( p, thelock{ 1u, 1u, 1u } ) );
 
             return {};
@@ -334,9 +342,11 @@ namespace xcore::lock
     {
     public:
 
-        constexpr scope( T& Lock ) noexcept : m_Lock(Lock) 
+        // Callback used when it is waiting to lock, one call per try
+        template< typename T_CALLBACK = void(*)() >
+        constexpr scope( T& Lock, T_CALLBACK&& Callback = []()constexpr {} ) noexcept : m_Lock(Lock)
         { 
-            m_Lock.lock();  // lock the mutex in the constructor
+            m_Lock.lock(Callback);  // lock the mutex in the constructor
         }
 
         inline ~scope( void ) 
