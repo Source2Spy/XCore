@@ -167,7 +167,8 @@ namespace xcore::lock
 
         // Writer lock
         template< typename T_CALLBACK = void(*)() >
-        inline void lock(T_CALLBACK&& Callback = []()constexpr {}) noexcept
+        inline
+        void lock(T_CALLBACK&& Callback = []()constexpr {}) noexcept
         {
             auto p = m_Lock.load( std::memory_order_relaxed );
             do 
@@ -385,7 +386,7 @@ namespace xcore::lock
 
     protected:
 
-        T_CLASS m_Class;
+        T_CLASS             m_Class;
     };
 
 }

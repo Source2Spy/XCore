@@ -113,10 +113,10 @@ namespace xcore::bits
     {
         //------------------------------------------------------------------------------
         template< typename T > constexpr xforceinline
-        int NextPowOfTwo( const T x, const int s ) noexcept
+        T NextPowOfTwo( const T x, const int s ) noexcept
         {
             static_assert( std::is_integral<T>::value, "" );
-            return static_cast<int>( ( s == 0 ) ? 1 + x : details::NextPowOfTwo<T>( x | (x >> s), s>>1 ) );
+            return static_cast<T>( ( s == 0 ) ? 1 + x : details::NextPowOfTwo<T>( x | (x >> s), s>>1 ) );
         }
     }
 
@@ -178,7 +178,7 @@ namespace xcore::bits
     //      RoundToNextPowOfTwo(3) == 4   // The next power from #3 is #4
     //------------------------------------------------------------------------------
     template< typename T> constexpr xforceinline
-    int RoundToNextPowOfTwo( const T x ) noexcept
+    T RoundToNextPowOfTwo( const T x ) noexcept
     { 
         static_assert( std::is_integral<T>::value, "" ); 
         return ( x == 0 ) ? 0 : details::NextPowOfTwo<T>( x - 1, static_cast<int>(4*sizeof(T)) ); 
