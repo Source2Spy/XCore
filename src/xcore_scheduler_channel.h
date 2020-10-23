@@ -19,6 +19,8 @@ namespace xcore::scheduler
         xcore_rtti( channel, trigger_base )
 
         inline                  channel         ( xcore::string::const_universal Name, int MaxSimultaneousJobs = -1, scheduler::system& S = xcore::get().m_Scheduler ) noexcept;
+        inline      void        setupPriority   ( priority Priority ) noexcept { m_Priority = Priority; }
+        inline      void        setupAfinity    ( affinity Affinity ) noexcept { m_Affinity = Affinity; }
         virtual                ~channel         ( void )                                    noexcept;
         template< typename T >
         inline      void        SubmitJob       ( T&& func )                                noexcept;
@@ -79,6 +81,8 @@ namespace xcore::scheduler
         std::atomic<state>                                                  m_ProcessState  {};
         xcore::lockless::pool::mpmc_bounded_dynamic<details::lambda_job>&   m_Pool;
         const int                                                           m_nMaxJobs;
+        priority                                                            m_Priority = priority::NORMAL;
+        affinity                                                            m_Affinity = affinity::NORMAL;
         const xcore::string::const_universal                                m_Name;
 
         friend struct scheduler::details::lambda_job;
