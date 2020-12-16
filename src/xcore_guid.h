@@ -86,7 +86,7 @@ namespace xcore::guid
         constexpr                           unit                ( const char (&Str)[N] )                                        noexcept : m_Value{ xcore::crc<64>::FromString(Str).m_Value, xcore::crc<64>::FromString(Str+1).m_Value }{}
         constexpr                           unit                ( std::nullptr_t )                                              noexcept : m_Value{ 0u, 0u }{}
         constexpr explicit                  unit                ( std::uint64_t High, std::uint64_t Low )                       noexcept : m_Value{ High, Low }{}
-        constexpr explicit                  unit                ( xcore::not_null_t )                                           noexcept : m_Value{ []{ std::array<std::uint64_t,2> Value; std::memcpy( &Value, &details::Generate<128>(), sizeof(m_Value) ); return Value; }() } {}
+        constexpr explicit                  unit                ( xcore::not_null_t )                                           noexcept : m_Value{ []{ std::array<std::uint64_t,2> Value; std::memcpy( Value.data(), details::Generate<128>().data(), sizeof(m_Value) ); return Value; }() } {}
         constexpr            bool           operator ==         ( const unit A )                                        const   noexcept { return m_Value[0] == A.m_Value[0] && m_Value[1] == A.m_Value[1]; }
         constexpr            bool           operator !=         ( const unit A )                                        const   noexcept { return m_Value[0] != A.m_Value[0] || m_Value[1] != A.m_Value[1]; }
         constexpr            bool           operator <          ( const unit A )                                        const   noexcept { return m_Value[0] == A.m_Value[0] ? m_Value[1] <  A.m_Value[1] : m_Value[0] < A.m_Value[0]; }
@@ -96,7 +96,7 @@ namespace xcore::guid
         constexpr            bool           isValid             ( void )                                                const   noexcept { return !! ( m_Value[0] | m_Value[1] );  }
         constexpr            bool           isNull              ( void )                                                const   noexcept { return 0 == ( m_Value[0] | m_Value[1] );  }
         inline               void           setNull             ( void )                                                        noexcept { m_Value[0] = m_Value[1] = 0; }
-        inline               void           Reset               ( void )                                                        noexcept { std::memcpy( &m_Value, &details::Generate<128>(), sizeof(m_Value) ); }
+        inline               void           Reset               ( void )                                                        noexcept { std::memcpy( m_Value.data(), details::Generate<128>().data(), sizeof(m_Value) ); }
         template< typename T_CHAR >
         inline              void            setFromStringHex    ( const T_CHAR* pStr )                                          noexcept { m_Value[0] = string::ToGuid( pStr ); m_Value[1] = string::ToGuid( pStr+1 ); }
         template< typename T_CHAR >
