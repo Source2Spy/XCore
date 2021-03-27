@@ -96,7 +96,7 @@ namespace xcore::guid
         constexpr            bool           isValid             ( void )                                                const   noexcept { return !! ( m_Value[0] | m_Value[1] );  }
         constexpr            bool           isNull              ( void )                                                const   noexcept { return 0 == ( m_Value[0] | m_Value[1] );  }
         inline               void           setNull             ( void )                                                        noexcept { m_Value[0] = m_Value[1] = 0; }
-        inline               void           Reset               ( void )                                                        noexcept { std::memcpy( m_Value.data(), details::Generate<128>().data(), sizeof(m_Value) ); }
+        inline               void           Reset               ( void )                                                        noexcept { std::memcpy( m_Value.data(), details::Generate<128>().m128i_u64, sizeof(m_Value) ); }
         template< typename T_CHAR >
         inline              void            setFromStringHex    ( const T_CHAR* pStr )                                          noexcept { m_Value[0] = string::ToGuid( pStr ); m_Value[1] = string::ToGuid( pStr+1 ); }
         template< typename T_CHAR >

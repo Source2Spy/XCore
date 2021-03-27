@@ -5,6 +5,12 @@
 namespace xcore::types
 {
     //-------------------------------------------------------------------------------------------------------
+    // Helper to force a computed value to be a constant expression
+    //-------------------------------------------------------------------------------------------------------
+    template< auto T_VALUE >
+    constexpr static auto value = T_VALUE;
+
+    //-------------------------------------------------------------------------------------------------------
     // Select the first type of a parameter list
     //-------------------------------------------------------------------------------------------------------
     namespace details
@@ -529,6 +535,23 @@ namespace xcore::types
     }
 
     template< typename T > constexpr static bool is_defined_v = details::is_defined<T>::value;
+
+    //--------------------------------------------------------------------------------------------
+    // Checks if an object has member function
+    //--------------------------------------------------------------------------------------------
+
+    // This needs to be put outside the query and it will be used later on for the query itself
+    #define define_has_member(member_name)                                                              \
+        template <typename T>                                                                           \
+        struct has_member_##member_name                                                                 \
+        {                                                                                               \
+            template <typename U> static std::true_type  test(decltype(&U::member_name));               \
+            template <typename U> static std::false_type test(...);                                     \
+            static constexpr bool value = std::is_same_v<decltype(test<T>(nullptr)), std::true_type>;   \
+        };
+
+    // This macro is the one used the do the actual query and it will give the answer directly as true/false
+    #define has_member(class_, member_name)  has_member_##member_name<class_>::value
 
     //--------------------------------------------------------------------------------------------
     // 

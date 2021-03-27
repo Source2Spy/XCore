@@ -251,7 +251,7 @@ namespace xcore::function
 
 namespace xcore
 {
-    template< typename T >
-    using func = function::buffer<bits::Log2IntRoundUp(sizeof(xcore::function::buffer<7, void(void)>)), T >;
+    template< typename T_FUNCTION_SIGNATURE >
+    using func = function::buffer<bits::Log2IntRoundUp(sizeof(xcore::function::buffer<7, void(void)>)), T_FUNCTION_SIGNATURE >;
 }
 #endif
