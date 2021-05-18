@@ -1,4 +1,4 @@
-<img src="https://i.imgur.com/thGy32h.jpg" align="right" width="250px" />
+<img src="https://i.imgur.com/thGy32h.jpg" align="right" width="200px" />
 
 # xCore (Version: 1.0-Alpha)
 <!---
@@ -31,9 +31,17 @@ so:
 
 
 ## How to build?
-Go to the build directory and run: UpdateDependencies.bat
-After it is successfull you should be load the example project(Examples.vs2019).
+Go to the build directory and run: **xcore\builds\UpdateDependencies.bat**
+<br>
+After it is successfull you should be able to load the example project **xcore\builds\XCORE-Examples.vs2019\XCORE-Examples.sln**.
 
+## Dependencies
+
+- [Properties](https://gitlab.com/LIONant/properties)
+- [Span](https://github.com/tcbrindle/span)
+- [Meow Hash](https://github.com/RedSpah/meow_hash_cpp)
+- [lz4](https://github.com/lz4/lz4)
+- [Tracy](https://github.com/wolfpld/tracy)
 
 ## Other Notes
 
