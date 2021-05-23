@@ -69,10 +69,10 @@ namespace xcore::math
         if( !(m_Min.isValid() && m_Max.isValid()) )
             return false;
 
-        if( !(m_Min.getMin( m_Max ) == m_Min) ) 
+        if( !( reinterpret_cast<const vector3d&>(m_Min.getMin( m_Max )) == m_Min) ) 
             return false;
 
-        return m_Max.getMax( m_Min ) == m_Max;
+        return reinterpret_cast<const vector3d&>(m_Max.getMax( m_Min )) == m_Max;
     }
 
     //------------------------------------------------------------------------------

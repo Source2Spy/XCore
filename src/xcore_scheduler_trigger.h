@@ -42,7 +42,7 @@ namespace xcore::scheduler
         std::atomic<bool>*              m_pNotifyVar                { nullptr };
         std::atomic<std::uint16_t>      m_NotificationCounter       { 0 };
         std::uint16_t                   m_NotificationResetCounter  { 0 };
-        definition                      m_Definition                { 0 };
+        xcore::scheduler::definition    m_Definition                {};
 
     protected:
 
