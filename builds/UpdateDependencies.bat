@@ -58,7 +58,7 @@ IF EXIST "%MSBUILD%" (
     GOTO :DOWNLOAD_DEPENDENCIES
     )
 echo Failed to find MSBuild!!! 
-GOTO :PAUSE
+GOTO :ERROR
 
 :DOWNLOAD_DEPENDENCIES
 powershell write-host -fore White ------------------------------------------------------------------------------------------------------
@@ -68,22 +68,27 @@ powershell write-host -fore White ----------------------------------------------
 echo.
 rmdir "../dependencies/tracy" /S /Q
 git clone --recursive https://github.com/wolfpld/tracy "../dependencies/tracy"
-if %ERRORLEVEL% GEQ 1 goto :PAUSE
+if %ERRORLEVEL% GEQ 1 goto :ERROR
 
 echo.
 rmdir "../dependencies/properties" /S /Q
 git clone https://gitlab.com/LIONant/properties.git "../dependencies/properties"
-if %ERRORLEVEL% GEQ 1 goto :PAUSE
+if %ERRORLEVEL% GEQ 1 goto :ERROR
 
 echo.
 rmdir "../dependencies/span" /S /Q
 git clone https://github.com/tcbrindle/span.git "../dependencies/span"
-if %ERRORLEVEL% GEQ 1 goto :PAUSE
+if %ERRORLEVEL% GEQ 1 goto :ERROR
 
 echo.
 rmdir "../dependencies/meow_hash_cpp" /S /Q
 git clone https://github.com/RedSpah/meow_hash_cpp "../dependencies/meow_hash_cpp"
-if %ERRORLEVEL% GEQ 1 goto :PAUSE
+if %ERRORLEVEL% GEQ 1 goto :ERROR
+
+echo.
+rmdir "../dependencies/zstd" /S /Q
+git clone https://github.com/facebook/zstd.git "../dependencies/zstd"
+if %ERRORLEVEL% GEQ 1 goto :ERROR
 
 rem This may be needed at some point but right now we are not looking for too high speed of Compression.
 rem A better ratio with still fast decompression is prefer.
@@ -95,18 +100,44 @@ powershell write-host -fore White ----------------------------------------------
 powershell write-host -fore White XCORE - COMPILING DEPENDENCIES
 powershell write-host -fore White ------------------------------------------------------------------------------------------------------
 
+powershell write-host -fore Cyan zstad: Updating...
+"%VSPATH%\Common7\IDE\devenv.exe" "%CD%\..\dependencies\zstd\build\VS2010\zstd.sln" /upgrade
+if %ERRORLEVEL% GEQ 1 goto :ERROR
+
+rem Forcely change the warning as errors as false
+powershell -Command "(gc "%CD%\..\dependencies\zstd\build\VS2010\libzstd\libzstd.vcxproj") -replace '<TreatWarningAsError>true</TreatWarningAsError>', '<TreatWarningAsError>false</TreatWarningAsError>' | Out-File -encoding ASCII "%CD%\..\dependencies\zstd\build\VS2010\libzstd\libzstd.vcxproj""
+
+echo.
+powershell write-host -fore Cyan zstad Release: Compiling...
+"%MSBUILD%" "%CD%\..\dependencies\zstd\build\VS2010\zstd.sln" /t:libzstd /p:configuration=Release /p:Platform="x64" /verbosity:minimal 
+if %ERRORLEVEL% GEQ 1 goto :ERROR
+
+echo.
+powershell write-host -fore Cyan zstad Debug: Compiling...
+"%MSBUILD%" "%CD%\..\dependencies\zstd\build\VS2010\zstd.sln" /t:libzstd /p:configuration=Debug /p:Platform="x64" /verbosity:minimal 
+if %ERRORLEVEL% GEQ 1 goto :ERROR
+
+
+
+
 cd "..\dependencies\tracy\vcpkg"
 call "install_vcpkg_dependencies.bat"
-if %ERRORLEVEL% GEQ 1 goto :PAUSE
+if %ERRORLEVEL% GEQ 1 goto :ERROR
 cd %XCORE_PATH%
 
 "%MSBUILD%" "%CD%\..\dependencies\tracy\profiler\build\win32\Tracy.sln" /p:configuration=Release /p:Platform="x64" /verbosity:minimal 
-if %ERRORLEVEL% GEQ 1 goto :PAUSE
+if %ERRORLEVEL% GEQ 1 goto :ERROR
 
 :DONE
 powershell write-host -fore White ------------------------------------------------------------------------------------------------------
 powershell write-host -fore White XCORE - SUCCESSFULLY DONE!!
 powershell write-host -fore White ------------------------------------------------------------------------------------------------------
+goto :PAUSE
+
+:ERROR
+powershell write-host -fore Red ------------------------------------------------------------------------------------------------------
+powershell write-host -fore Red XCORE - FAILED!!
+powershell write-host -fore Red ------------------------------------------------------------------------------------------------------
 
 :PAUSE
 rem if no one give us any parameters then we will pause it at the end, else we are assuming that another batch file called us
