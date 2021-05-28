@@ -21,7 +21,7 @@
 ## Low Level Cross Platform Library
 <img src="https://i.imgur.com/9a5d2ee.png" align="right" width="150px" />
 
-Simple yet powerful low level API for **C++ 17**. It leverages many of the C++ features to provide a simple
+Simple yet powerful low level API for **C++ 17/20**. It leverages many of the C++ features to provide a simple
 to use API to the end user yet deliver near optimum code. The library is focus for real time applications
 so:
 
@@ -35,13 +35,29 @@ Go to the build directory and run: **xcore\builds\UpdateDependencies.bat**
 <br>
 After it is successfull you should be able to load the example project **xcore\builds\XCORE-Examples.vs2019\XCORE-Examples.sln**.
 
+## What do you need to include in your project?
+Please include:
+- xcore.h
+- xcore.cpp
+- xcore_profiler_1.cpp
+- xcore_profiler_2.cpp
+
+### Configurations
+
+xCore will want to access its configuration .h file as well as its dependencies configuration files. I have put examples of them at xcore/src/Settings.
+However you should copy those files to your own directory and change its contents at will.
+- xcore_user_settings.h (The configuration for xCore)
+- PropertyConfig.h (The configuration for properties)
+
+If you are compiling for **C++ 20** you will need to compile for debug with **/Zi** to disable the Edit and Continue as tracy is incompatible with it.
+
 ## Dependencies
 
 - [Properties](https://gitlab.com/LIONant/properties)
 - [Span](https://github.com/tcbrindle/span)
 - [Meow Hash](https://github.com/RedSpah/meow_hash_cpp)
-- [lz4](https://github.com/lz4/lz4)
 - [Tracy](https://github.com/wolfpld/tracy)
+- [zstd](http://https://github.com/facebook/zstd)
 
 ## Other Notes
 
