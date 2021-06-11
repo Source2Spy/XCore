@@ -6,9 +6,9 @@
 // Add libz libraries
 //-------------------------------------------------------------------------------------------------------
 #if _XCORE_DEBUG
-#   pragma comment(lib, "dependencies/zstd/build/VS2010/bin/x64_Debug/libzstd_static.lib")
+#   pragma comment(lib, "dependencies/zstd/build/VS2010/libzstd/bin/x64_Debug/libzstd_static.lib")
 #else
-#   pragma comment(lib, "dependencies/zstd/build/VS2010/bin/x64_Release/libzstd_static.lib")
+#   pragma comment(lib, "dependencies/zstd/build/VS2010/libzstd/bin/x64_Release/libzstd_static.lib")
 #endif
 
 

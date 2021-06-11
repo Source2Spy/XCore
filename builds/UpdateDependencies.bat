@@ -101,7 +101,7 @@ powershell write-host -fore White XCORE - COMPILING DEPENDENCIES
 powershell write-host -fore White ------------------------------------------------------------------------------------------------------
 
 powershell write-host -fore Cyan zstad: Updating...
-"%VSPATH%\Common7\IDE\devenv.exe" "%CD%\..\dependencies\zstd\build\VS2010\zstd.sln" /upgrade
+"%VSPATH%\Common7\IDE\devenv.exe" "%CD%\..\dependencies\zstd\build\VS2010\libzstd\libzstd.vcxproj" /upgrade
 if %ERRORLEVEL% GEQ 1 goto :ERROR
 
 rem Forcely change the warning as errors as false
@@ -109,12 +109,12 @@ powershell -Command "(gc "%CD%\..\dependencies\zstd\build\VS2010\libzstd\libzstd
 
 echo.
 powershell write-host -fore Cyan zstad Release: Compiling...
-"%MSBUILD%" "%CD%\..\dependencies\zstd\build\VS2010\zstd.sln" /t:libzstd /p:configuration=Release /p:Platform="x64" /verbosity:minimal 
+"%MSBUILD%" "%CD%\..\dependencies\zstd\build\VS2010\libzstd\libzstd.vcxproj" /p:configuration=Release /p:Platform="x64" /verbosity:minimal 
 if %ERRORLEVEL% GEQ 1 goto :ERROR
 
 echo.
 powershell write-host -fore Cyan zstad Debug: Compiling...
-"%MSBUILD%" "%CD%\..\dependencies\zstd\build\VS2010\zstd.sln" /t:libzstd /p:configuration=Debug /p:Platform="x64" /verbosity:minimal 
+"%MSBUILD%" "%CD%\..\dependencies\zstd\build\VS2010\libzstd\libzstd.vcxproj" /p:configuration=Debug /p:Platform="x64" /verbosity:minimal 
 if %ERRORLEVEL% GEQ 1 goto :ERROR
 
 
