@@ -6,35 +6,23 @@ namespace xcore::function
 {
     //-------------------------------------------------------------------------------------------------------
     // Determines if a type is callable
-    // Original code from: https://stackoverflow.com/questions/15393938/find-out-whether-a-c-object-is-callable
     //-------------------------------------------------------------------------------------------------------
     namespace details
     {
         template<typename T>
         struct is_callable_impl
         {
-            typedef char(&yes)[1];
-            typedef char(&no)[2];
-
-            struct Fallback { void operator()(); };
-            struct Derived : T, Fallback { };
-
-            template<typename U, U> struct Check;
-
-            template<typename>
-            static yes test(...);
-
-            template<typename C>
-            static no test(Check<void (Fallback::*)(), &C::operator()>*);
-
-            static const bool value = sizeof(test<Derived>(0)) == sizeof(yes);
+            template<auto U>     struct Check;
+            template<typename>   static std::false_type Test(...);
+            template<typename C> static std::true_type  Test(Check<&C::operator()>*);
+            constexpr static auto value = std::is_same_v< decltype(Test<T>(nullptr)), std::true_type>;
         };
 
-        template<typename T> struct is_callable : std::conditional< std::is_class<T>::value, is_callable_impl<T>, std::false_type >::type
-        { };
+        template<typename T>
+        constexpr auto is_callable_v = std::conditional_t< std::is_class<T>::value, is_callable_impl<T>, std::false_type >::value;
     }
     template<typename T>
-    constexpr bool is_callable_v = details::is_callable<T>::value;
+    constexpr auto is_callable_v = details::is_callable_v<std::decay_t<T>>;
 
     //-------------------------------------------------------------------------------------------------------
     // temporary class that hold a lambda for any clean up code

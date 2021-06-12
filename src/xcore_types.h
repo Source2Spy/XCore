@@ -142,6 +142,15 @@ namespace xcore::types
     constexpr static auto tuple_t2i_v = details::tuple_t2i< T_TYPE, T_TUPLE >::value;
 
     //------------------------------------------------------------------------------------------
+    // Creates a nullptr value given a tuple
+    //------------------------------------------------------------------------------------------
+    template< typename T_TUPLE>
+    constexpr auto null_tuple_v = static_cast<T_TUPLE*>(0);
+
+    template< typename...T_ARGS>
+    constexpr auto make_null_tuple_v = static_cast<std::tuple<T_ARGS...>*>(0);
+
+    //------------------------------------------------------------------------------------------
     // Concatenate a list of tuples into a simple one
     //------------------------------------------------------------------------------------------
     template<typename ... T_TUPLES>
