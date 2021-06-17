@@ -56,6 +56,9 @@ namespace xcore
 //---------------------------------------------------------------------------
 // including span 
 //---------------------------------------------------------------------------
+#ifdef _SPAN_
+    #error "You can not include the std::span before xcore.h (will be fix in the future)"
+#endif
 #define TCB_SPAN_NAMESPACE_NAME std
 #include "../dependencies/span/include/tcb/span.hpp"
 
