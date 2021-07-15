@@ -10,6 +10,12 @@ namespace xcore::types
     template< auto T_VALUE >
     constexpr static auto value = T_VALUE;
 
+    //--------------------------------------------------------------------------------------------
+    // Removes all attributes and references operators giving the basic underlaying type
+    //--------------------------------------------------------------------------------------------
+    template< typename T >
+    using decay_full_t = std::remove_const_t<std::remove_pointer_t<std::decay_t<T>>>;
+
     //-------------------------------------------------------------------------------------------------------
     // Select the first type of a parameter list
     //-------------------------------------------------------------------------------------------------------
@@ -268,6 +274,15 @@ namespace xcore::types
     using tuple_search_and_replace_t = typename details::tuple_search_and_replace<T_TUPLE_LIST, T_TUPLE_FIND, T_TUPLE_REPLACE>::type;
 
     //--------------------------------------------------------------------------------------------
+    // Tuple Decay Full, decays full each member of the tuple
+    //--------------------------------------------------------------------------------------------
+    template< typename T_TUPLE >
+    using tuple_decay_full_t = std::invoke_result_t
+    <   decltype( []<typename...T>(std::tuple<T...>*) -> std::tuple< xcore::types::decay_full_t<T> ... >{})
+    ,   T_TUPLE*
+    >;
+
+    //--------------------------------------------------------------------------------------------
     // Tuple visit similar to the variant visit
     //--------------------------------------------------------------------------------------------
     namespace details
@@ -433,12 +448,6 @@ namespace xcore::types
     }
     template< typename T_TYPE, typename T_VARIANT >
     constexpr static auto variant_t2i_v = details::variant_t2i< T_TYPE, T_VARIANT >::value;
-
-    //--------------------------------------------------------------------------------------------
-    // Removes all attributes and references operators giving the basic underlaying type
-    //--------------------------------------------------------------------------------------------
-    template< typename T >
-    using decay_full_t = std::remove_const_t<std::remove_pointer_t<std::decay_t<T>>>;
 
     //--------------------------------------------------------------------------------------------
     // Helpful when using variadic types
