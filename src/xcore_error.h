@@ -149,10 +149,10 @@ namespace xcore
 //-------------------------------------------------------------------------------------------------------
 // Macros to detail with error codes and such
 //-------------------------------------------------------------------------------------------------------
-#define xerr_code_s(CODE,STRING)  []() noexcept -> auto& { using t = decltype(CODE); constexpr static xcore::error::code Code{ CODE, STRING, __FILE__, 0 }; xassert(false == (xcore::err::g_bBreakOnError && xcore::err::getBreakOnError<t>())); return Code; }()
+#define xerr_code_s(CODE,STRING)  []() noexcept -> auto& { using t = decltype(CODE); constexpr static xcore::error::code Code{ CODE, STRING, __FILE__, 0 }; xassert(false == (xcore::err::g_bBreakOnError || xcore::err::getBreakOnError<t>())); return Code; }()
 #define xerr_failure_s(STRING) xerr_code_s( xcore::err::states::FAILURE, STRING )
 
-#define xerr_code(ERROR_VAR,CODE,STRING)  std::move(ERROR_VAR = []() noexcept -> auto& { using t = decltype(CODE); constexpr static xcore::error::code Code{ CODE, STRING, __FILE__, 0 }; xassert(false == (xcore::err::g_bBreakOnError && xcore::err::getBreakOnError<t>())); return Code; }())
+#define xerr_code(ERROR_VAR,CODE,STRING)  std::move(ERROR_VAR = []() noexcept -> auto& { using t = decltype(CODE); constexpr static xcore::error::code Code{ CODE, STRING, __FILE__, 0 }; xassert(false == (xcore::err::g_bBreakOnError || xcore::err::getBreakOnError<t>())); return Code; }())
 #define xerr_failure(ERROR_VAR,STRING) xerr_code( ERROR_VAR, xcore::err::states::FAILURE, STRING )
 
 #endif
