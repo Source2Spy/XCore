@@ -223,7 +223,7 @@ namespace xcore::scheduler
                 {
                     Worker.join();
                 }
-                xassert( m_nWorkersActive==1);
+              //  xassert( m_nWorkersActive==1);
             }
 
             //
