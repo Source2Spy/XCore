@@ -192,7 +192,7 @@ namespace xcore::allocator
                 #endif
                 if( m_pData == nullptr ) 
                 {
-                    new( this ) xcore::span<value_type>( nullptr, static_cast<std::size_t>( 0 ) );
+                    new( this ) xcore::span<value_type>();
                     return xerr_code( Error, error_state::OUT_OF_MEMORY, "Memory Allocation Failure" );
                 }
                 m_Count = Count;

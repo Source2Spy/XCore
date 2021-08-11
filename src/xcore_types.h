@@ -276,9 +276,15 @@ namespace xcore::types
     //--------------------------------------------------------------------------------------------
     // Tuple Decay Full, decays full each member of the tuple
     //--------------------------------------------------------------------------------------------
+    namespace details
+    {
+        template<typename... T >
+        auto tuple_decay_full_helper(std::tuple<T...>*) -> std::tuple< xcore::types::decay_full_t<T> ... >;
+    }
+
     template< typename T_TUPLE >
     using tuple_decay_full_t = std::invoke_result_t
-    <   decltype( []<typename...T>(std::tuple<T...>*) -> std::tuple< xcore::types::decay_full_t<T> ... >{})
+    <   decltype(details::tuple_decay_full_helper<T_TUPLE>)
     ,   T_TUPLE*
     >;
 

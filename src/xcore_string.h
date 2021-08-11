@@ -513,12 +513,12 @@ namespace xcore::string
                 if constexpr( std::is_same_v<T,share_t> )      
                 {
                     p               = X->data();
-                    Size            = X->size();
+                    Size.m_Value    = static_cast<int>(X->size());
                 }
                 else
                 {
                     p               = X.get();
-                    Size.m_Value    = X.size();
+                    Size.m_Value    = static_cast<int>(X.size());
                 }
             }, m_Ref );
             return { p, Size.m_Value };

@@ -47,7 +47,6 @@ namespace xcore
     namespace file      { class device_i;  void InitSystem( std::vector<std::unique_ptr<device_i>>& ) noexcept; }
 }
 
-
 //---------------------------------------------------------------------------
 // including the profiler 
 //---------------------------------------------------------------------------
@@ -56,11 +55,10 @@ namespace xcore
 //---------------------------------------------------------------------------
 // including span 
 //---------------------------------------------------------------------------
-#ifdef _SPAN_
-    #error "You can not include the std::span before xcore.h (will be fix in the future)"
+#ifndef _SPAN_
+    #define TCB_SPAN_NAMESPACE_NAME std
+    #include "../dependencies/span/include/tcb/span.hpp"
 #endif
-#define TCB_SPAN_NAMESPACE_NAME std
-#include "../dependencies/span/include/tcb/span.hpp"
 
 //---------------------------------------------------------------------------
 // including meow hash

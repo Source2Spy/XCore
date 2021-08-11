@@ -13,7 +13,9 @@ namespace xcore
         using parent = std::span<T, T_SIZE>;
         using parent::span;
         using parent::operator [];
+#ifndef _SPAN_
         using parent::operator =;
+#endif
         using parent::data;
         using parent::size; 
 
