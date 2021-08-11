@@ -278,15 +278,17 @@ namespace xcore::types
     //--------------------------------------------------------------------------------------------
     namespace details
     {
-        template<typename... T >
-        auto tuple_decay_full_helper(std::tuple<T...>*) -> std::tuple< xcore::types::decay_full_t<T> ... >;
-    }
+        template<typename T >
+        struct tuple_decay_full_helper;
 
+        template<typename... T >
+        struct tuple_decay_full_helper<std::tuple<T...>>
+        {
+            using type = std::tuple< xcore::types::decay_full_t<T> ... >;
+        };
+    }
     template< typename T_TUPLE >
-    using tuple_decay_full_t = std::invoke_result_t
-    <   decltype(details::tuple_decay_full_helper<T_TUPLE>)
-    ,   T_TUPLE*
-    >;
+    using tuple_decay_full_t = typename details::tuple_decay_full_helper<T_TUPLE>::type;
 
     //--------------------------------------------------------------------------------------------
     // Tuple visit similar to the variant visit
