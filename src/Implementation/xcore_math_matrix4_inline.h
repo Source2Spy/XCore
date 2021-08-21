@@ -11,7 +11,7 @@ namespace xcore::math
 
     //------------------------------------------------------------------------------
 
-    constexpr const matrix4&  matrix4::Identity( void ) noexcept
+    constexpr const matrix4&  matrix4::identity( void ) noexcept
     {
         return m4_Identity;
     }
@@ -1713,63 +1713,12 @@ namespace xcore::math
     inline
     matrix4& matrix4::LookAt( const vector3& From, const vector3& To, const vector3& Up ) noexcept
     {
-        xassert( (From - To).getLengthSquared() >= 0.001f );            // It is too close from each other TODO: Fix this here
+        xassert( (To-From).getLengthSquared() >= 0.001f );            // It is too close from each other TODO: Fix this here
         xassert( math::Abs(Up.getLengthSquared() - 1.0f) <= 0.001f );       // This MUST be a unit vector
 
-        vector3 Z( (From - To).Normalize() );
-        vector3 X( Up.Cross( Z ).Normalize() );
+        vector3 Z( (To-From).Normalize() );
+        vector3 X( Z.Cross( Up ).Normalize() );
         vector3 Y( Z.Cross( X ) );
-
-    #if 0 //def _XCORE_SSE4
-        // reinterpret_cast<float*>(&m_Column1)[0] =  X.m_X;
-        // reinterpret_cast<float*>(&m_Column1)[1] =  Y.m_X;
-        // reinterpret_cast<float*>(&m_Column1)[2] =  Z.m_X;
-        // reinterpret_cast<float*>(&m_Column1)[3] =  0;
-        m_Column1 = floatx4
-        {
-            X.m_X,
-            Y.m_X,
-            Z.m_X,
-            0
-        };
-
-        // reinterpret_cast<float*>(&m_Column2)[0] =  X.m_Y;
-        // reinterpret_cast<float*>(&m_Column2)[1] =  Y.m_Y;
-        // reinterpret_cast<float*>(&m_Column2)[2] =  Z.m_Y;
-        // reinterpret_cast<float*>(&m_Column2)[3] =  0;
-        m_Column2 = floatx4
-        {
-            X.m_Y,
-            Y.m_Y,
-            Z.m_Y,
-            0
-        };
-
-        // reinterpret_cast<float*>(&m_Column3)[0] =  X.m_Z;
-        // reinterpret_cast<float*>(&m_Column3)[1] =  Y.m_Z;
-        // reinterpret_cast<float*>(&m_Column3)[2] =  Z.m_Z;
-        // reinterpret_cast<float*>(&m_Column3)[3] =  0;
-        m_Column3 = floatx4
-        {
-            X.m_Z,
-            Y.m_Z,
-            Z.m_Z,
-            0
-        };
-
-        // reinterpret_cast<float*>(&m_Column4)[0] = -X.Dot( From );
-        // reinterpret_cast<float*>(&m_Column4)[1] = -Y.Dot( From );
-        // reinterpret_cast<float*>(&m_Column4)[2] = -Z.Dot( From );
-        // reinterpret_cast<float*>(&m_Column4)[3] = 1;
-        m_Column4 = floatx4
-        {
-            -X.Dot( From ),
-            -Y.Dot( From ),
-            -Z.Dot( From ),
-            1
-        };
-
-    #else
 
         m_Cell[0][0] = X.m_X;
         m_Cell[1][0] = X.m_Y;
@@ -1789,8 +1738,6 @@ namespace xcore::math
         m_Cell[0][3] = m_Cell[1][3] = m_Cell[2][3] = 0;
         m_Cell[3][3] = 1;
 
-    #endif
-    
         return *this;
     }
 

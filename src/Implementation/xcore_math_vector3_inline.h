@@ -611,9 +611,9 @@ namespace xcore::math
         };
 
         const floatx4 A = _mm_mul_ps( _mm_shuffle_ps(   m_XYZW,   m_XYZW, _MM_SHUFFLE( W, X, Z, Y )),
-                                    _mm_shuffle_ps( V.m_XYZW, V.m_XYZW, _MM_SHUFFLE( W, Y, X, Z )) );
+                                      _mm_shuffle_ps( V.m_XYZW, V.m_XYZW, _MM_SHUFFLE( W, Y, X, Z )) );
         const floatx4 B = _mm_mul_ps( _mm_shuffle_ps(   m_XYZW,   m_XYZW, _MM_SHUFFLE( W, Y, X, Z )),
-                                    _mm_shuffle_ps( V.m_XYZW, V.m_XYZW, _MM_SHUFFLE( W, X, Z, Y )) );
+                                      _mm_shuffle_ps( V.m_XYZW, V.m_XYZW, _MM_SHUFFLE( W, X, Z, Y )) );
 
         return vector3{ _mm_sub_ps(A, B) };
 

@@ -48,7 +48,7 @@ namespace xcore::math
                                                                               const quaternion& Rotation,
                                                                               const vector3&    Translation )                                                   noexcept;
 
-        constexpr static    const matrix4&          Identity                ( void )                                                                            noexcept;
+        constexpr static    const matrix4&          identity                ( void )                                                                            noexcept;
         inline              void                    setIdentity             ( void )                                                                            noexcept;
         inline              void                    setZero                 ( void )                                                                            noexcept;
         inline              bool                    isIdentity              ( void )                                                                    const   noexcept;
