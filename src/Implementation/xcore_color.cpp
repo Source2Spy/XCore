@@ -1,0 +1,6 @@
+namespace xcore::color::details
+{
+
+
+}
+

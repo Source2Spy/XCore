@@ -144,6 +144,10 @@ namespace xcore { using namespace xcore::math; }
 // Serializer
 #include "xcore_serializer.h"
 
+// Common Graphics definitions
+#include "xcore_color.h"
+#include "xcore_bitmap.h"
+
 //---------------------------------------------------------------------------
 // Inline functions
 //---------------------------------------------------------------------------
@@ -174,6 +178,10 @@ namespace xcore { using namespace xcore::math; }
 #include "Implementation/xcore_file_inline.h"
 
 #include "Implementation/xcore_serializer_inline.h"
+
+#include "Implementation/xcore_color_inline.h"
+
+#include "Implementation/xcore_bitmap_inline.h"
 
 //---------------------------------------------------------------------------
 // END

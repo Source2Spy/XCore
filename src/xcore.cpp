@@ -21,4 +21,5 @@
 #include "Implementation/xcore_memory.cpp"
 #include "Implementation/xcore_compression.cpp"
 #include "Implementation/xcore_serializer.cpp"
+#include "Implementation/xcore_bitmap.cpp"
 
