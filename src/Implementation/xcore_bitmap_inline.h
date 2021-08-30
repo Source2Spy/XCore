@@ -115,6 +115,13 @@ namespace xcore
     }
 
     //-----------------------------------------------------------------------------------
+    constexpr   
+    float bitmap::getAspectRatio( void ) const noexcept
+    {
+        return m_Width / static_cast<float>(m_Height);
+    }
+
+    //-----------------------------------------------------------------------------------
 
     void bitmap::Copy(const bitmap& Src) noexcept
     {

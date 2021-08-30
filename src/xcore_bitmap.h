@@ -239,6 +239,8 @@ namespace xcore
                                                                         ) const noexcept;
         constexpr   std::uint64_t               getFaceSize             ( void 
                                                                         ) const noexcept;
+        constexpr   float                       getAspectRatio          ( void
+                                                                        ) const noexcept;
         inline      void                        Copy                    ( const bitmap& Src 
                                                                         ) noexcept;
 
