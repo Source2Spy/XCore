@@ -1,15 +1,15 @@
 
-constexpr std::uint32_t s_DefaultBitmapSize = 128u; 
+constexpr std::uint32_t s_DefaultBitmapSize = 256u; 
 using t_default_data = std::array<std::byte, s_DefaultBitmapSize*s_DefaultBitmapSize*sizeof(xcore::icolor) + sizeof(int) >;
 
 static const t_default_data Data = []() noexcept
 {
     t_default_data Data = {};
-    const xcore::icolor C1{ 128, 128, 128, 250 };
-    const xcore::icolor C2{ 200, 200, 200, 255 };
-    const xcore::icolor CT[] = { xcore::icolor{ 0,  70, 70, 0 }
-                               , xcore::icolor{ 0,  70,  0, 0 }
-                               , xcore::icolor{ 70, 70,  0, 0 }
+    const xcore::icolor C1{ 128, 128, 128, 255 };
+    const xcore::icolor C2{ 187, 187, 187, 255 };
+    const xcore::icolor CT[] = { xcore::icolor{ 187,  50,  50, 255 }
+                               , xcore::icolor{  50, 187,  50, 255 }
+                               , xcore::icolor{  50,  50, 187, 255 }
                                };
     const auto          nCheckers    = 8;
     const auto          CheckerSize  = s_DefaultBitmapSize/nCheckers;
@@ -34,8 +34,8 @@ static const t_default_data Data = []() noexcept
         {
             for( auto x = yy; x < (CheckerSize-1)-yy; x++)
             {
-                if( k&1) pData[ k*CheckerSize + x + s_DefaultBitmapSize*(CheckerSize-y - 1) ] += CT[k];
-                else     pData[ k*CheckerSize + x + s_DefaultBitmapSize*(CheckerSize-y - 1) ] -= CT[k];
+                if( k&1) pData[ k*CheckerSize + x + s_DefaultBitmapSize*(CheckerSize-y - 1) ] = CT[k];
+                else     pData[ k*CheckerSize + x + s_DefaultBitmapSize*(CheckerSize-y - 1) ] = CT[k];
             }
                 
             if (y&1) yy++;
