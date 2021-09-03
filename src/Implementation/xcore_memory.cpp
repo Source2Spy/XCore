@@ -1,4 +1,5 @@
 
+
 namespace xcore::memory
 {
     //----------------------------------------------------------------------------------------
@@ -17,7 +18,8 @@ namespace xcore::memory
     //----------------------------------------------------------------------------------------
     void AlignedFree(void* pData) noexcept
     {
-        xassert(pData);
+        if(pData==nullptr) return;
+        
 #if _XCORE_PLATFORM_WINDOWS
         _aligned_free(pData);
 #else
@@ -30,6 +32,7 @@ namespace xcore::memory
 //----------------------------------------------------------------------------------------
 // Custom New/Delete (We added to the profiler)
 //----------------------------------------------------------------------------------------
+#ifdef _XCORE_PROFILE
 
 // "old" unaligned overloads
 void* operator new(std::size_t size)
@@ -72,3 +75,5 @@ void operator delete(void* ptr, std::align_val_t align)
 {
     xcore::memory::AlignedFree(ptr);
 }
+
+#endif

@@ -55,9 +55,13 @@ namespace xcore
 //---------------------------------------------------------------------------
 // including span 
 //---------------------------------------------------------------------------
-#ifndef _SPAN_
-    #define TCB_SPAN_NAMESPACE_NAME std
-    #include "../dependencies/span/include/tcb/span.hpp"
+#if _HAS_CXX20
+    #include <span>
+#else
+    #ifndef _SPAN_
+        #define TCB_SPAN_NAMESPACE_NAME std
+        #include "../dependencies/span/include/tcb/span.hpp"
+    #endif
 #endif
 
 //---------------------------------------------------------------------------
