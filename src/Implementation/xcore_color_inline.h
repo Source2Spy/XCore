@@ -874,7 +874,6 @@ namespace xcore::color
     template< typename T >
     unit<T>& unit<T>::setupFromNormal( const vector3d& Normal ) noexcept
     {
-        float r,g,b;
         if constexpr (std::is_integral_v<T>)
         {
             parent_t::m_R = static_cast<element>(std::max( 0.0f, std::min(255.0f, ((Normal.m_X + 1.0f) * 127.0f) + 0.5f)));
@@ -888,7 +887,6 @@ namespace xcore::color
             parent_t::m_G = (Normal.m_Y + 1)*0.5f;
             parent_t::m_B = (Normal.m_Z + 1)*0.5f;
             parent_t::m_A = 1.0f;
-
         }
 
         return *this;
