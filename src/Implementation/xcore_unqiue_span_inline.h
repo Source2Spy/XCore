@@ -112,6 +112,15 @@ namespace xcore::allocator
 
     //--------------------------------------------------------------------------------------------
     template < typename T, typename T_COUNTER > inline
+    xcore::err unique_span<T, T_COUNTER>::copy(const xcore::span<T>& Span) noexcept
+    {
+        if( auto Err = New( Span.size() ); Err ) return Err;
+        for( int i=0; i<Span.size(); ++i ) (*this)[i] = Span[i];
+        return {};
+    }
+
+    //--------------------------------------------------------------------------------------------
+    template < typename T, typename T_COUNTER > inline
     xcore::err unique_span<T,T_COUNTER>::resize( size_type Count ) noexcept 
     {
         XCORE_PERF_ZONE_SCOPED()
@@ -134,7 +143,7 @@ namespace xcore::allocator
             {
                 if( parent::size() > Count )
                 {
-                    for( auto& E : ViewFrom(Count) ) std::destroy_at(&E);
+                    for( auto& E : parent::subspan(Count) ) std::destroy_at(&E);
                 }
             }
 
@@ -145,7 +154,7 @@ namespace xcore::allocator
             {
                 if( Count > OldCount )
                 {
-                    for( auto& E : ViewFrom(OldCount) ) new (&E) value_type{};
+                    for( auto& E : parent::subspan(OldCount) ) new (&E) value_type{};
                 }
             }
             

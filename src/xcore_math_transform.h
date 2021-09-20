@@ -17,32 +17,32 @@ namespace xcore::math
         inline void Blend( const transform3& From, const float T, const transform3& To )
         {
             m_Scale         = From.m_Scale + T*( To.m_Scale - From.m_Scale );
-            m_Rotation      = From.m_Rotation.BlendAccurate( T, To.m_Rotation );
-            m_Position      = From.m_Position + T*( To.m_Position - From.m_Position );
+            m_Rotate        = From.m_Rotate.BlendAccurate( T, To.m_Rotate );
+            m_Translate     = From.m_Translate + T*( To.m_Translate - From.m_Translate );
         }
 
         inline void Blend( const float T, const transform3& To )
         {
             m_Scale         += T*( To.m_Scale - m_Scale );
-            m_Rotation       = m_Rotation.BlendAccurate( T, To.m_Rotation );
-            m_Position      += T*( To.m_Position - m_Position );
+            m_Rotate         = m_Rotate.BlendAccurate( T, To.m_Rotate );
+            m_Translate     += T*( To.m_Translate - m_Translate );
         }
 
         inline void setIdentity( void )
         {
-            m_Position.setZero();
+            m_Translate.setZero();
             m_Scale.setup( 1.0f, 1.0f, 1.0f );
-            m_Rotation.setIdentity();
+            m_Rotate.identity();
         }
 
         inline void getMatrix( matrix4& Matrix )
         {
-            Matrix.setup( m_Scale, m_Rotation, m_Position );
+            Matrix.setup( m_Scale, m_Rotate, m_Translate );
         }
 
         vector3        m_Scale         {};
-        quaternion     m_Rotation      {};
-        vector3        m_Position      {};
+        quaternion     m_Rotate        {};
+        vector3        m_Translate     {};
     };
 
     //------------------------------------------------------------------------------

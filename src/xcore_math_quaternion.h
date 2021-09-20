@@ -25,7 +25,7 @@ namespace xcore::math
         inline              explicit                quaternion             ( const matrix4&    M )                                                  noexcept;
 
         inline              bool                    isValid                ( void )                                                         const   noexcept;
-        inline              void                    setIdentity            ( void )                                                                 noexcept;
+        inline              void                    identity               ( void )                                                                 noexcept;
         inline              void                    setZero                ( void )                                                                 noexcept;
 
         inline              quaternion&             setup                  ( float X, float Y, float Z, float W )                                   noexcept;

@@ -192,13 +192,17 @@ namespace xcore::string
     template< typename T1, typename T2 >    constexpr   auto            CopyN           ( T1& Dest, const T2& Src,  units<decltype(Src[0])> Count )                 noexcept;
     template< typename T1, typename T2 >    constexpr   auto            Copy            ( T1& Dest, const T2& Src )                                                 noexcept;
     template< typename T1, typename T2 >    constexpr   auto            Append          ( T1& Dest, const T2& Src )                                                 noexcept;
-    template< typename T1, typename T2 >    constexpr   int             CompareN        ( const T1& Dest, const T2& Src, int Count )                 noexcept;
-
+    template< typename T1, typename T2 >    constexpr   int             CompareN        ( const T1& Dest, const T2& Src, int Count )                                noexcept;
+    template< typename T1, typename T2 >    constexpr   int             FindStr         ( const T1& Where, const T2& What )                                         noexcept;
+    template< typename T1, typename T2 >    constexpr   int             CompareI        ( const T1& Str1, const T2& Str2 )                                          noexcept;
+    template< typename T1, typename T2 >    constexpr   int             Compare         ( const T1& Str1, const T2& Str2 )                                          noexcept;
+    
     template< typename... T_ARGS >
     inline      units<char>     sprintf         ( view<char> Dest, const char*, T_ARGS... Args )                                       noexcept;
 
     template< typename T_CHAR >             constexpr   std::uint64_t   ToGuid          ( const T_CHAR* const pStr )                                                noexcept;
 
+    
     template< typename T_CHAR >             constexpr   int             ToCharUpper     ( const T_CHAR C )                                                          noexcept { return( (C >= T_CHAR{'a'}) && (C <= T_CHAR{'z'}) )? C + (T_CHAR{'A'} - T_CHAR{'a'}) : C; }
     template< typename T_CHAR >             constexpr   int             ToCharLower     ( const T_CHAR C )                                                          noexcept { return( (C >= T_CHAR{'A'}) && (C <= T_CHAR{'Z'}) )? C + (T_CHAR{'a'} - T_CHAR{'A'}) : C; }
     template< typename T_CHAR >             constexpr   bool            isCharSpace     ( const T_CHAR C )                                                          noexcept { return  (C == 0x09) || (C == 0x0A) || (C == 0x0D) || (C == 32 ); }

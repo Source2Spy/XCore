@@ -32,7 +32,7 @@ namespace xcore::math
 
     //------------------------------------------------------------------------------
     inline
-    void quaternion::setIdentity( void ) noexcept
+    void quaternion::identity( void ) noexcept
     {
         *this = q_Identity;
     }
@@ -199,7 +199,7 @@ namespace xcore::math
     inline
     quaternion& quaternion::setup( const radian3& R ) noexcept
     {
-        setIdentity();
+        identity();
         RotateZ( R.m_Roll  );
         RotateX( R.m_Pitch );
         RotateY( R.m_Yaw   );

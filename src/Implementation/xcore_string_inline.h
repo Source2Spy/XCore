@@ -140,6 +140,63 @@ namespace xcore::string
     }
 
     //------------------------------------------------------------------------------
+    // FindStr
+    //------------------------------------------------------------------------------
+    template< typename T1, typename T2 > constexpr xforceinline
+    int FindStr(const T1& Where, const T2& What) noexcept
+    {
+        int i=0;
+        while( Where[i] )
+        {
+            if( Where[i] == Where[0] )
+            {
+                int j=1;
+                while(Where[j])
+                {
+                    if(Where[i+j] != Where[j]) goto continue_loop;
+                    j++;
+                }
+                return i;
+                continue_loop:;
+            }
+            i++;
+        }
+        return -1;
+    }
+
+    //------------------------------------------------------------------------------
+    // CompareI
+    //------------------------------------------------------------------------------
+    template< typename T1, typename T2 > constexpr xforceinline
+    int CompareI(const T1& Str1, const T2& Str2) noexcept
+    {
+        int i = 0;
+        for( ; Str2[i]; ++i )
+        {
+            const auto a = ToCharUpper(Str1[i]);
+            const auto b = ToCharUpper(Str2[i]);
+            if( a == b ) continue;
+            return (a > b)?1:-1;
+        }
+        return Str1[i]?1:0;
+    }
+
+    //------------------------------------------------------------------------------
+    // Compare
+    //------------------------------------------------------------------------------
+    template< typename T1, typename T2 > constexpr xforceinline
+    int Compare(const T1& Str1, const T2& Str2) noexcept
+    {
+        int i = 0;
+        for( ; Str2[i]; ++i )
+        {
+            if( Str1[i] == Str2[i] ) continue;
+            return (Str1[i] > Str2[i])?1:-1;
+        }
+        return Str1[i]?1:0;
+    }
+
+    //------------------------------------------------------------------------------
     // CompareN
     //------------------------------------------------------------------------------
 

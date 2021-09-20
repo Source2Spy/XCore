@@ -27,7 +27,6 @@ namespace xcore::allocator
         using size_type  = T_COUNTER;
         using parent     = xcore::span<T>;
 
-        unique_span& operator=(const unique_span&) = delete;
         unique_span(const unique_span&) = delete;
         constexpr unique_span() = default;
 
@@ -47,6 +46,16 @@ namespace xcore::allocator
         {
             new( &A ) xcore::span( (value_type*)nullptr, parent::size_type(0) );
         }
+
+        //--------------------------------------------------------------------------------------------
+        unique_span& operator = (unique_span&& A) noexcept
+        {
+            new(this) unique_span( std::move(A) );
+            return *this;
+        }
+
+        //--------------------------------------------------------------------------------------------
+        inline xcore::err  copy( const xcore::span<T>& Span ) noexcept;
 
         //--------------------------------------------------------------------------------------------
 
