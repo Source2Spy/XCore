@@ -196,12 +196,18 @@ namespace xcore::string
     template< typename T1, typename T2 >    constexpr   int             FindStr         ( const T1& Where, const T2& What )                                         noexcept;
     template< typename T1, typename T2 >    constexpr   int             CompareI        ( const T1& Str1, const T2& Str2 )                                          noexcept;
     template< typename T1, typename T2 >    constexpr   int             Compare         ( const T1& Str1, const T2& Str2 )                                          noexcept;
-    
+
+    template< typename T1, typename T2, typename T3 > constexpr int     FindAndReplace  ( T1& Str, const T2& FindStr, const T3& ReplaceChar )                       noexcept;
+
+    template< typename T, typename T_CHAR > constexpr   int             ReplaceChar     ( T& Str, T_CHAR FindChar, T_CHAR ReplaceChar )                             noexcept;
+    template< typename T >                  constexpr   int             CleanPath       ( T& Path )                                                                 noexcept;
+
+
+
     template< typename... T_ARGS >
     inline      units<char>     sprintf         ( view<char> Dest, const char*, T_ARGS... Args )                                       noexcept;
 
     template< typename T_CHAR >             constexpr   std::uint64_t   ToGuid          ( const T_CHAR* const pStr )                                                noexcept;
-
     
     template< typename T_CHAR >             constexpr   int             ToCharUpper     ( const T_CHAR C )                                                          noexcept { return( (C >= T_CHAR{'a'}) && (C <= T_CHAR{'z'}) )? C + (T_CHAR{'A'} - T_CHAR{'a'}) : C; }
     template< typename T_CHAR >             constexpr   int             ToCharLower     ( const T_CHAR C )                                                          noexcept { return( (C >= T_CHAR{'A'}) && (C <= T_CHAR{'Z'}) )? C + (T_CHAR{'a'} - T_CHAR{'A'}) : C; }
@@ -661,14 +667,14 @@ namespace xcore::string
     //------------------------------------------------------------------------------------
     namespace details
     {
-        template< typename T, bool B >
+        template< typename T >
         struct is_ref       : std::false_type  {};
 
         template< typename T >
-        struct is_ref<T,true> { constexpr static bool value = std::is_same_v<T, ref<T::char_t>>; };
+        struct is_ref<ref<T>> : std::true_type {};
     }
     template< typename T >
-    constexpr static bool is_ref_v = details::is_ref<T, is_obj_v<T> >::value;
+    constexpr static bool is_ref_v = details::is_ref<xcore::types::decay_full_t<T>>::value;
 
     //------------------------------------------------------------------------------------
     // is_view_v - is a particular type a view

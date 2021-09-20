@@ -154,6 +154,7 @@ namespace xcore::guid
             using parent::type;
         };
 
+        using parent::unit;
         template< std::size_t N >
         constexpr                               subgroup        ( T_GROUP Group, const char (&Str)[N] )             noexcept : parent{crc::FromString<T_GROUP::bits_size_v>(Str).m_Value, Group.m_Value} {}
         constexpr       units                   getSubgroup     ( void )                                    const   noexcept { return units  { static_cast<typename T_GROUP::type>(parent::m_Value>>T_GROUP::bits_size_v) }; }

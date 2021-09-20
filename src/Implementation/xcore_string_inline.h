@@ -182,8 +182,7 @@ namespace xcore::string
     }
 
     //------------------------------------------------------------------------------
-    // Compare
-    //------------------------------------------------------------------------------
+
     template< typename T1, typename T2 > constexpr xforceinline
     int Compare(const T1& Str1, const T2& Str2) noexcept
     {
@@ -197,8 +196,6 @@ namespace xcore::string
     }
 
     //------------------------------------------------------------------------------
-    // CompareN
-    //------------------------------------------------------------------------------
 
     template< typename T1, typename T2 > constexpr   
     int CompareN( const T1& Dest, const T2& Src, int Count ) noexcept
@@ -211,6 +208,131 @@ namespace xcore::string
             if (A > B) return 1;
             if (A == 0) return 0;
         }
+        return 0;
+    }
+
+    //------------------------------------------------------------------------------
+
+    template< typename T, typename T_CHAR > constexpr 
+    int ReplaceChar( T& Str, T_CHAR FindChar, T_CHAR ReplaceChar ) noexcept
+    {
+        int i = 0;
+        for (; Str[i]; ++i)
+        {
+            if (Str[i] == FindChar) Str[i] = ReplaceChar;
+        }
+        return i;
+    }
+
+    //------------------------------------------------------------------------------
+
+    template< typename T > constexpr
+    int CleanPath( T& Path ) noexcept
+    {
+        using char_t = decltype(Path[0]);
+
+        // Convert to the right path symbol
+        int l = ReplaceChar( Path, char_t('\\'), char_t('/') );
+
+        // Remove any duplicate symbols
+        if constexpr( std::is_same_v<char, char_t> )
+        {
+            for( int i = FindAndReplace( Path, "//", "/" ); i != l; i = l );
+        }
+        else
+        {
+            for( int i = FindAndReplace( Path, L"//", L"/" ); i != l; i = l );
+        }
+
+        // Go up if requested
+        int pos = 0;
+        int x   = 0;
+        constexpr auto pStr = []{if constexpr (std::is_same<char, char_t>::value) return "/.."; else return L"/..";}();
+
+        for( int i=0; Path[i]; ++i )
+        {
+            if( pStr[x] != Path[i] ) x=0;
+            if( pStr[x] == Path[i] ) x++;
+
+            if( x == 3 )
+            {
+                // remove one path
+                for( int y = pos - 3; y && Path[y]; --y )
+                {
+                    if( Path[y] == char_t('/') )
+                    {
+                        pos = y;
+                        break;
+                    }
+                    X_CMD_DEBUG( Path[y] = char_t('X') );
+                }
+                x = 0;
+            }
+            else
+            {
+                Path[ pos++ ] = Path[ i ];
+            }
+        }
+
+        Path[ pos ] = 0;
+
+        return pos;
+    }
+
+    //------------------------------------------------------------------------------
+
+    template< typename T1, typename T2, typename T3 > constexpr
+    int FindAndReplace( T1& Str, const T2& FindStr, const T3& ReplaceChar ) noexcept
+    {
+        static_assert( sizeof(decltype(Str[0])) == sizeof(decltype(FindStr[0])) );
+        static_assert( sizeof(decltype(Str[0])) == sizeof(decltype(ReplaceChar[0])) );
+
+        const int LenFindStr        = Length(FindStr).m_Value;
+        const int LenReplaceChar    = Length(ReplaceChar).m_Value;
+        
+        if( LenFindStr >= LenReplaceChar )
+        {
+            xassert(Str.isValid());
+            int w = 0, r = 0;
+            while( Str[r] )
+            {
+                if( Str[r] == FindStr[0] )
+                {
+                    int j = 0;
+                    for( ; j<LenFindStr; j++)
+                    {
+                        if( Str[r+j] != FindStr[j] )
+                            break;
+                    }
+
+                    if( j == LenFindStr )
+                    {
+                        for( int k = 0; k<LenReplaceChar; k++ )
+                            Str[w++] = ReplaceChar[k];
+
+                        // update the read cursor
+                        r += j;
+
+                        continue;
+                    }
+
+                    // not match fall through
+                }
+
+                // Copy the char
+                Str[w++] = Str[r++];
+            }
+
+            // Make sure that the last character is correctly terminated
+            Str[w++] = 0;
+            return w;
+        }
+        else
+        {
+            // We woould need to grow the Str and we currently don't support that
+            xassert(false);
+        }
+
         return 0;
     }
 

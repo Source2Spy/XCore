@@ -11,16 +11,17 @@ namespace xcore::cmdline
 
     //------------------------------------------------------------------------------------
     inline
-    cmd::handle parser::AddCmdSwitch(
-        string::const_crc<char>		        Name,
-        std::int32_t						MinArgCount,
-        std::int32_t						MaxArgCount,
-        std::int32_t						nMinTimes,
-        std::int32_t						nMaxTimes,
-        bool								MustFallowOrder,
-        type								Type,
-        bool								bMainSwitch,
-        std::int32_t						iParentID ) noexcept
+    cmd::handle parser::AddCmdSwitch
+    ( string::const_crc<char>   Name
+    , std::int32_t              MinArgCount
+    , std::int32_t              MaxArgCount
+    , std::int32_t              nMinTimes
+    , std::int32_t              nMaxTimes
+    , bool                      MustFallowOrder
+    , type                      Type
+    , bool                      bMainSwitch
+    , cmd::handle               hParentID
+    ) noexcept
     {
         cmd_def& CmdDef         = m_CmdDef.append();
 
@@ -33,7 +34,7 @@ namespace xcore::cmdline
         CmdDef.m_bFallowOrder   = MustFallowOrder;     
         CmdDef.m_Type           = Type;             
         CmdDef.m_bMainSwitch    = bMainSwitch; 
-        CmdDef.m_iParentID      = iParentID;
+        CmdDef.m_iParentID      = hParentID.m_Value;
   
         return cmd::handle{ static_cast<std::uint32_t>(m_CmdDef.size()-1) };
     }
