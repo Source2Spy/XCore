@@ -683,6 +683,10 @@ namespace xcore::string
     constexpr static bool is_view_v = details::is_view<std::decay_t<T>>::value;
 }
 
-
+namespace xcore::string
+{
+    using cstring = xcore::string::ref<char>;
+    using wstring = xcore::string::ref<wchar_t>;
+}
 
 #endif
