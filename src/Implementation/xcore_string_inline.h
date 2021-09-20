@@ -20,8 +20,7 @@ namespace xcore::string
     template< typename T > constexpr xforceinline
     auto Length( const T& Obj ) noexcept 
     { 
-        if constexpr(is_obj_v<T>)   return details::Length<T::char_t>(Obj); 
-        else                        return details::Length(Obj); 
+        return details::Length(&Obj[0]); 
     }
 
     //------------------------------------------------------------------------------
@@ -54,11 +53,19 @@ namespace xcore::string
     template< typename T1, typename T2 > constexpr xforceinline
     auto CopyN( T1& Dest, const T2& Src, units<decltype(Src[0])> Count ) noexcept 
     { 
-        // Make sure Destination is ready to get the right data
-        if constexpr(is_ref_v<T1>) Dest.ResetToSize( units<T1::char_t>{ Count.m_Value + 1 } );
 
-        if constexpr(is_obj_v<T2>)  return details::CopyN<T1::char_t,T2::char_t>(Dest,Src,Count); 
-        else                        return details::CopyN<T1::char_t>(Dest,Src,Count); 
+        if constexpr( xcore::types::is_specialized_v<std::basic_string, T1> )
+        {
+            Dest = std::string( &Src[0], Count );
+        }
+        else
+        {
+            // Make sure Destination is ready to get the right data
+            if constexpr (is_ref_v<T1>) Dest.ResetToSize(units<T1::char_t>{ Count.m_Value + 1 });
+
+            if constexpr (is_obj_v<T2>) return details::CopyN<T1::char_t>(Dest, &Src[0], Count);
+            else                        return details::CopyN<T1::char_t>(Dest, Src, Count);
+        }
     }
 
     /*
