@@ -47,13 +47,7 @@ namespace xcore::examples
             xcore::cmdline::examples::Test();
             xcore::file::examples::Tests();
             xcore::compression::examples::Test();
-        }
-
-            xcore::guid::examples::Test();
-        // wip
-        if (1)
-        {
-            // xcore::serializer::examples::Test();
+            xcore::serializer::examples::Test();
         }
     }
 }

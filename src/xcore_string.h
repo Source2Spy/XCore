@@ -4,18 +4,21 @@
 
 namespace xcore::string
 {
+    template< typename T_CHAR >
+    struct ref;
+
     //------------------------------------------------------------------------------
     // units - characters, units_chars<8> == char, units_chars<16> == wchar
     //------------------------------------------------------------------------------
     namespace details
     {
-        using size_t = std::uint32_t;
+        using units_int_t = std::uint32_t;
 
         template< typename T >
-        struct units_imp : xcore::units::type<units_imp<T>, size_t>
+        struct units_imp : xcore::units::type<units_imp<T>, units_int_t>
         {
             static_assert( std::is_same_v<T,std::decay_t<T>> );
-            using parent = xcore::units::type<units_imp<T>, size_t>;
+            using parent = xcore::units::type<units_imp<T>, units_int_t>;
             using parent::type;
             using parent::operator =;
                                             operator xcore::units::bytes    ( void )        const   noexcept { return units::bytes{ parent::m_Value * sizeof(T) }; }
@@ -132,7 +135,7 @@ namespace xcore::string
     template< typename T_CHAR, std::size_t T_SIZE_V >
     struct fixed : std::array<T_CHAR, T_SIZE_V>
     {
-        using char_t    = T_CHAR;
+        using char_t    = xcore::types::decay_full_t<T_CHAR>;
         using units     = units<char_t>;
         using parent    = std::array<T_CHAR, T_SIZE_V>;
         constexpr static units      ms_BufferSize  = units{static_cast<int>(T_SIZE_V)};
@@ -189,26 +192,27 @@ namespace xcore::string
     // String manipulations
     //------------------------------------------------------------------------------------
     template< typename T >                  constexpr   auto            Length          ( const T& Obj )                                                            noexcept;
-    template< typename T1, typename T2 >    constexpr   auto            CopyN           ( T1& Dest, const T2& Src,  units<decltype(Src[0])> Count )                 noexcept;
+    template< typename T1, typename T2 >    constexpr   auto            CopyN           ( T1& Dest, const T2& Src,  units<decltype(Dest[0])> Count )                noexcept;
     template< typename T1, typename T2 >    constexpr   auto            Copy            ( T1& Dest, const T2& Src )                                                 noexcept;
     template< typename T1, typename T2 >    constexpr   auto            Append          ( T1& Dest, const T2& Src )                                                 noexcept;
     template< typename T1, typename T2 >    constexpr   int             CompareN        ( const T1& Dest, const T2& Src, int Count )                                noexcept;
     template< typename T1, typename T2 >    constexpr   int             FindStr         ( const T1& Where, const T2& What )                                         noexcept;
     template< typename T1, typename T2 >    constexpr   int             CompareI        ( const T1& Str1, const T2& Str2 )                                          noexcept;
     template< typename T1, typename T2 >    constexpr   int             Compare         ( const T1& Str1, const T2& Str2 )                                          noexcept;
+    template< typename T, typename T_CHAR > constexpr   int             findLastInstance( const T& MainStr, const T_CHAR C )                                        noexcept;
 
-    template< typename T1, typename T2, typename T3 > constexpr int     FindAndReplace  ( T1& Str, const T2& FindStr, const T3& ReplaceChar )                       noexcept;
+    template< typename T1, typename T2, typename T3 > constexpr int     findAndReplace  ( T1& Str, const T2& FindStr, const T3& ReplaceChar )                       noexcept;
 
     template< typename T, typename T_CHAR > constexpr   int             ReplaceChar     ( T& Str, T_CHAR FindChar, T_CHAR ReplaceChar )                             noexcept;
     template< typename T >                  constexpr   int             CleanPath       ( T& Path )                                                                 noexcept;
 
+    template< typename T >                  constexpr   xcore::err      ToFullGuid      ( std::array<std::uint64_t,2>& FullGuid, const T& Path )                    noexcept;
+    template< typename T >                  constexpr   std::uint64_t   ToGuid          ( const T& Str )                                                            noexcept;
+    template< typename T_CHAR, typename T > constexpr   ref<T_CHAR>     To              ( const T& Str )                                                            noexcept;
+    template< typename T_CHAR, typename T > constexpr   ref<T_CHAR>     To              ( T Val, int Base )                                                         noexcept;
 
+    template< typename... T_ARGS >          inline      units<char>     sprintf         ( view<char> Dest, const char*, T_ARGS&&... Args )                          noexcept;
 
-    template< typename... T_ARGS >
-    inline      units<char>     sprintf         ( view<char> Dest, const char*, T_ARGS... Args )                                       noexcept;
-
-    template< typename T_CHAR >             constexpr   std::uint64_t   ToGuid          ( const T_CHAR* const pStr )                                                noexcept;
-    
     template< typename T_CHAR >             constexpr   int             ToCharUpper     ( const T_CHAR C )                                                          noexcept { return( (C >= T_CHAR{'a'}) && (C <= T_CHAR{'z'}) )? C + (T_CHAR{'A'} - T_CHAR{'a'}) : C; }
     template< typename T_CHAR >             constexpr   int             ToCharLower     ( const T_CHAR C )                                                          noexcept { return( (C >= T_CHAR{'A'}) && (C <= T_CHAR{'Z'}) )? C + (T_CHAR{'a'} - T_CHAR{'A'}) : C; }
     template< typename T_CHAR >             constexpr   bool            isCharSpace     ( const T_CHAR C )                                                          noexcept { return  (C == 0x09) || (C == 0x0A) || (C == 0x0D) || (C == 32 ); }
@@ -277,7 +281,7 @@ namespace xcore::string
         using                           cache_t         = fixed<char_t,cache_size_v>; 
         using                           unique_t        = details::unique<char_t>;
         using                           share_t         = std::shared_ptr<ref<char_t>>;
-        using                           constant_t      = constant<char_t>;
+        using                           constant_t      = constant<std::remove_const_t<char_t>>;
         using                           fixed_t         = xcore::types::make_unique<unique_t, struct fixed_tag>;
         using                           type            = std::variant< 
                                                               cache_t                           // This is a mini cache used for unique_t strings 
@@ -408,7 +412,7 @@ namespace xcore::string
             xassert(Characters.m_Value>0);
 
             // Size in number of buffer size "a" == Length/Characters == 1, == 'a/0' == Size == 2
-            const details::size_t Size = Characters.m_Value + 1;
+            const details::units_int_t Size = Characters.m_Value + 1;
 
             m_Ref.emplace<share_t>(new xcore::string::ref<char_t>{ units{Size} });
             (*this)[0]=0;
@@ -463,8 +467,8 @@ namespace xcore::string
         
         constexpr const char_t& operator[] ( units I ) const noexcept
         { 
-            xassert( empty() == false );
-            xassert( I < size() );
+            //xassert( empty() == false );
+            xassert( I.m_Value < (std::uint32_t)size() );
             const char_t* p;
             std::visit( [&]( auto& X )
             { 
@@ -477,8 +481,8 @@ namespace xcore::string
 
         char_t& operator[] ( units I ) noexcept
         { 
-            xassert( empty() == false );
-            xassert( I < size() );
+            //xassert( empty() == false );
+            xassert( I.m_Value < (std::uint32_t)size() );
             char_t* p;
             std::visit( [&]( auto& X )
             { 
@@ -500,7 +504,7 @@ namespace xcore::string
                 if constexpr( std::is_same_v<T,constant_t> )       assert(false);  //p = X.m_pValue;
                 else if constexpr( std::is_same_v<T,share_t> )      
                 {
-                    p               = X->data();
+                    p               = X->mutable_data();
                     Size.m_Value    = X->size();
                 }
                 else
@@ -533,6 +537,7 @@ namespace xcore::string
             }, m_Ref );
             return { p, Size.m_Value };
         }
+
         constexpr   const char_t*   data                                ( void )                    const   noexcept 
         { 
             const char_t* p;
@@ -544,29 +549,30 @@ namespace xcore::string
             }, m_Ref );
             return p;
         }
-        constexpr char_t* data ( void ) noexcept 
+
+        constexpr char_t* mutable_data ( void ) noexcept 
         { 
             char_t* p;
             std::visit( [&]( auto& X )
             { 
                 using T = std::decay_t<decltype( X )>;
                 if      constexpr( std::is_same_v<T,constant_t> ) assert( false );
-                else if constexpr( std::is_same_v<T,share_t> )    p = X->data();
+                else if constexpr( std::is_same_v<T,share_t> )    p = X->mutable_data();
                 else                                              p = X.get();
             }, m_Ref );
             return p;
         }
-                  const char_t*   c_str   ( void )                   const       noexcept { return data(); }
-                  char_t*   c_str   ( void )                          noexcept { return data(); }
-                  void      assign  ( const char* p )                 noexcept { Copy( *this, p ); }
-                  void      assign  ( const self& V )                 noexcept { Copy( *this, V ); }
-                  void      copy    ( char_t* p, int L )      const   noexcept { for( int i=0; i<L; ++i ) p[i] = (*this)[i]; }
-        constexpr auto      length  ( void )                  const   noexcept { return Length(*this).m_Value; }
-        constexpr auto      getView ( void )          const   noexcept { return static_cast<const string::view<const char>>(*this); }
-        constexpr auto      getView ( void )                  noexcept { return static_cast<string::view<char>>(*this); }
+                  const char_t*     c_str                               ( void )                    const   noexcept { return data(); }
+                  char_t*           c_str                               ( void )                            noexcept { return mutable_data(); }
+                  void              assign                              ( const char* p )                   noexcept { Copy( *this, p ); }
+                  void              assign                              ( const self& V )                   noexcept { Copy( *this, V ); }
+                  void              copy                                ( char_t* p, int L )        const   noexcept { for( int i=0; i<L; ++i ) p[i] = (*this)[i]; }
+        constexpr auto              length                              ( void )                    const   noexcept { return Length(*this).m_Value; }
+        constexpr auto              getView                             ( void )                    const   noexcept { return static_cast<const string::view<const char>>(*this); }
+        constexpr auto              getView                             ( void )                            noexcept { return static_cast<string::view<char>>(*this); }
 
         constexpr                   operator const char_t*              ( void )                    const   noexcept { return data(); }
-                                    operator       char_t*              ( void )                            noexcept { return data(); }
+                                    operator       char_t*              ( void )                            noexcept { return mutable_data(); }
 
     };
 
@@ -580,7 +586,7 @@ namespace xcore::string
     {
         ref<T_CHAR> Ref;
         Ref.MakeFixed( ref<T_CHAR>::units( 256 ) );
-        sprintf( Ref.getView(), pFmt, std::forward<T_ARGS>(Args)... );
+        sprintf( Ref.getView(), pFmt, std::forward<T_ARGS&&>(Args)... );
         return std::move(Ref);
     }
 

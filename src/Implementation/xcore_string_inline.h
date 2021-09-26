@@ -12,7 +12,7 @@ namespace xcore::string
             xassume( pStr );
             const T_CHAR* pEnd = pStr;
             if( pStr ) while( *pEnd++ ) {}
-            return string::units<T_CHAR>{ static_cast<details::size_t>( pEnd - pStr - 1 ) };
+            return string::units<T_CHAR>{ static_cast<details::units_int_t>( pEnd - pStr - 1 ) };
         }
     }
 
@@ -51,7 +51,7 @@ namespace xcore::string
 
     //------------------------------------------------------------------------------
     template< typename T1, typename T2 > constexpr xforceinline
-    auto CopyN( T1& Dest, const T2& Src, units<decltype(Src[0])> Count ) noexcept 
+    auto CopyN( T1& Dest, const T2& Src, units<decltype(Dest[0])> Count ) noexcept
     { 
 
         if constexpr( xcore::types::is_specialized_v<std::basic_string, T1> )
@@ -91,7 +91,7 @@ namespace xcore::string
             xassume( Dest.size() > 0 );
     
             const auto Max =  Dest.size() - 1;
-            details::size_t i;
+            details::units_int_t i;
             for( i=0; (Dest[i] = static_cast<std::decay_t<decltype(Dest[i])>>(pSrc[i])) && (i < Max); i++ );
     
             xassert_block_medium()
@@ -136,6 +136,79 @@ namespace xcore::string
             if constexpr(is_obj_v<T2>)  return details::Copy<T1::char_t,T2::char_t>(Dest,Src); 
             else                        return details::Copy<T1::char_t>(Dest,Src); 
         }
+    }
+
+    //------------------------------------------------------------------------------
+
+    template< typename T_CHAR, typename T > constexpr
+    ref<T_CHAR> To( const T& Str ) noexcept
+    {
+        ref<T_CHAR> Ref( ref<T_CHAR>::units( Length(Str).m_Value ) );
+        for( int i=0; Ref[i] = Str[i]; ++i );
+        return Ref;
+    }
+
+    //------------------------------------------------------------------------------
+
+    template< typename T_CHAR, typename T > constexpr
+    ref<T_CHAR> To( T aVal, const int Base ) noexcept
+    {
+        static_assert( std::is_integral_v<T> );
+        using t = xcore::types::to_uint_t<T>;
+        using u = typename ref<T_CHAR>::units;
+        constexpr auto  string_capacity_v   = 64;
+        auto            String              = string::ref<T_CHAR>(u(string_capacity_v) );
+        int             iCursor             = 0;
+        int             i                   = 0;
+        auto            Val                 = static_cast<t>(aVal);
+
+        xassert( Base > 2 );
+        xassert( Base <= (26+26+10) );
+
+        if constexpr ( std::is_signed_v<T> )
+        {
+            if( Val < 0 )
+            {
+                String[iCursor++] = '-';
+                i++;
+            }
+        }
+        do 
+        {
+            const auto CVal = t(Val % Base);
+            Val     /= Base;
+
+            // convert to ascii and store 
+            if ( CVal < 10 )
+            {
+                String[u(iCursor++)] = T_CHAR( CVal + T_CHAR{'0'} );
+            }
+            else if( CVal < (10+26) )
+            {
+                String[u(iCursor++)] = T_CHAR( CVal - 10 + T_CHAR{'a'} );
+            }
+            else if( CVal < (10+26+26) )
+            {
+                String[u(iCursor++)] = T_CHAR( CVal - 10 - 26 + T_CHAR{'A'} );
+            }
+            else
+            {
+                // The base is too big
+                xassert( false );
+            }
+
+        } while( Val > 0 && iCursor < string_capacity_v);
+
+        //  terminate string; 
+        String[u(iCursor)] = 0;
+
+        // Reverse string order
+        for( iCursor--; iCursor > i ; i++, iCursor-- )
+        {
+            std::swap( String[u(iCursor)], String[u(i)] );
+        }
+
+        return String;
     }
 
     //------------------------------------------------------------------------------
@@ -232,23 +305,32 @@ namespace xcore::string
     }
 
     //------------------------------------------------------------------------------
+    template< typename T, typename T_CHAR > constexpr
+    int findLastInstance( const T& MainStr, const T_CHAR C ) noexcept
+    {
+        auto s = -1;
+        if(MainStr) for (int i = 0; MainStr[i]; ++i) if (MainStr[i] == C) s = i;
+        return s;
+    }
+
+    //------------------------------------------------------------------------------
 
     template< typename T > constexpr
     int CleanPath( T& Path ) noexcept
     {
-        using char_t = decltype(Path[0]);
+        using char_t = xcore::types::decay_full_t<decltype(Path[0])>;
 
         // Convert to the right path symbol
-        int l = ReplaceChar( Path, char_t('\\'), char_t('/') );
+        const int l = ReplaceChar( Path, char_t('\\'), char_t('/') );
 
         // Remove any duplicate symbols
         if constexpr( std::is_same_v<char, char_t> )
         {
-            for( int i = FindAndReplace( Path, "//", "/" ); i != l; i = l );
+            for( int i = findAndReplace( Path, "//", "/" ); i != l; i = l );
         }
         else
         {
-            for( int i = FindAndReplace( Path, L"//", L"/" ); i != l; i = l );
+            for( int i = findAndReplace( Path, L"//", L"/" ); i != l; i = l );
         }
 
         // Go up if requested
@@ -271,7 +353,7 @@ namespace xcore::string
                         pos = y;
                         break;
                     }
-                    X_CMD_DEBUG( Path[y] = char_t('X') );
+                    XCORE_CMD_ASSERT( Path[y] = char_t('X') );
                 }
                 x = 0;
             }
@@ -289,7 +371,7 @@ namespace xcore::string
     //------------------------------------------------------------------------------
 
     template< typename T1, typename T2, typename T3 > constexpr
-    int FindAndReplace( T1& Str, const T2& FindStr, const T3& ReplaceChar ) noexcept
+    int findAndReplace( T1& Str, const T2& FindStr, const T3& ReplaceChar ) noexcept
     {
         static_assert( sizeof(decltype(Str[0])) == sizeof(decltype(FindStr[0])) );
         static_assert( sizeof(decltype(Str[0])) == sizeof(decltype(ReplaceChar[0])) );
@@ -299,7 +381,7 @@ namespace xcore::string
         
         if( LenFindStr >= LenReplaceChar )
         {
-            xassert(Str.isValid());
+            xassert(Str[0]);
             int w = 0, r = 0;
             while( Str[r] )
             {
@@ -413,32 +495,78 @@ namespace xcore::string
     }
 
     template< typename... T_ARGS > inline
-    units<char> sprintf ( view<char> Dest, const char* pFmt, T_ARGS... Args ) noexcept
+    units<char> sprintf ( view<char> Dest, const char* pFmt, T_ARGS&&... Args ) noexcept
     {
-        return units<char>{ static_cast<string::details::size_t>(details::vsprintf( Dest, pFmt, xcore::arglist::out{ std::forward<T_ARGS>(Args)...} )) };
+        return units<char>{ static_cast<string::details::units_int_t>(details::vsprintf( Dest, pFmt, xcore::arglist::out{ std::forward<T_ARGS&&>(Args)...} )) };
     }
 
     //------------------------------------------------------------------------------
     // Converts a string to a guid
     //------------------------------------------------------------------------------
-    template< typename T_CHAR > constexpr
-    std::uint64_t ToGuid( const T_CHAR* const pStr ) noexcept
+    template< typename T > constexpr
+    std::uint64_t ToGuid(const T& Str ) noexcept
     {
+        using char_t = xcore::types::decay_full_t<decltype(Str[0])>;
+
         // read first part 
         std::uint64_t   N = 0;
-        T_CHAR          c = pStr[0];
-        int i = 0;
-        while((c >= T_CHAR{'0'} && c <= T_CHAR{'9'}) || (c >= T_CHAR{'a'} && c <= T_CHAR{'f'} ) || (c >= T_CHAR{'A'} && c <= T_CHAR{'F'}))
+        char_t          c = Str[0];
+        int             i = 0;
+        while((c >= char_t('0') && c <= char_t('9')) || (c >= char_t('a') && c <= char_t('f') ) || (c >= char_t('A') && c <= char_t('F')))
         {
             int v;
-            if ( c > T_CHAR{'9'} ) v = (ToCharLower(c) - T_CHAR{'a'} ) + 10;
+            if ( c > char_t('9') ) v = (ToCharLower(c) - char_t('a') ) + 10;
             else                   v = (ToCharLower(c) - '0');
             N <<= 4;
-            N  |= (v & 0xF);
-            c   = pStr[++i];
+            N |= (v & 0xF);
+            c = Str[++i];
         }
 
         return N;
+    }
+
+    //------------------------------------------------------------------------------
+
+    template< typename T > constexpr
+    xcore::err ToFullGuid( std::array<std::uint64_t, 2>& FullGuid, const T& Path ) noexcept
+    {
+        using char_t = xcore::types::decay_full_t<decltype(Path[0])>;
+
+        const auto Len = Length(Path);
+        if (Len.m_Value == 0) return xerr_failure_s( "Badly formatted Resource Full GUID for path, String was empty" );
+
+        static constexpr auto   ExpectedOther = std::array{ char_t('-'), char_t('.') };
+        static constexpr auto   Expected      = std::array{ char_t('/'), char_t('.') };
+        int                     iExpected = 0;
+        for( int i = Len.m_Value - 1; i >= 0; --i )
+        {
+            if( false == isCharHex(Path[i]) )
+            {
+                // Deal with expected strings
+                if( Expected[iExpected] != Path[i] && ExpectedOther[iExpected] != Path[i] )
+                    return xerr_failure_s( "Badly formatted Resource Full GUID for path, Unexpected characters" );
+
+                // set the resource guid
+                if( iExpected == 0)
+                {
+                    FullGuid[1] = ToGuid( &Path[i + 1] );
+                }
+                // At we at the begging of the type guid
+                else if (iExpected == 1)
+                {
+                    FullGuid[0] = ToGuid(&Path[i + 1]);
+                }
+
+                // Set the next expected character
+                iExpected++;
+            }
+        }
+
+        if (iExpected != 2)
+            return xerr_failure_s( "Badly formatted Resource Full GUID for path, Unexpected string termination" );
+
+        FullGuid[0] |= ToGuid(Path)<<32;
+        return {};
     }
 
 

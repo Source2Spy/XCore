@@ -1,8 +1,5 @@
-
-
 namespace xcore::serializer
 {
-#if 0
     //----------------------------------------------------------------------------------
     // Examples of data structures and their save functions
     //----------------------------------------------------------------------------------
@@ -26,8 +23,7 @@ namespace xcore::serializer
             xcore::array<data2, 8>  m_GoTemp;
 
             static constexpr std::uint32_t DYNAMIC_COUNT = (1024 * 1024) / sizeof(data1) + 4;
-            static constexpr std::uint32_t STATIC_COUNT = (1024 * 1024) / sizeof(data1) + 4;
-            static constexpr std::uint32_t STATIC_MAX = 0xffffffff;
+            static constexpr std::uint32_t STATIC_COUNT  = (1024 * 1024) / sizeof(data2) + 4;
 
             // Initialize all the data
             data3(void) noexcept
@@ -131,64 +127,70 @@ namespace xcore::serializer
             }
         };
     }
+}
 
+//----------------------------------------------------------------------------------
+// Examples of functions that will be used to save data.
+// Note that all saving functions must be named the same and must be in:
+// namespace xcore::serializer::io_functions
+//----------------------------------------------------------------------------------
+namespace xcore::serializer::io_functions
+{
     //----------------------------------------------------------------------------------
-    // Examples of functions that will be used to save data.
-    // Note that all saving functions must be named the same and must be in:
-    // namespace xcore::serializer::io_functions
-    //----------------------------------------------------------------------------------
-    namespace io_functions
+    template<>
+    xcore::err SerializeIO<xcore::serializer::examples::data1>(xcore::serializer::stream& Stream, const xcore::serializer::examples::data1& Data) noexcept
     {
-        //----------------------------------------------------------------------------------
-        xcore::err SerializeIO(stream& Stream, const examples::data1& Data) noexcept
-        {
-            xcore::err Error;
-            if (Stream.Serialize(Data.m_A).isError(Error)) return Error;
-            return Error;
-        }
-
-        //----------------------------------------------------------------------------------
-        xcore::err SerializeIO(stream& Stream, const examples::data2& Data) noexcept
-        {
-            xcore::err Error;
-            if (Stream.Serialize(Data.m_Count).isError(Error)) return Error;
-            if (Stream.Serialize(std::span{ Data.m_Data.m_pValue, Data.m_Count }).isError(Error)) return Error;
-            return Error;
-        }
-
-        //----------------------------------------------------------------------------------
-        xcore::err SerializeIO(stream& Stream, const examples::data3& Data) noexcept
-        {
-            xcore::err Error;
-
-            // Make sure that it is the first version
-            Stream.setResourceVersion(1);
-
-            // Tell the structure to save it self
-            if (Stream.Serialize(Data.m_GoInStatic).isError(Error)) return Error;
-
-            // Don't always need to go into structures
-            if (Stream.Serialize(Data.m_DontDynamic.m_Count).isError(Error)) return Error;
-
-            if (Stream.Serialize(Data.m_DontDynamic.m_Data.m_pValue, Data.m_DontDynamic.m_Count, mem_type::Flags( mem_type::flags::UNIQUE ) ).isError(Error)) return Error;
-
-            // Serialize the temp
-            for (auto& Temp : Data.m_GoTemp)
-            {
-                if (Stream.Serialize(Temp.m_Count).isError(Error)) return Error;
-                if (Stream.Serialize(Temp.m_Data.m_pValue, Temp.m_Count, mem_type::Flags(mem_type::flags::TEMP_MEMORY) ).isError(Error)) return Error;
-            }
-
-            // Tell our parent to save it self
-            if (SerializeIO(Stream, static_cast<const examples::data1&>(Data)).isError(Error)) return Error;
-
-            return Error;
-        }
+        xcore::err Error;
+        if (Stream.Serialize(Data.m_A).isError(Error)) return Error;
+        return Error;
     }
 
     //----------------------------------------------------------------------------------
-    // Actual code for the examples
+    template<>
+    xcore::err SerializeIO<xcore::serializer::examples::data2>(xcore::serializer::stream& Stream, const xcore::serializer::examples::data2& Data) noexcept
+    {
+        xcore::err Error;
+        if (Stream.Serialize(Data.m_Count).isError(Error)) return Error;
+        if (Stream.Serialize(Data.m_Data.m_pValue, Data.m_Count ).isError(Error)) return Error;
+        return Error;
+    }
+
     //----------------------------------------------------------------------------------
+    template<>
+    xcore::err SerializeIO<xcore::serializer::examples::data3>(xcore::serializer::stream& Stream, const xcore::serializer::examples::data3& Data) noexcept
+    {
+        xcore::err Error;
+
+        // Make sure that it is the first version
+        Stream.setResourceVersion(1);
+
+        // Tell the structure to save it self
+        if (Stream.Serialize(Data.m_GoInStatic).isError(Error)) return Error;
+
+        // Don't always need to go into structures
+        if (Stream.Serialize(Data.m_DontDynamic.m_Count).isError(Error)) return Error;
+
+        if (Stream.Serialize(Data.m_DontDynamic.m_Data.m_pValue, Data.m_DontDynamic.m_Count, xcore::serializer::mem_type::Flags(xcore::serializer::mem_type::flags::UNIQUE ) ).isError(Error)) return Error;
+
+        // Serialize the temp
+        for (auto& Temp : Data.m_GoTemp)
+        {
+            if (Stream.Serialize(Temp.m_Count).isError(Error)) return Error;
+            if (Stream.Serialize(Temp.m_Data.m_pValue, Temp.m_Count, xcore::serializer::mem_type::Flags(xcore::serializer::mem_type::flags::TEMP_MEMORY) ).isError(Error)) return Error;
+        }
+
+        // Tell our parent to save it self
+        if (SerializeIO(Stream, static_cast<const xcore::serializer::examples::data1&>(Data)).isError(Error)) return Error;
+
+        return Error;
+    }
+}
+
+//----------------------------------------------------------------------------------
+// Actual code for the examples
+//----------------------------------------------------------------------------------
+namespace xcore::serializer
+{
     namespace examples
     {
         //----------------------------------------------------------------------------------
@@ -197,6 +199,7 @@ namespace xcore::serializer
             string::constant    FileName(L"temp:/SerialFile.bin");
 
             // Save
+            if constexpr ( true )
             {
                 xcore::serializer::stream   SerialFile;
                 data3                       TheData;
@@ -207,18 +210,20 @@ namespace xcore::serializer
             }
 
             // Load
-            /*
+            if constexpr( true )
             {
-                xserialfile  SerialFile;
-                data3* pTheData;
+                xcore::serializer::stream   SerialFile;
+                data3*                      pTheData;
 
                 // This hold thing could happen in one thread
-                SerialFile.Load(FileName, pTheData);
+                if( auto Err = SerialFile.Load(FileName, pTheData); Err )
+                {
+                    xassert(false);
+                }
 
                 // Okay one pointer to nuck
-                x_delete(pTheData);
+                delete(pTheData);
             }
-            */
         }
 
         //----------------------------------------------------------------------------------
@@ -227,6 +232,5 @@ namespace xcore::serializer
             Test01();
         }
     }
-#endif
 }
 

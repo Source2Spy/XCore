@@ -1,45 +1,18 @@
-
-#if 0
-
 namespace xcore::serializer
 {
-    /*
     namespace details
     {
-        template<typename, typename T>
-        struct has_serialize 
+        template< typename T >
+        struct fun;
+
+        template< typename T_RET, typename...T_ARGS >
+        struct fun<T_RET(T_ARGS...) noexcept>
         {
-            static_assert( std::integral_constant<T, false>::value, "Second template parameter needs to be of function type." );
+            using type = T_RET;
         };
 
-        // specialization that does the checking
-
-        template<typename C, typename Ret, typename... Args>
-        struct has_serialize<C, Ret(Args...)> 
-        {
-        private:
-
-            template<typename T>
-            static constexpr auto check(T*) -> typename 
-                std::is_same< decltype( std::declval<T>().SerializeIO( xcore::file::stream& ) ),
-                             Ret    // ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-                            >::type;  // attempt to call it and see if the return type is correct
-            
-			template<typename>
-            static constexpr std::false_type check(...);
-
-            using type = decltype(check<C>(0));
-
-        public:
-            static constexpr bool value = type::value;
-        };
-    }
-    */
-
-    namespace details
-    {
         template<class T>
-        using has_serialization = decltype(std::declval<T&>().SerializeIO(std::declval<xcore::file::stream>()));
+        using has_serialization = typename fun<decltype(xcore::serializer::io_functions::SerializeIO<T>)>::type;
 
         template<class T>
         constexpr static bool has_serialization_v = xcore::types::is_detected_exact_v<xcore::err, has_serialization, T>;
@@ -102,7 +75,7 @@ namespace xcore::serializer
         //
         // Allocate the writing structure
         //
-        std::unique_ptr<writting> Write{ new writting };
+        std::unique_ptr<writing> Write{ new writing };
 
         // Assign it so it is accessible for other functions
         // but we keep the owner
@@ -166,21 +139,30 @@ namespace xcore::serializer
             static_assert(std::is_object_v<T>);
             static_assert(false == std::is_polymorphic_v<T>);
 
-            // Copy most of the data
-            stream File(*this);
+            if (isLocalVariable(reinterpret_cast<const std::byte*>(&A)))
+            {
+                //return Handle(std::span{ reinterpret_cast<const std::byte*>(&A), sizeof(T) });
+                return xcore::serializer::io_functions::SerializeIO(*this, A);
+            }
+            else
+            {
+                // Copy most of the data
+                stream File(*this);
 
-            File.m_iPack        = m_iPack;
-            File.m_ClassPos     = static_cast<std::uint32_t>(getW().Tell());
-            File.m_pClass       = &const_cast<std::byte&>(reinterpret_cast<const std::byte&>(A));
-            File.m_ClassSize    = sizeof(A);
+                xcore::units::bytes Offset;
+                if (auto Err = getW().Tell(Offset); Err)
+                    return Err;
 
-            if (xcore::serializer::io_functions::SerializeIO(File, A).isError(Error)) return Error;
+                File.m_iPack        = m_iPack;
+                File.m_ClassPos     = static_cast<std::uint32_t>(Offset.m_Value);
+                File.m_pClass       = &const_cast<std::byte&>(reinterpret_cast<const std::byte&>(A));
+                File.m_ClassSize    = sizeof(A);
 
-            // Something very strange happen. We allocated more memory space than we expected
-            //xassert( getW().Tell() <= (File.m_ClassPos + sizeof( A )) );
+                if (xcore::serializer::io_functions::SerializeIO(File, A).isError(Error)) return Error;
 
-            // Go the end of the structure 
-            return getW().SeekOrigin(File.m_ClassPos + sizeof(A));
+                // Go the end of the structure 
+                return getW().SeekOrigin(xcore::units::bytes{ File.m_ClassPos + sizeof(A) } );
+            }
         }
         else if constexpr (std::is_trivially_copyable_v<T>)
         {
@@ -225,16 +207,16 @@ namespace xcore::serializer
         //
 
         // Now loop
-        const units::bytes Count{ static_cast<std::int64_t>(Size * sizeof(T)) };
+        //const units::bytes Count{ static_cast<std::int64_t>(Size * sizeof(T)) };
 
-        for (std::int64_t i = 0; i < Count.m_Value; i++)
+        for (std::uint64_t i = 0; i < Size; i++)
         {
             if (Serialize(pView[i]).isError(Error)) return Error;
             xassert_block_basic()
             {
                 units::bytes X;
                 getW().Tell(X).CheckError();
-                xassert(X.m_Value >= i );
+                xassert(static_cast<std::uint64_t>(X.m_Value) >= i );
             }
         }
 
@@ -271,7 +253,9 @@ namespace xcore::serializer
 
         // deal with temp data
         if (m_bFreeTempData && m_pTempBlockData)
-            m_pTempBlockData->~T();
+        {
+            std::destroy_at(m_pTempBlockData);
+        }
     }
 
 
@@ -298,7 +282,7 @@ namespace xcore::serializer
         if (File.open(FileName, "rb").isError(Error)) return Error;
 
         // Load the object
-        Load(File, pObject);
+        if( Load(File, pObject).isError(Error)) return Error;
 
         // Close the file
         File.close();
@@ -327,5 +311,3 @@ namespace xcore::serializer
         return m_pWrite->m_bEndian;
     }
 }
-
-#endif

@@ -37,32 +37,119 @@ namespace xcore::file::driver::ram
 
     protected:
 
-        virtual         void*               open            (const string::view<const wchar_t> FileName, access_types Flags)        noexcept override { return new(memfile); }
-        virtual         void                close           (void* pFile)                                                           noexcept override { xassert(pFile); delete(reinterpret_cast<memfile*>(pFile)); }
-        virtual         xcore::err          Read            (void* pFile, std::span<std::byte> View)                                noexcept override { xassert(pFile); return reinterpret_cast<memfile*>(pFile)->Read(View); }
-        virtual         xcore::err          Write           (void* pFile, const std::span<const std::byte> View)                    noexcept override { xassert(pFile); return reinterpret_cast<memfile*>(pFile)->Write(View); }
-        virtual         xcore::err          Seek            (void* pFile, seek_mode Mode, units::bytes Pos)                         noexcept override ;
-        virtual         xcore::err          Tell            (void* pFile, units::bytes& Pos)                                        noexcept override { xassert(pFile); Pos.m_Value = reinterpret_cast<memfile*>(pFile)->Tell(); return {}; }
-        virtual         void                Flush           (void* pFile)                                                           noexcept override { xassert(pFile); }
-        virtual         xcore::err          Length          (void* pFile, units::bytes& L)                                          noexcept override { xassert(pFile); L.m_Value = reinterpret_cast<memfile*>(pFile)->getFileLength(); return {}; }
-        virtual         bool                isEOF           (void* pFile)                                                           noexcept override { xassert(pFile); return reinterpret_cast<memfile*>(pFile)->isEOF(); }
-        virtual         xcore::err          Synchronize     (void* pFile, bool bBlock)                                              noexcept override { xassert(pFile); return {}; }
-        virtual         void                AsyncAbort      (void* pFile)                                                           noexcept override { xassert(pFile); }
+        virtual         void*               open            (const string::view<const wchar_t> FileName, access_types Flags)        noexcept override;
+        virtual         void                close           (void* pFile)                                                           noexcept override;
+        virtual         xcore::err          Read            (void* pFile, std::span<std::byte> View)                                noexcept override;
+        virtual         xcore::err          Write           (void* pFile, const std::span<const std::byte> View)                    noexcept override;
+        virtual         xcore::err          Seek            (void* pFile, seek_mode Mode, units::bytes Pos)                         noexcept override;
+        virtual         xcore::err          Tell            (void* pFile, units::bytes& Pos)                                        noexcept override;
+        virtual         void                Flush           (void* pFile)                                                           noexcept override;
+        virtual         xcore::err          Length          (void* pFile, units::bytes& L)                                          noexcept override;
+        virtual         bool                isEOF           (void* pFile)                                                           noexcept override;
+        virtual         xcore::err          Synchronize     (void* pFile, bool bBlock)                                              noexcept override;
+        virtual         void                AsyncAbort      (void* pFile)                                                           noexcept override;
     };
+
+    //------------------------------------------------------------------------------
+    inline
+    void* device::open( const string::view<const wchar_t> FileName, access_types Flags ) noexcept 
+    { 
+        return new(memfile); 
+    }
+
+    //------------------------------------------------------------------------------
+    inline
+    void device::close (void* pFile) noexcept 
+    { 
+        xassert(pFile); 
+        auto& M = *reinterpret_cast<memfile*>(pFile);
+        delete(&M);
+    }
+
+    //------------------------------------------------------------------------------
+    inline
+    xcore::err device::Read (void* pFile, std::span<std::byte> View) noexcept 
+    { 
+        xassert(pFile); 
+        auto& M = *reinterpret_cast<memfile*>(pFile);
+        return M.Read(View);
+    }
+
+    //------------------------------------------------------------------------------
+    inline
+    xcore::err device::Write (void* pFile, const std::span<const std::byte> View) noexcept 
+    { 
+        xassert(pFile); 
+        auto& M = *reinterpret_cast<memfile*>(pFile);
+        return M.Write(View);
+    }
+
+    //------------------------------------------------------------------------------
+    inline
+    xcore::err device::Tell (void* pFile, units::bytes& Pos) noexcept 
+    { 
+        xassert(pFile); 
+        auto& M = *reinterpret_cast<memfile*>(pFile);
+        Pos.m_Value = M.Tell();
+        return {}; 
+    }
+
+    //------------------------------------------------------------------------------
+    inline
+    void device::Flush (void* pFile) noexcept 
+    { 
+        xassert(pFile); 
+    }
+
+    //------------------------------------------------------------------------------
+    inline
+    xcore::err device::Length (void* pFile, units::bytes& L) noexcept 
+    { 
+        xassert(pFile); 
+        auto& M = *reinterpret_cast<memfile*>(pFile);
+        L.m_Value = M.getFileLength();
+        return {}; 
+    }
+
+    //------------------------------------------------------------------------------
+    inline
+    bool device::isEOF (void* pFile) noexcept 
+    {
+        xassert(pFile); 
+        auto& M = *reinterpret_cast<memfile*>(pFile);
+        return M.isEOF();
+    }
+
+    //------------------------------------------------------------------------------
+    inline
+    xcore::err device::Synchronize (void* pFile, bool bBlock) noexcept 
+    { 
+        xassert(pFile); 
+        auto& M = *reinterpret_cast<memfile*>(pFile);
+        return {};
+    }
+
+    //------------------------------------------------------------------------------
+    inline
+    void device::AsyncAbort (void* pFile) noexcept 
+    { 
+        xassert(pFile);
+        auto& M = *reinterpret_cast<memfile*>(pFile);
+    }
 
     //------------------------------------------------------------------------------
 
     xcore::err device::Seek(void* pFile, seek_mode Mode, units::bytes Pos) noexcept
     {
         xassert(pFile);
-        auto pMemFile = reinterpret_cast<memfile*>(pFile);
+        auto& M = *reinterpret_cast<memfile*>(pFile);
 
         xassert(Pos.m_Value >= 0);
         switch (Mode)
         {
-        case seek_mode::SKM_ORIGIN: pMemFile->SeekOrigin(Pos.m_Value); break;
-        case seek_mode::SKM_CURENT: pMemFile->SeekCurrent(Pos.m_Value); break;
-        case seek_mode::SKM_END:    pMemFile->SeekEnd(Pos.m_Value); break;
+        case seek_mode::SKM_ORIGIN: M.SeekOrigin(Pos.m_Value); break;
+        case seek_mode::SKM_CURENT: M.SeekCurrent(Pos.m_Value); break;
+        case seek_mode::SKM_END:    M.SeekEnd(Pos.m_Value); break;
         default: xassert(0); break;
         }
 

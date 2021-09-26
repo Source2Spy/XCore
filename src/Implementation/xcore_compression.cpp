@@ -31,8 +31,8 @@ namespace xcore::compression
         case level::MEDIUM:         ZSTD_CCtx_setParameter(pCCTX, ZSTD_c_compressionLevel, ZSTD_CLEVEL_DEFAULT );   break;
         case level::HIGH:           ZSTD_CCtx_setParameter(pCCTX, ZSTD_c_compressionLevel, ZSTD_maxCLevel() );      break;
         }
-        ZSTD_CCtx_setParameter(pCCTX, ZSTD_c_srcSizeHint, (int)BlockSize);
-
+        ZSTD_CCtx_setParameter(pCCTX, ZSTD_c_srcSizeHint,      (int)SourceUncompress.size());
+        
         m_pCCTX     = (void*)pCCTX;
         m_Src       = SourceUncompress;
         m_BlockSize = BlockSize;
@@ -51,7 +51,7 @@ namespace xcore::compression
     xcore::err compress::Pack(std::uint32_t& CompressedSize, std::span<std::byte> Destination) noexcept
     {
         xassert(m_Position <= m_Src.size());
-        xassert(Destination.size() >= ZSTD_compressBound(m_BlockSize));
+        xassert(auto V = ZSTD_compressBound(m_BlockSize); Destination.size() >= V );
 
         xcore::err              Error;
         

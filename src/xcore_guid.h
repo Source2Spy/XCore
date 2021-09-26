@@ -73,7 +73,7 @@ namespace xcore::guid
         template< typename T_CHAR >
         inline              void            getStringHex        ( string::view<T_CHAR> String )                         const   noexcept { string::sprintf( String, "%llX", static_cast<std::uint64_t>(m_Value) ); }
         template< typename T_CHAR >
-        inline         string::ref<T_CHAR>  getStringHex        ( void )                                                const   noexcept { string::ref<T_CHAR> String{string::units<char>{128}}; getStringHex(String.getView()); return std::move(String); }
+        inline         string::ref<T_CHAR>  getStringHex        ( void )                                                const   noexcept { string::ref<T_CHAR> String{string::units<char>{128}}; getStringHex(String.getView()); return String; }
 
         t m_Value;
     };
@@ -135,7 +135,7 @@ namespace xcore::guid
         const string::constant<char>    m_String;
 
         template< std::size_t N >
-        constexpr                               group           ( const char (&Str)[N] )                            noexcept : m_Value{ crc::FromString<bits_size_v>(Str).m_Value }, m_String{Str} {}
+        constexpr                               group           ( const char (&Str)[N] )                            noexcept : m_Value{ crc<bits_size_v>::FromString(Str).m_Value }, m_String{Str} {}
         constexpr               bool            operator ==     ( const group X )                           const   noexcept { return m_Value == X.m_Value; }
         constexpr               bool            operator !=     ( const group X )                           const   noexcept { return m_Value != X.m_Value; }
         constexpr               bool            operator <      ( const group X )                           const   noexcept { return m_Value <  X.m_Value; }
@@ -156,7 +156,7 @@ namespace xcore::guid
 
         using parent::unit;
         template< std::size_t N >
-        constexpr                               subgroup        ( T_GROUP Group, const char (&Str)[N] )             noexcept : parent{crc::FromString<T_GROUP::bits_size_v>(Str).m_Value, Group.m_Value} {}
+        constexpr                               subgroup        ( T_GROUP Group, const char (&Str)[N] )             noexcept : parent{crc<T_GROUP::bits_size_v>::FromString(Str).m_Value, Group.m_Value} {}
         constexpr       units                   getSubgroup     ( void )                                    const   noexcept { return units  { static_cast<typename T_GROUP::type>(parent::m_Value>>T_GROUP::bits_size_v) }; }
         constexpr       T_GROUP                 getGroup        ( void )                                    const   noexcept { return T_GROUP{ static_cast<typename T_GROUP::type>(parent::m_Value) }; }
     };
@@ -193,6 +193,8 @@ namespace xcore::guid
         using h = typename parent::h;
 
         constexpr                           rcinstance          ( void )                                    noexcept = default;
+        template< std::size_t N >
+        constexpr                           rcinstance          (const char(&Str)[N])                       noexcept : parent{ xcore::crc<T_BITS_SIZE_V>::FromString(Str).m_Value | 1 } {}
         constexpr explicit                  rcinstance          ( t X )                                     noexcept : parent{ X }{ xassert(X&1); }
         constexpr explicit                  rcinstance          ( h High, h Low )                           noexcept : parent{ (static_cast<t>(High)<<(parent::bit_size_v/2)) | Low }{xassert(Low&1); }
         inline               void           Reset               ( void )                                    noexcept { parent::m_Value = details::Generate<parent::bit_size_v>() | 1; }
@@ -210,6 +212,29 @@ namespace xcore::guid
     {
         rctype<T_TYPE_BITS_SIZE_V>          m_Type;
         rcinstance<T_INSTANCE_BITS_SIZE_V>  m_Instance;
+
+        template< typename T >
+        xcore::err setupFromPath( const T& Path ) noexcept 
+        { 
+            std::array<std::uint64_t, 2> FullGuid; 
+            if( auto Err = xcore::string::ToFullGuid(FullGuid, Path ); Err ) return Err;
+            m_Instance.m_Value = FullGuid[1];
+            m_Type.m_Value     = FullGuid[0];
+            return {};
+        }
+
+        auto getPath( void ) const noexcept
+        { 
+            auto TypeA = m_Type;
+            auto TypeB = TypeA;
+            TypeA.m_Value &= 0xffffffff;
+            TypeB.m_Value >>=32;
+            return xcore::string::Fmt( "%s.%s/%s"
+            , TypeB.template getStringHex<char>().data()
+            , TypeA.template getStringHex<char>().data()
+            , m_Instance.template getStringHex<char>().data()
+            );
+        }
     };
 }
 

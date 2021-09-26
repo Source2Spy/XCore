@@ -670,11 +670,11 @@ namespace xcore::textfile::version_2
                 }
 
                 // Write the name 
-                if( m_File.WriteStr( { UserType.m_Name.data(), static_cast<string::details::size_t>(UserType.m_NameLength+1) } ).isError(Error) )
+                if( m_File.WriteStr( { UserType.m_Name.data(), static_cast<string::details::units_int_t>(UserType.m_NameLength+1) } ).isError(Error) )
                     return Error;
 
                 // Write type/s
-                if( m_File.WriteStr( { UserType.m_SystemTypes.data(), static_cast<string::details::size_t>(UserType.m_nSystemTypes+1) } ).isError(Error) )
+                if( m_File.WriteStr( { UserType.m_SystemTypes.data(), static_cast<string::details::units_int_t>(UserType.m_nSystemTypes+1) } ).isError(Error) )
                     return Error;
             }
         }
@@ -1046,7 +1046,7 @@ namespace xcore::textfile::version_2
                 {
                     auto& Column = m_Columns[i];
 
-                    if( m_File.WriteStr( string::view{ Column.m_Name.data(), static_cast<string::details::size_t>(Column.m_NameLength) } ).isError( Error ) )
+                    if( m_File.WriteStr( string::view{ Column.m_Name.data(), static_cast<string::details::units_int_t>(Column.m_NameLength) } ).isError( Error ) )
                         return Error;
 
                     if( Column.m_nTypes == -1 )
@@ -1070,7 +1070,7 @@ namespace xcore::textfile::version_2
                             if( m_File.WriteChar( ':' ).isError( Error ) )
                                 return Error;
 
-                            if( m_File.WriteStr( { Column.m_SystemTypes.data(), static_cast<string::details::size_t>(Column.m_nTypes + 1) } ).isError( Error ) )
+                            if( m_File.WriteStr( { Column.m_SystemTypes.data(), static_cast<string::details::units_int_t>(Column.m_nTypes + 1) } ).isError( Error ) )
                                 return Error;
                         }
                     }
@@ -1111,7 +1111,7 @@ namespace xcore::textfile::version_2
                             if( m_File.WriteChar( ':' ).isError(Error) )
                                 return Error;
 
-                            if( m_File.WriteStr( string::view{ DynamicFields.m_SystemTypes.data(), static_cast<string::details::size_t>(DynamicFields.m_nTypes + 1) } ).isError(Error) )
+                            if( m_File.WriteStr( string::view{ DynamicFields.m_SystemTypes.data(), static_cast<string::details::units_int_t>(DynamicFields.m_nTypes + 1) } ).isError(Error) )
                                 return Error;
                         }
 
@@ -1121,7 +1121,7 @@ namespace xcore::textfile::version_2
                         for( int n=0; n<DynamicFields.m_nTypes; ++n )
                         {
                             const auto& FieldInfo   = Column.m_FieldInfo[ DynamicFields.m_iField + n ];
-                            if( m_File.WriteData( string::view{ &m_Memory[ FieldInfo.m_iData ], static_cast<string::details::size_t>(FieldInfo.m_Width) } ).isError(Error) )
+                            if( m_File.WriteData( string::view{ &m_Memory[ FieldInfo.m_iData ], static_cast<string::details::units_int_t>(FieldInfo.m_Width) } ).isError(Error) )
                                 return Error;
                         }
                     }
@@ -1131,7 +1131,7 @@ namespace xcore::textfile::version_2
                         {
                             const auto  Index       = l*Column.m_nTypes + n;
                             const auto& FieldInfo   = Column.m_FieldInfo[ Index ];
-                            if( m_File.WriteData( string::view{ &m_Memory[ FieldInfo.m_iData ], static_cast<string::details::size_t>(FieldInfo.m_Width) } ).isError(Error) )
+                            if( m_File.WriteData( string::view{ &m_Memory[ FieldInfo.m_iData ], static_cast<string::details::units_int_t>(FieldInfo.m_Width) } ).isError(Error) )
                                 return Error;
                         }
                     }
@@ -1441,7 +1441,7 @@ namespace xcore::textfile::version_2
                         {
                             const auto& FieldInfo   = Column.m_FieldInfo[ DynamicFields.m_iField + n ];
                     
-                            if( m_File.WriteStr( string::view{ &m_Memory[ FieldInfo.m_iData ], static_cast<string::details::size_t>(FieldInfo.m_Width) } ).isError(Error) )
+                            if( m_File.WriteStr( string::view{ &m_Memory[ FieldInfo.m_iData ], static_cast<string::details::units_int_t>(FieldInfo.m_Width) } ).isError(Error) )
                                 return Error;
                                 
                             // Get ready for the next type
@@ -1475,7 +1475,7 @@ namespace xcore::textfile::version_2
                                 if( m_File.WriteChar( ' ', SubColumn.m_FormatIntWidth - FieldInfo.m_IntWidth ).isError(Error) )
                                     return Error;
 
-                                if( m_File.WriteStr( string::view{ &m_Memory[ FieldInfo.m_iData ], static_cast<string::details::size_t>(FieldInfo.m_Width) } ).isError(Error) )
+                                if( m_File.WriteStr( string::view{ &m_Memory[ FieldInfo.m_iData ], static_cast<string::details::units_int_t>(FieldInfo.m_Width) } ).isError(Error) )
                                     return Error;
 
                                 // Write spaces to reach the next sub-column
@@ -1485,7 +1485,7 @@ namespace xcore::textfile::version_2
                             else if( Column.m_SystemTypes[n] == 's' )
                             {
                                 // Left align
-                                if( m_File.WriteStr( string::view{ &m_Memory[ FieldInfo.m_iData ], static_cast<string::details::size_t>(FieldInfo.m_Width) } ).isError(Error) )
+                                if( m_File.WriteStr( string::view{ &m_Memory[ FieldInfo.m_iData ], static_cast<string::details::units_int_t>(FieldInfo.m_Width) } ).isError(Error) )
                                     return Error;
 
                                 if( m_File.WriteChar( ' ', SubColumn.m_FormatWidth - FieldInfo.m_Width ).isError(Error) )
@@ -1497,7 +1497,7 @@ namespace xcore::textfile::version_2
                                 if( m_File.WriteChar( ' ', SubColumn.m_FormatWidth - FieldInfo.m_Width ).isError(Error) )
                                     return Error;
 
-                                if( m_File.WriteStr( string::view{ &m_Memory[ FieldInfo.m_iData ], static_cast<string::details::size_t>(FieldInfo.m_Width) } ).isError(Error) )
+                                if( m_File.WriteStr( string::view{ &m_Memory[ FieldInfo.m_iData ], static_cast<string::details::units_int_t>(FieldInfo.m_Width) } ).isError(Error) )
                                     return Error;
                             }
 

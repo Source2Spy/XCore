@@ -353,8 +353,8 @@ namespace xcore::file
     xcore::err stream::Printf( const char* pFormatStr, const T_ARGS& ... Args ) noexcept
     {
         string::ref<char> Data;
-        Data.MakeUnique(512);
-        const auto c = xcore::string::sprintf( Data.getView(), pFormatStr, xarg_list(sizeof...(T_ARGS), Args...));
-        return WriteList( Data.getView().ViewTo(c) );
+        Data.MakeUnique( string::ref<char>::units(512) );
+        const auto c = xcore::string::sprintf( Data.getView(), pFormatStr, Args... );
+        return WriteView( Data.getView().ViewTo(c.m_Value) );
     }
 }

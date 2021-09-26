@@ -1,8 +1,5 @@
-
-
 namespace xcore::serializer
 {
-#if 0
     //------------------------------------------------------------------------------
     static
     void* MemoryAllocaterDefaultFunction( units::bytes Size, mem_type Flags) noexcept
@@ -32,13 +29,13 @@ namespace xcore::serializer
 
     //------------------------------------------------------------------------------
 
-    std::uint32_t stream::writting::AllocatePack( mem_type DefaultPackFlags ) noexcept
+    std::uint32_t stream::writing::AllocatePack( mem_type DefaultPackFlags ) noexcept
     {
         const string::constant Name(L"ram:\\Whatever");
 
         // Create the default pack
         auto& WPack = m_Packs.append();
-        if( auto Error = WPack.m_Data.open(Name, "w+"); Error )
+        if( auto Error = WPack.m_Data.open(Name, "wb+"); Error )
         {
             xassert(false);
             xcore::log::Output("xcore::serializer::AllocatePack Failed with (%s)", Error.getCode().m_pString);
@@ -165,16 +162,17 @@ namespace xcore::serializer
         for(std::uint32_t i = 0; i < m_pWrite->m_Packs.size(); i++ )
         {
             xcore::unique_span<std::byte>   RawData;
-            pack_writting&                  Pack = m_pWrite->m_Packs[i];
+            pack_writing&                   Pack = m_pWrite->m_Packs[i];
 
-            Pack.m_CompressSize     = 0;
-            Pack.m_BlockSize        = std::min( max_block_size_v, Pack.m_UncompressSize );
             {
                 units::bytes Length;
                 if (Pack.m_Data.getFileLength(Length).isError(Error)) return Error;
                 xassert( Length.m_Value <= std::numeric_limits<std::uint32_t>::max() );
                 Pack.m_UncompressSize = static_cast<std::uint32_t>(Length.m_Value);
             }
+
+            Pack.m_CompressSize = 0;
+            Pack.m_BlockSize = std::min(max_block_size_v, Pack.m_UncompressSize);
 
             // Copy the pack into a memory buffer
             if (RawData.New(Pack.m_UncompressSize).isError(Error)) return Error;        // This memory it is short term we should tell the mem system about it
@@ -184,31 +182,56 @@ namespace xcore::serializer
             // Now compress the memory
             //
             auto nBlocks = Pack.m_UncompressSize / Pack.m_BlockSize;
-            nBlocks += static_cast<std::uint32_t>(nBlocks * Pack.m_BlockSize) < Pack.m_UncompressSize ? 1 : 0;
+            nBlocks += static_cast<std::uint32_t>(nBlocks * Pack.m_BlockSize) == Pack.m_UncompressSize ? 0 : 1;
             if( Pack.m_CompressData.New(nBlocks * Pack.m_BlockSize + 1024*8 ).isError(Error)) return Error;
 
             // Do actual compression
+
+            auto TotalSize = 0;
+            do
             {
                 xcore::compression::compress Compress;
-                if(Compress.Init(Pack.m_BlockSize, RawData).isError(Error)) return Error;
+                const auto SelectedSize = std::min(int(RawData.size() - TotalSize), int(Pack.m_BlockSize) );
+                if(Compress.Init( Pack.m_BlockSize, RawData.ViewFromCount( TotalSize, SelectedSize) ).isError(Error)) return Error;
+                TotalSize += SelectedSize;
 
-                bool            bDone = false;
-                std::uint32_t   j;
-                for (j = 0; j < nBlocks; j++)
                 {
-                    xassert(false==bDone);
-                    if (Compress.Pack(m_pWrite->m_CSizeStream.append(), Pack.m_CompressData.ViewFrom(Pack.m_CompressSize)).isError(Error))
+                    if( Compress.Pack(m_pWrite->m_CSizeStream.append(), Pack.m_CompressData.ViewFrom(Pack.m_CompressSize)).isError(Error) )
                     {
-                        if (Error.getCode().getState<xcore::compression::compress::error_state>() != xcore::compression::compress::error_state::NOT_DONE)
+                        return Error;
+
+                        /*
+                        if( Error.getCode().getState<xcore::compression::compress::error_state>() != xcore::compression::compress::error_state::NOT_DONE)
                             return Error;
 
                         Error.clear();
+                        */
                     }
-                    else bDone = true;
+
+                    //
+                    // Verify decompression
+                    //
+                    /*
+                    {
+                        std::uint32_t DecompressSize;
+                        xcore::compression::decompress Decompress;
+                        Decompress.Init(sizeof(decompress_block)).CheckError();
+                        auto Mem = std::make_unique<decompress_block >();
+                        Decompress.Unpack( DecompressSize
+                            , std::span<std::byte>{Mem->m_Buff.data(), sizeof(decompress_block) }
+                        , std::span<std::byte>{ reinterpret_cast<std::byte*>(Pack.m_CompressData.ViewFrom(Pack.m_CompressSize).data()), m_pWrite->m_CSizeStream.last() }).CheckError();        
+                        xassert(DecompressSize == SelectedSize);
+                    }
+                    */
+
+                    //  xassert( auto LS = m_pWrite->m_CSizeStream.last(); LS <= Pack.m_BlockSize);
                     Pack.m_CompressSize += m_pWrite->m_CSizeStream.last();
                 }
-                xassert(bDone);
-            }
+
+                nBlocks--;
+            } while( TotalSize < RawData.size() );
+
+            xassert(nBlocks == 0 );
 
             //
             // Close the pack file
@@ -257,7 +280,7 @@ namespace xcore::serializer
             auto pRef           = reinterpret_cast<ref*>            (&pPack[m_pWrite->m_Packs.size()]);
             auto pBlockSizes    = reinterpret_cast<std::uint32_t*>  (&pRef[m_pWrite->m_PointerTable.size()]);
 
-            if (CompressInfoData.New(InfoData.size()).isError(Error)) return Error;
+            if (CompressInfoData.New(InfoData.size() + 1024).isError(Error)) return Error;
 
             xassert_block_basic()
             {
@@ -327,10 +350,11 @@ namespace xcore::serializer
         // Save everything into a file
         //
         std::size_t Pos;
+
         if (units::bytes BytesPos; m_pWrite->m_pFile->Tell(BytesPos).isError(Error)) return Error;
         else Pos = types::static_cast_safe<std::size_t>(BytesPos.m_Value);
 
-        if( m_pWrite->m_pFile->WriteView(std::span<std::byte>(reinterpret_cast<std::byte*>(&Header), sizeof(Header))).isError(Error)) return Error;
+        if( m_pWrite->m_pFile->WriteView(std::span(reinterpret_cast<std::byte*>(&Header), sizeof(Header))).isError(Error)) return Error;
         if( m_pWrite->m_pFile->WriteView(CompressInfoData.ViewTo(CompressInfoDataSize)).isError(Error)) return Error;
 
         for( auto& Pack : m_pWrite->m_Packs )
@@ -348,13 +372,11 @@ namespace xcore::serializer
         }
 
         // Write the size of the data
-        
-
         if(units::bytes BytesPos; m_pWrite->m_pFile->Tell(BytesPos).isError(Error)) return Error;
         else Pos = types::static_cast_safe<std::size_t>(BytesPos.m_Value) - Pos - sizeof(header);
 
         Header.m_SizeOfData = types::static_cast_safe<std::uint32_t>(Pos);
-        if (m_pWrite->m_pFile->SeekOrigin(units::bytes{ types::static_cast_safe<std::int64_t>(Pos + offsetof(header, m_SizeOfData)) }).isError(Error)) return Error;
+        if (m_pWrite->m_pFile->SeekOrigin(units::bytes{ offsetof(header, m_SizeOfData) }).isError(Error)) return Error;
 
         if (m_pWrite->m_bEndian)
         {
@@ -478,7 +500,11 @@ namespace xcore::serializer
         // Start the reading and decompressing of the packs
         //
         {
-            std::uint32_t iBlock = 0;
+            std::uint32_t                       iBlock = 0;
+            xcore::compression::decompress      Decompress;
+
+            // Initialize the decomporessor 
+            Decompress.Init(sizeof(decompress_block)).CheckError();
 
             for (std::uint32_t iPack = 0; iPack < m_Header.m_nPacks; iPack++)
             {
@@ -537,18 +563,15 @@ namespace xcore::serializer
                     xassume(pPackPointers[iPack]);
 
                     {
-                        std::uint32_t DecompressSize;
-                        xcore::compression::decompress Decompress;
-                        Decompress.Init(max_block_size_v).CheckError();
+                        std::uint32_t DecompressSize = 0;
 
                         Decompress.Unpack(DecompressSize
-                                        , std::span<std::byte>{&pPackPointers[iPack][ReadSoFar], max_block_size_v}
+                                        , std::span<std::byte>{&pPackPointers[iPack][ReadSoFar], sizeof(decompress_block)}
                                         , std::span<const std::byte>{reinterpret_cast<const std::byte*>(&ReadBuffer[!iCurrentBuffer]), pBlockSizes[iBlock - 1]}).CheckError();
-                    }
-                    //x_DecompressMem(xbuffer_view<xbyte>(&pPackPointers[iPack][ReadSoFar], MAX_BLOCK_SIZE),
-                    //    xbuffer_view<xbyte>(reinterpret_cast<xbyte*>(&ReadBuffer[!iCurrentBuffer]), pBlockSizes[iBlock - 1]));
 
-                    ReadSoFar += max_block_size_v;
+                        ReadSoFar += DecompressSize;
+                    }
+
                 }
 
                 // Finish reading the block
@@ -574,9 +597,9 @@ namespace xcore::serializer
                 {
                     std::uint32_t DecompressSize;
                     xcore::compression::decompress Decompress;
-                    Decompress.Init(max_block_size_v).CheckError();
+                    Decompress.Init(sizeof(decompress_block)).CheckError();
                     Decompress.Unpack(DecompressSize
-                                    , std::span<std::byte>{&pPackPointers[iPack][ReadSoFar], Pack.m_UncompressSize - ReadSoFar}
+                                    , std::span<std::byte>{&pPackPointers[iPack][ReadSoFar], sizeof(decompress_block) }
                                     , std::span<std::byte>{reinterpret_cast<std::byte*>(&ReadBuffer[iCurrentBuffer]), pBlockSizes[iBlock]}).CheckError();
                 }
                 // x_DecompressMem(xbuffer_view<xbyte>(&pPackPointers[iPack][ReadSoFar], Pack.m_UncompressSize - ReadSoFar),
@@ -603,5 +626,4 @@ namespace xcore::serializer
         // Return the basic pack
         return pPackPointers[0];
     }
-#endif
 }

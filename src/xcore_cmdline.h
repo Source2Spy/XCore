@@ -142,7 +142,7 @@ namespace xcore::cmdline
                                                              ,  bool                                    MustFallowOrder = false
                                                              ,  type                                    Type            = type::STRING
                                                              ,  bool                                    bMainSwitch     = false
-                                                             ,  cmd::handle                             hParentID       = cmd::handle {}
+                                                             ,  cmd::handle                             hParentID       = cmd::handle {0xffffffff}
                                                              )  noexcept;
 
                     void                ClearArguments      ( void )                                                            noexcept;

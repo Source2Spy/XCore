@@ -1,10 +1,8 @@
 #ifndef _XCORE_SERIALIZER_H
 #define _XCORE_SERIALIZER_H
 #pragma once
-
 namespace xcore::serializer
 {
-#if 0
     //------------------------------------------------------------------------------
     // Description:
     //     The xserialfile class is design for binary resources files. It is design
@@ -73,124 +71,8 @@ namespace xcore::serializer
     //                          |                |        | by the system and decompress at load time.
     //                          |                |        | The system will call a user function to allocate the memory.
     //                          +----------------+      <-+
-    //
     //</CODE>
     // Example:
-    //<CODE>
-    //    struct data1
-    //    {
-    //        void SerializeIO( xserialfile& SerialFile ) const
-    //        {
-    //            SerialFile.Serialize( m_A );
-    //        }
-    //        s16     m_A;
-    //    };
-    //    
-    //    struct data3
-    //    {
-    //        void SerializeIO( xserialfile& SerialFile ) const
-    //        {
-    //            SerialFile.Serialize( m_Count );
-    //            SerialFile.Serialize( m_pData, m_Count );
-    //        }
-    //
-    //        s32     m_Count;
-    //        data1*  m_pData;
-    //    };
-    //
-    //    struct data2 : public data1
-    //    {
-    //        // data
-    //        data3   m_GoInStatic;
-    //        data3   m_DontDynamic;
-    //    
-    //        enum
-    //        {
-    //            DYNAMIC_COUNT = 100,
-    //            STATIC_COUNT  = 100,
-    //            STATIC_MAX    = 0xffffffff
-    //        };
-    //    
-    //       // Initialize all the data
-    //        data2( void )
-    //        {
-    //            m_A = 100;
-    //    
-    //            m_DontDynamic.m_Count = DYNAMIC_COUNT;
-    //            m_DontDynamic.m_pData = (data1*)x_malloc( sizeof(data1), m_DontDynamic.m_Count, 0 );
-    //            for( s32 i=0; i<m_DontDynamic.m_Count; i++ ) { m_DontDynamic.m_pData[i].m_A = 22+i; }
-    //    
-    //            m_GoInStatic.m_Count = STATIC_COUNT;
-    //            m_GoInStatic.m_pData = (data1*)x_malloc( sizeof(data1), m_GoInStatic.m_Count, 0 );
-    //            for( s32 i=0; i<m_GoInStatic.m_Count; i++ ) { m_GoInStatic.m_pData[i].m_A = 23+i; }
-    //        }
-    //    
-    //        // Save the data
-    //        void SerializeIO( xserialfile& SerialFile ) const
-    //        {
-    //            // Make sure that it is the first version
-    //            SerialFile.SetResourceVersion( 1 );
-    //
-    //            // Tell the structure to save it self
-    //            SerialFile.Serialize( m_GoInStatic );
-    //    
-    //            // Don't always need to go into structures
-    //            SerialFile.Serialize ( m_DontDynamic.m_Count );
-    //            SerialFile.Serialize( m_DontDynamic.m_pData, m_DontDynamic.m_Count, xserialfile::FLAGS_UNIQUE );
-    //    
-    //            // Tell our parent to save it self
-    //            data1::SerializeIO( SerialFile );
-    //        }
-    //    
-    //        // This is the loading constructor by the time is call the file already loaded
-    //        data2( xserialfile& SerialFile )
-    //        {
-    //            x_assert( SerialFile.GetResourceVersion() == 1 );
-    //    
-    //            // *** Only reason to have a something inside this constructor is to deal with dynamic data
-    //            // We move the memory to some other random place
-    //            data1*  pData = (data1*)x_malloc( sizeof(data1),m_DontDynamic.m_Count, 0);
-    //            x_memcpy( pData, m_DontDynamic.m_pData, m_DontDynamic.m_Count*sizeof(data1) );
-    //    
-    //            // Now we can overwrite the dynamic pointer without a worry
-    //            x_free(m_DontDynamic.m_pData);
-    //            m_DontDynamic.m_pData = pData;
-    //        }
-    //    
-    //        ~data2( void )
-    //        {
-    //            // Here to deal with dynamic stuff 
-    //            if(m_DontDynamic.m_pData) x_free( m_DontDynamic.m_pData );
-    //        }
-    //    };
-    //      
-    //    void main( void )
-    //    {
-    //        xstring     FileName( X_STR("SerialFile.bin") );
-    //
-    //        // Save
-    //        {
-    //            xserialfile SerialFile;
-    //            data2     TheData;
-    //            TheData.SanityCheck();
-    //            SerialFile.Save( FileName, TheData );
-    //        }
-    //    
-    //        // Load
-    //        {
-    //            xserialfile  SerialFile;
-    //            data2*     pTheData;
-    //    
-    //            // This hold thing could happen in one thread
-    //            SerialFile.Load( FileName, pTheData );
-    //    
-    //            pTheData->SanityCheck();
-    //    
-    //            // Okay one pointer to nuke
-    //            x_delete( pTheData );
-    //        }
-    //    }
-    //</CODE>
     //------------------------------------------------------------------------------
     
     template< typename T >
@@ -244,6 +126,20 @@ namespace xcore::serializer
         }
     };
 
+    class stream;
+    // User should place all their serializing function inside the name space
+    // Note that the full name space is:
+    // namespace xcore::serializer::io_functions
+    // {
+    //     template<>
+    //     xcore::err SerializeIO<my_class>(xcore::serializer::stream& Stream, my_class& MyClass ) noexcept { ... }
+    // }
+    namespace io_functions
+    {
+        template<typename T_CLASS>
+        xcore::err SerializeIO(xcore::serializer::stream& Stream, const T_CLASS&);
+    }
+
     using   allocate_memory_fn =  void* (units::bytes Size, mem_type MemType);
 
     class stream
@@ -254,7 +150,7 @@ namespace xcore::serializer
         template< class T >
         inline      xcore::err      Serialize                   (const T& A)                                                                                noexcept;
         template< class T, typename T_SIZE >
-        inline      xcore::err      Serialize                   ( T*const & pView, T_SIZE Size, mem_type MemoryFlags)                                             noexcept;
+        inline      xcore::err      Serialize                   ( T*const& pView, T_SIZE Size, mem_type MemoryFlags = {} )                                  noexcept;
 
         template< class T >
         inline      err             Save                        ( const string::view<const wchar_t> FileName
@@ -292,7 +188,7 @@ namespace xcore::serializer
         // This structure wont save to file
         struct decompress_block
         {
-            std::array<std::byte, max_block_size_v> m_Buff;
+            std::array<std::byte, max_block_size_v + 1024 > m_Buff;
         };
 
         // This structure will save to file
@@ -313,7 +209,7 @@ namespace xcore::serializer
         };
 
         // This structure wont save to file
-        struct pack_writting : public pack
+        struct pack_writing : public pack
         {
             xcore::file::stream                 m_Data              {}; // raw Data for this block
             std::uint32_t                       m_BlockSize         {}; // size of the block for compressing this pack
@@ -322,13 +218,13 @@ namespace xcore::serializer
         };
 
         // This structure wont save to file
-        struct writting
+        struct writing
         {
             std::uint32_t                     AllocatePack            (mem_type DefaultPackFlags) noexcept;
 
             xcore::vector<std::uint32_t>        m_CSizeStream       {}; // a in order List of compress sizes for packs and blocks
             xcore::vector<ref>                  m_PointerTable      {}; // Table of all the pointer written
-            xcore::vector<pack_writting>        m_Packs             {}; // Free-able memory + VRam/Core
+            xcore::vector<pack_writing>         m_Packs             {}; // Free-able memory + VRam/Core
             xcore::file::stream*                m_pFile             {};
             bool                                m_bEndian           {};
         };
@@ -360,7 +256,7 @@ namespace xcore::serializer
     protected:
 
         // non stack base variables for writing
-        writting*               m_pWrite            {};             // Static data for writing
+        writing*               m_pWrite            {};             // Static data for writing
 
         // Stack base variables for writing
         std::uint32_t           m_iPack             {};
@@ -374,7 +270,5 @@ namespace xcore::serializer
         void*                   m_pTempBlockData    { nullptr };    // This is data that was saved with the flag temp_data
         bool                    m_bFreeTempData     { true };
     };
-
-#endif
 }
 #endif
