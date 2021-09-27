@@ -20,7 +20,15 @@ namespace xcore::string
     template< typename T > constexpr xforceinline
     auto Length( const T& Obj ) noexcept 
     { 
-        return details::Length(&Obj[0]); 
+        if constexpr ( std::is_same_v<std::string, xcore::types::decay_full_t<T>> 
+                    || std::is_same_v<std::string_view, xcore::types::decay_full_t<T>> )
+        {
+            return string::units<xcore::types::decay_full_t<decltype(Obj[0])>>{ static_cast<details::units_int_t>(Obj.length()) };
+        }
+        else
+        {
+            return details::Length(&Obj[0]);
+        }
     }
 
     //------------------------------------------------------------------------------
@@ -143,8 +151,10 @@ namespace xcore::string
     template< typename T_CHAR, typename T > constexpr
     ref<T_CHAR> To( const T& Str ) noexcept
     {
-        ref<T_CHAR> Ref( ref<T_CHAR>::units( Length(Str).m_Value ) );
-        for( int i=0; Ref[i] = Str[i]; ++i );
+        const auto StrLen = ref<T_CHAR>::units(Length(Str).m_Value + 1);
+        ref<T_CHAR> Ref(StrLen);
+        for( auto i=0u, end_i = StrLen.m_Value-1; i<end_i; ++i ) Ref[i] = Str[i];
+        Ref[StrLen.m_Value-1] = 0;
         return Ref;
     }
 

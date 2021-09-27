@@ -161,7 +161,7 @@ namespace xcore::serializer
                 if (xcore::serializer::io_functions::SerializeIO(File, A).isError(Error)) return Error;
 
                 // Go the end of the structure 
-                return getW().SeekOrigin(xcore::units::bytes{ File.m_ClassPos + sizeof(A) } );
+                return getW().SeekOrigin(xcore::units::bytes{ File.m_ClassPos + File.m_ClassSize } );
             }
         }
         else if constexpr (std::is_trivially_copyable_v<T>)
@@ -190,6 +190,12 @@ namespace xcore::serializer
     template< class T, typename T_SIZE  > inline
     xcore::err stream::Serialize( T* const& pView, T_SIZE Size, mem_type MemoryFlags) noexcept
     {
+        if( pView == nullptr )
+        {
+            xassert(Size==0);
+            return {};
+        }
+
         xcore::err  Error;
         const auto  BackupPackIndex = m_iPack;
 
@@ -205,18 +211,54 @@ namespace xcore::serializer
         //
         // Loop throw all the items
         //
-
-        // Now loop
-        //const units::bytes Count{ static_cast<std::int64_t>(Size * sizeof(T)) };
-
-        for (std::uint64_t i = 0; i < Size; i++)
+        using of_type_t = xcore::types::decay_full_t<decltype(pView[0])>;
+        
+        // Short-cut
+        if constexpr (std::is_integral_v<of_type_t>
+            || std::is_floating_point_v<of_type_t>
+            || std::is_enum_v<of_type_t>)
         {
-            if (Serialize(pView[i]).isError(Error)) return Error;
-            xassert_block_basic()
+            if(isLocalVariable(reinterpret_cast<const std::byte*>(&pView[0])))
             {
-                units::bytes X;
-                getW().Tell(X).CheckError();
-                xassert(static_cast<std::uint64_t>(X.m_Value) >= i );
+                Error = Handle( std::span<const std::byte>{reinterpret_cast<const std::byte*>(&pView[0]), sizeof(of_type_t)* Size });
+                if( Error )
+                    return Error;
+            }
+            else
+            {
+                // Copy most of the data
+                stream File(*this);
+
+                xcore::units::bytes Offset;
+                if (auto Err = getW().Tell(Offset); Err)
+                    return Err;
+
+                const std::span NewView{ reinterpret_cast<const std::byte*>(&pView[0]), sizeof(of_type_t)* Size };
+
+                File.m_iPack     = m_iPack;
+                File.m_ClassPos  = static_cast<std::uint32_t>(Offset.m_Value);
+                File.m_pClass    = &const_cast<std::byte&>(reinterpret_cast<const std::byte&>(NewView[0]));
+                File.m_ClassSize = static_cast<std::uint32_t>(NewView.size());
+
+                if (auto Err = File.Handle(NewView); Err)
+                    return Err;
+
+                // Go the end of the structure 
+                if( auto Err = getW().SeekOrigin(xcore::units::bytes{ File.m_ClassPos + File.m_ClassSize }); Err )
+                    return Err;
+            }
+        }
+        else
+        {
+            for (std::uint64_t i = 0; i < Size; i++)
+            {
+                if (Serialize(pView[i]).isError(Error)) return Error;
+                xassert_block_basic()
+                {
+                    units::bytes X;
+                    getW().Tell(X).CheckError();
+                    xassert(static_cast<std::uint64_t>(X.m_Value) >= i );
+                }
             }
         }
 

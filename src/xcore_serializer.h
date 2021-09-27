@@ -137,7 +137,7 @@ namespace xcore::serializer
     namespace io_functions
     {
         template<typename T_CLASS>
-        xcore::err SerializeIO(xcore::serializer::stream& Stream, const T_CLASS&);
+        xcore::err SerializeIO(xcore::serializer::stream& Stream, const T_CLASS&) noexcept;
     }
 
     using   allocate_memory_fn =  void* (units::bytes Size, mem_type MemType);
