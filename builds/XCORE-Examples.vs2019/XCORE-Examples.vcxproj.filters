@@ -267,9 +267,6 @@
     <ClInclude Include="..\..\src\xcore_scheduler_trigger.h">
       <Filter>xCore</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\src\xcore_serialicer.h">
-      <Filter>xCore</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\src\xcore_serializer.h">
       <Filter>xCore</Filter>
     </ClInclude>
@@ -283,12 +280,6 @@
       <Filter>xCore</Filter>
     </ClInclude>
     <ClInclude Include="..\..\src\xcore_target.h">
-      <Filter>xCore</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\xcore_textfile.h">
-      <Filter>xCore</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\xcore_textfile2.h">
       <Filter>xCore</Filter>
     </ClInclude>
     <ClInclude Include="..\..\src\xcore_types.h">
@@ -326,6 +317,9 @@
     </ClInclude>
     <ClInclude Include="..\..\src\Settings\xcore_user_settings.h">
       <Filter>xCore\Settings</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\xcore_textfile.h">
+      <Filter>xCore</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

@@ -96,9 +96,7 @@ namespace xcore
 #include "xcore_memory.h"
 
 // Text file
-namespace xcore::textfile { namespace version_1{} namespace version_2{} using namespace version_2; }
 #include "xcore_textfile.h"
-#include "xcore_textfile2.h"
 
 // RTTI
 #include "xcore_rtti.h"
@@ -158,7 +156,7 @@ namespace xcore { using namespace xcore::math; }
 #include "Implementation/xcore_string_inline.h"
 #include "Implementation/xcore_vector_inline.h"
 #include "Implementation/xcore_unqiue_span_inline.h"
-#include "Implementation/xcore_textfile2_inline.h"
+#include "Implementation/xcore_textfile_inline.h"
 #include "Implementation/xcore_scheduler_inline.h"
 
 // Math

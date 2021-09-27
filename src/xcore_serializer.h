@@ -132,7 +132,7 @@ namespace xcore::serializer
     // namespace xcore::serializer::io_functions
     // {
     //     template<>
-    //     xcore::err SerializeIO<my_class>(xcore::serializer::stream& Stream, my_class& MyClass ) noexcept { ... }
+    //     xcore::err SerializeIO<my_class>(xcore::serializer::stream& Stream, const my_class& MyClass ) noexcept { ... }
     // }
     namespace io_functions
     {

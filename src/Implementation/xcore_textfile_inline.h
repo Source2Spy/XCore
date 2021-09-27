@@ -1,6 +1,4 @@
-
-
-namespace xcore::textfile::version_2
+namespace xcore::textfile
 {
     //------------------------------------------------------------------------------------------------
     namespace details

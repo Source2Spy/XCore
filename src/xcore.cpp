@@ -12,8 +12,7 @@
 
 #include "Implementation/xcore_global.cpp"
 #include "Implementation/xcore_log.cpp"
-//#include "Implementation/xcore_textfile.cpp"
-#include "Implementation/xcore_textfile2.cpp"
+#include "Implementation/xcore_textfile.cpp"
 #include "Implementation/xcore_sprintf.cpp"
 #include "Implementation/xcore_scheduler.cpp"
 #include "Implementation/xcore_cmdline.cpp"
