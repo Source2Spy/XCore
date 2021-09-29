@@ -162,7 +162,7 @@ namespace xcore::serializer
         template< class T >
         err                         Load                        (file::stream& File, T*& pObject)                                                           noexcept;
         template< class T >
-        err                         Load                        (const string::view<wchar_t> FileName, T*& pObject )                                        noexcept;
+        err                         Load                        (const string::view<const wchar_t> FileName, T*& pObject )                                  noexcept;
 
         err                         LoadHeader                  (file::stream& File, std::size_t SizeOfT)                                                   noexcept;
         void*                       LoadObject                  (file::stream& File)                                                                        noexcept;

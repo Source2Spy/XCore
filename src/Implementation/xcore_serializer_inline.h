@@ -316,7 +316,7 @@ namespace xcore::serializer
     //------------------------------------------------------------------------------
 
     template< class T > inline
-	xcore::err stream::Load(const string::view<wchar_t> FileName, T*& pObject) noexcept
+	xcore::err stream::Load(const string::view<const wchar_t> FileName, T*& pObject) noexcept
     {
 		xcore::err   Error;
         file::stream File;
