@@ -101,7 +101,7 @@ powershell write-host -fore White XCORE - COMPILING DEPENDENCIES
 powershell write-host -fore White ------------------------------------------------------------------------------------------------------
 
 powershell write-host -fore Cyan zstad: Updating...
-start "Updating" "%VSPATH%\Common7\IDE\devenv.exe" "%CD%\..\dependencies\zstd\build\VS2010\libzstd\libzstd.vcxproj" /upgrade & timeout \t 30
+rem start "Updating" "%VSPATH%\Common7\IDE\devenv.exe" "%CD%\..\dependencies\zstd\build\VS2010\libzstd\libzstd.vcxproj" /upgrade & timeout \t 30
 "%VSPATH%\Common7\IDE\devenv.exe" "%CD%\..\dependencies\zstd\build\VS2010\libzstd\libzstd.vcxproj" /upgrade
 if %ERRORLEVEL% GEQ 1 goto :ERROR
 
