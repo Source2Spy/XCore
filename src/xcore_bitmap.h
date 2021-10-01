@@ -221,6 +221,8 @@ namespace xcore
                                                                         ) const noexcept;
         constexpr   bool                        isCubemap               ( void 
                                                                         ) const noexcept;
+        inline      void                        setCubemap              ( bool isCubeMap
+                                                                        ) noexcept;
         constexpr   std::uint32_t               getWidth                ( void 
                                                                         ) const noexcept;
         constexpr   std::uint32_t               getHeight               ( void 

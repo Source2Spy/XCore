@@ -100,6 +100,13 @@ namespace xcore
 
     //-----------------------------------------------------------------------------------
 
+    void bitmap::setCubemap( bool isCubeMap ) noexcept
+    {
+        m_Flags.m_bCubeMap = isCubeMap;
+    }
+
+    //-----------------------------------------------------------------------------------
+
     constexpr
     int bitmap::getFaceCount(void) const noexcept
     {
