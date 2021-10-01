@@ -70,6 +70,11 @@ rmdir "../dependencies/tracy" /S /Q
 git clone --recursive https://github.com/wolfpld/tracy "../dependencies/tracy"
 if %ERRORLEVEL% GEQ 1 goto :ERROR
 
+rem Forcely change the a define to allow tracy editor to work
+powershell -Command "(gc "%CD%\..\dependencies\tracy\profiler\build\win32\Tracy.vcxproj") -replace 'IMGUI_ENABLE_FREETYPE', 'IMGUI_ENABLE_FREETYPE__' | Out-File -encoding ASCII "%CD%\..\dependencies\tracy\profiler\build\win32\Tracy.vcxproj""
+if %ERRORLEVEL% GEQ 1 goto :ERROR
+
+
 echo.
 rmdir "../dependencies/properties" /S /Q
 git clone https://gitlab.com/LIONant/properties.git "../dependencies/properties"
