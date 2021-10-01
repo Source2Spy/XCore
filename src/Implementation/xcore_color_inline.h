@@ -930,8 +930,8 @@ namespace xcore::color
     std::uint32_t unit<T>::getDataFromColor( format DataFormat ) const noexcept
     {
         std::uint32_t   Data;
-        const auto&     Fmt = details::g_FormatDesc[DataFormat.m_Value];
-        assert( Fmt.m_Format == DataFormat );
+        const auto&     Fmt = details::g_FormatDesc[static_cast<int>(DataFormat.m_Value)];
+        xassert( Fmt.m_Format == DataFormat.m_Value );
 
         Data = ~(Fmt.m_AMask | Fmt.m_RMask | Fmt.m_GMask | Fmt.m_BMask);
 

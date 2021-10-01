@@ -238,12 +238,37 @@ namespace xcore::string
         int i=0;
         while( Where[i] )
         {
-            if( Where[i] == Where[0] )
+            if( Where[i] == What[0] )
             {
                 int j=1;
                 while(Where[j])
                 {
-                    if(Where[i+j] != Where[j]) goto continue_loop;
+                    if(Where[i+j] != What[j]) goto continue_loop;
+                    j++;
+                }
+                return i;
+                continue_loop:;
+            }
+            i++;
+        }
+        return -1;
+    }
+
+    //------------------------------------------------------------------------------
+    // FindStr
+    //------------------------------------------------------------------------------
+    template< typename T1, typename T2 > constexpr xforceinline
+    int FindStrI(const T1& Where, const T2& What) noexcept
+    {
+        int i=0;
+        while( Where[i] )
+        {
+            if(xcore::string::ToCharUpper(Where[i]), xcore::string::ToCharUpper(What[0]) )
+            {
+                int j=1;
+                while(Where[j])
+                {
+                    if(xcore::string::ToCharUpper(Where[i + j]) != xcore::string::ToCharUpper(What[j])) goto continue_loop;
                     j++;
                 }
                 return i;

@@ -197,6 +197,7 @@ namespace xcore::string
     template< typename T1, typename T2 >    constexpr   auto            Append          ( T1& Dest, const T2& Src )                                                 noexcept;
     template< typename T1, typename T2 >    constexpr   int             CompareN        ( const T1& Dest, const T2& Src, int Count )                                noexcept;
     template< typename T1, typename T2 >    constexpr   int             FindStr         ( const T1& Where, const T2& What )                                         noexcept;
+    template< typename T1, typename T2 >    constexpr   int             FindStrI        ( const T1& Where, const T2& What )                                         noexcept;
     template< typename T1, typename T2 >    constexpr   int             CompareI        ( const T1& Str1, const T2& Str2 )                                          noexcept;
     template< typename T1, typename T2 >    constexpr   int             Compare         ( const T1& Str1, const T2& Str2 )                                          noexcept;
     template< typename T, typename T_CHAR > constexpr   int             findLastInstance( const T& MainStr, const T_CHAR C )                                        noexcept;
