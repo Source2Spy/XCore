@@ -54,18 +54,15 @@ static const xcore::bitmap s_DefaultBitmap{ { const_cast<std::byte*>(Data.data()
 
 xcore::bitmap::~bitmap( void ) noexcept
 {
-    if( m_Data.get() && false == m_Flags.m_bOwnsMemory )
-        m_Data.release();
+    if( m_pData && m_Flags.m_bOwnsMemory ) delete m_pData;
 }
 
 //-------------------------------------------------------------------------------
 
 void xcore::bitmap::Kill( void ) noexcept
 {
-    if (m_Data.get() && false == m_Flags.m_bOwnsMemory)
-        m_Data.release();
+    if (m_pData && m_Flags.m_bOwnsMemory) delete m_pData;
 
-    m_Data.reset();
     m_DataSize      = 0;                
     m_FrameSize     = 0;                
     m_Height        = 0;                
@@ -75,84 +72,127 @@ void xcore::bitmap::Kill( void ) noexcept
 }
 
 //-------------------------------------------------------------------------------
-/*
-bool xbitmap::Load( const char* pFileName ) noexcept
+
+xcore::err xcore::bitmap::SerializeLoad( bitmap*& pBitmap, const string::view<const wchar_t> FileName ) noexcept
+{
+    xcore::serializer::stream Stream;    
+    return Stream.Load(FileName, pBitmap);
+}
+
+//-------------------------------------------------------------------------------
+
+xcore::err xcore::bitmap::SerializeSave( const string::view<const wchar_t> FileName, bool bSwapEndian) const noexcept
+{
+    xcore::serializer::stream Stream;
+    return Stream.Save(FileName, *this, {}, bSwapEndian );
+}
+
+//-------------------------------------------------------------------------------
+
+xcore::err xcore::bitmap::Load( const string::view<const wchar_t> FileName ) noexcept
 {
     Kill();
-  
-    xfile File;
-    
-    if( File.Open( pFileName, "rb" ) == FALSE )
-        return FALSE;
-    
+
+    xcore::file::stream File;
+
+    if( auto Err = File.open(FileName, "rb" ); Err )
+        return Err;
+
     //
     // Read the signature
     //
     {
-        u32 Signature;
-        File.Read( Signature );
-        
-        if( Signature != u32('XBMP') )
-            return FALSE;
+        std::uint32_t Signature;
+        if( auto Err = File.Read( Signature ); Err ) return Err;
+        if( Signature != std::uint32_t('XBMP') )
+            return xerr_failure_s("Wrong file signature");
     }
-    
-    File.Read( (u8&)m_Format );
-    File.Read( m_DataSize );
-    File.Read( m_FrameSize );
-    File.Read( m_Height );
-    File.Read( m_Width );
-    File.Read( m_Flags );
-    File.Read( m_nMips );
-    File.Read( m_nFrames );
-    
+
+    if ( xcore::err Err; false
+        || (Err = File.Read(m_DataSize))
+        || (Err = File.Read(m_FrameSize))
+        || (Err = File.Read(m_Height))
+        || (Err = File.Read(m_Width))
+        || (Err = File.Read(m_Flags.m_Value))
+        || (Err = File.Read(m_nMips))
+        || (Err = File.Read(m_Pad))
+        ) return Err;
+
     //
     // Read the big data
     //
-    m_pData = (mip*)x_malloc( sizeof(xbyte), m_DataSize, 0 );
-    File.ReadRaw( m_pData, m_DataSize, 1 );
-    
-    return TRUE;
+    m_pData = reinterpret_cast<mip*>(new std::byte[ m_DataSize ] );
+    return File.ReadView( std::span{ reinterpret_cast<std::byte*>(m_pData), m_DataSize });
 }
 
 //-------------------------------------------------------------------------------
 
-xbool xbitmap::Save( const char* pFileName ) const noexcept
+xcore::err xcore::bitmap::Save( const string::view<const wchar_t> FileName ) const noexcept
 {
-    xfile File;
-    
-    if( File.Open( pFileName, "wb" ) == FALSE )
-        return FALSE;
-    
-    File.Write( u32('XBMP') );
-    File.Write( (u8&)m_Format );
-    File.Write( m_DataSize );
-    File.Write( m_FrameSize );
-    File.Write( m_Height );
-    File.Write( m_Width );
-    File.Write( m_Flags );
-    File.Write( m_nMips );
-    File.Write( m_nFrames );
-    File.WriteRaw( m_pData, m_DataSize, 1 );
-    
-    return TRUE;
+    xcore::file::stream File;
+
+    if( xcore::err Err; false
+        || (Err = File.open(FileName, "wb"))
+        || (Err = File.Write(std::uint32_t('XBMP')))
+        || (Err = File.Write(m_DataSize))
+        || (Err = File.Write(m_FrameSize))
+        || (Err = File.Write(m_Height))
+        || (Err = File.Write(m_Width))
+        || (Err = File.Write(m_Flags.m_Value))
+        || (Err = File.Write(m_nMips))
+        || (Err = File.Write(m_Pad))
+        || (Err = File.WriteView(std::span{ reinterpret_cast<std::byte*>(m_pData), m_DataSize }))
+        ) return Err;
+
+    return {};
 }
-*/
 
 //-------------------------------------------------------------------------------
-/*
-void xbitmap::SerializeIO( xserialfile& SerialFile ) const noexcept
+
+xcore::err xcore::bitmap::SaveTGA(const string::view<const wchar_t> FileName) const noexcept
 {
-    SerialFile.Serialize( m_RawData, m_DataSize );
-    SerialFile.Serialize( m_DataSize );
-    SerialFile.Serialize( m_FrameSize );
-    SerialFile.Serialize( m_Height );
-    SerialFile.Serialize( m_Width );
-    SerialFile.Serialize( m_Flags );
-    SerialFile.Serialize( m_nMips );
-    SerialFile.SerializeEnum( m_Format );
-    SerialFile.Serialize( m_nFrames );
+    std::array< std::byte, 18> Header;
+
+    // The format of this picture must be in color format
+    xassert( getFormat() == xcore::bitmap::format::R8G8B8A8 || getFormat() == xcore::bitmap::format::R8G8B8U8 );
+
+    // Build the header information.
+    std::memset(Header.data(), 0, Header.size());
+    Header[2]  = std::byte{2u};     // Image type.
+    Header[12] = static_cast<std::byte>((getWidth() >> 0) & 0xFF);
+    Header[13] = static_cast<std::byte>((getWidth() >> 8) & 0xFF);
+    Header[14] = static_cast<std::byte>((getHeight() >> 0) & 0xFF);
+    Header[15] = static_cast<std::byte>((getHeight() >> 8) & 0xFF);
+    Header[16] = std::byte{ 32u };    // Bit depth.
+    Header[17] = std::byte{ 32u };    // NOT flipped vertically.
+
+    // Open the file.
+    xcore::file::stream File;
+
+    if( auto Err = File.open(FileName, "wb"); Err )
+        return Err;
+
+    // Write out the data.
+    if( auto Err = File.WriteView( Header ); Err )
+        return Err;
+
+    //
+    // Convert to what tga expects as a color
+    //
+    const xcore::icolor* pColor = getMip<xcore::icolor>(0).data();
+    const auto           Size   = getWidth() * getHeight();
+
+    for( auto i = 0u; i < Size; ++i )
+    {
+        auto Color = pColor[i];
+        std::swap(Color.m_R, Color.m_B);
+        if( auto Err = File.Write( Color.m_Value ); Err )
+            return Err;
+    }
+
+    return {};
 }
-  */
+
 //-------------------------------------------------------------------------------
 
 void xcore::bitmap::setup
@@ -179,7 +219,7 @@ void xcore::bitmap::setup
 
     Kill();
 
-    m_Data                = std::unique_ptr<mip[]>{ reinterpret_cast<mip*>(Data.data()) };
+    m_pData               = reinterpret_cast<mip*>(Data.data());
     m_Flags.m_bOwnsMemory = bFreeMemoryOnDestruction;
 
     m_DataSize          = Data.size();    
@@ -486,7 +526,7 @@ void xcore::bitmap::CreateFromMips( std::span<const bitmap> MipList ) noexcept
             Offset = {static_cast<int>( TotalOffset )};
             
             // Copy Data
-            std::memcpy( &pData[ Offset.m_Offset ], &Mip.m_Data[1], MipDataSize );
+            std::memcpy( &pData[ Offset.m_Offset ], &Mip.m_pData[1], MipDataSize );
             
             // Get ready for the next entry
             TotalOffset += MipDataSize;

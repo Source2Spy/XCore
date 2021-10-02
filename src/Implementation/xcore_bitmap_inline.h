@@ -2,6 +2,13 @@ namespace xcore
 {
     //-----------------------------------------------------------------------------------
 
+    bitmap::bitmap( xcore::serializer::stream& Stream ) noexcept
+    {
+
+    }
+
+    //-----------------------------------------------------------------------------------
+
     void bitmap::setOwnMemory(bool bOwnMemory) noexcept
     {
         m_Flags.m_bOwnsMemory = bOwnMemory;
@@ -18,7 +25,7 @@ namespace xcore
 
     bool bitmap::isValid(void) const noexcept
     {
-        return !!m_Data.get();
+        return !!m_pData;
     }
 
     //-----------------------------------------------------------------------------------
@@ -154,7 +161,7 @@ namespace xcore
     //-----------------------------------------------------------------------------------
     
     bitmap::bitmap( std::span<std::byte> Data, std::uint32_t Width, std::uint32_t Height, bool bReleaseWhenDone ) noexcept
-    :   m_Data                  { reinterpret_cast<mip*>( Data.data() )         }
+    :   m_pData                 { reinterpret_cast<mip*>( Data.data() )         }
     ,   m_DataSize              { Data.size()                                   }
     ,   m_FrameSize             { static_cast<std::uint32_t>(Data.size() -4)    }
     ,   m_Height                { Height                                        }   
@@ -175,8 +182,8 @@ namespace xcore
         xassert( iMip >= 0 );
         xassert( iMip < m_nMips );
 
-        const auto NextOffset = ((iMip + 1) == m_nMips ) ? m_FrameSize : static_cast<std::size_t>(m_Data[iMip+1].m_Offset);
-        return NextOffset - m_Data[iMip].m_Offset;
+        const auto NextOffset = ((iMip + 1) == m_nMips ) ? m_FrameSize : static_cast<std::size_t>(m_pData[iMip+1].m_Offset);
+        return NextOffset - m_pData[iMip].m_Offset;
     }
 
     //-------------------------------------------------------------------------------
@@ -194,7 +201,7 @@ namespace xcore
     {
         xassume(m_Width > 0);
         xassume(m_Height > 0);
-        xassume(m_Data.get());
+        xassume(m_pData);
         xassume(iMip < m_nMips);
         xassume(iMip >= 0);
         xassume(iFrame >= 0);
@@ -202,8 +209,8 @@ namespace xcore
         xassume(iFace >= 0);
         xassume(iFace < getFaceCount());
 
-        auto FinalOffest = m_Data[iMip].m_Offset + iFrame * m_FrameSize + iFace * getFaceSize();
-        return &reinterpret_cast<const std::byte*>(&m_Data[m_nMips])[FinalOffest];
+        auto FinalOffest = m_pData[iMip].m_Offset + iFrame * m_FrameSize + iFace * getFaceSize();
+        return &reinterpret_cast<const std::byte*>(&m_pData[m_nMips])[FinalOffest];
     }
 
     //-------------------------------------------------------------------------------
@@ -212,7 +219,7 @@ namespace xcore
     {
         xassume( m_Width  > 0 );
         xassume( m_Height > 0 );
-        xassume( m_Data.get() );
+        xassume( m_pData );
         xassume( iMip < m_nMips );
         xassume( iMip >= 0 );
         xassume( iFrame >= 0 );
@@ -220,8 +227,8 @@ namespace xcore
         xassume( iFace >= 0 );
         xassume( iFace < getFaceCount() );
 
-        auto FinalOffest = m_Data[iMip].m_Offset + iFrame * m_FrameSize + iFace * getFaceSize();
-        return &reinterpret_cast<std::byte*>(&m_Data[m_nMips])[FinalOffest];
+        auto FinalOffest = m_pData[iMip].m_Offset + iFrame * m_FrameSize + iFace * getFaceSize();
+        return &reinterpret_cast<std::byte*>(&m_pData[m_nMips])[FinalOffest];
     }
 
     //-------------------------------------------------------------------------------
@@ -255,7 +262,7 @@ namespace xcore
     {
         xassume(m_Width > 0);
         xassume(m_Height > 0);
-        //xassume(m_Data.get());
+        //xassume(m_pData);
 
         return m_Width == m_Height;
     }
@@ -266,7 +273,32 @@ namespace xcore
     {
         xassume( m_Width > 0 );
         xassume( m_Height > 0 );
-        //xassume( m_Data.get() );
+        //xassume( m_pData );
         return xcore::bits::isPowTwo( m_Width ) && xcore::bits::isPowTwo( m_Height );
+    }
+}
+
+//-------------------------------------------------------------------------------
+// Serializer functions
+//-------------------------------------------------------------------------------
+namespace xcore::serializer::io_functions
+{
+    template<> inline
+    xcore::err SerializeIO<bitmap>( xcore::serializer::stream& Stream, const bitmap& Bitmap ) noexcept
+    {
+        xcore::err Err;
+
+        false
+        || (Err = Stream.Serialize(reinterpret_cast<const std::byte* const&>(Bitmap.m_pData), Bitmap.m_DataSize, mem_type::Flags(mem_type::flags::UNIQUE)))
+        || (Err = Stream.Serialize(Bitmap.m_DataSize))
+        || (Err = Stream.Serialize(Bitmap.m_FrameSize))
+        || (Err = Stream.Serialize(Bitmap.m_Height))
+        || (Err = Stream.Serialize(Bitmap.m_Width))
+        || (Err = Stream.Serialize(Bitmap.m_Flags.m_Value))
+        || (Err = Stream.Serialize(Bitmap.m_nMips))
+        || (Err = Stream.Serialize(Bitmap.m_Pad))
+        ;
+
+        return Err;
     }
 }

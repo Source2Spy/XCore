@@ -176,7 +176,8 @@ namespace xcore
 
     public:
 
-    //                                            bitmap             ( xserialfile& ){ } //static_assert( sizeof(*this) == 32 ); }
+       inline                                   bitmap                  ( xcore::serializer::stream& 
+                                                                        ) noexcept;
        constexpr                                bitmap                  ( void 
                                                                         ) noexcept = default;
         inline                                 ~bitmap                  ( void
@@ -186,9 +187,17 @@ namespace xcore
                                                                         , std::uint32_t         Height
                                                                         , bool                  bReleaseWhenDone 
                                                                         ) noexcept;
-                    bool                        Load                    ( const char* FileName 
+        static      xcore::err                  SerializeLoad           ( bitmap*&                                  pBitmap
+                                                                        , const xcore::string::view<const wchar_t>  FileName
                                                                         ) noexcept;
-                    bool                        Save                    ( const char* FileName 
+                    xcore::err                  SerializeSave           ( const xcore::string::view<const wchar_t>  FileName
+                                                                        , bool                                      bSwapEndian = false
+                                                                        ) const noexcept;
+                    xcore::err                  Load                    ( const string::view<const wchar_t> FileName
+                                                                        ) noexcept;
+                    xcore::err                  Save                    ( const string::view<const wchar_t> FileName
+                                                                        ) const noexcept;
+                    xcore::err                  SaveTGA                 ( const string::view<const wchar_t> FileName
                                                                         ) const noexcept;
                     void                        Kill                    ( void 
                                                                         ) noexcept;
@@ -353,14 +362,14 @@ namespace xcore
 
     public:
 
-        std::unique_ptr<mip[]>          m_Data          {};             // +8 pointer to the mip data
+        mip*                            m_pData         {};             // +8 pointer to the mip data
         std::uint64_t                   m_DataSize      { 0 };          // +8 total data size in bytes
         std::uint32_t                   m_FrameSize     { 0 };          // +4 Size of one frame of data.(one bitmap)
         std::uint32_t                   m_Height        { 0 };          // +4 height in pixels
         std::uint32_t                   m_Width         { 0 };          // +4 width in pixels
         bit_pack_fields                 m_Flags         {};             // +2 all flags including the format of the bitmap
         std::uint8_t                    m_nMips         { 0 };          // +1 Number of mips
-                                                                        // +1 Padding
+        std::uint8_t                    m_Pad           { 0 };          // +1 Padding
                                                                         // 32 bytes total
     };
     static_assert( sizeof(bitmap) == 32, "The bitmap structure should always be 32bytes long" );
