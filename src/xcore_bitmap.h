@@ -176,8 +176,6 @@ namespace xcore
 
     public:
 
-       inline                                   bitmap                  ( xcore::serializer::stream& 
-                                                                        ) noexcept;
        constexpr                                bitmap                  ( void 
                                                                         ) noexcept = default;
         inline                                 ~bitmap                  ( void

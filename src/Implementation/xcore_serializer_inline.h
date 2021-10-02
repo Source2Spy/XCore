@@ -290,8 +290,14 @@ namespace xcore::serializer
     template< class T > inline
     void stream::ResolveObject(T*& pObject) noexcept
     {
-        // Initialize all
-		(void)new(pObject) T{ *this };
+        // Check if we have a virtual function... if we do we must construct
+        if constexpr ( std::is_polymorphic_v<T> )
+        {
+            // PLEASE NOTE THAT IF YOU ARE DEFAULTING YOUR VARIABLES TO SOME VALUES YOU
+            // WILL HAVE A PROBLEM WITH THIS. SINCE IT WILL CALL THOSE VALUES CLEARNING 
+            // ANYTHING IT LOADED
+            (void)new(pObject) T{ *this };
+        }
 
         // deal with temp data
         if (m_bFreeTempData && m_pTempBlockData)

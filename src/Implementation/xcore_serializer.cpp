@@ -445,7 +445,8 @@ namespace xcore::serializer
             // Create uncompress buffer for the packs and references
             const auto DecompressSize = m_Header.m_nPacks * sizeof(pack)
                 + m_Header.m_nPointers * sizeof(ref)
-                + m_Header.m_nBlockSizes * sizeof(std::uint32_t);
+                + m_Header.m_nBlockSizes * sizeof(std::uint32_t)
+                + 4 ;   // this 4 is a bit hacky...
 
             // InfoData.Alloc( x_Max( (s32)m_Header.m_PackSize, DecompressSize ) + m_Header.m_nPacks * sizeof(xbyte**) );
 

@@ -2,13 +2,6 @@ namespace xcore
 {
     //-----------------------------------------------------------------------------------
 
-    bitmap::bitmap( xcore::serializer::stream& Stream ) noexcept
-    {
-
-    }
-
-    //-----------------------------------------------------------------------------------
-
     void bitmap::setOwnMemory(bool bOwnMemory) noexcept
     {
         m_Flags.m_bOwnsMemory = bOwnMemory;
