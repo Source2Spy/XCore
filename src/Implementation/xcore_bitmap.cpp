@@ -154,7 +154,10 @@ xcore::err xcore::bitmap::SaveTGA(const string::view<const wchar_t> FileName) co
     std::array< std::byte, 18> Header;
 
     // The format of this picture must be in color format
-    xassert( getFormat() == xcore::bitmap::format::R8G8B8A8 || getFormat() == xcore::bitmap::format::R8G8B8U8 );
+    xassert( getFormat() == xcore::bitmap::format::R8G8B8A8 
+          || getFormat() == xcore::bitmap::format::B8G8R8A8
+          || getFormat() == xcore::bitmap::format::R8G8B8U8
+          || getFormat() == xcore::bitmap::format::B8G8R8U8);
 
     // Build the header information.
     std::memset(Header.data(), 0, Header.size());
@@ -182,11 +185,23 @@ xcore::err xcore::bitmap::SaveTGA(const string::view<const wchar_t> FileName) co
     const xcore::icolor* pColor = getMip<xcore::icolor>(0).data();
     const auto           Size   = getWidth() * getHeight();
 
-    for( auto i = 0u; i < Size; ++i )
+    if( getFormat() == xcore::bitmap::format::B8G8R8A8 || 
+        getFormat() == xcore::bitmap::format::B8G8R8U8 )
     {
-        auto Color = pColor[i];
-        std::swap(Color.m_R, Color.m_B);
-        if( auto Err = File.Write( Color.m_Value ); Err )
+        if (auto Err = File.WriteView(std::span{ m_pData, getFrameSize() }); Err)
+            return Err;
+    }
+    else
+    {
+        auto Convert = std::make_unique<xcore::icolor[]>(Size);
+        for( auto i = 0u; i < Size; ++i )
+        {
+            auto Color = pColor[i];
+            std::swap(Color.m_R, Color.m_B);
+            Convert[i] = Color;
+        }
+
+        if (auto Err = File.WriteView( std::span{Convert.get(), static_cast<std::size_t>(Size) }); Err)
             return Err;
     }
 

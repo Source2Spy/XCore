@@ -241,7 +241,7 @@ namespace xcore::string
             if( Where[i] == What[0] )
             {
                 int j=1;
-                while(Where[j])
+                while(What[j])
                 {
                     if(Where[i+j] != What[j]) goto continue_loop;
                     j++;
@@ -266,7 +266,7 @@ namespace xcore::string
             if(xcore::string::ToCharUpper(Where[i]), xcore::string::ToCharUpper(What[0]) )
             {
                 int j=1;
-                while(Where[j])
+                while(What[j])
                 {
                     if(xcore::string::ToCharUpper(Where[i + j]) != xcore::string::ToCharUpper(What[j])) goto continue_loop;
                     j++;
