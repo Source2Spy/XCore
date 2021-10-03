@@ -50,7 +50,7 @@ namespace xcore::textfile
         {
             if( getRecordName() != Str )
             { 
-                (void)xerr_failure( Error, "Unexpected record" ); 
+                Error = xerr_code_s(error_state::UNEXPECTED_RECORD, "Unexpected record" );
                 return true; 
             }
             std::size_t Count = getRecordCount();

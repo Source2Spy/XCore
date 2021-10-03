@@ -34,6 +34,7 @@ namespace xcore::textfile
         , READ_TYPES_DONTMATCH
         , MISMATCH_TYPES
         , FIELD_NOT_FOUND
+        , UNEXPECTED_RECORD
     };
 
     enum class file_type
