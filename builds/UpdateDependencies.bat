@@ -124,17 +124,6 @@ powershell write-host -fore Cyan zstad Debug: Compiling...
 "%MSBUILD%" "%CD%\..\dependencies\zstd\build\VS2010\libzstd\libzstd.vcxproj" /p:configuration=Debug /p:Platform="x64" /verbosity:minimal 
 if %ERRORLEVEL% GEQ 1 goto :ERROR
 
-
-
-
-cd "..\dependencies\tracy\vcpkg"
-call "install_vcpkg_dependencies.bat"
-if %ERRORLEVEL% GEQ 1 goto :ERROR
-cd %XCORE_PATH%
-
-"%MSBUILD%" "%CD%\..\dependencies\tracy\profiler\build\win32\Tracy.sln" /p:configuration=Release /p:Platform="x64" /verbosity:minimal 
-if %ERRORLEVEL% GEQ 1 goto :ERROR
-
 :DONE
 powershell write-host -fore White ------------------------------------------------------------------------------------------------------
 powershell write-host -fore White XCORE - SUCCESSFULLY DONE!!
