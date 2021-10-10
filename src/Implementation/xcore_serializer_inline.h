@@ -77,6 +77,11 @@ namespace xcore::serializer
         //
         std::unique_ptr<writing> Write{ new writing };
 
+        //
+        // Set the version as specifies by the user
+        //
+        setResourceVersion( T::VERSION );
+
         // Assign it so it is accessible for other functions
         // but we keep the owner
         m_pWrite = Write.get();
@@ -310,11 +315,16 @@ namespace xcore::serializer
     //------------------------------------------------------------------------------
 
     template< class T > inline
-	xcore::err stream::Load(file::stream& File, T*& pObject) noexcept
+    xcore::err stream::Load(file::stream& File, T*& pObject) noexcept
     {
-		xcore::err   Error;
-		if (LoadHeader(File, sizeof(*pObject)).isError(Error)) return Error;
+        xcore::err   Error;
+        if (LoadHeader(File, sizeof(*pObject)).isError(Error)) return Error;
+
+        if (getResourceVersion() != T::VERSION)
+            return xerr_failure_s("Wrong resource version");
+
         pObject = (T*)LoadObject(File);
+
         ResolveObject(pObject);
         return Error;
     }

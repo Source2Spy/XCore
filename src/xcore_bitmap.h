@@ -76,6 +76,8 @@ namespace xcore
     {
     public:
 
+        constexpr static std::uint16_t VERSION = 1;
+
         // Bit wise formatting for the enumeration.
         // FORMAT_(LOW BITS elements first then moving to HIGH BITS)
         // byte order       0    1    2    3    
