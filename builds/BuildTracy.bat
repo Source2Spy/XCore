@@ -8,12 +8,12 @@ rem Set the color of the terminal to blue with yellow text
 rem --------------------------------------------------------------------------------------------------------
 COLOR 8E
 powershell write-host -fore White ------------------------------------------------------------------------------------------------------
-powershell write-host -fore Cyan Welcome I am your XCORE (BUILD TRACY) dependency updater bot, let me get to work...
+powershell write-host -fore Cyan Welcome I am your XCORE BUILDING TRACY dependency updater bot, let me get to work...
 powershell write-host -fore White ------------------------------------------------------------------------------------------------------
 echo.
 
 powershell write-host -fore White ------------------------------------------------------------------------------------------------------
-powershell write-host -fore White XCORE (BUILD TRACY) - FINDING VISUAL STUDIO / MSBuild
+powershell write-host -fore White XCORE BUILDING TRACY - FINDING VISUAL STUDIO / MSBuild
 powershell write-host -fore White ------------------------------------------------------------------------------------------------------
 cd /d %XCORE_PATH%
 for /f "usebackq tokens=*" %%i in (`.\..\bin\vswhere -latest -requires Microsoft.Component.MSBuild -find MSBuild\**\Bin\MSBuild.exe`) do (
@@ -28,14 +28,14 @@ for /f "usebackq tokens=1* delims=: " %%i in (`.\..\bin\vswhere -latest -require
 
 IF EXIST "%MSBUILD%" ( 
     echo OK 
-    GOTO :DOWNLOAD_DEPENDENCIES
+    GOTO :COMPILATION
     )
 echo Failed to find MSBuild!!! 
 GOTO :ERROR
 
 :COMPILATION
 powershell write-host -fore White ------------------------------------------------------------------------------------------------------
-powershell write-host -fore White XCORE (BUILD TRACY) - COMPILING DEPENDENCIES
+powershell write-host -fore White XCORE BUILDING TRACY - COMPILING DEPENDENCIES
 powershell write-host -fore White ------------------------------------------------------------------------------------------------------
 
 cd "..\dependencies\tracy\vcpkg"
@@ -48,13 +48,13 @@ if %ERRORLEVEL% GEQ 1 goto :ERROR
 
 :DONE
 powershell write-host -fore White ------------------------------------------------------------------------------------------------------
-powershell write-host -fore White XCORE (BUILD TRACY) - SUCCESSFULLY DONE!!
+powershell write-host -fore White XCORE BUILDING TRACY - SUCCESSFULLY DONE!!
 powershell write-host -fore White ------------------------------------------------------------------------------------------------------
 goto :PAUSE
 
 :ERROR
 powershell write-host -fore Red ------------------------------------------------------------------------------------------------------
-powershell write-host -fore Red XCORE (BUILD TRACY) - FAILED!!
+powershell write-host -fore Red XCORE BUILDING TRACY - FAILED!!
 powershell write-host -fore Red ------------------------------------------------------------------------------------------------------
 
 :PAUSE
