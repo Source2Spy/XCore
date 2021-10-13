@@ -1,7 +1,7 @@
 @echo OFF
 setlocal enabledelayedexpansion
 cd %cd%
-set XCORE_PATH=%cd%
+set XCORE_PATH="%cd%"
 
 rem --------------------------------------------------------------------------------------------------------
 rem Set the color of the terminal to blue with yellow text
