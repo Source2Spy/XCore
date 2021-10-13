@@ -210,6 +210,9 @@ namespace xcore::guid
     template< std::size_t T_TYPE_BITS_SIZE_V = 64, std::size_t T_INSTANCE_BITS_SIZE_V = 64 >
     struct rcfull
     {
+        using rctype_t      = rctype<T_TYPE_BITS_SIZE_V>;
+        using rcinstance_t  = rcinstance<T_INSTANCE_BITS_SIZE_V>;
+
         rctype<T_TYPE_BITS_SIZE_V>          m_Type;
         rcinstance<T_INSTANCE_BITS_SIZE_V>  m_Instance;
 

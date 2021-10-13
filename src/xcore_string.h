@@ -97,6 +97,7 @@ namespace xcore::string
         constexpr                   operator const char_t*              ( void )                    const   noexcept { xassume( m_pValue ); return m_pValue; }
         constexpr   int             size                                ( void )                    const   noexcept { return m_Size.m_Value; }
         constexpr   auto            get                                 ( void )                    const   noexcept { return m_pValue; }
+        constexpr   auto            data                                ( void )                    const   noexcept { return m_pValue; }
         constexpr   auto            getView                             ( void )                    const   noexcept { return static_cast<view<const char_t>>(*this); }
         constexpr   auto            getViewFrom                         ( int Start )               const   noexcept { return view<const char_t>{ &(*this)[Start], m_Size.m_Value - Start }; }
         constexpr   bool            empty                               ( void )                    const   noexcept { return m_pValue == nullptr || m_pValue[0] == 0; }
