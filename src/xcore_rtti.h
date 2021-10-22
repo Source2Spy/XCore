@@ -265,17 +265,16 @@ namespace xcore::rtti
 // Description:
 //      Convert an argument to a string
 //------------------------------------------------------------------------------
-#define xcore_rtti_start(CLASS)     public: constexpr static rtti::base                     ms_RTTI     { []{ return xcore::crc<xcore::rtti::crc_unit_bits_v>::FromString(X_STRINGIFY( CLASSNAME ) "->" __FUNCSIG__ ":" X_STRINGIFY( __LINE__ )); }(), #CLASS };\
-                                    public: virtual const void*                             StrongCastV ( const rtti::base& B )         const   noexcept { return ms_RTTI.RTTIStrongCastCheck( B, this ); }                                                     \
-                                    public: virtual void*                                   StrongCastV ( const rtti::base& B )                 noexcept { return ms_RTTI.RTTIStrongCastCheck( B, this ); }                                                     \
+#define xcore_rtti_start(CLASS)     public: constexpr static xcore::rtti::base              ms_RTTI     { []{ return xcore::crc<xcore::rtti::crc_unit_bits_v>::FromString(X_STRINGIFY( CLASSNAME ) "->" __FUNCSIG__ ":" X_STRINGIFY( __LINE__ )); }(), #CLASS };\
+                                    public: virtual const void*                             StrongCastV ( const xcore::rtti::base& B )  const   noexcept { return ms_RTTI.RTTIStrongCastCheck( B, this ); }                                                     \
+                                    public: virtual void*                                   StrongCastV ( const xcore::rtti::base& B )          noexcept { return ms_RTTI.RTTIStrongCastCheck( B, this ); }                                                     \
                                     public: virtual bool [[nodiscard]]                      isKindOfV   ( xcore::rtti::crc_unit CRC )   const   noexcept { return ms_RTTI.m_CRC == CRC;      }                                                                  \
 
-#define xcore_rtti(CLASS, ... )     public: constexpr static rtti::entry<CLASS,__VA_ARGS__> ms_RTTI     { []{ return xcore::crc<xcore::rtti::crc_unit_bits_v>::FromString(X_STRINGIFY( CLASSNAME ) "->" __FUNCSIG__ ":" X_STRINGIFY( __LINE__ )); }(), #CLASS };\
-                                    public: virtual const void*                             StrongCastV ( const rtti::base& B )         const   noexcept override { return ms_RTTI.RTTIStrongCastCheck( B, this ); }                                            \
-                                    public: virtual void*                                   StrongCastV ( const rtti::base& B )                 noexcept override { return ms_RTTI.RTTIStrongCastCheck( B, this ); }                                            \
+
+#define xcore_rtti(CLASS, ... )     public: constexpr static xcore::rtti::entry<CLASS,__VA_ARGS__> ms_RTTI { []{ return xcore::crc<xcore::rtti::crc_unit_bits_v>::FromString(X_STRINGIFY( CLASSNAME ) "->" __FUNCSIG__ ":" X_STRINGIFY( __LINE__ )); }(), #CLASS };\
+                                    public: virtual const void*                             StrongCastV ( const xcore::rtti::base& B )  const   noexcept override { return ms_RTTI.RTTIStrongCastCheck( B, this ); }                                            \
+                                    public: virtual void*                                   StrongCastV ( const xcore::rtti::base& B )          noexcept override { return ms_RTTI.RTTIStrongCastCheck( B, this ); }                                            \
                                     public: virtual bool [[nodiscard]]                      isKindOfV   ( xcore::rtti::crc_unit CRC )   const   noexcept override { return ms_RTTI.isKindOf( CRC ); }                                                           \
-
-
 
 #endif
 
