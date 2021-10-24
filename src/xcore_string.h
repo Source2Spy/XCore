@@ -88,6 +88,7 @@ namespace xcore::string
 
         template< std::size_t N >
         constexpr                   constant                            ( const char_t(&Str)[N] )           noexcept : m_pValue{Str}, m_Size{N} {}
+        constexpr                   constant                            ( const char_t* Str, units Count )  noexcept : m_pValue{Str}, m_Size{ Count } {}
         constexpr                   constant                            ( const constant& )                 noexcept = default;
         constexpr                   constant                            ( void )                            noexcept = default;
         constexpr   const char_t&   operator[]                          ( units I )                 const   noexcept { xassume( m_pValue ); xassume( I < m_Size ); return m_pValue[I.m_Value]; }

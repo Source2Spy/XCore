@@ -5,18 +5,19 @@
 namespace xcore::arglist
 {
     //------------------------------------------------------------------------------
-    using out_types = std::variant<  bool,
-                                     std::uint8_t,  std::uint16_t,  std::uint32_t,  std::uint64_t,
-                                     std::int8_t,   std::int16_t,   std::int32_t,   std::int64_t, 
-                                     bool*,
-                                     std::uint8_t*, std::uint16_t*, std::uint32_t*, std::uint64_t*,
-                                     std::int8_t*,  std::int16_t*,  std::int32_t*,  std::int64_t*, 
-                                     float*, double*, 
-                                     void*,
-                                     float, double, 
-                                     const char*, xcore::string::view<char>,
-                                     xcore::string::view<char>*, 
-                                     xcore::string::ref<char>* >;
+    using out_types = std::variant<  bool
+                                   , float, double
+                                   , std::uint8_t,  std::uint16_t,  std::uint32_t,  std::uint64_t
+                                   , std::int8_t,   std::int16_t,   std::int32_t,   std::int64_t
+                                   , bool*
+                                   , std::uint8_t*, std::uint16_t*, std::uint32_t*, std::uint64_t*
+                                   , std::int8_t*,  std::int16_t*,  std::int32_t*,  std::int64_t*
+                                   , float*, double*
+                                   , void*
+                                   , const char*
+                                   , xcore::string::view<char>
+                                   , xcore::string::view<char>*
+                                   , xcore::string::ref<char>* >;
 
     //------------------------------------------------------------------------------
     using view = xcore::span<out_types>;
@@ -70,34 +71,80 @@ namespace xcore::arglist
         T Answer;
         std::visit( [&]( auto Value )
         {
-            using t = std::decay_t<decltype(Value)>;
-            if constexpr (std::is_same_v<T,const char*> && types::variant_t2i_v<t,out_types> >= types::variant_t2i_v<const char*,out_types> )
+            using t = decltype(Value);
+            if constexpr( std::is_same_v<T,const char*> )
             {
-                     if constexpr ( types::variant_t2i_v<t,out_types> == types::variant_t2i_v<xcore::string::view<char>*,out_types> )  Answer = Value->data();
-                else if constexpr ( types::variant_t2i_v<t,out_types> == types::variant_t2i_v<xcore::string::ref<char>*,out_types> )   Answer = Value->data();
-                else                                                                                                                   Answer = Value;
+                if constexpr ( types::variant_t2i_v<t, out_types> >= types::variant_t2i_v<const char*, out_types> )
+                {
+                         if constexpr ( types::variant_t2i_v<t,out_types> == types::variant_t2i_v<xcore::string::view<char>*,out_types> )  Answer = Value->data();
+                    else if constexpr ( types::variant_t2i_v<t,out_types> == types::variant_t2i_v<xcore::string::ref<char>*, out_types> )  Answer = Value->data();
+                    else                                                                                                                   Answer = Value;
+                }
+                else
+                {
+                    xassert(false);
+                }
             }
-            else if constexpr( std::is_integral_v<T> 
-                && types::variant_t2i_v<t,out_types> >= types::variant_t2i_v<std::uint8_t,out_types> 
-                && types::variant_t2i_v<t,out_types> <= types::variant_t2i_v<std::int64_t,out_types> )
+            else if constexpr( std::is_integral_v<T> )
             {
-                Answer = static_cast<T>(Value);
+                if constexpr ( types::variant_t2i_v<t,out_types> >= types::variant_t2i_v<std::uint8_t,out_types> 
+                            && types::variant_t2i_v<t,out_types> <= types::variant_t2i_v<std::int64_t,out_types> )
+                {
+                    Answer = static_cast<T>(Value);
+                }
+                else
+                {
+                    xassert(false);
+                }
             }
-            else if constexpr( std::is_floating_point_v<T> 
-                && types::variant_t2i_v<t,out_types> >= types::variant_t2i_v<float,out_types> 
-                && types::variant_t2i_v<t,out_types> <= types::variant_t2i_v<double,out_types> )
+            else if constexpr( std::is_floating_point_v<T> )
             {
-                Answer = static_cast<T>(Value);
+                if constexpr ( types::variant_t2i_v<t,out_types> >= types::variant_t2i_v<float,out_types> 
+                            && types::variant_t2i_v<t,out_types> <= types::variant_t2i_v<double,out_types> )
+                {
+                    Answer = static_cast<T>(Value);
+                }
+                else
+                {
+                    xassert(false);
+                }
             }
-            else if constexpr( std::is_reference_v<T> 
-                && types::variant_t2i_v<t,out_types> >= types::variant_t2i_v<std::uint8_t*,out_types> 
-                && types::variant_t2i_v<t,out_types> <= types::variant_t2i_v<void*,out_types> )
+            else if constexpr( std::is_pointer_v<T> )
             {
-                Answer = static_cast<T>(Value);
+                // We are trying to get a pointer to intergers?
+                if constexpr( std::is_integral_v<std::decay_t<T>> )
+                {
+                    if constexpr (types::variant_t2i_v<t, out_types> >= types::variant_t2i_v<std::uint8_t*, out_types>
+                               && types::variant_t2i_v<t, out_types> <= types::variant_t2i_v<std::int64_t*, out_types>)
+                    {
+                        Answer = static_cast<T>(Value);
+                    }
+                    else
+                    {
+                        xassert(false);
+                    }
+                }
+                // We are trying to get any pointer>
+                else if constexpr ( std::is_same_v<void*, T> )
+                {
+                    if constexpr (types::variant_t2i_v<t, out_types> >= types::variant_t2i_v<bool*,       out_types>
+                               && types::variant_t2i_v<t, out_types> <= types::variant_t2i_v<const char*, out_types>)
+                    {
+                        Answer = const_cast<T>(reinterpret_cast<const void*>(Value));
+                    }
+                    else
+                    {
+                        xassert(false);
+                    }
+                }
+                else
+                {
+                    xassert(false);
+                }
             }
             else
             {
-                xassume( types::always_false_v<t> );
+                xassert( types::always_false_v<t> );
             }
         }, Out );
 
