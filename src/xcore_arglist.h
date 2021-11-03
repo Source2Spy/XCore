@@ -17,7 +17,8 @@ namespace xcore::arglist
                                    , const char*
                                    , xcore::string::view<char>
                                    , xcore::string::view<char>*
-                                   , xcore::string::ref<char>* >;
+                                   , xcore::string::ref<char>* 
+                                   , std::string* >;
 
     //------------------------------------------------------------------------------
     using view = xcore::span<out_types>;
@@ -78,6 +79,7 @@ namespace xcore::arglist
                 {
                          if constexpr ( types::variant_t2i_v<t,out_types> == types::variant_t2i_v<xcore::string::view<char>*,out_types> )  Answer = Value->data();
                     else if constexpr ( types::variant_t2i_v<t,out_types> == types::variant_t2i_v<xcore::string::ref<char>*, out_types> )  Answer = Value->data();
+                    else if constexpr ( types::variant_t2i_v<t,out_types> == types::variant_t2i_v<std::string*,              out_types> )  Answer = Value->c_str();
                     else                                                                                                                   Answer = Value;
                 }
                 else
