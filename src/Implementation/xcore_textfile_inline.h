@@ -24,6 +24,27 @@ namespace xcore::textfile
 
     //------------------------------------------------------------------------------------------------
 
+    template< auto N1, auto N2 >
+    constexpr user_defined_types::user_defined_types(const char(&Name)[N1], const char(&Types)[N2]) noexcept
+        : m_Name        { Name }
+        , m_SystemTypes { Types }
+        , m_CRC         { xcore::crc<32>::FromString(Name) }
+        , m_NameLength  { N1 }
+        , m_nSystemTypes{ N2 }
+    {}
+
+    //------------------------------------------------------------------------------------------------
+
+    constexpr user_defined_types::user_defined_types( const char* pName, const char* pTypes ) noexcept
+        : m_Name        { pName }
+        , m_SystemTypes { pTypes }
+        , m_CRC         { xcore::crc<32>::FromString(pName) }
+        , m_NameLength  { static_cast<int>(xcore::string::Length(pName).m_Value) }
+        , m_nSystemTypes{ static_cast<int>(xcore::string::Length(pTypes).m_Value) }
+    {}
+
+    //------------------------------------------------------------------------------------------------
+
     template< std::size_t N, typename... T_ARGS > inline
     xcore::err stream::Field( xcore::crc<32> UserType, const char(&pFieldName)[N], T_ARGS&... Args ) noexcept
     {

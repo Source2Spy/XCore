@@ -60,19 +60,16 @@ namespace xcore::textfile
 
     struct user_defined_types
     {
-        constexpr user_defined_types() noexcept = default;
-        constexpr user_defined_types( const char* pName, const char* pTypes ) noexcept 
-            : m_Name                    {pName}
-            , m_SystemTypes             {pTypes}
-            , m_CRC                     { xcore::crc<32>::FromString(pName) }
-            , m_NameLength              { []( const char* pName )  constexpr { int i=0; while( pName[++i] ); return i;}(pName) }
-            , m_nSystemTypes            { []( const char* pTypes ) constexpr { int i=0; while( pTypes[++i]); return i;}(pTypes) } 
-            {}
+        template< auto N1, auto N2 >
+        constexpr user_defined_types( const char(&Name)[N1], const char(&Types)[N2] ) noexcept;
+        constexpr user_defined_types( const char* pName, const char* pTypes ) noexcept;
+        constexpr user_defined_types( void ) = default;
+
         string::fixed<char,32>  m_Name;
         string::fixed<char,32>  m_SystemTypes;
-        xcore::crc<32>          m_CRC;
-        int                     m_NameLength{};
-        int                     m_nSystemTypes{};     // How many system types we are using, this is basically the length of the m_SystemType string
+        xcore::crc<32>          m_CRC           {};
+        int                     m_NameLength    {};
+        int                     m_nSystemTypes  {};     // How many system types we are using, this is basically the length of the m_SystemType string
     };
 
     //-----------------------------------------------------------------------------------------------------
