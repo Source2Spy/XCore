@@ -4,6 +4,13 @@
 
 namespace xcore::containers
 {
+    template< typename T_RET, typename T_ENTRY, typename T_CONTAINER >
+    constexpr xforceinline
+    T_RET getIndex( const T_ENTRY& Entry, const T_CONTAINER& Container ) noexcept
+    {
+        return static_cast<T_RET>(static_cast<std::size_t>(&Entry - &Container[0]));
+    }
+
     namespace raw
     {
         //------------------------------------------------------------------------------

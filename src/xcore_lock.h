@@ -300,6 +300,8 @@ namespace xcore::lock
     //------------------------------------------------------------------------------------------
     struct semaphore_reentrant
     {
+        inline bool isLockedDebug(void) const noexcept { return m_Semaphore.isLockedDebug(); }
+
         template< typename T_CALLBACK = void(*)() >
         xforceinline void lock(T_CALLBACK&& Callback = []()constexpr {}) noexcept
         {

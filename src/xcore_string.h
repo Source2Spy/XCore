@@ -88,6 +88,7 @@ namespace xcore::string
 
         template< std::size_t N >
         constexpr                   constant                            ( const char_t(&Str)[N] )           noexcept : m_pValue{Str}, m_Size{N} {}
+        constexpr                   constant                            ( const char_t* Str, units Count )  noexcept : m_pValue{Str}, m_Size{ Count } {}
         constexpr                   constant                            ( const constant& )                 noexcept = default;
         constexpr                   constant                            ( void )                            noexcept = default;
         constexpr   const char_t&   operator[]                          ( units I )                 const   noexcept { xassume( m_pValue ); xassume( I < m_Size ); return m_pValue[I.m_Value]; }
@@ -97,6 +98,7 @@ namespace xcore::string
         constexpr                   operator const char_t*              ( void )                    const   noexcept { xassume( m_pValue ); return m_pValue; }
         constexpr   int             size                                ( void )                    const   noexcept { return m_Size.m_Value; }
         constexpr   auto            get                                 ( void )                    const   noexcept { return m_pValue; }
+        constexpr   auto            data                                ( void )                    const   noexcept { return m_pValue; }
         constexpr   auto            getView                             ( void )                    const   noexcept { return static_cast<view<const char_t>>(*this); }
         constexpr   auto            getViewFrom                         ( int Start )               const   noexcept { return view<const char_t>{ &(*this)[Start], m_Size.m_Value - Start }; }
         constexpr   bool            empty                               ( void )                    const   noexcept { return m_pValue == nullptr || m_pValue[0] == 0; }
@@ -569,8 +571,8 @@ namespace xcore::string
                   void              assign                              ( const self& V )                   noexcept { Copy( *this, V ); }
                   void              copy                                ( char_t* p, int L )        const   noexcept { for( int i=0; i<L; ++i ) p[i] = (*this)[i]; }
         constexpr auto              length                              ( void )                    const   noexcept { return Length(*this).m_Value; }
-        constexpr auto              getView                             ( void )                    const   noexcept { return static_cast<const string::view<const char>>(*this); }
-        constexpr auto              getView                             ( void )                            noexcept { return static_cast<string::view<char>>(*this); }
+        constexpr auto              getView                             ( void )                    const   noexcept { return static_cast<const string::view<const char_t>>(*this); }
+        constexpr auto              getView                             ( void )                            noexcept { return static_cast<string::view<char_t>>(*this); }
 
         constexpr                   operator const char_t*              ( void )                    const   noexcept { return data(); }
                                     operator       char_t*              ( void )                            noexcept { return mutable_data(); }

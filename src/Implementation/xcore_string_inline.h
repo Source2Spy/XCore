@@ -153,7 +153,7 @@ namespace xcore::string
     {
         const auto StrLen = ref<T_CHAR>::units(Length(Str).m_Value + 1);
         ref<T_CHAR> Ref(StrLen);
-        for( auto i=0u, end_i = StrLen.m_Value-1; i<end_i; ++i ) Ref[i] = Str[i];
+        for( auto i=0u, end_i = StrLen.m_Value-1; i<end_i; ++i ) Ref[i] = static_cast<T_CHAR>(Str[i]);
         Ref[StrLen.m_Value-1] = 0;
         return Ref;
     }

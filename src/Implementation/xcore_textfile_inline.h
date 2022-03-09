@@ -10,7 +10,7 @@ namespace xcore::textfile
             || std::is_same_v< std::uint16_t         , T >
             || std::is_same_v< std::uint32_t         , T >
             || std::is_same_v< std::uint64_t         , T >
-//            || std::is_same_v< std::char           , T >
+//            || std::is_same_v< char                  , T >
             || std::is_same_v< std::int16_t          , T >
             || std::is_same_v< std::int32_t          , T >
             || std::is_same_v< std::int64_t          , T >
@@ -18,8 +18,30 @@ namespace xcore::textfile
             || std::is_same_v< float                 , T >
             || std::is_same_v< double                , T >
             || std::is_same_v< string::view<char>    , T >
-            || std::is_same_v< string::ref<char>     , T >;
+            || std::is_same_v< string::ref<char>     , T >
+            || std::is_same_v< std::string           , T >;
     }
+
+    //------------------------------------------------------------------------------------------------
+
+    template< auto N1, auto N2 >
+    constexpr user_defined_types::user_defined_types(const char(&Name)[N1], const char(&Types)[N2]) noexcept
+        : m_Name        { Name }
+        , m_SystemTypes { Types }
+        , m_CRC         { xcore::crc<32>::FromString(Name) }
+        , m_NameLength  { N1 }
+        , m_nSystemTypes{ N2 }
+    {}
+
+    //------------------------------------------------------------------------------------------------
+
+    constexpr user_defined_types::user_defined_types( const char* pName, const char* pTypes ) noexcept
+        : m_Name        { pName }
+        , m_SystemTypes { pTypes }
+        , m_CRC         { xcore::crc<32>::FromString(pName) }
+        , m_NameLength  { static_cast<int>(xcore::string::Length(pName).m_Value) }
+        , m_nSystemTypes{ static_cast<int>(xcore::string::Length(pTypes).m_Value) }
+    {}
 
     //------------------------------------------------------------------------------------------------
 
@@ -50,7 +72,7 @@ namespace xcore::textfile
         {
             if( getRecordName() != Str )
             { 
-                (void)xerr_failure( Error, "Unexpected record" ); 
+                Error = xerr_code_s(error_state::UNEXPECTED_RECORD, "Unexpected record" );
                 return true; 
             }
             std::size_t Count = getRecordCount();

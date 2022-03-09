@@ -156,9 +156,10 @@ namespace xcore::guid
 
         using parent::unit;
         template< std::size_t N >
-        constexpr                               subgroup        ( T_GROUP Group, const char (&Str)[N] )             noexcept : parent{crc<T_GROUP::bits_size_v>::FromString(Str).m_Value, Group.m_Value} {}
-        constexpr       units                   getSubgroup     ( void )                                    const   noexcept { return units  { static_cast<typename T_GROUP::type>(parent::m_Value>>T_GROUP::bits_size_v) }; }
-        constexpr       T_GROUP                 getGroup        ( void )                                    const   noexcept { return T_GROUP{ static_cast<typename T_GROUP::type>(parent::m_Value) }; }
+        constexpr                               subgroup        ( T_GROUP Group, const char (&Str)[N] )                 noexcept : parent{ crc<T_GROUP::bits_size_v>::FromString(Str).m_Value,          Group.m_Value } {}
+        constexpr                               subgroup        ( T_GROUP Group, xcore::string::constant<char> Str )    noexcept : parent{ crc<T_GROUP::bits_size_v>::FromString(Str.m_pValue).m_Value, Group.m_Value } {}
+        constexpr       units                   getSubgroup     ( void )                                        const   noexcept { return units  { static_cast<typename T_GROUP::type>(parent::m_Value>>T_GROUP::bits_size_v) }; }
+        constexpr       T_GROUP                 getGroup        ( void )                                        const   noexcept { return T_GROUP{ static_cast<typename T_GROUP::type>(parent::m_Value) }; }
     };
 
     //------------------------------------------------------------------------------
@@ -210,6 +211,9 @@ namespace xcore::guid
     template< std::size_t T_TYPE_BITS_SIZE_V = 64, std::size_t T_INSTANCE_BITS_SIZE_V = 64 >
     struct rcfull
     {
+        using rctype_t      = rctype<T_TYPE_BITS_SIZE_V>;
+        using rcinstance_t  = rcinstance<T_INSTANCE_BITS_SIZE_V>;
+
         rctype<T_TYPE_BITS_SIZE_V>          m_Type;
         rcinstance<T_INSTANCE_BITS_SIZE_V>  m_Instance;
 

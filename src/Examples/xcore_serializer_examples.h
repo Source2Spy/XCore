@@ -18,6 +18,8 @@ namespace xcore::serializer
 
         struct data3 : public data1
         {
+            constexpr static auto VERSION = 1;
+
             data2                   m_GoInStatic;
             data2                   m_DontDynamic;
             xcore::array<data2, 8>  m_GoTemp;

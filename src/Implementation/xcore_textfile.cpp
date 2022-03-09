@@ -595,6 +595,7 @@ namespace xcore::textfile
             else    if constexpr ( std::is_same_v<t,double*>             ) return X == 'F';
             else    if constexpr ( std::is_same_v<t,string::view<char>*> ) return X == 's';
             else    if constexpr ( std::is_same_v<t,string::ref<char>*>  ) return X == 's';
+            else    if constexpr ( std::is_same_v<t,std::string*>        ) return X == 's';
             else    return false;
         }, Y );
     }
@@ -811,6 +812,7 @@ namespace xcore::textfile
                     {
                         using t = std::decay_t<decltype(Value)>;
                                 if constexpr ( std::is_same_v<t,bool*>               ) return 'c';
+//                        else    if constexpr ( std::is_same_v<t,char*>               ) return 'c';
                         else    if constexpr ( std::is_same_v<t,std::uint8_t*>       ) return 'h';
                         else    if constexpr ( std::is_same_v<t,std::uint16_t*>      ) return 'H';
                         else    if constexpr ( std::is_same_v<t,std::uint32_t*>      ) return 'g';
@@ -823,6 +825,7 @@ namespace xcore::textfile
                         else    if constexpr ( std::is_same_v<t,double*>             ) return 'F';
                         else    if constexpr ( std::is_same_v<t,string::view<char>*> ) return 's';
                         else    if constexpr ( std::is_same_v<t,string::ref<char>*>  ) return 's';
+                        else    if constexpr ( std::is_same_v<t,std::string*>        ) return 's';
                         else    { xassume(false); return char{0}; }
                     }, A );
                 }
@@ -852,6 +855,12 @@ namespace xcore::textfile
                     {
                         FieldInfo.m_iData = m_iMemOffet;
                         m_iMemOffet += 1 + xcore::string::Copy<string::view<char>,string::view<char>>( m_Memory.ViewFrom(FieldInfo.m_iData), *p ).m_Value;
+                        FieldInfo.m_Width = m_iMemOffet - FieldInfo.m_iData;
+                    }
+                    else if constexpr( std::is_same_v<T, std::string*> )
+                    {
+                        FieldInfo.m_iData = m_iMemOffet;
+                        m_iMemOffet += 1 + xcore::string::Copy<string::view<char>>(m_Memory.ViewFrom(FieldInfo.m_iData), p->c_str()).m_Value;
                         FieldInfo.m_Width = m_iMemOffet - FieldInfo.m_iData;
                     }
                     else
@@ -971,7 +980,13 @@ namespace xcore::textfile
                                 m_iMemOffet += 1 + string::sprintf( m_Memory.ViewFrom(Field.m_iData), "\"%s\"", p->data() ).m_Value;
                                 Field.m_Width = m_iMemOffet - Field.m_iData - 1;
                             }
-                    else    
+                    else    if constexpr ( std::is_same_v<t, std::string*> )
+                            {
+                                Field.m_iData = m_iMemOffet;
+                                m_iMemOffet += 1 + string::sprintf(m_Memory.ViewFrom(Field.m_iData), "\"%s\"", p->c_str()).m_Value;
+                                Field.m_Width = m_iMemOffet - Field.m_iData - 1;
+                            }
+                    else
                     { 
                         xassume(false); 
                     }
@@ -1834,6 +1849,10 @@ namespace xcore::textfile
                 else if constexpr ( std::is_same_v<t,string::view<char>*> || std::is_same_v<t,string::ref<char>*> )
                 {
                     string::Copy( *p, &m_Memory[ iData ] );
+                }
+                else if constexpr (std::is_same_v<t, std::string*> )
+                {
+                    *p = &m_Memory[iData];
                 }
                 else
                 {
