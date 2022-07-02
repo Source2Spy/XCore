@@ -69,10 +69,10 @@ namespace xcore::string
         else
         {
             // Make sure Destination is ready to get the right data
-            if constexpr (is_ref_v<T1>) Dest.ResetToSize(units<T1::char_t>{ Count.m_Value + 1 });
+            if constexpr (is_ref_v<T1>) Dest.ResetToSize(units<typename T1::char_t>{ Count.m_Value + 1 });
 
-            if constexpr (is_obj_v<T2>) return details::CopyN<T1::char_t>(Dest, &Src[0], Count);
-            else                        return details::CopyN<T1::char_t>(Dest, Src, Count);
+            if constexpr (is_obj_v<T2>) return details::CopyN<typename T1::char_t>(Dest, &Src[0], Count);
+            else                        return details::CopyN<typename T1::char_t>(Dest, Src, Count);
         }
     }
 
@@ -122,16 +122,16 @@ namespace xcore::string
         {
             // Quick copies (Share pointer or constant strings)
             if constexpr( is_ref_v<T2> ) 
-                if constexpr ( std::is_same_v<std::decay_t<T1::char_t>,std::decay_t<T2::char_t>> )
+                if constexpr ( std::is_same_v<std::decay_t<typename T1::char_t>,std::decay_t<typename T2::char_t>> )
             {
                 if( Src.m_Ref.index() == T2::index_share_v )
                 {
-                    Dest.m_Ref.emplace<T1::share_t>( std::get<T2::share_t>(Src.m_Ref) );
+                    Dest.m_Ref.emplace<typename T1::share_t>( std::get<typename T2::share_t>(Src.m_Ref) );
                     return Length(Dest);
                 }
                 else if( Src.m_Ref.index() == T2::index_const_v )
                 {
-                    Dest.m_Ref.emplace<T1::constant_t>( std::get<T2::constant_t>(Src.m_Ref) );
+                    Dest.m_Ref.emplace<typename T1::constant_t>( std::get<typename T2::constant_t>(Src.m_Ref) );
                     return Length(Dest);
                 }
             }
@@ -141,8 +141,8 @@ namespace xcore::string
         }
         else
         {
-            if constexpr(is_obj_v<T2>)  return details::Copy<T1::char_t,T2::char_t>(Dest,Src); 
-            else                        return details::Copy<T1::char_t>(Dest,Src); 
+            if constexpr(is_obj_v<T2>)  return details::Copy<typename T1::char_t, typename T2::char_t>(Dest,Src);
+            else                        return details::Copy<typename T1::char_t>(Dest,Src);
         }
     }
 
