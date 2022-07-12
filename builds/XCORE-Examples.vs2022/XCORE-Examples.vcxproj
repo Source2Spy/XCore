@@ -1,0 +1,258 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\..\dependencies\meow_hash_cpp\meowhash_cpp\meow_hash.h" />
+    <ClInclude Include="..\..\dependencies\properties\src\Properties.h" />
+    <ClInclude Include="..\..\dependencies\span\include\tcb\span.hpp" />
+    <ClInclude Include="..\..\dependencies\tracy\Tracy.hpp" />
+    <ClInclude Include="..\..\dependencies\zstd\lib\zstd.h" />
+    <ClInclude Include="..\..\src\Examples\circular_pool.h" />
+    <ClInclude Include="..\..\src\Examples\cmdPool.h" />
+    <ClInclude Include="..\..\src\Examples\helpers.h" />
+    <ClInclude Include="..\..\src\Examples\pool.h" />
+    <ClInclude Include="..\..\src\Examples\xcore_cmdline_example.h" />
+    <ClInclude Include="..\..\src\Examples\xcore_compression_examples.h" />
+    <ClInclude Include="..\..\src\Examples\xcore_error_examples.h" />
+    <ClInclude Include="..\..\src\Examples\xcore_examples.h" />
+    <ClInclude Include="..\..\src\Examples\xcore_file_example.h" />
+    <ClInclude Include="..\..\src\Examples\xcore_function_examples.h" />
+    <ClInclude Include="..\..\src\Examples\xcore_guid_examples.h" />
+    <ClInclude Include="..\..\src\Examples\xcore_lockless_pool_examples.h" />
+    <ClInclude Include="..\..\src\Examples\xcore_lockless_queue.h" />
+    <ClInclude Include="..\..\src\Examples\xcore_log_examples.h" />
+    <ClInclude Include="..\..\src\Examples\xcore_math_vector3d_examples.h" />
+    <ClInclude Include="..\..\src\Examples\xcore_properties.h" />
+    <ClInclude Include="..\..\src\Examples\xcore_rtti_examples.h" />
+    <ClInclude Include="..\..\src\Examples\xcore_scheduler_examples.h" />
+    <ClInclude Include="..\..\src\Examples\xcore_serializer_examples.h" />
+    <ClInclude Include="..\..\src\Examples\xcore_string_examples.h" />
+    <ClInclude Include="..\..\src\Examples\xcore_textfile_examples.h" />
+    <ClInclude Include="..\..\src\Examples\xcore_unique_span.h" />
+    <ClInclude Include="..\..\src\Examples\xcore_vector_examples.h" />
+    <ClInclude Include="..\..\src\Implementation\windows\xcore_file_driver_pc.h" />
+    <ClInclude Include="..\..\src\Implementation\xcore_file_inline.h" />
+    <ClInclude Include="..\..\src\Implementation\xcore_linear_buffers_hardness.h" />
+    <ClInclude Include="..\..\src\Implementation\xcore_math_bbox_inline.h" />
+    <ClInclude Include="..\..\src\Implementation\xcore_math_inline.h" />
+    <ClInclude Include="..\..\src\Implementation\xcore_math_irect_inline.h" />
+    <ClInclude Include="..\..\src\Implementation\xcore_math_matrix4_inline.h" />
+    <ClInclude Include="..\..\src\Implementation\xcore_math_plane_inline.h" />
+    <ClInclude Include="..\..\src\Implementation\xcore_math_quaternion_inline.h" />
+    <ClInclude Include="..\..\src\Implementation\xcore_math_radian3_inline.h" />
+    <ClInclude Include="..\..\src\Implementation\xcore_math_rect_inline.h" />
+    <ClInclude Include="..\..\src\Implementation\xcore_math_sphere_inline.h" />
+    <ClInclude Include="..\..\src\Implementation\xcore_math_vector3d_inline.h" />
+    <ClInclude Include="..\..\src\Implementation\xcore_math_vector3_inline.h" />
+    <ClInclude Include="..\..\src\Implementation\xcore_math_vector4_inline.h" />
+    <ClInclude Include="..\..\src\Implementation\xcore_random_inline.h" />
+    <ClInclude Include="..\..\src\Implementation\xcore_scheduler_inline.h" />
+    <ClInclude Include="..\..\src\Implementation\xcore_serializer_inline.h" />
+    <ClInclude Include="..\..\src\Implementation\xcore_string_inline.h" />
+    <ClInclude Include="..\..\src\Implementation\xcore_textfile2_inline.h" />
+    <ClInclude Include="..\..\src\Implementation\xcore_unqiue_span_inline.h" />
+    <ClInclude Include="..\..\src\Implementation\xcore_vector_inline.h" />
+    <ClInclude Include="..\..\src\Settings\PropertyConfig.h" />
+    <ClInclude Include="..\..\src\Settings\xcore_user_settings.h" />
+    <ClInclude Include="..\..\src\xcore.h" />
+    <ClInclude Include="..\..\src\xcore_arglist.h" />
+    <ClInclude Include="..\..\src\xcore_array.h" />
+    <ClInclude Include="..\..\src\xcore_assert.h" />
+    <ClInclude Include="..\..\src\xcore_bits.h" />
+    <ClInclude Include="..\..\src\xcore_cmdline.h" />
+    <ClInclude Include="..\..\src\xcore_compression.h" />
+    <ClInclude Include="..\..\src\xcore_context.h" />
+    <ClInclude Include="..\..\src\xcore_crc.h" />
+    <ClInclude Include="..\..\src\xcore_endian.h" />
+    <ClInclude Include="..\..\src\xcore_error.h" />
+    <ClInclude Include="..\..\src\xcore_event.h" />
+    <ClInclude Include="..\..\src\xcore_file.h" />
+    <ClInclude Include="..\..\src\xcore_function.h" />
+    <ClInclude Include="..\..\src\xcore_global.h" />
+    <ClInclude Include="..\..\src\xcore_guid.h" />
+    <ClInclude Include="..\..\src\xcore_lock.h" />
+    <ClInclude Include="..\..\src\xcore_lockless_pool.h" />
+    <ClInclude Include="..\..\src\xcore_lockless_queues.h" />
+    <ClInclude Include="..\..\src\xcore_log.h" />
+    <ClInclude Include="..\..\src\xcore_math.h" />
+    <ClInclude Include="..\..\src\xcore_math_matrix4.h" />
+    <ClInclude Include="..\..\src\xcore_math_quaternion.h" />
+    <ClInclude Include="..\..\src\xcore_math_radian3.h" />
+    <ClInclude Include="..\..\src\xcore_math_shapes.h" />
+    <ClInclude Include="..\..\src\xcore_math_transform.h" />
+    <ClInclude Include="..\..\src\xcore_math_vector2.h" />
+    <ClInclude Include="..\..\src\xcore_math_vector3.h" />
+    <ClInclude Include="..\..\src\xcore_math_vector4.h" />
+    <ClInclude Include="..\..\src\xcore_memory.h" />
+    <ClInclude Include="..\..\src\xcore_profiler.h" />
+    <ClInclude Include="..\..\src\xcore_ptr.h" />
+    <ClInclude Include="..\..\src\xcore_random.h" />
+    <ClInclude Include="..\..\src\xcore_rtti.h" />
+    <ClInclude Include="..\..\src\xcore_scheduler_channel.h" />
+    <ClInclude Include="..\..\src\xcore_scheduler_job.h" />
+    <ClInclude Include="..\..\src\xcore_scheduler_system.h" />
+    <ClInclude Include="..\..\src\xcore_scheduler_trigger.h" />
+    <ClInclude Include="..\..\src\xcore_serializer.h" />
+    <ClInclude Include="..\..\src\xcore_span.h" />
+    <ClInclude Include="..\..\src\xcore_string.h" />
+    <ClInclude Include="..\..\src\xcore_system_reg.h" />
+    <ClInclude Include="..\..\src\xcore_target.h" />
+    <ClInclude Include="..\..\src\xcore_textfile.h" />
+    <ClInclude Include="..\..\src\xcore_types.h" />
+    <ClInclude Include="..\..\src\xcore_unique_span.h" />
+    <ClInclude Include="..\..\src\xcore_units.h" />
+    <ClInclude Include="..\..\src\xcore_vector.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\..\src\Examples\main.cpp" />
+    <ClCompile Include="..\..\src\xcore.cpp" />
+    <ClCompile Include="..\..\src\xcore_profiler_1.cpp" />
+    <ClCompile Include="..\..\src\xcore_profiler_2.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\README.md" />
+    <None Include="..\UpdateDependencies.bat" />
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <VCProjectVersion>15.0</VCProjectVersion>
+    <ProjectGuid>{9FBD5D8F-43DE-409B-AF80-CA375739383F}</ProjectGuid>
+    <RootNamespace>XCORE-Examples</RootNamespace>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <CharacterSet>MultiByte</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>MultiByte</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <CharacterSet>MultiByte</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>MultiByte</CharacterSet>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="Shared">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup />
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>Disabled</Optimization>
+      <SDLCheck>true</SDLCheck>
+      <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+      <AdditionalIncludeDirectories>..\..\src\Settings</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+    </ClCompile>
+    <Link>
+      <AdditionalLibraryDirectories>../../</AdditionalLibraryDirectories>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>Disabled</Optimization>
+      <SDLCheck>true</SDLCheck>
+      <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpplatest</LanguageStandard>
+      <AdditionalIncludeDirectories>..\..\src\Settings</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <AdditionalOptions>/Zi %(AdditionalOptions)</AdditionalOptions>
+    </ClCompile>
+    <Link>
+      <AdditionalLibraryDirectories>../../</AdditionalLibraryDirectories>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>MaxSpeed</Optimization>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <SDLCheck>true</SDLCheck>
+      <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+      <AdditionalIncludeDirectories>..\..\src\Settings</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+    </ClCompile>
+    <Link>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <AdditionalLibraryDirectories>../../</AdditionalLibraryDirectories>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>MaxSpeed</Optimization>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <SDLCheck>true</SDLCheck>
+      <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+      <AdditionalIncludeDirectories>..\..\src\Settings</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+    </ClCompile>
+    <Link>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <AdditionalLibraryDirectories>../../</AdditionalLibraryDirectories>
+    </Link>
+  </ItemDefinitionGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>

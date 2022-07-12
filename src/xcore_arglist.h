@@ -69,7 +69,7 @@ namespace xcore::arglist
     {
         xassert( arglist::isConvertible<T>( Out ) );
 
-        T Answer;
+        T Answer{};
         std::visit( [&]( auto Value )
         {
             using t = decltype(Value);
@@ -146,6 +146,7 @@ namespace xcore::arglist
             }
             else
             {
+                static_assert(types::always_false_v<t>);
                 xassert( types::always_false_v<t> );
             }
         }, Out );
