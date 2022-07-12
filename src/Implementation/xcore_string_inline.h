@@ -604,6 +604,101 @@ namespace xcore::string
         return {};
     }
 
+    //------------------------------------------------------------------------------
+    // Try to create a very compact resource file name
+    //------------------------------------------------------------------------------
+    namespace details::compact_file_name
+    {
+        // https://superuser.com/questions/1362080/which-characters-are-invalid-for-an-ms-dos-filename
+        inline constexpr const char key_string_v[] = "0123456789ABCDEFGHINKLMNOPQRSTUVWXYZ !#$%&'()-@^_`{}~";
+
+        template< typename T_CHAR, int extra_v >
+        inline static constexpr auto  valid_chars_v       = []()constexpr noexcept 
+        {
+            std::array<T_CHAR, 127*extra_v + sizeof(key_string_v)> Array{};
+            int s;
+            if constexpr (sizeof(T_CHAR) == 1)      for(s = 0; Array.data()[s] = key_string_v[s]; ++s);
+            else if constexpr (sizeof(T_CHAR) == 2) for(s = 0; Array.data()[s] = key_string_v[s]; ++s);
+            else
+            {
+                xassert(false);
+            }
+
+            for( int i=0; i<(127*extra_v); ++i )
+            {
+                Array[ i + s ] = 128 + i;
+            }
+
+            return Array;
+        }();
+
+        inline static constexpr auto from_char_v = []() constexpr noexcept
+        {
+            std::array<std::uint8_t, 0xff> conversion_v{0xff};
+            
+            int j = 0;
+            for( ; j< sizeof(key_string_v); ++j )
+            {
+                conversion_v[key_string_v[j]] = j;
+            }
+            
+            for( int i=0; i < 127; ++i)
+            {
+                conversion_v[128+i] = j++;
+            }
+
+            return conversion_v;
+        }();
+    }
+
+    template< typename T_CHAR, bool extra_chars_v, typename T_INT > constexpr 
+    xcore::string::ref<T_CHAR> IntToCompactFileName( T_INT aVal ) noexcept
+    {
+        static_assert( std::is_integral_v<T_INT> );
+        using           t                   = xcore::types::to_uint_t<T_INT>;
+        using           u                   = xcore::string::ref<T_CHAR>::units;
+        constexpr auto& valid_chars_v       = details::compact_file_name::valid_chars_v<T_CHAR, extra_chars_v ? 1 : 0>;
+        constexpr auto  string_capacity_v   = 64;
+        auto            String              = xcore::string::ref<T_CHAR>(u(string_capacity_v));
+        int             iCursor             = 0;
+        auto            Val                 = static_cast<t>(aVal);
+        constexpr auto  base_v              = valid_chars_v.size();
+        do
+        {
+            const auto CVal = t(Val % base_v);
+            Val /= base_v;
+            String[u(iCursor++)] = valid_chars_v[CVal];
+
+        } while (Val > 0 && iCursor < string_capacity_v);
+
+        //  terminate string; 
+        String[u(iCursor)] = 0;
+
+        return String;
+    }
+
+    //------------------------------------------------------------------------------
+
+    template< typename T_INT, bool extra_chars_v, typename T > constexpr 
+    T_INT CompactFileNameToInt( const T& Chars ) noexcept
+    {
+        static_assert(std::is_integral_v<T_INT>);
+
+        const auto&     valid_chars_v = details::compact_file_name::valid_chars_v<decltype(Chars[0]), extra_chars_v ? 1 : 0>;
+        constexpr auto  base_v        = valid_chars_v.size();
+        using           t             = xcore::types::to_uint_t<T_INT>;
+
+        t x = 0;
+        std::uint64_t Exp = 1;
+        for( int t=0; Chars[t]; ++t )
+        {
+            xassert( details::compact_file_name[static_cast<std::uint32_t>(Chars[t])] != 0xff );
+            x   += details::compact_file_name[static_cast<std::uint32_t>(Chars[t]) ] * Exp;
+            Exp *= base_v;
+        }
+
+        return static_cast<T_INT>(x);
+    }
 
 }
 

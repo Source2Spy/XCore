@@ -8,7 +8,27 @@ namespace xcore::types
     // Check if type if const
     //-------------------------------------------------------------------------------------------------------
     template< typename T >
-    constexpr auto is_const_v = std::is_const_v<T> || std::is_same_v< const T, T >;
+    constexpr auto is_const_v = std::is_same_v< const std::remove_pointer_t<std::remove_reference_t<T>>, std::remove_pointer_t<std::remove_reference_t<T>> >;
+
+    //-------------------------------------------------------------------------------------------------------
+    // void_t (More stable than the one proposed in the standard)
+    // Example:
+    //      template< typename T, typename U>                    struct foo_bar;
+    //      template< typename T, typename U, typename = void >  struct blip;
+    // 
+    //      The line below detects if foo bar has a member call value
+    //      template< typename T, typename U>                    struct blip< void_t<foo_bar<T,U>::value > {};
+    // 
+    //      The line below detects if T, and U have some specific members
+    //      template< typename T, typename U>                    struct blip< T, U, void_t< decltype(T::z), decltype(U::yy) >> {};
+    //-------------------------------------------------------------------------------------------------------
+    namespace details
+    {
+        template< typename T, typename... >
+        struct void_t : std::type_identity_t<T> {};
+    }
+    template< typename...T >
+    using void_t = typename details::void_t<void, T...>::type;
 
     //-------------------------------------------------------------------------------------------------------
     // Helper to force a computed value to be a constant expression

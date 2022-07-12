@@ -139,7 +139,29 @@ namespace xcore::textfile
                 if( m_File.m_States.m_isReading )   xassert( C == 1 );
                 else                                C = ~0;
             }
-            , std::forward<T&&>(Callback) );
+            , [&]( std::size_t, xcore::err& Error ) constexpr noexcept 
+            {
+                Callback( Error );
+            });
+    }
+
+
+    //------------------------------------------------------------------------------------------------
+
+    template< std::size_t N > inline
+    xcore::err stream::RecordLabel( const char(&Str)[N] ) noexcept
+    {
+        if (m_File.m_States.m_isReading)
+        {
+            if (getRecordName() != Str)
+                return xerr_code_s(error_state::UNEXPECTED_RECORD, "Unexpected record");
+
+            return ReadRecord();
+        }
+        else
+        {
+            return WriteRecord(Str, -1);
+        }
     }
 
 }

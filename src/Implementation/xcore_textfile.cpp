@@ -558,6 +558,14 @@ namespace xcore::textfile
             m_Record.m_bWriteCount  = false;  
             m_Record.m_Count        = 1; 
         }
+        else if (Count == (~0 - 1))
+        {
+            m_Record.m_bWriteCount  = false;
+            m_Record.m_Count        = 1;
+            m_iLine     = 0;
+            m_nColumns  = -1;
+            return WriteLine();
+        }
         else
         { 
             m_Record.m_bWriteCount  = true; 
@@ -1040,6 +1048,22 @@ namespace xcore::textfile
                 //
                 // Write record header
                 //
+
+                // First handle the case that is a label  
+                if( m_nColumns == -1 )
+                {
+                    if (m_File.WriteChar('@').isError(Error))
+                        return Error;
+
+                    if (m_File.WriteChar('[').isError(Error))
+                        return Error;
+
+                    if (m_File.WriteStr({ m_Record.m_Name.data(), string::Length(m_Record.m_Name).m_Value + 1 }).isError(Error))
+                        return Error;
+
+                    goto CLEAR;
+                }
+
                 if( m_File.WriteChar( '[' ).isError(Error) )
                     return Error;
 
@@ -1182,6 +1206,20 @@ namespace xcore::textfile
                     Column.m_SubColumn.appendList(Column.m_nTypes);
                 }
             }
+        }
+
+        //
+        // If it is a label just print it
+        //
+        if(m_nColumns == -1)
+        {
+            if (m_File.WriteFmtStr("\n@[ %s ]\n", m_Record.m_Name.data()).isError(Error))
+                return Error;
+            
+            //
+            // Clear the memory pointer
+            //
+            goto CLEAR;
         }
 
         //
@@ -2381,7 +2419,7 @@ namespace xcore::textfile
             {
                 if( m_File.getC(c).isError(Failure) ) return Failure;
 
-            } while( c != '[' && c != '<' );
+            } while( c != '@' && c != '[' && c != '<');
         
             //
             // Lets deal with user_types types
@@ -2431,7 +2469,17 @@ namespace xcore::textfile
             //
             // Deal with a record
             //
-            if( c != '[' ) return xerr_failure( Failure, "Unexpected character while reading the binary file." );
+            if( c == '@' ) 
+            {
+                if (m_File.getC(c).isError(Failure)) return Failure;
+                m_Record.m_bLabel = true;
+            }
+            else
+            {
+                m_Record.m_bLabel = false;
+            }
+
+            if( c != '[' ) return xerr_failure(Failure, "Unexpected character while reading the binary file.");
 
             // Read the record name
             {
@@ -2513,6 +2561,19 @@ namespace xcore::textfile
             }
         
             //
+            // Deal with a record
+            //
+            if (c == '@')
+            {
+                if (m_File.getC(c).isError(Failure)) return Failure;
+                m_Record.m_bLabel = true;
+            }
+            else
+            {
+                m_Record.m_bLabel = false;
+            }
+
+            //
             // Make sure that we are dealing with a header now
             //
             if( c != '[' ) 
@@ -2540,7 +2601,14 @@ namespace xcore::textfile
             //
             // Read the record count number 
             //
-            m_Record.m_Count = 1;
+            if( m_Record.m_bLabel )
+            {
+                m_Record.m_Count = 0;
+            }
+            else
+            {
+                m_Record.m_Count = 1;
+            }
 
             if( c == ':' )
             {

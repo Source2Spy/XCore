@@ -211,6 +211,11 @@ namespace xcore::string
 
     template< typename T >                  constexpr   xcore::err      ToFullGuid      ( std::array<std::uint64_t,2>& FullGuid, const T& Path )                    noexcept;
     template< typename T >                  constexpr   std::uint64_t   ToGuid          ( const T& Str )                                                            noexcept;
+    template< typename T, bool T_EXTENDED = false, typename T_INT >
+                                            constexpr   ref<T>          IntToCompactFileName( T_INT aVal )                                                          noexcept;
+    template< typename T_INT, bool T_EXTENDED = false, typename T >
+                                            constexpr   T_INT           CompactFileNameToInt( const T& Chars )                                                      noexcept;
+
     template< typename T_CHAR, typename T > constexpr   ref<T_CHAR>     To              ( const T& Str )                                                            noexcept;
     template< typename T_CHAR, typename T > constexpr   ref<T_CHAR>     To              ( T Val, int Base )                                                         noexcept;
 

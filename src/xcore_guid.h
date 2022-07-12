@@ -169,7 +169,7 @@ namespace xcore::guid
     //      subgroup        - This is a unique identifier that the user_types of the plugin can give in order to
     //                        identify which sub-type this resource type is talking about.
     // Example:
-    //      constexpr static rctype<>   rctype_v( plugin<>( "Texture" ), "Normal Map");
+    //      constexpr static auto cube_texture_rctype_v = xcore::guid::rctype<>{ xcore::guid::plugin<>("Texture"), "CubeMap" };
     //------------------------------------------------------------------------------
     template< std::size_t T_BITS_SIZE_V = 32 >
     using plugin = group< struct resource_plugin_tag, T_BITS_SIZE_V  >;
@@ -199,6 +199,45 @@ namespace xcore::guid
         constexpr explicit                  rcinstance          ( t X )                                     noexcept : parent{ X }{ xassert(X&1); }
         constexpr explicit                  rcinstance          ( h High, h Low )                           noexcept : parent{ (static_cast<t>(High)<<(parent::bit_size_v/2)) | Low }{xassert(Low&1); }
         inline               void           Reset               ( void )                                    noexcept { parent::m_Value = details::Generate<parent::bit_size_v>() | 1; }
+    };
+
+    //------------------------------------------------------------------------------
+    // Description:
+    //      Generic plugin GUID
+    // Example:
+    //      Usefully container to keep the full 128bits of the GUID. Which fully 
+    //      describes all the details in a generic way.
+    //------------------------------------------------------------------------------
+    template< auto& T_RSC_TYPE_V, std::size_t T_TYPE_BITS_SIZE_V = 64, std::size_t T_INSTANCE_BITS_SIZE_V = 64 >
+    struct rcfull_singletype
+    {
+        inline static constexpr auto&   rctype_v        = T_RSC_TYPE_V;
+        using                           rcinstance_t    = rcinstance<T_INSTANCE_BITS_SIZE_V>;
+
+        rcinstance<T_INSTANCE_BITS_SIZE_V>  m_Instance;
+
+        template< typename T >
+        xcore::err setupFromPath(const T& Path) noexcept
+        {
+            std::array<std::uint64_t, 2> FullGuid;
+            if (auto Err = xcore::string::ToFullGuid(FullGuid, Path); Err) return Err;
+            m_Instance.m_Value = FullGuid[1];
+            xassert( FullGuid[0] == rctype_v.m_Value );
+            return {};
+        }
+
+        auto getPath(void) const noexcept
+        {
+            auto TypeA = rctype_v;
+            auto TypeB = TypeA;
+            TypeA.m_Value &= 0xffffffff;
+            TypeB.m_Value >>= 32;
+            return xcore::string::Fmt("%s.%s/%s"
+                , TypeB.template getStringHex<char>().data()
+                , TypeA.template getStringHex<char>().data()
+                , m_Instance.template getStringHex<char>().data()
+            );
+        }
     };
 
     //------------------------------------------------------------------------------

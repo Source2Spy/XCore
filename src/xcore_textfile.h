@@ -172,6 +172,7 @@ namespace xcore::textfile
             string::fixed<char,256>                 m_Name              {};     // Name of the record
             int                                     m_Count             {};     // How many entries in this record
             bool                                    m_bWriteCount       {};     // If we need to write out the count
+            bool                                    m_bLabel            {};     // Tells if the recrod is a label or not
         };
     }
 
@@ -207,6 +208,10 @@ namespace xcore::textfile
                         template< std::size_t N, typename T >
         inline          bool            Record              ( xcore::err& Error, const char (&Str)[N]
                                                                 , T&& Callback )                                                        noexcept;
+
+                        template< std::size_t N >
+        inline          xcore::err      RecordLabel         ( const char(&Str)[N] )                                                     noexcept;
+
                         xcore::err      WriteComment        ( const string::view<const char> Comment )                                  noexcept;
 
 
