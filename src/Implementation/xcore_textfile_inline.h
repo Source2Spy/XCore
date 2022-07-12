@@ -80,7 +80,12 @@ namespace xcore::textfile
             for( std::remove_const_t<decltype(Count)> i=0; i<Count; i++ )
             {
                 if( ReadLine().isError(Error) ) return true;
-                Callback(i,Error);
+                if constexpr( xcore::function::traits<T>::arg_count_v == 2) Callback(i,Error);
+                else
+                {
+                    static_assert(xcore::function::traits<T>::arg_count_v == 1);
+                    Callback(Error);
+                }
                 if( Error ) return true;
             }
             // Read the next record
@@ -99,7 +104,12 @@ namespace xcore::textfile
             if( Count == ~0 ) Count = 1;
             for( std::remove_const_t<decltype(Count)> i=0; i<Count; i++ )
             {
-                Callback(i,Error);
+                if constexpr (xcore::function::traits<T>::arg_count_v == 2) Callback(i, Error);
+                else
+                {
+                    static_assert(xcore::function::traits<T>::arg_count_v == 1);
+                    Callback(Error);
+                }
                 if( Error ) return true;
                 if( WriteLine().isError(Error) ) return true;
             }
