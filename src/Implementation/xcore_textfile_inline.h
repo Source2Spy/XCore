@@ -141,7 +141,12 @@ namespace xcore::textfile
             }
             , [&]( std::size_t, xcore::err& Error ) constexpr noexcept 
             {
-                Callback( Error );
+                if constexpr ( xcore::function::traits<T>::arg_count_v == 1 ) Callback( Error );
+                else 
+                { 
+                    static_assert(xcore::function::traits<T>::arg_count_v == 2);
+                    Callback(0, Error); 
+                }
             });
     }
 
