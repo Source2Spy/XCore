@@ -172,8 +172,8 @@ namespace xcore
         };
 
         enum class color_space : std::uint8_t
-        {   LINEAR
-        ,   SRGB
+        {   SRGB
+        ,   LINEAR
         };
 
     public:

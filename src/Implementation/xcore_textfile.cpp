@@ -862,13 +862,20 @@ namespace xcore::textfile
                     if constexpr ( std::is_same_v<T,string::ref<char>*> || std::is_same_v<T,string::view<char>*> ) 
                     {
                         FieldInfo.m_iData = m_iMemOffet;
-                        m_iMemOffet += 1 + xcore::string::Copy<string::view<char>,string::view<char>>( m_Memory.ViewFrom(FieldInfo.m_iData), *p ).m_Value;
+                        
+                        string::view<char> a = reinterpret_cast<string::view<char>&>(m_Memory.ViewFrom(FieldInfo.m_iData));
+                        string::view<char> b = *p;
+
+                        m_iMemOffet += 1 + xcore::string::Copy(a,b).m_Value;
                         FieldInfo.m_Width = m_iMemOffet - FieldInfo.m_iData;
                     }
                     else if constexpr( std::is_same_v<T, std::string*> )
                     {
                         FieldInfo.m_iData = m_iMemOffet;
-                        m_iMemOffet += 1 + xcore::string::Copy<string::view<char>>(m_Memory.ViewFrom(FieldInfo.m_iData), p->c_str()).m_Value;
+
+                        string::view<char> a = reinterpret_cast<string::view<char>&>(m_Memory.ViewFrom(FieldInfo.m_iData));
+
+                        m_iMemOffet += 1 + xcore::string::Copy(a, p->c_str()).m_Value;
                         FieldInfo.m_Width = m_iMemOffet - FieldInfo.m_iData;
                     }
                     else
@@ -934,7 +941,7 @@ namespace xcore::textfile
                 using T = std::decay_t<decltype(p)>;
 
                 FieldInfo.m_iData = m_iMemOffet;
-                m_iMemOffet += 1 + string::sprintf( m_Memory.ViewFrom(m_iMemOffet), pFmt, p ).m_Value;
+                m_iMemOffet += 1 + string::sprintf( reinterpret_cast<string::view<char>&>(m_Memory.ViewFrom(m_iMemOffet)), pFmt, p ).m_Value;
                 FieldInfo.m_Width = m_iMemOffet - FieldInfo.m_iData - 1;
 
                 if constexpr ( std::is_integral_v<T> )
@@ -979,19 +986,19 @@ namespace xcore::textfile
                     else    if constexpr ( std::is_same_v<t,string::view<char>> ) 
                             {
                                 Field.m_iData = m_iMemOffet;
-                                m_iMemOffet += 1 + string::sprintf( m_Memory.ViewFrom(Field.m_iData), "\"%s\"", p.data() ).m_Value;
+                                m_iMemOffet += 1 + string::sprintf( reinterpret_cast<string::view<char>&>( m_Memory.ViewFrom(Field.m_iData)), "\"%s\"", p.data() ).m_Value;
                                 Field.m_Width = m_iMemOffet - Field.m_iData - 1;
                             }
                     else    if constexpr ( std::is_same_v<t,string::ref<char>*> || std::is_same_v<t,string::view<char>*> ) 
                             {
                                 Field.m_iData = m_iMemOffet;
-                                m_iMemOffet += 1 + string::sprintf( m_Memory.ViewFrom(Field.m_iData), "\"%s\"", p->data() ).m_Value;
+                                m_iMemOffet += 1 + string::sprintf(reinterpret_cast<string::view<char>&>(m_Memory.ViewFrom(Field.m_iData)), "\"%s\"", p->data() ).m_Value;
                                 Field.m_Width = m_iMemOffet - Field.m_iData - 1;
                             }
                     else    if constexpr ( std::is_same_v<t, std::string*> )
                             {
                                 Field.m_iData = m_iMemOffet;
-                                m_iMemOffet += 1 + string::sprintf(m_Memory.ViewFrom(Field.m_iData), "\"%s\"", p->c_str()).m_Value;
+                                m_iMemOffet += 1 + string::sprintf(reinterpret_cast<string::view<char>&>(m_Memory.ViewFrom(Field.m_iData)), "\"%s\"", p->c_str()).m_Value;
                                 Field.m_Width = m_iMemOffet - Field.m_iData - 1;
                             }
                     else

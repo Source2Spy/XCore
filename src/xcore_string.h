@@ -45,12 +45,12 @@ namespace xcore::string
         constexpr                   operator       std::string_view ( void )                            noexcept { xassume(parent::empty()==false); return { parent::data(), std::strlen(parent::data()) }; }
         constexpr                   operator const std::string_view ( void )                    const   noexcept { xassume(parent::empty()==false); return { parent::data(), std::strlen(parent::data()) }; }
         constexpr   bool            empty                           ( void )                    const   noexcept { return parent::data() == nullptr || parent::data()[0] == 0; }
-        constexpr   auto            ViewFrom                        ( int Start )               const   noexcept { return static_cast<view&&>(parent::ViewFrom(Start)); }
-        constexpr   auto            ViewFrom                        ( int Start )                       noexcept { return static_cast<view&&>(parent::ViewFrom(Start)); }
-        constexpr   auto            ViewFromTo                      ( int Start, int To )       const   noexcept { return static_cast<view&&>(parent::ViewFromTo(Start,To)); }
-        constexpr   auto            ViewFromTo                      ( int Start, int To )               noexcept { return static_cast<view&&>(parent::ViewFromTo(Start,To)); }
-        constexpr   auto            ViewTo                          ( int To )                  const   noexcept { return static_cast<view&&>(parent::ViewFromTo(0, To)); }
-        constexpr   auto            ViewTo                          ( int To )                          noexcept { return static_cast<view&&>(parent::ViewFromTo(0, To)); }
+        constexpr   view            ViewFrom                        ( int Start )               const   noexcept { return reinterpret_cast<view&>(parent::ViewFrom(Start)); }
+        constexpr   view            ViewFrom                        ( int Start )                       noexcept { return reinterpret_cast<view&>(parent::ViewFrom(Start)); }
+        constexpr   view            ViewFromTo                      ( int Start, int To )       const   noexcept { return reinterpret_cast<view&>(parent::ViewFromTo(Start,To)); }
+        constexpr   view            ViewFromTo                      ( int Start, int To )               noexcept { return reinterpret_cast<view&>(parent::ViewFromTo(Start,To)); }
+        constexpr   view            ViewTo                          ( int To )                  const   noexcept { return reinterpret_cast<view&>(parent::ViewFromTo(0, To)); }
+        constexpr   view            ViewTo                          ( int To )                          noexcept { return reinterpret_cast<view&>(parent::ViewFromTo(0, To)); }
     };
      
     // Deduction Guides
