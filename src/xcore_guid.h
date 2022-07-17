@@ -203,20 +203,6 @@ namespace xcore::guid
 
     //------------------------------------------------------------------------------
     // Description:
-    //      Specific resource instance
-    // Example:
-    //      Usefully container to keep the full 128bits of the GUID. Which fully 
-    //      describes all the details in a generic way.
-    //------------------------------------------------------------------------------
-    template< auto T_RSC_TYPE_V >
-    struct rcfull_singletype
-    {
-        constexpr static auto                           m_Type = T_RSC_TYPE_V;
-        rcinstance<decltype(T_RSC_TYPE_V)::bit_size_v>  m_Instance;
-    };
-
-    //------------------------------------------------------------------------------
-    // Description:
     //      Generic resource Instance
     // Example:
     //      Usefully container to keep the full 128bits of the GUID. Which fully 
