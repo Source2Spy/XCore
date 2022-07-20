@@ -14,20 +14,20 @@
     //-------------------------------------------------------------------------------
     // Tracy files
     //-------------------------------------------------------------------------------
-    #include "../dependencies/tracy/common/tracy_lz4.cpp"
-    #include "../dependencies/tracy/common/tracy_lz4hc.cpp"
-    #include "../dependencies/tracy/client/tracyDXT1.cpp"
+    #include "../dependencies/tracy/public/common/tracy_lz4.cpp"
+    #include "../dependencies/tracy/public/common/tracy_lz4hc.cpp"
+    #include "../dependencies/tracy/public/client/tracyDXT1.cpp"
 
-    #include "../dependencies/tracy/client/tracy_rpmalloc.cpp"
-    #include "../dependencies/tracy/client/tracySysTime.cpp"
-    #include "../dependencies/tracy/client/tracyCallstack.cpp"
-    #include "../dependencies/tracy/client/TracyAlloc.cpp"
+    #include "../dependencies/tracy/public/client/tracy_rpmalloc.cpp"
+    #include "../dependencies/tracy/public/client/tracySysTime.cpp"
+    #include "../dependencies/tracy/public/client/tracyCallstack.cpp"
+    #include "../dependencies/tracy/public/client/TracyAlloc.cpp"
     #ifdef min
     #   undef min
     #endif
 
-    #include "../dependencies/tracy/client/tracySysTrace.cpp"
-    #include "../dependencies/tracy/common/tracySystem.cpp"
+    #include "../dependencies/tracy/public/client/tracySysTrace.cpp"
+    #include "../dependencies/tracy/public/common/tracySystem.cpp"
 
     //--------------------------------------------------------------------------------
     // Adding memory profiling

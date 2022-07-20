@@ -4,8 +4,8 @@
 
     #ifdef _XCORE_PROFILE
 
-        #include "../dependencies/tracy/Tracy.hpp"
-        #include "../dependencies/tracy/common/TracySystem.hpp"
+        #include "../dependencies/tracy/public/tracy/Tracy.hpp"
+        #include "../dependencies/tracy/public/common/TracySystem.hpp"
 
         #define XCORE_PERF_ZONE_NAMED(varname, active)                          ZoneNamed(varname, active);
         #define XCORE_PERF_ZONE_NAMED_N(varname, name, active)                  ZoneNamedN(varname, name, active);

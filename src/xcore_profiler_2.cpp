@@ -18,8 +18,8 @@
     #  include <ws2tcpip.h>
     #endif
 
-    #include "../dependencies/tracy/common/tracySocket.cpp"
-    #include "../dependencies/tracy/client/tracyProfiler.cpp"
+    #include "../dependencies/tracy/public/common/tracySocket.cpp"
+    #include "../dependencies/tracy/public/client/tracyProfiler.cpp"
 
 #endif
 
