@@ -251,7 +251,7 @@ namespace xcore::lockless::queues
 
                 // Align to avoid false sharing between adjacent slots
                 alignas(xcore::target::getCacheLineSize()) std::atomic<std::size_t>     m_Turn;
-                std::aligned_storage_t<sizeof(T), alignof(T)>                           m_Storage;
+                alignas(T) std::array<std::byte, sizeof(T)>                             m_Storage;
           };
 
         protected:
