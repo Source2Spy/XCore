@@ -242,7 +242,7 @@ namespace xcore::cmdline
                     if( m_CmdDef[ Cmd.m_iCmdDef ].m_MinArgCount > Cmd.m_ArgCount )
                     {
                         ClearArguments();
-                        //x_throw( "Error: We found this switch [%s] had too few arguments we expected at least [%d].", (const char*)a, m_CmdDef[ Cmd.m_iCmdDef ].m_MinArgCount );
+                        printf( "Error: We found this switch [%s] had too few arguments we expected at least [%d].", (const char*)a, m_CmdDef[ Cmd.m_iCmdDef ].m_MinArgCount );
                         return xerr_failure( Error, "Error: We found this switch that had too few arguments" );
                     }                
                 }

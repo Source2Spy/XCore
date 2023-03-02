@@ -380,6 +380,13 @@ namespace xcore::string
 
             if( x == 3 )
             {
+                // Means it did not have a parent... so path must be "./.." or "/.." either way nothing to do...
+                if( i < 5 ) 
+                {
+                    while( Path[++pos] );
+                    break;
+                }
+
                 // remove one path
                 for( int y = pos - 3; y && Path[y]; --y )
                 {
