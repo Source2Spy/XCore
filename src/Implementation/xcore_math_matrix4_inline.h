@@ -1079,7 +1079,7 @@ namespace xcore::math
     {
         const matrix4 M( R );
         const matrix4 M2(*this);
-        m4_Multiply( *this, M2, M );
+        m4_Multiply( *this, M, M2 );
         return *this;
     }
 
@@ -1373,10 +1373,10 @@ namespace xcore::math
 
         // If we ever hit this we may need to have an if statement to make sure not to scale
         // anything in m_ColumnX.m128_float[3]
-        xassert( reinterpret_cast<const float*>(&m_Column1)[3] == 0 );
-        xassert( reinterpret_cast<const float*>(&m_Column2)[3] == 0 );
-        xassert( reinterpret_cast<const float*>(&m_Column3)[3] == 0 );
-        xassert( reinterpret_cast<const float*>(&m_Column4)[3] == 1 );
+        xassert( FEqual( reinterpret_cast<const float*>(&m_Column1)[3], 0) );
+        xassert( FEqual( reinterpret_cast<const float*>(&m_Column2)[3], 0) );
+        xassert( FEqual( reinterpret_cast<const float*>(&m_Column3)[3], 0) );
+        xassert( FEqual( reinterpret_cast<const float*>(&m_Column4)[3], 1) );
 
         m_Column1 = _mm_mul_ps( m_Column1, GlobalScale );
         m_Column2 = _mm_mul_ps( m_Column2, GlobalScale );
@@ -2268,6 +2268,13 @@ namespace xcore::math
     #endif
     
         return *this;
+    }
+
+    //------------------------------------------------------------------------------
+    inline
+    matrix4& matrix4::setup(const transform3& Transform) noexcept
+    {
+        return setup( Transform.m_Scale, Transform.m_Rotate, Transform.m_Translate );
     }
 
     //------------------------------------------------------------------------------

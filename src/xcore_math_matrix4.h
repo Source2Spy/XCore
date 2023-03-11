@@ -121,6 +121,7 @@ namespace xcore::math
         inline              matrix4&                setup                   ( const vector3&    Scale,
                                                                               const radian3&    Rotation,
                                                                               const vector3&    Translation )                                                   noexcept;
+        inline              matrix4&                setup                   ( const transform3& Transform )                                                     noexcept;
         inline              matrix4&                setup                   ( const vector3&    Scale,
                                                                               const quaternion& Rotation,
                                                                               const vector3&    Translation )                                                   noexcept;

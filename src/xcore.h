@@ -119,6 +119,7 @@ namespace xcore::property{ using namespace ::property; }
 #include "xcore_scheduler_system.h"
 
 // Math
+namespace xcore::math { class transform3; }
 #include "xcore_math.h"
 #include "xcore_math_radian3.h"
 #include "xcore_math_vector2.h"

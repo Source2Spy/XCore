@@ -11,7 +11,7 @@ static const t_default_data Data = []() noexcept
                                , xcore::icolor{  50, 187,  50, 255 }
                                , xcore::icolor{  50,  50, 187, 255 }
                                };
-    const auto          nCheckers    = 8;
+    const auto          nCheckers    = 16;
     const auto          CheckerSize  = s_DefaultBitmapSize/nCheckers;
 
     xcore::icolor* pData = reinterpret_cast<xcore::icolor*>(&Data[4]);
@@ -27,15 +27,16 @@ static const t_default_data Data = []() noexcept
     }
 
     // Draw a simple arrows at the top left pointing up...
+    const int ArrowSize = CheckerSize*2;
     for( auto k=0; k<3; k++ )
     {
         auto yy = 1u;
-        for( auto y=1u; y<(CheckerSize-1); ++y )
+        for( auto y=1u; y<(ArrowSize -1); ++y )
         {
-            for( auto x = yy; x < (CheckerSize-1)-yy; x++)
+            for( auto x = yy; x < (ArrowSize -1)-yy; x++)
             {
-                if( k&1) pData[ k*CheckerSize + x + s_DefaultBitmapSize*(CheckerSize-y - 1) ] = CT[k];
-                else     pData[ k*CheckerSize + x + s_DefaultBitmapSize*(CheckerSize-y - 1) ] = CT[k];
+                if( k&1) pData[ k* ArrowSize + x + s_DefaultBitmapSize*(ArrowSize -y - 1) ] = CT[k];
+                else     pData[ k* ArrowSize + x + s_DefaultBitmapSize*(ArrowSize -y - 1) ] = CT[k];
             }
                 
             if (y&1) yy++;
