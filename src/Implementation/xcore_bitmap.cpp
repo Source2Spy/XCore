@@ -452,7 +452,7 @@ void xcore::bitmap::CreateBitmap( const std::uint32_t Width, const std::uint32_t
     setupFromColor
     ( Width 
     , Height 
-    , { Data.release(), Size * sizeof(xcore::icolor) }
+    , { Data.release(), Size }
     , true 
     );
 }
