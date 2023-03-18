@@ -75,6 +75,13 @@ namespace xcore
     }
 
     //-----------------------------------------------------------------------------------
+    constexpr
+    bitmap::color_space bitmap::getColorSpace( void ) const noexcept
+    {
+        return static_cast<bitmap::color_space>(m_Flags.m_bLinearSpace);
+    }
+
+    //-----------------------------------------------------------------------------------
 
     constexpr
     std::uint64_t bitmap::getFrameSize(void) const noexcept

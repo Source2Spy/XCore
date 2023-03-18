@@ -242,6 +242,8 @@ namespace xcore
                                                                         ) noexcept;
         inline      void                        setColorSpace           ( const color_space ColorSpace 
                                                                         ) noexcept;
+        constexpr   color_space                 getColorSpace           ( void
+                                                                        ) const noexcept;
         constexpr   std::uint64_t               getFrameSize            ( void 
                                                                         ) const noexcept;
         constexpr   int                         getFrameCount           ( void
