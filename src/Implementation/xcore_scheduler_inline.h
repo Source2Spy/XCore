@@ -354,7 +354,7 @@ namespace xcore::scheduler
         auto R = Total / Diviser;
         if( R > Cutoff ) do
         {
-            SubmitJob( [ &Container, Start, R, &func ]()
+            SubmitJob( [ &Container, Start, R, &func ]() noexcept
             {
                 func( Container.ViewFromCount( Start, R ) );
             });
@@ -369,7 +369,7 @@ namespace xcore::scheduler
         if( Total > 0 ) do
         {
             R = std::min( Cutoff, Total );
-            SubmitJob( [ &Container, Start, R, &func ]()
+            SubmitJob( [ &Container, Start, R, &func ]() noexcept
             {
                 func( Container.ViewFromCount( Start, R ) );
             });

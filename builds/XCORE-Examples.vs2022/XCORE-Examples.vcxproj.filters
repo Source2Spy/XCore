@@ -326,12 +326,6 @@
     <ClCompile Include="..\..\src\xcore.cpp">
       <Filter>xCore</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\src\xcore_profiler_1.cpp">
-      <Filter>xCore</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\src\xcore_profiler_2.cpp">
-      <Filter>xCore</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\src\Examples\main.cpp" />
   </ItemGroup>
   <ItemGroup>

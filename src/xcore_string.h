@@ -186,7 +186,7 @@ namespace xcore::string
             units m_Size{0};
             constexpr int size( void ) const noexcept { return m_Size.m_Value; }
             constexpr unique( unique&& U ) noexcept : parent{ std::move(U) }, m_Size{U.m_Size}{}
-            constexpr unique( T_CHAR* p, int Size ) noexcept : parent{ p }, m_Size{Size}{}
+            constexpr unique( T_CHAR* p, int Size ) noexcept : parent{ p }, m_Size{static_cast<unsigned int>(Size)}{}
         };
     }
 

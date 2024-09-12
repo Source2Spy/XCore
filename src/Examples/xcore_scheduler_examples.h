@@ -214,7 +214,7 @@ namespace xcore::scheduler::examples
             for( int i = 0; i < Count; ++i )
             {
                 auto& S = xcore::get().m_Scheduler;
-                JobChannel.SubmitJob( []()
+                JobChannel.SubmitJob( []() noexcept
                 {
                     XCORE_PERF_ZONE_SCOPED_N("Job Type 4");
                     auto& S = xcore::get().m_Scheduler;
@@ -250,7 +250,7 @@ namespace xcore::scheduler::examples
             // assumes this can work in concurrency with job APPLES but not with ORANGES are a dependency
             for( int i = 0; i < Count; ++i )
             {
-                JobChannel1.SubmitJob( []()
+                JobChannel1.SubmitJob( []() noexcept
                 {
                     XCORE_PERF_ZONE_SCOPED_N("Job Type 5");
                     auto& S = xcore::get().m_Scheduler;
@@ -265,7 +265,7 @@ namespace xcore::scheduler::examples
             // assumes this can work in concurrency with job BANANAS and ORANGES
             for( int i = 0; i < Count; ++i )
             {
-                JobChannel2.SubmitJob( []()
+                JobChannel2.SubmitJob( []() noexcept
                 {
                     XCORE_PERF_ZONE_SCOPED_N("Job Type 6");
                     for( int x = 0; x < 5; x++ )
@@ -281,7 +281,7 @@ namespace xcore::scheduler::examples
             // assumes this can work in concurrency with job APPLES but not with BANANAS are a precondition
             for( int i = 0; i < Count; ++i )
             {
-                JobChannel1.SubmitJob( []()
+                JobChannel1.SubmitJob([]() noexcept
                 {
                     XCORE_PERF_ZONE_SCOPED_N("Job Type 7");
                     for( int x = 0; x < 5; x++ )

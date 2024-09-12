@@ -1,5 +1,9 @@
 #include "xcore.h"
 
+#ifdef _XCORE_PROFILE
+    #include "../dependencies/tracy/public/TracyClient.cpp"
+#endif
+
 #if _XCORE_COMPILER_VISUAL_STUDIO
     #include "windows.h"
 #endif

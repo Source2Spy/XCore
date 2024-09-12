@@ -112,8 +112,9 @@ namespace xcore::scheduler
                 /////
             }
 
-            channel*                        m_pJobBlock {};
-            xcore::func<void(void)>         m_Function  {};
+
+            channel*                m_pJobBlock {};
+            xcore::func<void(void)> m_Function  {};
         };
     }
 

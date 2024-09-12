@@ -66,15 +66,55 @@ powershell write-host -fore White ----------------------------------------------
 powershell write-host -fore White XCORE - DOWNLOADING DEPENDENCIES
 powershell write-host -fore White ------------------------------------------------------------------------------------------------------
 
+rem rmdir "../dependencies" /S /Q
+
+
+rem Lets download the latest version of tracy
 echo.
 rmdir "../dependencies/tracy" /S /Q
-git clone --recursive https://github.com/wolfpld/tracy "../dependencies/tracy"
+
+rem Define the tracy repository URL
+set TRACY_REPO_URL="https://github.com/wolfpld/tracy.git"
+
+rem Process the output to get the last line
+set "LAST_LINE="
+for /f "delims=" %%A in ('git ls-remote --tags --refs --sort="v:refname" %TRACY_REPO_URL%') do (
+    set "LAST_LINE=%%A"
+)
+
+rem Extract the tag name from the last line
+if defined LAST_LINE (
+    for /f "tokens=2 delims=	" %%A in ("!LAST_LINE!") do (
+        set "TAG_NAME=%%A"
+    )
+    set "TAG_NAME=!TAG_NAME:refs/tags/=!"    :: the latest tag version
+	set "tracyVersion=!TAG_NAME:v=!"         :: remove the tag v in the tag name 
+	
+	rem set tracyVersion=0.11.1              :: force set... we set the version tag without the 'v'
+	
+    echo The most recent tracy version is: !tracyVersion!
+) else (
+    powershell write-host -fore Red No tracy versions found!
+	goto :ERROR
+)
+
+
+rem download the binary files if we don't have them....
+if NOT exist "../dependencies/TracyBin-%tracyVersion%.zip" (
+   mkdir "../dependencies"
+
+   echo TracyBins are in "https://github.com/wolfpld/tracy/releases/download/v%tracyVersion%/windows-%tracyVersion%.zip"
+   bitsadmin /transfer DownloadTracy-v%tracyVersion% /download /priority high "https://github.com/wolfpld/tracy/releases/download/v%tracyVersion%/windows-%tracyVersion%.zip" "%cd%\..\dependencies\TracyBin-%tracyVersion%.zip"   
+   if %ERRORLEVEL% GEQ 1 goto :ERROR
+)
+
+git clone --depth 1 --branch v%tracyVersion% https://github.com/wolfpld/tracy.git "../dependencies/tracy"
 if %ERRORLEVEL% GEQ 1 goto :ERROR
 
-rem Forcely change the a define to allow tracy editor to work
-powershell -Command "(gc "%CD%\..\dependencies\tracy\profiler\build\win32\Tracy.vcxproj") -replace 'IMGUI_ENABLE_FREETYPE', 'IMGUI_ENABLE_FREETYPE__' | Out-File -encoding ASCII "%CD%\..\dependencies\tracy\profiler\build\win32\Tracy.vcxproj""
+rem unzip both zip files...
+powershell write-host -fore Cyan TracyBin: Unzipping...
+powershell -nologo -noprofile -command "& { Add-Type -A 'System.IO.Compression.FileSystem'; [IO.Compression.ZipFile]::ExtractToDirectory('../dependencies/TracyBin-%tracyVersion%.zip', '../dependencies/Tracy/bin'); }"
 if %ERRORLEVEL% GEQ 1 goto :ERROR
-
 
 echo.
 rmdir "../dependencies/properties" /S /Q

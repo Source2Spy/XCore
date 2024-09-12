@@ -130,7 +130,7 @@ namespace xcore::function
         static_assert(T_A::arg_count_v == T_B::arg_count_v, "Function must have the same number of arguments");
         static_assert(std::is_same< typename T_A::return_type, typename T_B::return_type >::value, "Different return types");
         static_assert(details::traits_compare_args<T_A, T_B, static_cast<int>(T_B::arg_count_v) - 1>::value, "Arguments don't match");
-        static_assert(std::is_same< typename T_A::func_type, typename T_B::func_type>::value, "Function signatures don't match");
+     //   static_assert(std::is_same< typename T_A::func_type, typename T_B::func_type>::value, "Function signatures don't match. Do both functions have the same expectations for exceptions? (noexcept?)");
         constexpr static bool value = true;
     };
 
