@@ -104,7 +104,8 @@ if NOT exist "../dependencies/TracyBin-%tracyVersion%.zip" (
    mkdir "../dependencies"
 
    echo TracyBins are in "https://github.com/wolfpld/tracy/releases/download/v%tracyVersion%/windows-%tracyVersion%.zip"
-   bitsadmin /transfer DownloadTracy-v%tracyVersion% /download /priority high "https://github.com/wolfpld/tracy/releases/download/v%tracyVersion%/windows-%tracyVersion%.zip" "%cd%\..\dependencies\TracyBin-%tracyVersion%.zip"   
+   powershell -Command "Invoke-WebRequest" -Uri "https://github.com/wolfpld/tracy/releases/download/v%tracyVersion%/windows-%tracyVersion%.zip" -OutFile "%cd%\..\dependencies\TracyBin-%tracyVersion%.zip"
+ 
    if %ERRORLEVEL% GEQ 1 goto :ERROR
 )
 
