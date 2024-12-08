@@ -244,11 +244,11 @@ namespace xcore::function
         {
             // Make sure that the lambda given by the user matches the expected signature
             using fa = traits< std::remove_reference_t<T_LAMBDA> >;
-            using fb = traits< make_t<noexcept(T_LAMBDA), T_RET, T_ARG ... > >;
+            using fb = traits< make_t<noexcept(T_LAMBDA()), T_RET, T_ARG ... > >;
             static_assert( traits_compare<fa,fb>::value );
         
             // static_assert( std::is_same< fa, fb::type >::value, "Wrong signature" );
-            m_Invoker = []( std::byte* pLambda, T_ARG... Args ) constexpr noexcept(noexcept(T_LAMBDA)) -> T_RET
+            m_Invoker = []( std::byte* pLambda, T_ARG... Args ) constexpr noexcept(noexcept(T_LAMBDA())) -> T_RET
             {
                 return std::invoke( reinterpret_cast<T_LAMBDA&>(*pLambda), std::forward<T_ARG>(Args)... );
             };

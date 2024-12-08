@@ -220,6 +220,7 @@ namespace xcore::textfile
         constexpr       bool            isWriteFloats       ( void )                                                            const   noexcept { return m_File.m_States.m_isSaveFloats; }
         inline          auto&           getRecordName       ( void )                                                            const   noexcept { return m_Record.m_Name;  }
         inline          int             getRecordCount      ( void )                                                            const   noexcept { return m_Record.m_Count; }
+        inline          int             getUserTypeCount    ( void )                                                            const   noexcept { return static_cast<int>(m_UserTypes.size()); }
                         std::uint32_t   AddUserType         ( const user_defined_types& UserType )                                      noexcept;
                         void            AddUserTypes        ( xcore::span<user_defined_types> UserTypes )                               noexcept;
                         void            AddUserTypes        ( xcore::span<const user_defined_types> UserTypes )                         noexcept;
