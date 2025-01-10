@@ -572,9 +572,9 @@ namespace xcore::string
         }
                   const char_t*     c_str                               ( void )                    const   noexcept { return data(); }
                   char_t*           c_str                               ( void )                            noexcept { return mutable_data(); }
-                  void              assign                              ( const char* p )                   noexcept { Copy( *this, p ); }
-                  void              assign                              ( const self& V )                   noexcept { Copy( *this, V ); }
-                  void              copy                                ( char_t* p, int L )        const   noexcept { for( int i=0; i<L; ++i ) p[i] = (*this)[i]; }
+                  void              copy                                ( const char* p )                   noexcept { Copy( *this, p ); }
+                  void              copy                                ( const self& V )                   noexcept { Copy( *this, V ); }
+                  void              copy_n                              ( const char_t* p, int L )          noexcept { CopyN( *this, p, ref<T_CHAR>::units(L) ); }
         constexpr auto              length                              ( void )                    const   noexcept { return Length(*this).m_Value; }
         constexpr auto              getView                             ( void )                    const   noexcept { return static_cast<const string::view<const char_t>>(*this); }
         constexpr auto              getView                             ( void )                            noexcept { return static_cast<string::view<char_t>>(*this); }
