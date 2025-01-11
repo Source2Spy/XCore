@@ -236,7 +236,7 @@ namespace xcore
     template< typename T >
     std::span<T> bitmap::getMip( const int iMip, const int iFace, const int iFrame ) noexcept
     {
-        return { reinterpret_cast<T*>(getMipPtr(iMip, iFace, iFrame)), getMipSize(iMip) };
+        return { reinterpret_cast<T*>(getMipPtr(iMip, iFace, iFrame)), getMipSize(iMip) / sizeof(T) };
     }
 
     //-------------------------------------------------------------------------------
@@ -244,7 +244,7 @@ namespace xcore
     template< typename T >
     std::span< const T> bitmap::getMip(const int iMip, const int iFace, const int iFrame) const noexcept
     {
-        return { reinterpret_cast<const T*>(getMipPtr(iMip, iFace, iFrame)), getMipSize(iMip) };
+        return { reinterpret_cast<const T*>(getMipPtr(iMip, iFace, iFrame)), getMipSize(iMip) / sizeof(T) };
     }
 
     //-------------------------------------------------------------------------------
