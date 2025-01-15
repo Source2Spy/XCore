@@ -176,6 +176,17 @@ namespace xcore
         ,   LINEAR
         };
 
+        enum class wrap_mode : std::uint8_t
+        { UV_BOTH_CLAMP_TO_EDGE
+        , UV_BOTH_WRAP
+        , UV_BOTH_MIRROR
+        , UV_UCLAMP_VWRAP
+        , UV_UWRAP_VCLAMP
+        , UV_UCLAMP_VMIRROR
+        , UV_UMIRROR_VCLAMP
+        , UV_UMIRROR_VWRAP
+        };
+
     public:
 
        constexpr                                bitmap                  ( void 
@@ -206,15 +217,13 @@ namespace xcore
         
         inline      void                        setOwnMemory            ( bool bOwnMemory 
                                                                         ) noexcept;
-        inline      void                        setHasAlphaInfo         ( bool bAlphaInfo 
-                                                                        ) noexcept;
-                    void                        ComputeHasAlphaInfo     ( void 
-                                                                        ) noexcept;
-                    void                        ComputePremultiplyAlpha ( void 
+        inline      void                        setWrapMode             ( wrap_mode WrapMode
                                                                         ) noexcept;
 
-        constexpr   bool                        hasAlphaInfo            ( void 
+                    bool                        ComputeHasAlphaInfo     ( void 
                                                                         ) const noexcept;
+                    void                        ComputePremultiplyAlpha ( void 
+                                                                        ) noexcept;
                     bool                        hasAlphaChannel         ( void 
                                                                         ) const noexcept;
         
@@ -253,6 +262,8 @@ namespace xcore
         constexpr   std::uint64_t               getFaceSize             ( void 
                                                                         ) const noexcept;
         constexpr   float                       getAspectRatio          ( void
+                                                                        ) const noexcept;
+        constexpr   wrap_mode                   getWrapMode             ( void
                                                                         ) const noexcept;
         inline      void                        Copy                    ( const bitmap& Src 
                                                                         ) noexcept;
@@ -336,11 +347,9 @@ namespace xcore
             {
                 std::uint8_t        m_bCubeMap              : 1     // Tells if this bitmap is a cubemap 
                 ,                   m_bOwnsMemory           : 1     // if the bitmap is allowed to free the memory
-                ,                   m_bHasAlphaInfo         : 1     // it tells that the picture has alpha information
                 ,                   m_bAlphaPremultiplied   : 1     // Tells it the alpha has already been premultiplied
                 ,                   m_bLinearSpace          : 1     // What is the color space for the bitmap
-                ,                   m_bWrapU                : 1     // Tells if it can wrap around U
-                ,                   m_bWarpV                : 1     // Tells if it can wrap around V
+                ,                   m_WrapMode              : 3     // Tells if it can wrap around... 
                 ,                   m_bSignedPixels         : 1     // Tells if the pixels in the bitmap are suppose to be signed bits
                 ;
                 format              m_Format;                       // Format of the data
@@ -349,11 +358,9 @@ namespace xcore
             static constexpr auto zero_mask_v                 = std::uint16_t{0};
             static constexpr auto cubemap_mask_v              = std::uint16_t{1 << 0};
             static constexpr auto owns_memory_mask_v          = std::uint16_t{1 << 1};
-            static constexpr auto has_alpha_info_mask_v       = std::uint16_t{1 << 2};
-            static constexpr auto alpha_premultiplied_mask_v  = std::uint16_t{1 << 3};
-            static constexpr auto line_space_mask_v           = std::uint16_t{1 << 4};
-            static constexpr auto wap_u_mask_v                = std::uint16_t{1 << 5};
-            static constexpr auto wap_v_mask_v                = std::uint16_t{1 << 6};
+            static constexpr auto alpha_premultiplied_mask_v  = std::uint16_t{1 << 2};
+            static constexpr auto line_space_mask_v           = std::uint16_t{1 << 3};
+            static constexpr auto warp_mask_v                 = std::uint16_t{3 << 4};  // takes over bit 4, 5 and 6
             static constexpr auto signed_pixels_mask_v        = std::uint16_t{1 << 7};
             static constexpr auto offset_to_format_v          = std::uint16_t{8};
         };

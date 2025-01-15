@@ -9,9 +9,9 @@ namespace xcore
 
     //-----------------------------------------------------------------------------------
 
-    void bitmap::setHasAlphaInfo(bool bAlphaInfo) noexcept
+    void bitmap::setWrapMode(wrap_mode WrapMode) noexcept
     {
-        m_Flags.m_bHasAlphaInfo = bAlphaInfo;
+        m_Flags.m_WrapMode = static_cast<std::uint8_t>(WrapMode);
     }
 
     //-----------------------------------------------------------------------------------
@@ -136,6 +136,13 @@ namespace xcore
     }
 
     //-----------------------------------------------------------------------------------
+    constexpr
+    bitmap::wrap_mode bitmap::getWrapMode(void) const noexcept
+    {
+        return static_cast<wrap_mode>(m_Flags.m_WrapMode);
+    }
+
+    //-----------------------------------------------------------------------------------
 
     void bitmap::Copy(const bitmap& Src) noexcept
     {
@@ -245,14 +252,6 @@ namespace xcore
     std::span< const T> bitmap::getMip(const int iMip, const int iFace, const int iFrame) const noexcept
     {
         return { reinterpret_cast<const T*>(getMipPtr(iMip, iFace, iFrame)), getMipSize(iMip) / sizeof(T) };
-    }
-
-    //-------------------------------------------------------------------------------
-
-    constexpr
-    bool bitmap::hasAlphaInfo( void ) const noexcept
-    {
-        return ( m_Flags.m_bHasAlphaInfo ) ? hasAlphaChannel() : false;
     }
 
     //-------------------------------------------------------------------------------

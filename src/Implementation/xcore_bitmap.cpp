@@ -356,18 +356,8 @@ bool xcore::bitmap::hasAlphaChannel( void ) const noexcept
 
 //-------------------------------------------------------------------------------
 
-void xcore::bitmap::ComputeHasAlphaInfo( void ) noexcept
+bool xcore::bitmap::ComputeHasAlphaInfo( void ) const noexcept
 {
-    //
-    // Do the easy case first
-    //
-    if( hasAlphaChannel() == false )
-    {
-        setHasAlphaInfo( false );
-        return;
-    }
-    
-    
     //
     // Check all the pixels to see if they have information other than the default
     //
@@ -382,7 +372,7 @@ void xcore::bitmap::ComputeHasAlphaInfo( void ) noexcept
     {
         auto            X = 0u;
         xcore::icolor   C1;
-        auto            pData = reinterpret_cast<std::uint16_t*>( getMipPtr(0,0,0) );
+        auto            pData = reinterpret_cast<const std::uint16_t*>( getMipPtr(0,0,0) );
         for( auto y=0u; y<m_Height; ++y )
         for( auto x=0u; x<m_Width;  ++x )
         {
@@ -394,15 +384,14 @@ void xcore::bitmap::ComputeHasAlphaInfo( void ) noexcept
             if( X == 1 || X == 2 )
                 continue;
             
-            setHasAlphaInfo( true );
-            return;
+            return true;
         }
     }
     else
     {
         auto            X=0u;
         xcore::icolor   C1;
-        auto            pData = reinterpret_cast<std::uint32_t*>(getMipPtr(0,0,0));
+        auto            pData = reinterpret_cast<const std::uint32_t*>(getMipPtr(0,0,0));
         for( auto y=0u; y<m_Height; ++y )
         for( auto x=0u; x<m_Width;  ++x )
         {
@@ -414,10 +403,11 @@ void xcore::bitmap::ComputeHasAlphaInfo( void ) noexcept
             if( X == 1 || X == 2 )
                 continue;
             
-            setHasAlphaInfo( true );
-            return;
+            return true;
         }
     }
+
+    return false;
 }
 
 //-------------------------------------------------------------------------------
@@ -574,10 +564,7 @@ void xcore::bitmap::ComputePremultiplyAlpha( void ) noexcept
          
     xassert( static_cast<int>(m_Flags.m_Format) == static_cast<int>(xcore::color::format::type::DEFAULT) );
 
-    if( m_Flags.m_bHasAlphaInfo == false ) ComputeHasAlphaInfo();
-
-    // It must have alpha information if we are about to do this
-    xassert( m_Flags.m_bHasAlphaInfo );
+    if (ComputeHasAlphaInfo() == false) return;
 
     auto Data = getMip<xcore::icolor>(0);
     for( auto& C : Data ) 
