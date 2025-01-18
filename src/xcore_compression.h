@@ -25,7 +25,7 @@ namespace xcore::compression
 
     public:
                                        ~compress    ( void )                                                                                                        noexcept;
-        xcore::err                      Init        ( std::uint32_t BlockSize, const std::span<std::byte> SourceUncompress, level CompressionLevel = level::HIGH )  noexcept;
+        xcore::err                      Init        ( bool bBlockSizeIsOutputSize, std::uint32_t BlockSize, const std::span<std::byte> SourceUncompress, level CompressionLevel = level::HIGH )  noexcept;
         xcore::err                      Pack        ( std::uint32_t& CompressedSize, std::span<std::byte> DestinationCompress )                                     noexcept;
 
     protected:
@@ -33,20 +33,22 @@ namespace xcore::compression
         std::uint64_t               m_Position  { 0 };
         std::span<const std::byte>  m_Src;
         std::uint32_t               m_BlockSize {0};
+        bool                        m_bBlockSizeIsOutputSize;
     };
 
     //-----------------------------------------------------------------------------------------------------
     class decompress
     {
     public:
-                                       ~decompress    (void)                                                                                                                        noexcept;
-        xcore::err                      Init          (std::uint32_t BlockSize)                                                                                                      noexcept;
+                                       ~decompress    (void)                                                                                                                         noexcept;
+        xcore::err                      Init          (bool bBlockIsOutputSize, std::uint32_t BlockSize, bool bDontNeedWorkingBuffer = false)                                        noexcept;
         xcore::err                      Unpack        (std::uint32_t& DecompressSize, std::span<std::byte> DestinationUncompress, const std::span<const std::byte> SourceCompressed) noexcept;
 
     protected:
-        void*                       m_pDCTX{ nullptr };
-        std::span<const std::byte>  m_Src;
-        std::uint32_t               m_BlockSize{0};
+        void*                           m_pDCTX{ nullptr };
+        std::span<const std::byte>      m_Src;
+        std::uint32_t                   m_BlockSize{0};
+        xcore::unique_span<std::byte>   m_WorkingBuffer;
     };
 }
 

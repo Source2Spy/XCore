@@ -19,13 +19,14 @@ namespace xcore::memory
     void AlignedFree(void* pData) noexcept
     {
         if(pData==nullptr) return;
-        
+
+        XCORE_PERF_FREE_S(pData, 10);
+
 #if _XCORE_PLATFORM_WINDOWS
         _aligned_free(pData);
 #else
         free(pData);
 #endif
-        XCORE_PERF_FREE_S(pData, 10);
     }
 }
 

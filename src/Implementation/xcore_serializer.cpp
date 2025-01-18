@@ -181,31 +181,61 @@ namespace xcore::serializer
             //
             // Now compress the memory
             //
+            {
+                xcore::compression::compress Compress;
+                if (Compress.Init(true, Pack.m_BlockSize, RawData).isError(Error)) return Error;
+                std::vector<std::byte> WorkBuffer;
+                WorkBuffer.resize(Pack.m_BlockSize * 2);
+
+                auto nBlocks = Pack.m_UncompressSize / Pack.m_BlockSize;
+                nBlocks += static_cast<std::uint32_t>(nBlocks * Pack.m_BlockSize) == Pack.m_UncompressSize ? 0 : 1;
+                if (Pack.m_CompressData.New(nBlocks * Pack.m_BlockSize).isError(Error)) return Error;
+
+                for( bool bDone = false; bDone == false; )
+                {
+                    std::uint32_t CompressedSize;
+                    if(Compress.Pack(CompressedSize, WorkBuffer ).isError(Error))
+                    {
+                        if (Error.getCode().getState<xcore::compression::compress::error_state>() != xcore::compression::compress::error_state::NOT_DONE)
+                            return Error;
+
+                        Error.clear();
+                    }
+                    else
+                    {
+                        bDone = true;
+                    }
+
+                    // Copy the data and the size
+                    Pack.m_CompressData.ViewFrom(Pack.m_CompressSize).CopyFromTo( {WorkBuffer.data(), CompressedSize} );
+                    m_pWrite->m_CSizeStream.append() = CompressedSize;
+
+                    // Get ready for the next block
+                    Pack.m_CompressSize += CompressedSize;
+                }
+            }
+
+        //UNFINISH!!!!!
+#if 0
+
             auto nBlocks = Pack.m_UncompressSize / Pack.m_BlockSize;
             nBlocks += static_cast<std::uint32_t>(nBlocks * Pack.m_BlockSize) == Pack.m_UncompressSize ? 0 : 1;
-            if( Pack.m_CompressData.New(nBlocks * Pack.m_BlockSize + 1024*8 ).isError(Error)) return Error;
+            if (Pack.m_CompressData.New(nBlocks * Pack.m_BlockSize + max_block_size_v * 8).isError(Error)) return Error;
 
-            // Do actual compression
-
-            auto TotalSize = 0;
             do
             {
                 xcore::compression::compress Compress;
                 const auto SelectedSize = std::min(int(RawData.size() - TotalSize), int(Pack.m_BlockSize) );
-                if(Compress.Init( Pack.m_BlockSize, RawData.ViewFromCount( TotalSize, SelectedSize) ).isError(Error)) return Error;
+                if(Compress.Init( true, Pack.m_BlockSize, RawData.ViewFromCount( TotalSize, SelectedSize) ).isError(Error)) return Error;
                 TotalSize += SelectedSize;
 
                 {
                     if( Compress.Pack(m_pWrite->m_CSizeStream.append(), Pack.m_CompressData.ViewFrom(Pack.m_CompressSize)).isError(Error) )
                     {
-                        return Error;
-
-                        /*
                         if( Error.getCode().getState<xcore::compression::compress::error_state>() != xcore::compression::compress::error_state::NOT_DONE)
                             return Error;
 
                         Error.clear();
-                        */
                     }
 
                     //
@@ -232,6 +262,7 @@ namespace xcore::serializer
             } while( TotalSize < RawData.size() );
 
             xassert(nBlocks == 0 );
+#endif
 
             //
             // Close the pack file
@@ -311,8 +342,29 @@ namespace xcore::serializer
             //
             {
                 xcore::compression::compress Compress;
-                if (Compress.Init(types::static_cast_safe<std::uint32_t>(InfoData.size()), InfoData).isError(Error)) return Error;
-                if (Compress.Pack(CompressInfoDataSize, CompressInfoData).isError(Error)) return Error;
+                if (Compress.Init(true, types::static_cast_safe<std::uint32_t>(InfoData.size()), InfoData).isError(Error)) return Error;
+
+                std::vector <std::byte> WorkBuffer;
+                WorkBuffer.resize((InfoData.size()) *2);
+
+                for( bool bDone = false; bDone == false; )
+                {
+                    if (Compress.Pack(CompressInfoDataSize, WorkBuffer).isError(Error))
+                    {
+                        if (Error.getCode().getState<xcore::compression::compress::error_state>() != xcore::compression::compress::error_state::NOT_DONE)
+                            return Error;
+
+                        // We don't expect to have multiple compress blocks since we are giving the entire size to be compressed
+                        assert(false);
+                    }
+                    else
+                    {
+                        bDone = true;
+                    }
+
+                    CompressInfoData.CopyFromTo({ WorkBuffer.data(), CompressInfoDataSize });
+                }
+                
             }
         }
 
@@ -443,12 +495,9 @@ namespace xcore::serializer
         //
         {
             // Create uncompress buffer for the packs and references
-            const auto DecompressSize = m_Header.m_nPacks * sizeof(pack)
-                + m_Header.m_nPointers * sizeof(ref)
-                + m_Header.m_nBlockSizes * sizeof(std::uint32_t)
-                + 4 ;   // this 4 is a bit hacky...
-
-            // InfoData.Alloc( x_Max( (s32)m_Header.m_PackSize, DecompressSize ) + m_Header.m_nPacks * sizeof(xbyte**) );
+            const auto DecompressSize = m_Header.m_nPacks      * sizeof(pack)
+                                      + m_Header.m_nPointers   * sizeof(ref)
+                                      + m_Header.m_nBlockSizes * sizeof(std::uint32_t);
 
             xassert(m_Header.m_PackSize <= DecompressSize);
             InfoData.New(DecompressSize + m_Header.m_nPacks * sizeof(std::byte * *)).CheckError();
@@ -470,12 +519,13 @@ namespace xcore::serializer
 
                 // Actual decompress the block
                 {
-                    std::uint32_t DecompressSize;
                     xcore::compression::decompress Decompress;
-                    Decompress.Init(static_cast<uint32_t>(InfoData.size())).CheckError();
-                    Decompress.Unpack(DecompressSize, InfoData, CompressData).CheckError();
+                    Decompress.Init(true, static_cast<std::uint32_t>(DecompressSize)).CheckError();
+
+                    std::uint32_t BlockUncompressed=0;
+                    Decompress.Unpack(BlockUncompressed, InfoData, CompressData).CheckError();
+                    assert(DecompressSize == BlockUncompressed);
                 }
-                //x_DecompressMem(xbuffer_view<xbyte>(InfoData, DecompressSize), xbuffer_view<xbyte>(reinterpret_cast<xbyte*>(&CompressData[0]), m_Header.m_PackSize));
             }
             else
             {
@@ -505,7 +555,7 @@ namespace xcore::serializer
             xcore::compression::decompress      Decompress;
 
             // Initialize the decomporessor 
-            Decompress.Init(sizeof(decompress_block)).CheckError();
+            Decompress.Init(true, sizeof(decompress_block), true).CheckError();
 
             for (std::uint32_t iPack = 0; iPack < m_Header.m_nPacks; iPack++)
             {
@@ -565,14 +615,11 @@ namespace xcore::serializer
 
                     {
                         std::uint32_t DecompressSize = 0;
-
                         Decompress.Unpack(DecompressSize
                                         , std::span<std::byte>{&pPackPointers[iPack][ReadSoFar], sizeof(decompress_block)}
                                         , std::span<const std::byte>{reinterpret_cast<const std::byte*>(&ReadBuffer[!iCurrentBuffer]), pBlockSizes[iBlock - 1]}).CheckError();
-
                         ReadSoFar += DecompressSize;
                     }
-
                 }
 
                 // Finish reading the block
@@ -598,13 +645,11 @@ namespace xcore::serializer
                 {
                     std::uint32_t DecompressSize;
                     xcore::compression::decompress Decompress;
-                    Decompress.Init(sizeof(decompress_block)).CheckError();
+                    Decompress.Init(true, sizeof(decompress_block)).CheckError();
                     Decompress.Unpack(DecompressSize
                                     , std::span<std::byte>{&pPackPointers[iPack][ReadSoFar], sizeof(decompress_block) }
                                     , std::span<std::byte>{reinterpret_cast<std::byte*>(&ReadBuffer[iCurrentBuffer]), pBlockSizes[iBlock]}).CheckError();
                 }
-                // x_DecompressMem(xbuffer_view<xbyte>(&pPackPointers[iPack][ReadSoFar], Pack.m_UncompressSize - ReadSoFar),
-                //    xbuffer_view<xbyte>(reinterpret_cast<xbyte*>(&ReadBuffer[iCurrentBuffer]), pBlockSizes[iBlock]));
 
                 // Get ready for next block
                 iCurrentBuffer = !iCurrentBuffer;

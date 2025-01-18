@@ -183,12 +183,12 @@ namespace xcore::serializer
     protected:
 
         static constexpr std::uint32_t  version_id_v        = 00010111_xbin;
-        static constexpr std::uint32_t  max_block_size_v    = 1024 * 127;
+        static constexpr std::uint32_t  max_block_size_v    = 1024 * 64;
 
         // This structure wont save to file
         struct decompress_block
         {
-            std::array<std::byte, max_block_size_v + 1024 > m_Buff;
+            std::array<std::byte, max_block_size_v * 2 > m_Buff;
         };
 
         // This structure will save to file

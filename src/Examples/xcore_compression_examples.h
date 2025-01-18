@@ -113,7 +113,7 @@ namespace xcore::compression::examples
         //
         {
             xcore::compression::compress Compress;
-            Compress.Init(BlockSize, { (std::byte*)s_Buffer.get(), s_Buffer.size() }).CheckError();
+            Compress.Init(true, BlockSize, { (std::byte*)s_Buffer.get(), s_Buffer.size() }).CheckError();
 
             while (true)
             {
@@ -142,7 +142,7 @@ namespace xcore::compression::examples
 
         {
             xcore::compression::decompress Decompress;
-            Decompress.Init(BlockSize).CheckError();
+            Decompress.Init(true, BlockSize).CheckError();
 
             std::uint32_t Pos = 0;
             for (const auto& [Size, Data] : Vec )
@@ -164,10 +164,123 @@ namespace xcore::compression::examples
     }
 
     //----------------------------------------------------------------------------------------
+    void RandomBinaryData()
+    {
+        constexpr auto buffer_size_v = 1000000u;
+        std::unique_ptr<std::byte[]>  UncompressedBuffer = std::make_unique<std::byte[]>(buffer_size_v);
+
+        //
+        // Fill the buffer with random data
+        //
+        {
+            xcore::random::small_generator Random;
+            Random.setSeed32(123);
+
+            for (std::uint32_t i = 0; i < buffer_size_v; i++)
+            {
+                const std::byte C = static_cast<std::byte>(Random.RandU32());
+                const int       a = (Random.RandU32() % 0xfff)+1;
+                int             b = Random.RandU32() % a;
+
+                // make sure we don't outrun the buffer
+                if ((i + b) >= buffer_size_v)
+                {
+                    b = buffer_size_v - i;
+                }
+
+                // Do strips of the random data
+                for (int j = 0; j < b; j++, i++)
+                {
+                    assert(i< buffer_size_v);
+                    UncompressedBuffer[i] = C;
+                }
+            }
+        }
+
+        //
+        // Compress the data
+        //
+        constexpr auto                  compress_block_size_v = 1024u;
+        std::vector<std::byte>          CompressedBuffer;
+        std::vector<std::uint32_t>      CompressedSizes;
+
+        // Reserve the worst case....
+        CompressedBuffer.reserve(buffer_size_v);
+        {
+            xcore::compression::compress Compress;
+
+            Compress.Init( true, compress_block_size_v, {UncompressedBuffer.get(), buffer_size_v }).CheckError();
+
+            std::vector<std::byte>       WorkBuffer;
+            WorkBuffer.resize(compress_block_size_v * 2);
+            for (bool bNotDone = true; bNotDone; )
+            {
+                if ( auto Err = Compress.Pack(CompressedSizes.emplace_back(), WorkBuffer); Err )
+                {
+                    if (Err.getCode().getState<xcore::compression::compress::error_state>() != xcore::compression::compress::error_state::NOT_DONE)
+                    {
+                        xassert(false);
+                    }
+                    Err.clear();
+                }
+                else
+                {
+                    bNotDone = false;
+                }
+
+                // Make sure we don't go over the block size...
+                assert(CompressedSizes.back() < compress_block_size_v);
+
+                // Insert the compressed data into the buffer
+                CompressedBuffer.insert(CompressedBuffer.end(), WorkBuffer.begin(), WorkBuffer.begin() + CompressedSizes.back());
+            }
+        }
+
+        // Shrink the buffer to fit
+        CompressedBuffer.shrink_to_fit();
+
+        //
+        // Let us decompress the data and compare it to the original
+        //
+        std::unique_ptr<std::byte[]>  DecompressedBuffer = std::make_unique<std::byte[]>(buffer_size_v);
+        {
+            xcore::compression::decompress  Decompress;
+            Decompress.Init(true, compress_block_size_v).CheckError();
+
+            std::uint32_t CurCompressPos   = 0;
+            std::uint32_t CurDecompressPos = 0;
+            for( const auto& Size : CompressedSizes )
+            {
+                std::uint32_t DecompressSize = 0;
+                Decompress.Unpack
+                ( DecompressSize
+                , { &DecompressedBuffer[CurDecompressPos], static_cast<std::size_t>(buffer_size_v - CurDecompressPos) }
+                , { static_cast<const std::byte*>(&CompressedBuffer[CurCompressPos]), static_cast<std::size_t>(Size)}
+                ).CheckError();
+
+                CurDecompressPos += DecompressSize;
+                CurCompressPos   += Size;
+            }
+            assert(CurDecompressPos == buffer_size_v);
+            assert(CurCompressPos == CompressedBuffer.size());
+        }
+
+        //
+        // OK let us compare both...
+        //
+        for( auto i=0u; i< buffer_size_v; ++i )
+        {
+            assert( DecompressedBuffer[i] == UncompressedBuffer[i]);
+        }
+
+        assert(true);
+    }
+
+    //----------------------------------------------------------------------------------------
 
     void Test(void)
     {
         SimpleStringCompression();
-
+        RandomBinaryData();
     }
 }

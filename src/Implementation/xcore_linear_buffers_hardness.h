@@ -17,7 +17,7 @@ auto& CopyFromTo( const xcore::span<value_type>     View,
     if( View.size() ) 
     {
         xassert( (DestinationOffset + View.size()) <= size() );
-        std::memmove( &(*this)[DestinationOffset], View.data(), sizeof(value_type)*size() );
+        std::memmove( &(*this)[DestinationOffset], View.data(), sizeof(value_type)* View.size() );
     }
     return *this;
 }

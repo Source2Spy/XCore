@@ -224,7 +224,7 @@ namespace xcore::serializer
                 }
 
                 // Okay one pointer to nuck
-                delete(pTheData);
+                xcore::memory::AlignedFree(pTheData);
             }
         }
 
