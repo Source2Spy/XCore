@@ -185,7 +185,7 @@ namespace xcore::serializer
                 xcore::compression::compress Compress;
                 if (Compress.Init(true, Pack.m_BlockSize, RawData).isError(Error)) return Error;
                 std::vector<std::byte> WorkBuffer;
-                WorkBuffer.resize(Pack.m_BlockSize * 2);
+                WorkBuffer.resize(std::max( 1024u, Pack.m_BlockSize * 2 ) );
 
                 auto nBlocks = Pack.m_UncompressSize / Pack.m_BlockSize;
                 nBlocks += static_cast<std::uint32_t>(nBlocks * Pack.m_BlockSize) == Pack.m_UncompressSize ? 0 : 1;
@@ -206,8 +206,20 @@ namespace xcore::serializer
                         bDone = true;
                     }
 
+                    //
                     // Copy the data and the size
-                    Pack.m_CompressData.ViewFrom(Pack.m_CompressSize).CopyFromTo( {WorkBuffer.data(), CompressedSize} );
+                    //
+
+                    // If compressing it is going to become larger than we should just use the original data...
+                    if (CompressedSize >= Pack.m_CompressData.size() )
+                    {
+                        CompressedSize = static_cast<std::uint32_t>(Pack.m_CompressData.size());
+                        Pack.m_CompressData.ViewFrom(Pack.m_CompressSize).CopyFromTo({ RawData.data(), Pack.m_CompressData.size() });
+                    }
+                    else
+                    {
+                        Pack.m_CompressData.ViewFrom(Pack.m_CompressSize).CopyFromTo({ WorkBuffer.data(), CompressedSize });
+                    }
                     m_pWrite->m_CSizeStream.append() = CompressedSize;
 
                     // Get ready for the next block
@@ -362,7 +374,16 @@ namespace xcore::serializer
                         bDone = true;
                     }
 
-                    CompressInfoData.CopyFromTo({ WorkBuffer.data(), CompressInfoDataSize });
+                    if (CompressInfoDataSize >= InfoData.size() )
+                    {
+                        CompressInfoData.CopyFromTo({ InfoData.data(), InfoData.size() });
+                        CompressInfoDataSize = types::static_cast_safe<std::uint32_t>(InfoData.size());
+                    }
+                    else
+                    {
+                        CompressInfoData.CopyFromTo({ WorkBuffer.data(), CompressInfoDataSize });
+                    }
+                    
                 }
                 
             }
@@ -555,7 +576,7 @@ namespace xcore::serializer
             xcore::compression::decompress      Decompress;
 
             // Initialize the decomporessor 
-            Decompress.Init(true, sizeof(decompress_block), true).CheckError();
+            Decompress.Init(true, sizeof(decompress_block)).CheckError();
 
             for (std::uint32_t iPack = 0; iPack < m_Header.m_nPacks; iPack++)
             {
@@ -640,9 +661,15 @@ namespace xcore::serializer
                 // Decompress last block for this pack
                 //
                 xassume(pPackPointers[iPack]);
-                
-                // Actual decompress the block
+
+                if (Pack.m_UncompressSize == pBlockSizes[iBlock] )
                 {
+                    // If we has the same size as the uncompress block means we did not compressed anything
+                    std::memcpy(&pPackPointers[iPack][ReadSoFar], &ReadBuffer[iCurrentBuffer], pBlockSizes[iBlock]);
+                }
+                else
+                {
+                    // Actual decompress the block
                     std::uint32_t DecompressSize;
                     xcore::compression::decompress Decompress;
                     Decompress.Init(true, sizeof(decompress_block)).CheckError();
