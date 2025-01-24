@@ -1,8 +1,8 @@
 
 constexpr std::uint32_t s_DefaultBitmapSize = 256u; 
-using t_default_data = std::array<std::byte, s_DefaultBitmapSize*s_DefaultBitmapSize*sizeof(xcore::icolor) + sizeof(int) >;
+using t_default_data = std::array<xcore::icolor, s_DefaultBitmapSize*s_DefaultBitmapSize + 1 >;
 
-static const t_default_data Data = []() noexcept
+static const t_default_data Data = []() constexpr noexcept
 {
     t_default_data Data = {};
     const xcore::icolor C1{ 128, 128, 128, 255 };
@@ -14,8 +14,8 @@ static const t_default_data Data = []() noexcept
     const auto          nCheckers    = 16;
     const auto          CheckerSize  = s_DefaultBitmapSize/nCheckers;
 
-    xcore::icolor* pData = reinterpret_cast<xcore::icolor*>(&Data[4]);
-        
+    xcore::icolor* pData = &Data[1];
+
     // Create basic checker pattern
     for( auto y = 0u; y < s_DefaultBitmapSize; y++ )
     {
@@ -25,7 +25,7 @@ static const t_default_data Data = []() noexcept
             pData[ x+ s_DefaultBitmapSize*y ] = ((y&CheckerSize)==CheckerSize)^((x&CheckerSize)==CheckerSize)?C1:C2;
         }
     }
-
+    
     // Draw a simple arrows at the top left pointing up...
     const int ArrowSize = CheckerSize*2;
     for( auto k=0; k<3; k++ )
@@ -42,11 +42,17 @@ static const t_default_data Data = []() noexcept
             if (y&1) yy++;
         }
     }
-
+    
     return Data; 
 }();
 
-static const xcore::bitmap s_DefaultBitmap{ { const_cast<std::byte*>(Data.data()), Data.size() }, s_DefaultBitmapSize, s_DefaultBitmapSize, false };
+static const auto s_DefaultBitmap = []() noexcept
+{
+    xcore::bitmap Bitmap{{ const_cast<std::byte*>(reinterpret_cast<const std::byte*>(Data.data())), Data.size()*sizeof(Data[1])}, s_DefaultBitmapSize, s_DefaultBitmapSize, false};
+    Bitmap.setWrapMode(xcore::bitmap::wrap_mode::UV_BOTH_WRAP);
+    Bitmap.setColorSpace(xcore::bitmap::color_space::LINEAR);
+    return Bitmap;
+}();
 
 
 //////////////////////////////////////////////////////////////////////////////////
