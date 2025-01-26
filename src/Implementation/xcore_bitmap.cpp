@@ -50,7 +50,7 @@ static const auto s_DefaultBitmap = []() noexcept
 {
     xcore::bitmap Bitmap{{ const_cast<std::byte*>(reinterpret_cast<const std::byte*>(Data.data())), Data.size()*sizeof(Data[1])}, s_DefaultBitmapSize, s_DefaultBitmapSize, false};
     Bitmap.setWrapMode(xcore::bitmap::wrap_mode::UV_BOTH_WRAP);
-    Bitmap.setColorSpace(xcore::bitmap::color_space::LINEAR);
+    Bitmap.setColorSpace(xcore::bitmap::color_space::SRGB);
     return Bitmap;
 }();
 
