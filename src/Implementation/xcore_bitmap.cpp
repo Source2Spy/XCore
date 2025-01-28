@@ -313,8 +313,10 @@ bool xcore::bitmap::hasAlphaChannel( void ) const noexcept
         SupportAlphaTable[ (int)format::BC1_4RGBA1            ] = entry{ true      };
         SupportAlphaTable[ (int)format::BC2_8RGBA             ] = entry{ true      };
         SupportAlphaTable[ (int)format::BC3_8RGBA             ] = entry{ true      };
+        SupportAlphaTable[ (int)format::BC3_81Y0X_NORMAL      ] = entry{ false     };
         SupportAlphaTable[ (int)format::BC4_4R                ] = entry{ false     };
         SupportAlphaTable[ (int)format::BC5_8RG               ] = entry{ false     };
+        SupportAlphaTable[ (int)format::BC5_8YX_NORMAL        ] = entry{ false     };
         SupportAlphaTable[ (int)format::BC6H_8RGB_FLOAT       ] = entry{ false     };
         SupportAlphaTable[ (int)format::BC7_8RGBA             ] = entry{ false     };
                                                                               

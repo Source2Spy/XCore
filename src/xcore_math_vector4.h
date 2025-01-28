@@ -24,8 +24,8 @@ public:
 
     inline              vector4&            setup                           ( const float X, const float Y, const float Z, const float W=0 )        noexcept;
 
-    inline              void                setZero                         ( void )                                                                noexcept;
-    inline              void                setIdentity                     ( void )                                                                noexcept;
+    inline              vector4&            setZero                         ( void )                                                                noexcept;
+    inline              vector4&            setIdentity                     ( void )                                                                noexcept;
     inline              float               getLength                       ( void )                                                        const   noexcept;
     constexpr           float               getLengthSquared                ( void )                                                        const   noexcept;
     constexpr           float               Dot                             ( const vector4& V )                                            const   noexcept;

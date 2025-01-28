@@ -24,7 +24,7 @@ namespace xcore::math
 
     //------------------------------------------------------------------------------
     inline
-    void vector4::setIdentity( void ) noexcept
+    vector4& vector4::setIdentity( void ) noexcept
     {
     #ifdef _XCORE_SSE4
         m_XYZW = _mm_setzero_ps();
@@ -32,6 +32,20 @@ namespace xcore::math
         m_X = m_Y = m_Z = 0;
     #endif
         m_W = 1;
+
+        return *this;
+    }
+
+    //------------------------------------------------------------------------------
+    inline
+    vector4& vector4::setZero( void ) noexcept
+    {
+#ifdef _XCORE_SSE4
+        m_XYZW = _mm_setzero_ps();
+#else
+        m_X = m_Y = m_Z = m_W = 0;
+#endif
+        return *this;
     }
 
     //------------------------------------------------------------------------------

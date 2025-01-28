@@ -108,10 +108,12 @@ namespace xcore
         ,   BC1_4RGBA1                                      // DXT1_RGBA
         ,   BC2_8RGBA                                       // DXT3_RGBA
         ,   BC3_8RGBA                                       // DXT5_RGBA
+        ,   BC3_81Y0X_NORMAL                                // DXT5_RGBA - Encoded normal
 
             // RGTC Compressed Texture Image Formats
         ,   BC4_4R                                          // High quality R  (good for suplemental alpha)
-        ,   BC5_8RG                                         // High Quality RG (good for normal maps)
+        ,   BC5_8RG                                         // High Quality RG 
+        ,   BC5_8YX_NORMAL                                  // High Quality normal maps
 
             // BPTC Compressed Texture Image Formats 
         ,   BC6H_8RGB_FLOAT                                 // Floating point compression    (good for normal maps)
