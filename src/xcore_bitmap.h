@@ -103,6 +103,8 @@ namespace xcore
            
         ,   XCOLOR_END                                      // end of the range of xcolor
 
+        ,   R32G32B32A32_FLOAT                              // 128-bit RGBA floating point (Used to work in HDR or high precision color)
+
             // S3TC Compressed Texture Image Formats 
         ,   BC1_4RGB                                        // DXT1_RGB 
         ,   BC1_4RGBA1                                      // DXT1_RGBA
@@ -165,7 +167,7 @@ namespace xcore
         ,   R16G16B16A16                                    
         ,   R16G16B16A16_FLOAT                                  
         ,   A2R10G10B10                                     
-        ,   B11G11R11_FLOAT                                       
+        ,   B11G11R11_FLOAT
 
             //
             // End

@@ -357,7 +357,7 @@ namespace xcore::serializer
                 if (Compress.Init(true, types::static_cast_safe<std::uint32_t>(InfoData.size()), InfoData).isError(Error)) return Error;
 
                 std::vector <std::byte> WorkBuffer;
-                WorkBuffer.resize((InfoData.size()) *2);
+                WorkBuffer.resize((InfoData.size()) *2 + 1024);
 
                 for( bool bDone = false; bDone == false; )
                 {
