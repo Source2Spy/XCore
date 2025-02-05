@@ -104,6 +104,7 @@ namespace xcore
         ,   XCOLOR_END                                      // end of the range of xcolor
 
         ,   R32G32B32A32_FLOAT                              // 128-bit RGBA floating point (Used to work in HDR or high precision color)
+        ,   R32G32B32_FLOAT                                 // 96-bit RGB floating point(Used to work in HDR or high precision color)
 
             // S3TC Compressed Texture Image Formats 
         ,   BC1_4RGB                                        // DXT1_RGB 
@@ -118,7 +119,8 @@ namespace xcore
         ,   BC5_8YX_NORMAL                                  // High Quality normal maps
 
             // BPTC Compressed Texture Image Formats 
-        ,   BC6H_8RGB_FLOAT                                 // Floating point compression    (good for normal maps)
+        ,   BC6H_8RGB_SFLOAT                                // signed Floating point compression    for HDR images
+        ,   BC6H_8RGB_UFLOAT                                // unsigned Floating point compression    for HDR images
         ,   BC7_8RGBA                                       // High quality RGBA compression (good for normal maps) 
 
             // Ericsson Texture Compression (ETC)
@@ -181,14 +183,10 @@ namespace xcore
         };
 
         enum class wrap_mode : std::uint8_t
-        { UV_BOTH_CLAMP_TO_EDGE
-        , UV_BOTH_WRAP
-        , UV_BOTH_MIRROR
-        , UV_UCLAMP_VWRAP
-        , UV_UWRAP_VCLAMP
-        , UV_UCLAMP_VMIRROR
-        , UV_UMIRROR_VCLAMP
-        , UV_UMIRROR_VWRAP
+        { CLAMP_TO_EDGE
+        , WRAP
+        , MIRROR
+        , ENUM_COUNT
         };
 
     public:
@@ -221,9 +219,10 @@ namespace xcore
         
         inline      void                        setOwnMemory            ( bool bOwnMemory 
                                                                         ) noexcept;
-        inline      void                        setWrapMode             ( wrap_mode WrapMode
+        inline      void                        setUWrapMode            ( wrap_mode WrapMode
                                                                         ) noexcept;
-
+        inline      void                        setVWrapMode            ( wrap_mode WrapMode
+                                                                        ) noexcept;
                     bool                        ComputeHasAlphaInfo     ( void 
                                                                         ) const noexcept;
                     void                        ComputePremultiplyAlpha ( void 
@@ -239,7 +238,7 @@ namespace xcore
                                                                         ) const noexcept;
         constexpr   bool                        isLinearSpace           ( void 
                                                                         ) const noexcept;
-        constexpr   bool                        isSigned                ( void
+                    bool                        isSigned                ( void
                                                                         ) const noexcept;
         constexpr   bool                        isCubemap               ( void 
                                                                         ) const noexcept;
@@ -267,7 +266,9 @@ namespace xcore
                                                                         ) const noexcept;
         constexpr   float                       getAspectRatio          ( void
                                                                         ) const noexcept;
-        constexpr   wrap_mode                   getWrapMode             ( void
+        constexpr   wrap_mode                   getUWrapMode            ( void
+                                                                        ) const noexcept;
+        constexpr   wrap_mode                   getVWrapMode            ( void
                                                                         ) const noexcept;
         inline      void                        Copy                    ( const bitmap& Src 
                                                                         ) noexcept;
@@ -353,8 +354,8 @@ namespace xcore
                 ,                   m_bOwnsMemory           : 1     // if the bitmap is allowed to free the memory
                 ,                   m_bAlphaPremultiplied   : 1     // Tells it the alpha has already been premultiplied
                 ,                   m_bLinearSpace          : 1     // What is the color space for the bitmap
-                ,                   m_WrapMode              : 3     // Tells if it can wrap around... 
-                ,                   m_bSignedPixels         : 1     // Tells if the pixels in the bitmap are suppose to be signed bits
+                ,                   m_UWrapMode             : 2     // Tells if it can wrap around... 
+                ,                   m_VWrapMode             : 2     // Tells if it can wrap around... 
                 ;
                 format              m_Format;                       // Format of the data
             };

@@ -96,7 +96,7 @@ namespace xcore::color
     struct elements
     {
         using element = T;
-        static_assert( !(std::is_same_v<T, double> || std::is_same_v<T,float>), "The supported color formats are: uint32, float, double");
+        static_assert( !std::is_same_v<T,double>, "The supported color formats are: uint32, float, double");
         element m_R;
         element m_G;
         element m_B;

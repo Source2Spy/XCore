@@ -49,7 +49,8 @@ static const t_default_data Data = []() constexpr noexcept
 static const auto s_DefaultBitmap = []() noexcept
 {
     xcore::bitmap Bitmap{{ const_cast<std::byte*>(reinterpret_cast<const std::byte*>(Data.data())), Data.size()*sizeof(Data[1])}, s_DefaultBitmapSize, s_DefaultBitmapSize, false};
-    Bitmap.setWrapMode(xcore::bitmap::wrap_mode::UV_BOTH_WRAP);
+    Bitmap.setUWrapMode(xcore::bitmap::wrap_mode::WRAP);
+    Bitmap.setVWrapMode(xcore::bitmap::wrap_mode::WRAP);
     Bitmap.setColorSpace(xcore::bitmap::color_space::SRGB);
     return Bitmap;
 }();
@@ -278,88 +279,99 @@ void xcore::bitmap::setupFromColor
     );
 }
 
+//-----------------------------------------------------------------------------------
+
+bool xcore::bitmap::isSigned(void) const noexcept
+{
+    constexpr static auto SignedTable = []() constexpr noexcept
+    {
+        std::array< bool, (int)format::ENUM_COUNT > Table = {};
+
+        Table[static_cast<int>(format::BC6H_8RGB_SFLOAT)] = true;
+
+        return Table;
+    }();
+
+    return SignedTable[static_cast<int>(m_Flags.m_Format)];
+}
+
 //-------------------------------------------------------------------------------
 
 bool xcore::bitmap::hasAlphaChannel( void ) const noexcept
 {
-    struct entry
-    {
-        std::uint8_t        m_bSupportsAlpha;
-    };
-
     constexpr static auto SupportAlphaTable = []() constexpr noexcept
     {
-        std::array< entry, (int)format::ENUM_COUNT > SupportAlphaTable = {0xff};
+        std::array< bool, (int)format::ENUM_COUNT > Table = {};
 
-        SupportAlphaTable[ (int)format::R4G4B4A4              ] = entry{ true      };
-        SupportAlphaTable[ (int)format::R5G6B5                ] = entry{ false     };
-        SupportAlphaTable[ (int)format::B5G5R5A1              ] = entry{ true      };
-        SupportAlphaTable[ (int)format::R8G8B8                ] = entry{ false     };
-        SupportAlphaTable[ (int)format::R8G8B8U8              ] = entry{ false     };
-        SupportAlphaTable[ (int)format::R8G8B8A8              ] = entry{ true      };
-        SupportAlphaTable[ (int)format::B8G8R8A8              ] = entry{ true      };
-        SupportAlphaTable[ (int)format::B8G8R8U8              ] = entry{ false     };
-        SupportAlphaTable[ (int)format::A8R8G8B8              ] = entry{ true      };
-        SupportAlphaTable[ (int)format::U8R8G8B8              ] = entry{ false     };
+        Table[ (int)format::R4G4B4A4              ] = true  ;
+        Table[ (int)format::R5G6B5                ] = false ;
+        Table[ (int)format::B5G5R5A1              ] = true  ;
+        Table[ (int)format::R8G8B8                ] = false ;
+        Table[ (int)format::R8G8B8U8              ] = false ;
+        Table[ (int)format::R8G8B8A8              ] = true  ;
+        Table[ (int)format::B8G8R8A8              ] = true  ;
+        Table[ (int)format::B8G8R8U8              ] = false ;
+        Table[ (int)format::A8R8G8B8              ] = true  ;
+        Table[ (int)format::U8R8G8B8              ] = false ;
 
-        SupportAlphaTable[ (int)format::PAL4_R8G8B8A8         ] = entry{ true      };
-        SupportAlphaTable[ (int)format::PAL8_R8G8B8A8         ] = entry{ true      };
-                                                                              
-        SupportAlphaTable[ (int)format::ETC2_4RGB             ] = entry{ false     };
-        SupportAlphaTable[ (int)format::ETC2_4RGBA1           ] = entry{ false     };
-        SupportAlphaTable[ (int)format::ETC2_8RGBA            ] = entry{ true      };
-                                                                              
-        SupportAlphaTable[ (int)format::BC1_4RGB              ] = entry{ false     };
-        SupportAlphaTable[ (int)format::BC1_4RGBA1            ] = entry{ true      };
-        SupportAlphaTable[ (int)format::BC2_8RGBA             ] = entry{ true      };
-        SupportAlphaTable[ (int)format::BC3_8RGBA             ] = entry{ true      };
-        SupportAlphaTable[ (int)format::BC3_81Y0X_NORMAL      ] = entry{ false     };
-        SupportAlphaTable[ (int)format::BC4_4R                ] = entry{ false     };
-        SupportAlphaTable[ (int)format::BC5_8RG               ] = entry{ false     };
-        SupportAlphaTable[ (int)format::BC5_8YX_NORMAL        ] = entry{ false     };
-        SupportAlphaTable[ (int)format::BC6H_8RGB_FLOAT       ] = entry{ false     };
-        SupportAlphaTable[ (int)format::BC7_8RGBA             ] = entry{ false     };
-                                                                              
-        SupportAlphaTable[ (int)format::ASTC_4x4_8RGB         ] = entry{ false     };
-        SupportAlphaTable[ (int)format::ASTC_5x4_6RGB         ] = entry{ false     };
-        SupportAlphaTable[ (int)format::ASTC_5x5_5RGB         ] = entry{ false     };
-        SupportAlphaTable[ (int)format::ASTC_6x5_4RGB         ] = entry{ false     };
-        SupportAlphaTable[ (int)format::ASTC_6x6_4RGB         ] = entry{ false     };
-        SupportAlphaTable[ (int)format::ASTC_8x5_3RGB         ] = entry{ false     };
-        SupportAlphaTable[ (int)format::ASTC_8x6_3RGB         ] = entry{ false     };
-        SupportAlphaTable[ (int)format::ASTC_8x8_2RGB         ] = entry{ false     };
-        SupportAlphaTable[ (int)format::ASTC_10x5_3RGB        ] = entry{ false     };
-        SupportAlphaTable[ (int)format::ASTC_10x6_2RGB        ] = entry{ false     };
-        SupportAlphaTable[ (int)format::ASTC_10x8_2RGB        ] = entry{ false     };
-        SupportAlphaTable[ (int)format::ASTC_10x10_1RGB       ] = entry{ false     };
-        SupportAlphaTable[ (int)format::ASTC_12x10_1RGB       ] = entry{ false     };
-        SupportAlphaTable[ (int)format::ASTC_12x12_1RGB       ] = entry{ false     };
-                                                                              
-        SupportAlphaTable[ (int)format::PVR1_2RGB             ] = entry{ false     };
-        SupportAlphaTable[ (int)format::PVR1_2RGBA            ] = entry{ true      };
-        SupportAlphaTable[ (int)format::PVR1_4RGB             ] = entry{ false     };
-        SupportAlphaTable[ (int)format::PVR1_4RGBA            ] = entry{ true      };
-        SupportAlphaTable[ (int)format::PVR2_2RGBA            ] = entry{ true      };
-        SupportAlphaTable[ (int)format::PVR2_4RGBA            ] = entry{ true      };
-                                                                              
-        SupportAlphaTable[ (int)format::D24S8_FLOAT           ] = entry{ false     };
-        SupportAlphaTable[ (int)format::D24S8                 ] = entry{ false     };
-        SupportAlphaTable[ (int)format::R8                    ] = entry{ false     };
-        SupportAlphaTable[ (int)format::R32                   ] = entry{ false     };
-        SupportAlphaTable[ (int)format::R8G8                  ] = entry{ false     };
-        SupportAlphaTable[ (int)format::R16G16B16A16          ] = entry{ true      };
-        SupportAlphaTable[ (int)format::R16G16B16A16_FLOAT    ] = entry{ true      };
-        SupportAlphaTable[ (int)format::A2R10G10B10           ] = entry{ true      };
-        SupportAlphaTable[ (int)format::B11G11R11_FLOAT       ] = entry{ false     };
+        Table[ (int)format::PAL4_R8G8B8A8         ] = true  ;
+        Table[ (int)format::PAL8_R8G8B8A8         ] = true  ;
+                                                                  
+        Table[ (int)format::ETC2_4RGB             ] = false ;
+        Table[ (int)format::ETC2_4RGBA1           ] = false ;
+        Table[ (int)format::ETC2_8RGBA            ] = true  ;
+                                                                  
+        Table[ (int)format::BC1_4RGB              ] = false ;
+        Table[ (int)format::BC1_4RGBA1            ] = true  ;
+        Table[ (int)format::BC2_8RGBA             ] = true  ;
+        Table[ (int)format::BC3_8RGBA             ] = true  ;
+        Table[ (int)format::BC3_81Y0X_NORMAL      ] = false ;
+        Table[ (int)format::BC4_4R                ] = false ;
+        Table[ (int)format::BC5_8RG               ] = false ;
+        Table[ (int)format::BC5_8YX_NORMAL        ] = false ;
+        Table[ (int)format::BC6H_8RGB_SFLOAT      ] = false ;
+        Table[ (int)format::BC6H_8RGB_UFLOAT      ] = false ;
+        Table[ (int)format::BC7_8RGBA             ] = false ;
+                                                                  
+        Table[ (int)format::ASTC_4x4_8RGB         ] = false ;
+        Table[ (int)format::ASTC_5x4_6RGB         ] = false ;
+        Table[ (int)format::ASTC_5x5_5RGB         ] = false ;
+        Table[ (int)format::ASTC_6x5_4RGB         ] = false ;
+        Table[ (int)format::ASTC_6x6_4RGB         ] = false ;
+        Table[ (int)format::ASTC_8x5_3RGB         ] = false ;
+        Table[ (int)format::ASTC_8x6_3RGB         ] = false ;
+        Table[ (int)format::ASTC_8x8_2RGB         ] = false ;
+        Table[ (int)format::ASTC_10x5_3RGB        ] = false ;
+        Table[ (int)format::ASTC_10x6_2RGB        ] = false ;
+        Table[ (int)format::ASTC_10x8_2RGB        ] = false ;
+        Table[ (int)format::ASTC_10x10_1RGB       ] = false ;
+        Table[ (int)format::ASTC_12x10_1RGB       ] = false ;
+        Table[ (int)format::ASTC_12x12_1RGB       ] = false ;
+                                                                  
+        Table[ (int)format::PVR1_2RGB             ] = false ;
+        Table[ (int)format::PVR1_2RGBA            ] = true  ;
+        Table[ (int)format::PVR1_4RGB             ] = false ;
+        Table[ (int)format::PVR1_4RGBA            ] = true  ;
+        Table[ (int)format::PVR2_2RGBA            ] = true  ;
+        Table[ (int)format::PVR2_4RGBA            ] = true  ;
+                                                                  
+        Table[ (int)format::D24S8_FLOAT           ] = false ;
+        Table[ (int)format::D24S8                 ] = false ;
+        Table[ (int)format::R8                    ] = false ;
+        Table[ (int)format::R32                   ] = false ;
+        Table[ (int)format::R8G8                  ] = false ;
+        Table[ (int)format::R16G16B16A16          ] = true  ;
+        Table[ (int)format::R16G16B16A16_FLOAT    ] = true  ;
+        Table[ (int)format::A2R10G10B10           ] = true  ;
+        Table[ (int)format::B11G11R11_FLOAT       ] = false ;
 
-        return SupportAlphaTable;
+        Table[ (int)format::R32G32B32A32_FLOAT    ] = true  ;
+
+        return Table;
     }();
 
     // Must insert this format into the table and assign avalue to it
-    xassume( SupportAlphaTable[(int)m_Flags.m_Format].m_bSupportsAlpha == 1 || SupportAlphaTable[(int)m_Flags.m_Format].m_bSupportsAlpha == 0 );
-    static_assert( static_cast<int>(true)  == 1, "True should be just one" );
-    static_assert( static_cast<int>(false) == 0, "False should be just zero" );
-    return !!SupportAlphaTable[(int)m_Flags.m_Format].m_bSupportsAlpha;
+    return SupportAlphaTable[(int)m_Flags.m_Format];
 }
 
 //-------------------------------------------------------------------------------

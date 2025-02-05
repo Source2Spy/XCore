@@ -9,9 +9,18 @@ namespace xcore
 
     //-----------------------------------------------------------------------------------
 
-    void bitmap::setWrapMode(wrap_mode WrapMode) noexcept
+    void bitmap::setUWrapMode(wrap_mode WrapMode) noexcept
     {
-        m_Flags.m_WrapMode = static_cast<std::uint8_t>(WrapMode);
+        assert(WrapMode != wrap_mode::ENUM_COUNT);
+        m_Flags.m_UWrapMode = static_cast<std::uint8_t>(WrapMode);
+    }
+
+    //-----------------------------------------------------------------------------------
+
+    void bitmap::setVWrapMode(wrap_mode WrapMode) noexcept
+    {
+        assert(WrapMode != wrap_mode::ENUM_COUNT);
+        m_Flags.m_VWrapMode = static_cast<std::uint8_t>(WrapMode);
     }
 
     //-----------------------------------------------------------------------------------
@@ -27,14 +36,6 @@ namespace xcore
     bool bitmap::isLinearSpace(void) const noexcept
     {
         return m_Flags.m_bLinearSpace;
-    }
-
-    //-----------------------------------------------------------------------------------
-
-    constexpr
-    bool bitmap::isSigned(void) const noexcept
-    {
-        return m_Flags.m_bSignedPixels;
     }
 
     //-----------------------------------------------------------------------------------
@@ -137,9 +138,16 @@ namespace xcore
 
     //-----------------------------------------------------------------------------------
     constexpr
-    bitmap::wrap_mode bitmap::getWrapMode(void) const noexcept
+    bitmap::wrap_mode bitmap::getUWrapMode(void) const noexcept
     {
-        return static_cast<wrap_mode>(m_Flags.m_WrapMode);
+        return static_cast<wrap_mode>(m_Flags.m_UWrapMode);
+    }
+
+    //-----------------------------------------------------------------------------------
+    constexpr
+    bitmap::wrap_mode bitmap::getVWrapMode(void) const noexcept
+    {
+        return static_cast<wrap_mode>(m_Flags.m_VWrapMode);
     }
 
     //-----------------------------------------------------------------------------------
