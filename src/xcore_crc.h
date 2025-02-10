@@ -297,7 +297,7 @@ namespace xcore
             return *this = FromString(pIn);
         }
 
-        constexpr self FromBytes(std::span<const std::byte> View, basic_t Value = basic_t{ 0 }) noexcept
+        constexpr static self FromBytes(std::span<const std::byte> View, basic_t Value = basic_t{ 0 }) noexcept
         {
             assert(View.size());
             assert(View.data());

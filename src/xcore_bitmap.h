@@ -76,7 +76,7 @@ namespace xcore
     {
     public:
 
-        constexpr static std::uint16_t VERSION = 1;
+        constexpr static std::uint16_t VERSION = 2;
 
         // Bit wise formatting for the enumeration.
         // FORMAT_(LOW BITS elements first then moving to HIGH BITS)
@@ -178,12 +178,13 @@ namespace xcore
         };
 
         enum class color_space : std::uint8_t
-        {   SRGB
-        ,   LINEAR
+        { SRGB
+        , LINEAR
         };
 
         enum class wrap_mode : std::uint8_t
         { CLAMP_TO_EDGE
+        , CLAMP_TO_COLOR
         , WRAP
         , MIRROR
         , ENUM_COUNT
@@ -200,6 +201,12 @@ namespace xcore
                                                                         , std::uint32_t         Height
                                                                         , bool                  bReleaseWhenDone 
                                                                         ) noexcept;
+        inline      const bitmap&               operator =              ( bitmap&& Src 
+                                                                        ) noexcept;
+        inline                                  bitmap                  ( bitmap&& Src 
+                                                                        ) noexcept;
+                                                bitmap                  ( const bitmap& Src 
+                                                                        ) noexcept = delete;
         static      xcore::err                  SerializeLoad           ( bitmap*&                                  pBitmap
                                                                         , const xcore::string::view<const wchar_t>  FileName
                                                                         ) noexcept;
@@ -212,7 +219,7 @@ namespace xcore
                                                                         ) const noexcept;
                     xcore::err                  SaveTGA                 ( const string::view<const wchar_t> FileName
                                                                         ) const noexcept;
-                    void                        Kill                    ( void 
+        inline      void                        Kill                    ( void 
                                                                         ) noexcept;
     //            bool                            SaveTGA             ( const xstring FileName ) const;
     //            void                            SerializeIO         ( xserialfile& SerialFile ) const;
@@ -289,7 +296,7 @@ namespace xcore
                                                                         , int iFace  = 0
                                                                         , int iFrame = 0 
                                                                         ) const noexcept;
-        inline      std::uint64_t               getMipSize              ( int Mip 
+        inline      std::uint32_t               getMipSize              ( int Mip 
                                                                         ) const noexcept;
         inline      int                         getFullMipChainCount    ( void 
                                                                         ) const noexcept;
@@ -320,11 +327,12 @@ namespace xcore
                     void                        setup                   ( std::uint32_t                 Width                         
                                                                         , std::uint32_t                 Height                        
                                                                         , bitmap::format                BitmapFormat
-                                                                        , std::uint64_t                 FrameSize                     
+                                                                        , std::uint64_t                 FraceSize                     
                                                                         , std::span<std::byte>          Data                          
                                                                         , bool                          bFreeMemoryOnDestruction      
                                                                         , int                           nMips                         
-                                                                        , int                           nFrames                       
+                                                                        , int                           nFrames
+                                                                        , bool                          isCubeMap = false
                                                                         ) noexcept;
 
     /*
@@ -364,9 +372,9 @@ namespace xcore
             static constexpr auto cubemap_mask_v              = std::uint16_t{1 << 0};
             static constexpr auto owns_memory_mask_v          = std::uint16_t{1 << 1};
             static constexpr auto alpha_premultiplied_mask_v  = std::uint16_t{1 << 2};
-            static constexpr auto line_space_mask_v           = std::uint16_t{1 << 3};
-            static constexpr auto warp_mask_v                 = std::uint16_t{3 << 4};  // takes over bit 4, 5 and 6
-            static constexpr auto signed_pixels_mask_v        = std::uint16_t{1 << 7};
+            static constexpr auto linear_space_mask_v         = std::uint16_t{1 << 3};
+            static constexpr auto u_wrap_mode_mask_v          = std::uint16_t{3 << 4}; // 2 bits
+            static constexpr auto v_wrap_mode_mask_v          = std::uint16_t{3 << 6}; // 2 bits
             static constexpr auto offset_to_format_v          = std::uint16_t{8};
         };
         static_assert(sizeof(bit_pack_fields) == 2);
@@ -378,12 +386,12 @@ namespace xcore
 
         mip*                            m_pData         {};             // +8 pointer to the mip data
         std::uint64_t                   m_DataSize      { 0 };          // +8 total data size in bytes
-        std::uint32_t                   m_FrameSize     { 0 };          // +4 Size of one frame of data.(one bitmap)
-        std::uint32_t                   m_Height        { 0 };          // +4 height in pixels
-        std::uint32_t                   m_Width         { 0 };          // +4 width in pixels
+        std::uint32_t                   m_FaceSize      { 0 };          // +4 Size of one face of data, a cube map will have 6 of these...
+        std::uint16_t                   m_Height        { 0 };          // +2 height in pixels
+        std::uint16_t                   m_Width         { 0 };          // +2 width in pixels
         bit_pack_fields                 m_Flags         {};             // +2 all flags including the format of the bitmap
         std::uint8_t                    m_nMips         { 0 };          // +1 Number of mips
-        std::uint8_t                    m_Pad           { 0 };          // +1 Padding
+        icolor                          m_ClampColor    { ~0u };        // +4 a color to use for the wrapping modes 
                                                                         // 32 bytes total
     };
     static_assert( sizeof(bitmap) == 32, "The bitmap structure should always be 32bytes long" );

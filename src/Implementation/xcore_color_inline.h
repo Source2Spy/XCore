@@ -359,6 +359,25 @@ namespace xcore::color
     }
 
     //------------------------------------------------------------------------------
+    //------------------------------------------------------------------------------
+    
+    template< typename T > requires std::is_fundamental_v<T> constexpr const auto operator / ( const unit<T>& A, const unit<T>& B ) noexcept { return A.getRGBA() / B.getRGBA(); }
+    template< typename T > requires std::is_fundamental_v<T> constexpr const auto operator * ( const unit<T>& A, const unit<T>& B ) noexcept { return A.getRGBA() * B.getRGBA(); }
+    template< typename T > requires std::is_fundamental_v<T> constexpr const auto operator + ( const unit<T>& A, const unit<T>& B ) noexcept { return A.getRGBA() + B.getRGBA(); }
+    template< typename T > requires std::is_fundamental_v<T> constexpr const auto operator - ( const unit<T>& A, const unit<T>& B ) noexcept { return A.getRGBA() - B.getRGBA(); }
+    template< typename T > requires std::is_fundamental_v<T> constexpr const auto operator / ( const float    A, const unit<T>& B ) noexcept { return A           / B.getRGBA(); }
+    template< typename T > requires std::is_fundamental_v<T> constexpr const auto operator / ( const unit<T>& A, const float    B ) noexcept { return A.getRGBA() / B; }
+    template< typename T > requires std::is_fundamental_v<T> constexpr const auto operator * ( const float    A, const unit<T>& B ) noexcept { return B.getRGBA() * A; }
+    template< typename T > requires std::is_fundamental_v<T> constexpr const auto operator * ( const unit<T>& A, const float    B ) noexcept { return A.getRGBA() * B; }
+    template< typename T > requires std::is_fundamental_v<T> constexpr const auto operator + ( const float    A, const unit<T>& B ) noexcept { return B.getRGBA() + A; }
+    template< typename T > requires std::is_fundamental_v<T> constexpr const auto operator + ( const unit<T>& A, const float    B ) noexcept { return A.getRGBA() + B; }
+    template< typename T > requires std::is_fundamental_v<T> constexpr const auto operator - ( const unit<T>& A, const float    B ) noexcept { return A.getRGBA() - B; }
+    template< typename T > requires std::is_fundamental_v<T> constexpr const auto operator - ( const float    A, const unit<T>& B ) noexcept { return A           - B.getRGBA(); }
+
+    //------------------------------------------------------------------------------
+    //------------------------------------------------------------------------------
+
+    //------------------------------------------------------------------------------
     template< typename T >
     typename unit<T>::element& unit<T>::operator[]( int Index ) noexcept
     {

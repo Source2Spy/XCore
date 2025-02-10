@@ -60,25 +60,6 @@ static const auto s_DefaultBitmap = []() noexcept
 // FUNCTIONS
 //////////////////////////////////////////////////////////////////////////////////
 
-xcore::bitmap::~bitmap( void ) noexcept
-{
-    if( m_pData && m_Flags.m_bOwnsMemory ) delete m_pData;
-}
-
-//-------------------------------------------------------------------------------
-
-void xcore::bitmap::Kill( void ) noexcept
-{
-    if (m_pData && m_Flags.m_bOwnsMemory) delete m_pData;
-
-    m_DataSize      = 0;                
-    m_FrameSize     = 0;                
-    m_Height        = 0;                
-    m_Width         = 0;                
-    m_Flags.m_Value = 0;                
-    m_nMips         = 0;                
-}
-
 //-------------------------------------------------------------------------------
 
 xcore::err xcore::bitmap::SerializeLoad( bitmap*& pBitmap, const string::view<const wchar_t> FileName ) noexcept
@@ -118,12 +99,15 @@ xcore::err xcore::bitmap::Load( const string::view<const wchar_t> FileName ) noe
 
     if ( xcore::err Err; false
         || (Err = File.Read(m_DataSize))
-        || (Err = File.Read(m_FrameSize))
+        || (Err = File.Read(m_FaceSize))
         || (Err = File.Read(m_Height))
         || (Err = File.Read(m_Width))
         || (Err = File.Read(m_Flags.m_Value))
         || (Err = File.Read(m_nMips))
-        || (Err = File.Read(m_Pad))
+        || (Err = File.Read(m_ClampColor.m_R))
+        || (Err = File.Read(m_ClampColor.m_G))
+        || (Err = File.Read(m_ClampColor.m_B))
+        || (Err = File.Read(m_ClampColor.m_A))
         ) return Err;
 
     //
@@ -143,12 +127,15 @@ xcore::err xcore::bitmap::Save( const string::view<const wchar_t> FileName ) con
         || (Err = File.open(FileName, "wb"))
         || (Err = File.Write(std::uint32_t('XBMP')))
         || (Err = File.Write(m_DataSize))
-        || (Err = File.Write(m_FrameSize))
+        || (Err = File.Write(m_FaceSize))
         || (Err = File.Write(m_Height))
         || (Err = File.Write(m_Width))
         || (Err = File.Write(m_Flags.m_Value))
         || (Err = File.Write(m_nMips))
-        || (Err = File.Write(m_Pad))
+        || (Err = File.Write(m_ClampColor.m_R))
+        || (Err = File.Write(m_ClampColor.m_G))
+        || (Err = File.Write(m_ClampColor.m_B))
+        || (Err = File.Write(m_ClampColor.m_A))
         || (Err = File.WriteView(std::span{ reinterpret_cast<std::byte*>(m_pData), m_DataSize }))
         ) return Err;
 
@@ -222,17 +209,18 @@ void xcore::bitmap::setup
 ( const std::uint32_t         Width                   
 , const std::uint32_t         Height
 , const xcore::bitmap::format BitmapFormat            
-, const std::uint64_t         FrameSize
+, const std::uint64_t         FaceSize
 , std::span<std::byte>        Data                    
 , const bool                  bFreeMemoryOnDestruction
 , const int                   nMips                   
-, const int                   nFrames               
+, const int                   nFrames
+, const bool                  isCubeMap
 ) noexcept
 {
     xassert( Data.size()       >  4 );
-    xassert( FrameSize         >  0 );
-    xassert( FrameSize         <  Data.size() );    // In fact this should be equal to: DataSize - ((nMips*sizeof(s32)) * nFrames) which means it should be removed
-    xassert( FrameSize         <= 0xffffffff );     // Since we are going to pack it into a u32 it can not be larger than that
+    xassert( FaceSize          >  0 );
+    xassert( FaceSize          <  Data.size() );    // In fact this should be equal to: DataSize - ((nMips*sizeof(s32)) * nFrames) which means it should be removed
+    xassert( FaceSize          <= 0xffffffff );     // Since we are going to pack it into a u32 it can not be larger than that
     xassert( nMips             >  0 );
     xassert( nFrames           >  0 );
     xassert( Width             >  0 );
@@ -242,19 +230,21 @@ void xcore::bitmap::setup
 
     Kill();
 
+    m_Flags.m_bCubeMap    = isCubeMap;
     m_pData               = reinterpret_cast<mip*>(Data.data());
     m_Flags.m_bOwnsMemory = bFreeMemoryOnDestruction;
 
     m_DataSize          = Data.size();    
-    xassert( FrameSize == m_DataSize - ((nMips*sizeof(int)) * nFrames) );
     
-    m_FrameSize         = static_cast<std::uint32_t>(FrameSize);
+    m_FaceSize          = static_cast<std::uint32_t>(FaceSize);
     m_Height            = Height;   
     m_Width             = Width;
     
     m_nMips             = nMips;    
     m_Flags.m_Format    = BitmapFormat;
 
+    xassert( getFrameSize() == (m_DataSize / nFrames - nMips * sizeof(int)));
+    xassert( auto t = getFaceCount() * getFaceSize(); t == getFrameSize() );
     xassert( nFrames == getFrameCount() );
 }
 
@@ -268,14 +258,14 @@ void xcore::bitmap::setupFromColor
 ) noexcept
 {
     setup
-    (   Width
-    ,   Height
-    ,   format::XCOLOR
-    ,   sizeof(xcore::icolor)*( Data.size() - 1 )
-    ,   { reinterpret_cast<std::byte*>(&Data[0]), sizeof(xcore::icolor)*Data.size() }
-    ,   bFreeMemoryOnDestruction
-    ,   1
-    ,   1 
+    ( Width
+    , Height
+    , format::XCOLOR
+    , sizeof(xcore::icolor)*( Data.size() - 1 )
+    , { reinterpret_cast<std::byte*>(&Data[0]), sizeof(xcore::icolor)*Data.size() }
+    , bFreeMemoryOnDestruction
+    , 1
+    , 1 
     );
 }
 
@@ -605,8 +595,8 @@ void xcore::bitmap::FlipImageInY( void ) noexcept
     xassert( getMipCount() == 1 );
 
     auto pData = getMip<xcore::icolor>(0);
-    for( auto y = 0u; y < m_Height/2; ++y )
-    for( auto x = 0u; x < m_Width;    ++x )
+    for( std::uint32_t y = 0u, endy = m_Height / 2u; y < endy;    ++y )
+    for( std::uint32_t x = 0u;                       x < m_Width; ++x )
     {
         std::swap( pData[ x + y * m_Width], pData[ x + (m_Height-y-1) * m_Width] );
     }

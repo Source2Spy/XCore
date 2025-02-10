@@ -1,3 +1,7 @@
+#ifndef _XCORE_COLOR_H
+#define _XCORE_COLOR_H
+#pragma once
+
 namespace xcore::color
 {
     template< typename T >
@@ -193,6 +197,20 @@ namespace xcore::color
         constexpr       bool                operator !=         ( const unit& C
                                                                 ) const noexcept;
 
+        // These are also avariable
+        //      template< typename T > requires std::is_fundamental_v<T> friend const unit&  operator /  ( const unit& A, const unit& B ) noexcept;
+        //      template< typename T > requires std::is_fundamental_v<T> friend const unit&  operator /  ( const unit& A, const T     B ) noexcept;
+        //      template< typename T > requires std::is_fundamental_v<T> friend const unit&  operator /  ( const T     B, const unit& A ) noexcept;
+        //      template< typename T > requires std::is_fundamental_v<T> friend const unit&  operator *  ( const unit& A, const unit& B ) noexcept;
+        //      template< typename T > requires std::is_fundamental_v<T> friend const unit&  operator *  ( const unit& A, const T     B ) noexcept;
+        //      template< typename T > requires std::is_fundamental_v<T> friend const unit&  operator *  ( const T     B, const unit& A ) noexcept;
+        //      template< typename T > requires std::is_fundamental_v<T> friend const unit&  operator +  ( const unit& A, const unit& B ) noexcept;
+        //      template< typename T > requires std::is_fundamental_v<T> friend const unit&  operator +  ( const unit& A, const T     B ) noexcept;
+        //      template< typename T > requires std::is_fundamental_v<T> friend const unit&  operator +  ( const T     B, const unit& A ) noexcept;
+        //      template< typename T > requires std::is_fundamental_v<T> friend const unit&  operator -  ( const unit& A, const unit& B ) noexcept;
+        //      template< typename T > requires std::is_fundamental_v<T> friend const unit&  operator -  ( const unit& A, const T     B ) noexcept;
+        //      template< typename T > requires std::is_fundamental_v<T> friend const unit&  operator -  ( const T     B, const unit& A ) noexcept;
+
         // Color data conversions
         inline          void                setAlpha            ( float Alpha
                                                                 ) noexcept;
@@ -256,3 +274,4 @@ namespace xcore
     using fcolor = color::unit<float>;
     using dcolor = color::unit<double>;
 }
+#endif
