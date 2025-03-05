@@ -223,10 +223,20 @@ namespace xcore::color
         }
         else if constexpr (std::is_integral_v<T>)
         {
-            parent_t::m_R = static_cast<std::uint8_t>(C.m_X * 0xff);
-            parent_t::m_G = static_cast<std::uint8_t>(C.m_Y * 0xff);
-            parent_t::m_B = static_cast<std::uint8_t>(C.m_Z * 0xff);
-            parent_t::m_A = static_cast<std::uint8_t>(C.m_A * 0xff);
+            if constexpr (std::is_same_v<J, float>)
+            {
+                parent_t::m_R = static_cast<std::uint8_t>(C.m_R * 0xff);
+                parent_t::m_G = static_cast<std::uint8_t>(C.m_G * 0xff);
+                parent_t::m_B = static_cast<std::uint8_t>(C.m_B * 0xff);
+                parent_t::m_A = static_cast<std::uint8_t>(C.m_A * 0xff);
+            }
+            else
+            {
+                parent_t::m_R = static_cast<std::uint8_t>(C.m_X * 0xff);
+                parent_t::m_G = static_cast<std::uint8_t>(C.m_Y * 0xff);
+                parent_t::m_B = static_cast<std::uint8_t>(C.m_Z * 0xff);
+                parent_t::m_A = static_cast<std::uint8_t>(C.m_A * 0xff);
+            }
         }
         else
         {

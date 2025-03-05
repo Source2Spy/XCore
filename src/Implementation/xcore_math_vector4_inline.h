@@ -340,6 +340,20 @@ namespace xcore::math
 
     //------------------------------------------------------------------------------
     constexpr 
+    vector4 operator / ( const vector4& V, float Scalar ) noexcept
+    {
+    #ifdef _XCORE_SSE4
+        return vector4{ _mm_div_ps( V.m_XYZW, _mm_set1_ps( Scalar ) ) };
+    #else
+        return vector4{   V.m_X / Scalar,
+                          V.m_Y / Scalar,
+                          V.m_Z / Scalar,
+                          V.m_W / Scalar };
+    #endif
+    }
+
+    //------------------------------------------------------------------------------
+    constexpr 
     vector4 operator * ( float Scalar, const vector4& V ) noexcept
     {
     #ifdef _XCORE_SSE4
