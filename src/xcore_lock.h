@@ -382,7 +382,7 @@ namespace xcore::lock
     public:
     
                                         template<typename ...T_ARG>
-        constexpr                       object              ( T_ARG&&...Args )          noexcept : m_Class{ std::forward<T_ARG>(Args)... } {}
+        constexpr                       object              ( T_ARG&&...Args )          noexcept : m_Class{ std::forward<T_ARG&&>(Args)... } {}
         inline          T_CLASS&        get                 ( void )                    noexcept { xassert( T_LOCK::isLockedDebug() ); return m_Class; }
         constexpr const T_CLASS&        get                 ( void )             const  noexcept { xassert( T_LOCK::isLockedDebug() ); return m_Class; }
 

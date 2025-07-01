@@ -77,6 +77,7 @@ namespace xcore::file
         // Copy our device into a separate string
         for( i = 0; (DeviceName[i] = static_cast<char>(Path[i]))
             &&      (i < (DeviceName.size() - 1))
+            &&      (i < (Path.size()-1))
             &&      (Path[i] != L':');
             i++)
         {

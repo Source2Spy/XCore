@@ -168,6 +168,111 @@ namespace xcore::function
     // Example: 
     //      xcore::function::buffer<3,void(void) t{[&](){ std::cout << "Hello"; });
     //------------------------------------------------------------------------------
+    template<int T_BUFFER_PTRSIZE, typename T_LAMBDA> class buffer;
+    template<int T_BUFFER_PTRSIZE, typename T_RET, typename... T_ARG>
+    class buffer<T_BUFFER_PTRSIZE, T_RET(T_ARG...)>
+    {
+        template<typename DecayedFunc>
+        static consteval bool isSignatureCompatible()
+        {
+            using fa = traits<DecayedFunc>;
+            using fb = traits<xcore::function::make_t<false, T_RET, T_ARG...>>;
+            return xcore::function::traits_compare<fa, fb>::value;
+        }
+
+    public:
+        // Default constructor: initialize pointers to nullptr
+        constexpr buffer() noexcept = default;
+
+        // Constructor for copyable
+        template<typename T_FUNC>
+        constexpr buffer(const T_FUNC& Func) noexcept
+            : m_pInvoker(&functor<std::decay_t<T_FUNC>>::Invoke)
+            , m_pDestroyer(std::is_trivially_destructible_v<functor<std::decay_t<T_FUNC>>>
+                ? nullptr
+                : [](void* p) { static_cast<functor<std::decay_t<T_FUNC>>*>(p)->~functor(); })
+        {
+            using decayed_func = std::decay_t<T_FUNC>;
+            static_assert(isSignatureCompatible<decayed_func>(), "Callable signature does not match");
+            static_assert(sizeof(m_Storage) >= sizeof(functor<decayed_func>), "Storage size too small");
+            static_assert(alignof(decayed_func) <= alignof(void*), "Alignment mismatch");
+
+            new(m_Storage) functor<T_FUNC>(Func);
+        }
+
+        // Constructor for move-only
+        template<typename T_FUNC>
+        constexpr buffer(T_FUNC&& Func) noexcept
+            : m_pInvoker(&functor<std::decay_t<T_FUNC>>::Invoke)
+            , m_pDestroyer(std::is_trivially_destructible_v<functor<std::decay_t<T_FUNC>>>
+                ? nullptr
+                : [](void* p) { static_cast<functor<std::decay_t<T_FUNC>>*>(p)->~functor(); })
+        {
+            using decayed_func = std::decay_t<T_FUNC>;
+            static_assert(isSignatureCompatible<decayed_func>(), "Callable signature does not match");
+            static_assert(sizeof(m_Storage) >= sizeof(functor<decayed_func>), "Storage size too small");
+            static_assert(alignof(decayed_func) <= alignof(void*), "Alignment mismatch");
+
+            new(m_Storage) functor<T_FUNC>(std::forward<T_FUNC>(Func));
+        }
+
+        buffer& operator = ( const buffer& ) = delete;
+
+        template<typename T_FUNC>
+        buffer& operator = (T_FUNC&& Func) noexcept
+        {
+            if (m_pDestroyer) m_pDestroyer(static_cast<void*>(m_Storage));
+
+            m_pInvoker   = &functor<std::decay_t<T_FUNC>>::Invoke;
+            m_pDestroyer = std::is_trivially_destructible_v<functor<std::decay_t<T_FUNC>>>
+                    ? nullptr
+                    : [](void* p) { static_cast<functor<std::decay_t<T_FUNC>>*>(p)->~functor(); };
+
+            using decayed_func = std::decay_t<T_FUNC>;
+            static_assert(isSignatureCompatible<decayed_func>(), "Callable signature does not match");
+            static_assert(sizeof(m_Storage) >= sizeof(functor<decayed_func>), "Storage size too small");
+            static_assert(alignof(decayed_func) <= alignof(void*), "Alignment mismatch");
+
+            new(m_Storage) functor<T_FUNC>(std::forward<T_FUNC>(Func));
+
+            return *this;
+        }
+
+        // Destructor: call m_pDestroyer only if set
+        constexpr ~buffer(void)
+        {
+            if (m_pDestroyer) m_pDestroyer(static_cast<void*>(m_Storage));
+        }
+
+        // Function call operator
+        constexpr T_RET operator()(T_ARG... Args) const
+        {
+            xassert(m_pInvoker);
+            return m_pInvoker(reinterpret_cast<void*>(const_cast<char*>(m_Storage)), std::forward<T_ARG>(Args)...);
+        }
+
+    private:
+        template<typename T>
+        struct functor
+        {
+            T  m_Lambda;
+
+            constexpr explicit functor(T&& f) noexcept : m_Lambda(std::forward<T>(f)) {}
+            constexpr explicit functor( const T& f) noexcept : m_Lambda(f) {}
+            static T_RET Invoke(void* pFunctor, T_ARG... Args)
+            {
+                return static_cast<functor*>(pFunctor)->m_Lambda(std::forward<T_ARG>(Args)...);
+            }
+        };
+
+        using invoker_fnptr     = T_RET(*)(void*, T_ARG...);
+        using destroyer_fnptr   = void(*)(void*);
+
+        alignas(void*) char m_Storage[sizeof(void*) * T_BUFFER_PTRSIZE]{};
+        invoker_fnptr       m_pInvoker      = nullptr;
+        destroyer_fnptr     m_pDestroyer    = nullptr;
+    };
+/*
     template< int T_BUFFER_PTRSIZE, typename T_LAMBDA > class buffer;
     template< int T_BUFFER_PTRSIZE, typename T_RET, typename ... T_ARG >
     class buffer< T_BUFFER_PTRSIZE, T_RET(T_ARG ...) > final
@@ -221,6 +326,7 @@ namespace xcore::function
         invoker_ptr     m_Invoker{ nullptr };           // Pointer to the Invoke function ones all the t_type magic has happen
         void*           m_Storage[T_BUFFER_PTRSIZE]{};  // Keep the data used to call the function
     };
+    */
 
     //------------------------------------------------------------------------------
     // Description:
